@@ -1,9 +1,8 @@
 import { EmailCapture } from "./components/email-capture";
 import { FoundingProgress } from "./components/founding-progress";
-import { apiUrl } from "./lib/api-base";
 
 const launchPrice = process.env.NEXT_PUBLIC_LIFETIME_PRICE_DISPLAY || "S$29.99";
-const checkoutUrl = apiUrl("/checkout?variant=current");
+const checkoutUrl = "/checkout?variant=current";
 
 const plans = [
   {

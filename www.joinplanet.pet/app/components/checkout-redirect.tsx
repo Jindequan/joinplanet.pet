@@ -8,6 +8,11 @@ type Props = {
   variant: string;
 };
 
+type CheckoutResponse = {
+  url?: string;
+  error?: string;
+};
+
 export function CheckoutRedirect({ variant }: Props) {
   const [state, setState] = useState<"loading" | "error" | "soldout">("loading");
   const [message, setMessage] = useState("");
@@ -16,8 +21,7 @@ export function CheckoutRedirect({ variant }: Props) {
     let active = true;
 
     async function resolve() {
-      // No backend configured — can't resolve checkout. Show a clear message
-      // instead of looping on the same-origin /checkout route.
+      // No backend configured — can't resolve checkout.
       if (!API_BASE) {
         if (!active) return;
         setState("error");
@@ -26,20 +30,17 @@ export function CheckoutRedirect({ variant }: Props) {
       }
 
       try {
-        // Follow the 303 redirect to Lemon Squeezy automatically.
+        // The backend returns JSON { "url": "https://...lemonsqueezy.com/..." }
+        // instead of a 303 redirect, so the browser fetch doesn't hit CORS
+        // when following to Lemon's domain. We navigate via window.location
+        // which is not subject to CORS.
         const response = await fetch(apiUrl(`/checkout?variant=${encodeURIComponent(variant)}`), {
-          redirect: "follow",
+          redirect: "manual",
           mode: "cors",
           credentials: "omit",
         });
 
         if (!active) return;
-
-        // A successful redirect lands us on Lemon's checkout URL.
-        if (response.ok && response.url && !response.url.includes(apiUrl("/checkout"))) {
-          window.location.replace(response.url);
-          return;
-        }
 
         if (response.status === 410) {
           setState("soldout");
@@ -47,9 +48,22 @@ export function CheckoutRedirect({ variant }: Props) {
           return;
         }
 
-        const data = await response.json().catch(() => null) as { error?: string } | null;
+        if (!response.ok) {
+          const data = await response.json().catch(() => null) as CheckoutResponse | null;
+          setState("error");
+          setMessage(data?.error ?? "We couldn't open checkout. Please try again in a moment.");
+          return;
+        }
+
+        const data = await response.json().catch(() => null) as CheckoutResponse | null;
+        if (data?.url) {
+          // Browser navigation to Lemon — NOT subject to CORS.
+          window.location.replace(data.url);
+          return;
+        }
+
         setState("error");
-        setMessage(data?.error ?? "We couldn't open checkout. Please try again in a moment.");
+        setMessage("We couldn't open checkout. Please try again in a moment.");
       } catch {
         if (!active) return;
         setState("error");

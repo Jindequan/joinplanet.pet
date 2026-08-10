@@ -355,7 +355,7 @@ func (a *app) checkout(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	if u, ok := a.cfg.variantCheckoutURL[target.key]; ok && u != "" {
-		http.Redirect(w, req, u, http.StatusSeeOther)
+		jsonResponse(w, http.StatusOK, map[string]string{"url": u})
 		return
 	}
 	// No pre-built checkout URL: create one via the Lemon API.
@@ -372,7 +372,7 @@ func (a *app) checkout(w http.ResponseWriter, req *http.Request) {
 		jsonResponse(w, http.StatusBadGateway, errBody("Lemon could not create a checkout."))
 		return
 	}
-	http.Redirect(w, req, u, http.StatusSeeOther)
+	jsonResponse(w, http.StatusOK, map[string]string{"url": u})
 }
 
 func (a *app) createLemonCheckout(ctx context.Context, variantID, variantKey string, nextNumber int) (string, error) {

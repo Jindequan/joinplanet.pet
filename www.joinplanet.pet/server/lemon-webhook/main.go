@@ -247,7 +247,12 @@ func (a *app) webhook(w http.ResponseWriter, req *http.Request) {
 	}
 
 	attrs := event.Data.Attributes
-	variantID := attribute(attrs, "variant_id")
+	// variant_id lives inside the nested first_order_item object, not at the
+	// top level of order attributes. Fall back to top-level for safety.
+	variantID := attributeFromNested(attrs, "first_order_item", "variant_id")
+	if variantID == "" {
+		variantID = attribute(attrs, "variant_id")
+	}
 	mapping := a.planForVariant(variantID)
 	status := strings.ToLower(attribute(attrs, "status"))
 	refundedAt := attribute(attrs, "refunded_at")
@@ -388,7 +393,18 @@ func (a *app) createLemonCheckout(ctx context.Context, variantID, variantKey str
 		},
 	}
 	if a.cfg.lemonRedirectURL != "" {
-		attrs["product_options"].(map[string]any)["redirect_url"] = a.cfg.lemonRedirectURL
+		// Inject Lemon's {order_id} link variable so the /success page can
+		// associate the post-payment intake form with the paid order.
+		// Lemon replaces {order_id} with the real order id on redirect.
+		redirectURL := a.cfg.lemonRedirectURL
+		if !strings.Contains(redirectURL, "{order_id}") {
+			sep := "?"
+			if strings.Contains(redirectURL, "?") {
+				sep = "&"
+			}
+			redirectURL = redirectURL + sep + "order_id={order_id}"
+		}
+		attrs["product_options"].(map[string]any)["redirect_url"] = redirectURL
 	}
 	if a.cfg.lemonTestMode {
 		attrs["test_mode"] = true
@@ -580,6 +596,21 @@ func attribute(attrs map[string]json.RawMessage, key string) string {
 		return ""
 	}
 	return strings.TrimSpace(fmt.Sprint(value))
+}
+
+// attributeFromNested extracts a field from a nested JSON object stored under
+// parentKey. e.g. attributeFromNested(attrs, "first_order_item", "variant_id")
+// reads attrs["first_order_item"]["variant_id"].
+func attributeFromNested(attrs map[string]json.RawMessage, parentKey, key string) string {
+	raw, ok := attrs[parentKey]
+	if !ok {
+		return ""
+	}
+	var nested map[string]json.RawMessage
+	if json.Unmarshal(raw, &nested) != nil {
+		return ""
+	}
+	return attribute(nested, key)
 }
 
 func firstAttribute(attrs map[string]json.RawMessage, keys ...string) string {

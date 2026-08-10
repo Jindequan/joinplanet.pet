@@ -12,7 +12,8 @@ export const metadata: Metadata = {
   },
 };
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+// GA4 measurement ID — hardcoded so production needs no env config.
+const GA_ID = "G-Z4M278ZGW3";
 
 export default function RootLayout({
   children,

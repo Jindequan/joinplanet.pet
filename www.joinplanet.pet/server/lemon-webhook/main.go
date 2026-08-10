@@ -376,33 +376,32 @@ func (a *app) checkout(w http.ResponseWriter, req *http.Request) {
 }
 
 func (a *app) createLemonCheckout(ctx context.Context, variantID, variantKey string, nextNumber int) (string, error) {
+	attrs := map[string]any{
+		"product_options": map[string]any{
+			"enabled_variants": []any{toAnyNumber(variantID)},
+		},
+		"checkout_data": map[string]any{
+			"custom": map[string]any{
+				"planet_variant":     variantKey,
+				"next_member_number": strconv.Itoa(nextNumber),
+			},
+		},
+	}
+	if a.cfg.lemonRedirectURL != "" {
+		attrs["product_options"].(map[string]any)["redirect_url"] = a.cfg.lemonRedirectURL
+	}
+	if a.cfg.lemonTestMode {
+		attrs["test_mode"] = true
+	}
 	payload := map[string]any{
 		"data": map[string]any{
-			"type": "checkouts",
-			"attributes": map[string]any{
-				"product_options": map[string]any{
-					"enabled_variants": []any{toAnyNumber(variantID)},
-					"checkout_data": map[string]any{
-						"custom": map[string]any{
-							"planet_variant":     variantKey,
-							"next_member_number": nextNumber,
-						},
-					},
-				},
-			},
+			"type":       "checkouts",
+			"attributes": attrs,
 			"relationships": map[string]any{
 				"store":   map[string]any{"data": map[string]any{"type": "stores", "id": a.cfg.lemonStoreID}},
 				"variant": map[string]any{"data": map[string]any{"type": "variants", "id": variantID}},
 			},
 		},
-	}
-	attrs := payload["data"].(map[string]any)["attributes"].(map[string]any)
-	if a.cfg.lemonRedirectURL != "" {
-		po := attrs["product_options"].(map[string]any)
-		po["redirect_url"] = a.cfg.lemonRedirectURL
-	}
-	if a.cfg.lemonTestMode {
-		attrs["test_mode"] = true
 	}
 	body, _ := json.Marshal(payload)
 	httpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.lemonsqueezy.com/v1/checkouts", bytes.NewReader(body))

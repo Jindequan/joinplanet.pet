@@ -93,7 +93,23 @@ func findActiveClaimByEmailHash(ctx context.Context, q pgxQuerier, emailHash str
 }
 
 // insertPaidClaim creates a paid membership row. Returns statusOverLimit when at capacity.
+//
+// Concurrency safety: the count-then-insert sequence is guarded by a
+// transaction-scoped advisory lock so that concurrent webhooks (e.g. Lemon
+// retries, or two orders landing in the same instant) serialize. Without this
+// lock, READ COMMITTED would let two transactions both read count=99 and both
+// insert, overshooting the capacity. The advisory lock key is a stable hash of
+// a fixed namespace string, so it is the same key across all instances and
+// connections — this is what makes the cap safe across multiple backend
+// processes, not just within one.
 func insertPaidClaim(ctx context.Context, tx pgx.Tx, c membershipClaim, capacity int) (string, error) {
+	// Transaction-scoped advisory lock. Key derived from a stable namespace;
+	// pg_advisory_xact_lock takes a 64-bit int. hashtext() maps our constant
+	// string into int4; we pass the same value in both halves to form int8.
+	const lockKey = "planet_membership_cap"
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, lockKey); err != nil {
+		return "", err
+	}
 	active, err := countActiveMembers(ctx, tx)
 	if err != nil {
 		return "", err

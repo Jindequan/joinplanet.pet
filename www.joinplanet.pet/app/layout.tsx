@@ -23,6 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Caveat: a warm handwriting font used by the Pet Card Polaroid
+            template. We load it from Google Fonts so it renders consistently
+            across macOS/Windows/Linux/Android — the old fallback chain
+            (Bradley Hand → Comic Sans) looked broken on non-Apple devices. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&display=swap" rel="stylesheet" />
         {GA_ID ? (
           <>
             <script

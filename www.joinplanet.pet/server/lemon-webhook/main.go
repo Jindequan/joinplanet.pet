@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -66,8 +67,20 @@ func main() {
 	mux.HandleFunc("/membership/claim", a.claim)
 
 	address := ":" + cfg.port
+	// Timeouts protect against slowloris-style resource exhaustion and ensure
+	// in-flight webhooks are not left dangling. Lemon retries on dropped
+	// connections, and our webhook handling is idempotent, so a hard timeout is
+	// safe. Idle timeout keeps connections warm for the progress polling.
+	server := &http.Server{
+		Addr:              address,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	fmt.Printf("PLANET backend listening on %s\n", address)
-	if err := http.ListenAndServe(address, mux); err != nil {
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -424,7 +437,10 @@ func (a *app) createLemonCheckout(ctx context.Context, variantID, variantKey str
 	httpReq.Header.Set("Accept", "application/vnd.api+json")
 	httpReq.Header.Set("Content-Type", "application/vnd.api+json")
 	httpReq.Header.Set("Authorization", "Bearer "+a.cfg.lemonAPIKey)
-	resp, err := http.DefaultClient.Do(httpReq)
+	// Bounded client so a slow Lemon response cannot pin a goroutine. The
+	// outer request context (from the HTTP handler) still applies too.
+	lemonClient := &http.Client{Timeout: 10 * time.Second}
+	resp, err := lemonClient.Do(httpReq)
 	if err != nil {
 		return "", err
 	}

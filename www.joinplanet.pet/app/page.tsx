@@ -26,6 +26,7 @@ export default function Home() {
           PLANET
         </a>
         <div className="nav-links">
+          <a href="/tools" data-event="nav_tools" data-event-category="nav" data-event-label="nav_tools">Free tools</a>
           <a href="#story">The story</a>
           <a href="#roadmap">The path</a>
           <a href="#pricing">Pricing</a>
@@ -42,8 +43,8 @@ export default function Home() {
             Every bag of food, every check-up, every grooming day, every walk and photo — I kept losing track. Then he turned five, and I realized the hard part was coming. So I started building PLANET.
           </p>
           <div className="hero-actions">
-            <a className="button button-primary" href="#story" data-event="cta_click" data-event-category="hero" data-event-label="hero_see_story">See his story <span className="icon icon-arrow-right" aria-hidden="true" /></a>
-            <a className="text-link" href="#pricing">Or lock in {launchPrice} now <span className="icon icon-chevron-down" aria-hidden="true" /></a>
+            <a className="button button-primary" href="/tools" data-event="cta_click" data-event-category="hero" data-event-label="hero_tools">Try the free tools <span className="icon icon-arrow-right" aria-hidden="true" /></a>
+            <a className="text-link" href="#story">Or read the story <span className="icon icon-chevron-down" aria-hidden="true" /></a>
           </div>
           <p className="microcopy">For the life you are already building together — now held in one place.</p>
         </div>
@@ -57,7 +58,7 @@ export default function Home() {
       <section className="proof-strip">
         <div className="shell proof-inner">
           <span>Built by a pet parent, for pet families</span>
-          <div><span>TIMELINE</span><span>HEALTH AI</span><span>FAMILY</span><span>COMPANION</span></div>
+          <div><span>TIMELINE</span><span>VET SUMMARY</span><span>FAMILY</span><span>HANDOFFS</span></div>
         </div>
       </section>
 
@@ -88,10 +89,10 @@ export default function Home() {
       <section className="story-section shell story-split story-intelligence">
         <div className="story-copy">
           <p className="section-label">A professional memory for their whole life</p>
-          <h2>Timeline first.<br /><em>A health AI that actually helps.</em></h2>
+          <h2>Timeline first.<br /><em>Vet-ready summaries that actually help.</em></h2>
           <p>PLANET keeps the story in order: daily care, photos, weight, medication, appointments, symptoms, and the moments that make them who they are.</p>
-          <p>Then a professional pet model turns that history into something useful — patterns to notice, questions to ask, care plans to follow, and a clear summary to bring to the vet.</p>
-          <p className="story-disclaimer">It supports better care and better conversations. It does not replace a licensed veterinarian.</p>
+          <p>Then it turns that history into something useful — patterns to notice, questions to ask, and a clear one-page summary to bring to the vet. <a href="/tools" style={{ borderBottom: "1px solid currentColor" }}>Browse the free tools</a> — no account needed.</p>
+          <p className="story-disclaimer">PLANET organizes and prepares. It does not diagnose and does not replace a licensed veterinarian.</p>
         </div>
         <figure className="story-image story-image-wide"><img src="/cover1.png" alt="PLANET health timeline showing daily care, weight, medication, and vet visits in one place" /><figcaption>One living record for everyday care and health.</figcaption></figure>
       </section>
@@ -173,7 +174,8 @@ export default function Home() {
             </article>
           ))}
         </div>
-        <p className="pricing-note">Pay once now. Keep the professional pet model and PLANET membership for life. No recurring charge for the founding 100; after 100 purchases, new members subscribe. Checkout is powered by Lemon Squeezy.</p>
+        <p className="pricing-note">Pay once now. Keep PLANET membership for life — one payment, no recurring charge for the founding 100. After 100 purchases, new members subscribe. Checkout is powered by Lemon Squeezy.</p>
+        <p className="pricing-note pricing-note-refund">Founding members get a 14-day no-questions refund. If we don&apos;t deliver what we promised, you get your money back. Lifetime access covers PLANET&apos;s core pet care, health timeline, and handoff features for at least 24 months; any future high-cost professional service would be priced separately and clearly. Questions before joining? <a href="/tools" style={{ borderBottom: "1px solid currentColor" }}>Try the free tools first</a> or <a href="mailto:hello@joinplanet.pet" style={{ borderBottom: "1px solid currentColor" }}>email us</a>.</p>
       </section>
 
       <EmailCapture />

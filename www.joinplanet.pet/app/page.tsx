@@ -180,6 +180,33 @@ export default function Home() {
 
       <EmailCapture />
 
+      {/* EARLY BUILDERS — 招募早期合伙/贡献者 */}
+      <section className="section builders-section" id="builders">
+        <div className="shell builders-inner">
+          <div className="builders-copy">
+            <p className="section-label">More than a customer</p>
+            <h2>Help shape PLANET<br /><em>from the inside.</em></h2>
+            <p className="builders-lead">I&apos;m one person building something for every pet family. If you care about pets, design, veterinary care, or growth — and you want to help shape what this becomes — I want to talk to you.</p>
+            <div className="builders-roles">
+              <div className="builder-role"><span className="icon icon-paw-print" aria-hidden="true" /><div><strong>Pet parents</strong><span>Test early features, tell me what&apos;s broken, share what matters.</span></div></div>
+              <div className="builder-role"><span className="icon icon-heart-pulse" aria-hidden="true" /><div><strong>Vets &amp; vet techs</strong><span>Review symptom content, shape the health timeline, lend credibility.</span></div></div>
+              <div className="builder-role"><span className="icon icon-share" aria-hidden="true" /><div><strong>Builders &amp; designers</strong><span>Open to collaborators on product, growth, and brand — equity possible for the right person.</span></div></div>
+            </div>
+            <a className="button button-primary" href="mailto:hello@joinplanet.pet?subject=I%20want%20to%20help%20build%20PLANET"
+              data-event="builders_email" data-event-category="builders" data-event-label="builders_email">
+              Email me — let&apos;s talk <span className="icon icon-arrow-right" aria-hidden="true" />
+            </a>
+            <p className="builders-note">No formal application. Just tell me who you are and why this resonates.</p>
+          </div>
+          <div className="builders-visual" aria-hidden="true">
+            <div className="builders-orb builders-orb-1" />
+            <div className="builders-orb builders-orb-2" />
+            <div className="builders-orb builders-orb-3" />
+            <div className="builders-core"><span className="icon icon-paw-print" aria-hidden="true" /></div>
+          </div>
+        </div>
+      </section>
+
       <section className="final-cta shell"><div><p className="section-label">Founding 100 · lifetime access</p><h2>Give their whole life<br /><em>a place to belong.</em></h2></div><a className="button button-primary" href="#pricing" data-event="cta_click" data-event-category="final_cta" data-event-label="final_lock_in">Lock in {launchPrice} <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></section>
 
       <footer className="footer shell"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true" />PLANET</a><span>Their whole world. One place.</span><span>© 2026 PLANET</span></footer>

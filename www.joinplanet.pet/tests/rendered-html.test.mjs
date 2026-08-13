@@ -34,31 +34,25 @@ test.after(async () => {
   if (server?.child) server.child.kill("SIGTERM");
 });
 
-test("server-renders the PLANET validation landing page", async () => {
+test("server-renders the PLANET narrative home", async () => {
   const response = await fetch(`${server.origin}/`);
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>PLANET — Their whole world\. One place\.<\/title>/i);
-  assert.match(html, /I didn't plan to build an app/);
-  assert.match(html, /professional pet intelligence|professional pet model/);
-  assert.match(html, /A clear path forward/);
-  assert.match(html, /Care is a shared verb/);
-  assert.match(html, /mydog\.JPG/);
-  assert.match(html, /Lifetime membership/i);
+  assert.match(html, /<title>PLANET — A thousand small acts become a life together\.<\/title>/i);
+  assert.match(html, /A thousand small acts/);
+  assert.match(html, /The information exists\. It just doesn&#x27;t stay together\./);
+  assert.match(html, /What if their whole story/);
+  assert.match(html, /Walk in with the story/);
+  assert.match(html, /What would PLANET/);
+  assert.match(html, /INTERACTIVE PROTOTYPE/);
+  assert.match(html, /Help make the first version real/);
+  assert.match(html, /Back the first build/);
   assert.match(html, /S\$29\.99/);
-  assert.match(html, /S\$69\.99/);
-  assert.match(html, /S\$129\.99/);
-  // checkout link points at the Go backend via apiUrl("/checkout?variant=...").
-  // With NEXT_PUBLIC_API_BASE unset, it renders as /checkout?variant=current
+  assert.match(html, /mydog\.JPG/);
+  assert.doesNotMatch(html, /Lifetime Membership|Founding 100/);
   assert.match(html, /href="\/checkout\?variant=current"/);
-  // Three founding tiers shown inside the segmented progress meter.
-  assert.match(html, /meter-tier-price.*S\$29\.99/s);
-  assert.match(html, /meter-tier-price.*S\$69\.99/s);
-  assert.match(html, /meter-tier-price.*S\$129\.99/s);
-  assert.equal((html.match(/<h3>Lifetime Membership<\/h3>/g) ?? []).length, 1);
-  assert.equal((html.match(/href="\/checkout\?variant=current"/g) ?? []).length, 1);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton|Building your site/);
 });
 
@@ -69,8 +63,11 @@ test("the page is no longer coupled to the starter preview", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /Founding 100/);
+  assert.match(page, /CoCreateForm/);
+  assert.match(page, /FoundingProgress/);
+  assert.match(page, /A thousand small acts/);
+  assert.doesNotMatch(page, /checkoutUrl|Lifetime Membership/);
   assert.doesNotMatch(page, /SkeletonPreview|_sites-preview/);
-  assert.match(layout, /title: "PLANET — Their whole world\. One place\."/);
+  assert.match(layout, /title: "PLANET — A thousand small acts become a life together\."/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });

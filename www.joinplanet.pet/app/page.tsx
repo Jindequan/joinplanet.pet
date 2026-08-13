@@ -1,216 +1,149 @@
-import { EmailCapture } from "./components/email-capture";
+import { CoCreateForm } from "./components/co-create-form";
 import { FoundingProgress } from "./components/founding-progress";
+import { PrototypeTabs } from "./components/prototype-tabs";
 
-const launchPrice = process.env.NEXT_PUBLIC_LIFETIME_PRICE_DISPLAY || "S$29.99";
-const checkoutUrl = "/checkout?variant=current";
-
-const plans = [
-  {
-    name: "Lifetime Membership",
-    eyebrow: "One membership for every PLANET household",
-    price: launchPrice,
-    unit: "one payment · lifetime",
-    description: "One calm home for their profile, routines, health, people, places, and every important handoff — supported by a professional pet model built for life and health.",
-    features: ["Professional pet intelligence", "Whole-life pet profile", "Daily care + health records", "Shared care circle", "Vet, travel + emergency handoffs"],
-    featured: true,
-    slug: "lifetime",
-  },
+const careMoments = [
+  { time: "07:42", title: "Breakfast", detail: "Remembered before the first call of the day", tone: "sage" },
+  { time: "08:12", title: "Morning medicine", detail: "Done by someone who loves him too", tone: "clay" },
+  { time: "12:06", title: "A small change", detail: "He left half his lunch. Worth remembering.", tone: "gold" },
+  { time: "19:34", title: "The long way home", detail: "A slow walk, a good mood, one new photo", tone: "sage" },
 ];
+
+const foundingPrice = process.env.NEXT_PUBLIC_LIFETIME_PRICE_DISPLAY || "S$29.99";
 
 export default function Home() {
   return (
-    <main>
-      <nav className="nav shell">
-        <a className="brand" href="#top" aria-label="PLANET home">
-          <span className="brand-mark" aria-hidden="true" />
-          PLANET
-        </a>
-        <div className="nav-links">
-          <a href="/tools" data-event="nav_tools" data-event-category="nav" data-event-label="nav_tools">Free tools</a>
-          <a href="#story">The story</a>
-          <a href="#roadmap">The path</a>
-          <a href="#pricing">Pricing</a>
-          <a className="nav-cta" href="#pricing" data-event="cta_click" data-event-category="nav" data-event-label="nav_lock_in">Lock in {launchPrice} <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
+    <main className="narrative-home">
+      <nav className="narrative-nav narrative-shell" aria-label="Main navigation">
+        <a className="narrative-brand" href="#top" aria-label="PLANET home"><span className="narrative-orbit" aria-hidden="true"><i /></span>PLANET</a>
+        <div className="narrative-nav-links">
+          <a href="#story">The idea</a>
+          <a href="#inside">Inside PLANET</a>
+          <a href="#making">In the making</a>
+          <a className="narrative-nav-invite" href="#support">Back the build <span aria-hidden="true">↗</span></a>
         </div>
       </nav>
 
-      {/* ① HERO — 第一人称开场,真实照片建立信任 */}
-      <section className="hero shell" id="top">
-        <div className="hero-copy">
-          <p className="kicker"><span className="pulse" /> A founder&apos;s story · Founding 100</p>
-          <h1>I didn&apos;t plan to build an app.<br /><em>I just wanted to remember him.</em></h1>
-          <p className="hero-lead">
-            Every bag of food, every check-up, every grooming day, every walk and photo — I kept losing track. Then he turned five, and I realized the hard part was coming. So I started building PLANET.
-          </p>
-          <div className="hero-actions">
-            <a className="button button-primary" href="/tools" data-event="cta_click" data-event-category="hero" data-event-label="hero_tools">Try the free tools <span className="icon icon-arrow-right" aria-hidden="true" /></a>
-            <a className="text-link" href="#story">Or read the story <span className="icon icon-chevron-down" aria-hidden="true" /></a>
+      <section className="narrative-hero narrative-shell" id="top">
+        <div className="narrative-hero-copy">
+          <p className="narrative-eyebrow">For the life you are already building together</p>
+          <h1>A thousand small acts<br /><em>become a life together.</em></h1>
+          <p className="narrative-lead">The meal someone remembered. The walk someone else took. The change you almost missed. The story only your family knows.</p>
+          <a className="narrative-scroll" href="#story">See what PLANET could become <span aria-hidden="true">↓</span></a>
+        </div>
+        <div className="narrative-hero-stage" aria-label="A real dog and the small moments of care that make up a life together">
+          <div className="narrative-photo-frame">
+            <img src="/mydog2.jpg" alt="The dog who inspired PLANET resting at home" />
+            <div className="hero-photo-wash" />
           </div>
-          <p className="microcopy">For the life you are already building together — now held in one place.</p>
-        </div>
-
-        <div className="story-hero-visual" aria-label="The dog behind PLANET">
-          <img src="/mydog.JPG" alt="The dog who inspired PLANET, after a grooming visit" />
-          <div className="story-hero-note"><span className="note-icon"><span className="icon icon-heart-pulse" aria-hidden="true" /></span><div><strong>This is why</strong><small>Every product decision starts here</small></div></div>
+          <div className="care-trace care-trace-one"><span className="trace-icon">✓</span><div><strong>Breakfast</strong><small>done by Devin · 8:12</small></div></div>
+          <div className="care-trace care-trace-two"><span className="trace-icon trace-icon-warm">○</span><div><strong>Quiet morning</strong><small>one photo kept</small></div></div>
+          <div className="care-trace care-trace-three"><span className="trace-icon trace-icon-gold">↗</span><div><strong>5.2 kg</strong><small>a small change over time</small></div></div>
+          <p className="hero-photo-note">Today is already becoming their story.</p>
         </div>
       </section>
 
-      <section className="proof-strip">
-        <div className="shell proof-inner">
-          <span>Built by a pet parent, for pet families</span>
-          <div><span>TIMELINE</span><span>VET SUMMARY</span><span>FAMILY</span><span>HANDOFFS</span></div>
+      <section className="ordinary-section" id="story">
+        <div className="narrative-shell ordinary-heading">
+          <p className="narrative-eyebrow">Ordinary love</p>
+          <h2>You already care<br /><em>in a hundred invisible ways.</em></h2>
+          <p>Most of it never looks important enough to save. Together, it is the life you share.</p>
         </div>
-      </section>
-
-      {/* ② ORIGIN — 第一人称,共鸣 */}
-      <section className="story-section shell story-origin" id="story">
-        <div className="story-copy">
-          <p className="section-label">It starts with ordinary love</p>
-          <h2>I don&apos;t just buy dog food.<br /><em>I build a life with him.</em></h2>
-          <p>Some days it is a bag of food. Some days it is a body check, a haircut, a new toy, a long walk outside, or fifty photos that nobody else needs to see.</p>
-          <p>That is the beautiful part of living with a pet: a thousand small acts that quietly become a shared life.</p>
-          <div className="story-quote"><span className="icon icon-heart-pulse" aria-hidden="true" /><span>Then they turn five, or seven, and the questions change.</span></div>
-        </div>
-        <figure className="story-image story-image-portrait"><img src="/mydog2.jpg" alt="A dog enjoying a quiet moment outdoors" /><figcaption>The ordinary days are the ones worth keeping.</figcaption></figure>
-      </section>
-
-      {/* ③ FRAGMENTS — 转向 you,痛点 */}
-      <section className="story-section shell story-split story-fragments">
-        <figure className="story-image story-image-wide"><img src="/cover3.png" alt="Pet records scattered across chats, photos, drawers, and memory" /><figcaption>Where does the whole story live right now?</figcaption></figure>
-        <div className="story-copy">
-          <p className="section-label">Then the fragments begin to pile up</p>
-          <h2>Your pet&apos;s life<br /><em>lives in a dozen places.</em></h2>
-          <p>Food records live in a chat. Vaccines are in a photo. The last blood test is in a drawer. A symptom started &ldquo;around last week.&rdquo; When the same question comes back at the clinic, you rebuild everything from memory.</p>
-          <div className="story-points"><span><span className="icon icon-file-text" aria-hidden="true" /> Records scattered everywhere</span><span><span className="icon icon-clock" aria-hidden="true" /> Changes are hard to see over time</span><span><span className="icon icon-stethoscope" aria-hidden="true" /> Every vet visit starts from zero</span></div>
-        </div>
-      </section>
-
-      {/* ④ TIMELINE + HEALTH AI — 实用价值 */}
-      <section className="story-section shell story-split story-intelligence">
-        <div className="story-copy">
-          <p className="section-label">A professional memory for their whole life</p>
-          <h2>Timeline first.<br /><em>Vet-ready summaries that actually help.</em></h2>
-          <p>PLANET keeps the story in order: daily care, photos, weight, medication, appointments, symptoms, and the moments that make them who they are.</p>
-          <p>Then it turns that history into something useful — patterns to notice, questions to ask, and a clear one-page summary to bring to the vet. <a href="/tools" style={{ borderBottom: "1px solid currentColor" }}>Browse the free tools</a> — no account needed.</p>
-          <p className="story-disclaimer">PLANET organizes and prepares. It does not diagnose and does not replace a licensed veterinarian.</p>
-        </div>
-        <figure className="story-image story-image-wide"><img src="/cover1.png" alt="PLANET health timeline showing daily care, weight, medication, and vet visits in one place" /><figcaption>One living record for everyday care and health.</figcaption></figure>
-      </section>
-
-      {/* ⑤ AI COMPANION — 情感价值,差异化 */}
-      <section className="story-section shell story-split story-companion">
-        <figure className="story-image story-image-wide"><img src="/1.png" alt="PLANET pet intelligence concept — a living profile that grows with them" /><figcaption>From a health tool into a companion.</figcaption></figure>
-        <div className="story-copy">
-          <p className="section-label">More than a tool — a presence</p>
-          <h2>It remembers who they are.<br /><em>Not just what happened.</em></h2>
-          <p>A professional pet model learns their temperament, their habits, the way they changed from a puppy to a calm middle-aged friend. It can hold their character, surface a memory on a quiet day, and grow alongside them.</p>
-          <p>This is the part that made me build PLANET: a system that does not just store a life, but understands it — and one day, keeps them close even when we miss them.</p>
-        </div>
-      </section>
-
-      {/* ⑥ FAMILY — 协作价值,第二人称 */}
-      <section className="story-section shell story-split story-family">
-        <figure className="story-image story-image-wide"><img src="/cover4.png" alt="A pet profile shared with family, sitters, and vets — the right view for each person" /><figcaption>One record. The right view for each person.</figcaption></figure>
-        <div className="story-copy">
-          <p className="section-label">Because care is never one person&apos;s job</p>
-          <h2>Care is a shared verb.<br /><em>Not another group chat.</em></h2>
-          <p>Your partner, your kids, the sitter, the walker, the foster carer, the vet — they do not need the entire archive. They need the right context at the right moment.</p>
-          <p>PLANET gives everyone a clear role: what to do today, what to watch, what changed, and what matters in an emergency. Reminders, handoffs, and a vet-ready summary, shared in one tap.</p>
-          <a className="button button-outline" href="#pricing">See the membership <span className="icon icon-arrow-right" aria-hidden="true" /></a>
-        </div>
-      </section>
-
-      {/* ⑦ HOW IT WORKS — 3 功能卡,精简 */}
-      <section className="section shell" id="how-it-works">
-        <div className="section-heading split-heading">
-          <div><p className="section-label">One place, every part of care</p><h2>From the first morning walk<br /><em>to the hardest day.</em></h2></div>
-          <p className="section-intro">PLANET is the shared memory and operating system for a pet&apos;s life — calm enough for every day, ready when something changes.</p>
-        </div>
-        <div className="feature-grid">
-          <article className="feature-card feature-card-dark"><span className="feature-number">01</span><div className="feature-icon"><span className="icon icon-paw-print" aria-hidden="true" /></div><h3>Know them deeply</h3><p>One living profile for identity, habits, temperament, food, weight, documents, memories, and every important detail.</p><a href="#pricing">See the membership <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></article>
-          <article className="feature-card"><span className="feature-number">02</span><div className="feature-icon soft"><span className="icon icon-sun" aria-hidden="true" /></div><h3>Care for today</h3><p>Coordinate meals, walks, grooming, medication, routines, supplies, reminders, and who is responsible right now.</p><a href="#pricing">Keep care in sync <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></article>
-          <article className="feature-card feature-card-accent"><span className="feature-number">03</span><div className="feature-icon"><span className="icon icon-heart-pulse" aria-hidden="true" /></div><h3>Protect their health</h3><p>Symptoms, records, vaccines, allergies, appointments, questions — and a professional AI summary ready for the vet.</p><a href="#pricing">Prepare for care <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></article>
-        </div>
-      </section>
-
-      {/* ⑧ ROADMAP — 清晰发展路径 */}
-      <section className="roadmap-section" id="roadmap">
-        <div className="shell">
-          <div className="roadmap-heading"><p className="section-label">A clear path forward</p><h2>It starts with memory.<br /><em>It grows into a better way to care.</em></h2><p>PLANET is built to earn trust one useful moment at a time, then become the system that carries a pet and their people through every stage of life — from daily care to lifelong companionship.</p></div>
-          <div className="roadmap-grid">
-            <article><span>01 · NOW</span><h3>Remember everything</h3><p>Build the living profile, daily timeline, care routines, photos, documents, and memories that are usually scattered.</p></article>
-            <article><span>02 · NEXT</span><h3>Understand their health</h3><p>A professional pet AI turns medical history into clearer patterns, vet-ready summaries, and healthier decisions.</p></article>
-            <article><span>03 · TOGETHER</span><h3>Care as a circle</h3><p>Give family, sitters, and vets the right view, the right reminder, and the right handoff without losing the whole story.</p></article>
-            <article><span>04 · ALWAYS</span><h3>Keep them close</h3><p>An AI companion that holds their character, grows their memory, and stays with you — for the pet, the family, and the planet.</p></article>
-          </div>
-        </div>
-      </section>
-
-      {/* ⑨ WORLD — 愿景收束,合并 handoff */}
-      <section className="world-section" aria-labelledby="world-title">
-        <div className="shell world-layout">
-          <div className="world-copy"><p className="section-label">When care matters most</p><h2 id="world-title">From &ldquo;I think it started last week&rdquo;<br /><em>to the full story.</em></h2><p>Upload what you have, add what you remember, and turn scattered details into something another person can act on — a vet-ready summary, shared with one tap.</p><p>Pets bring us back to the real world: a body that needs care, a home that needs balance, a community that needs trust, and a planet we all share. Every small act of care stays connected.</p><a className="button button-light" href="#pricing">Join the founding circle <span className="icon icon-arrow-right" aria-hidden="true" /></a></div>
-          <div className="world-visual" aria-label="A relationship between people, pets, nature, and Earth">
-            <div className="world-orbit world-orbit-outer" />
-            <div className="world-orbit world-orbit-inner" />
-            <div className="world-core"><span><span className="icon icon-globe" aria-hidden="true" /></span><strong>CARE</strong><small>is a shared home</small></div>
-            <div className="world-node world-node-people"><span><span className="icon icon-users" aria-hidden="true" /></span><small>people</small></div>
-            <div className="world-node world-node-pets"><span><span className="icon icon-paw-print" aria-hidden="true" /></span><small>pets</small></div>
-            <div className="world-node world-node-nature"><span><span className="icon icon-leaf" aria-hidden="true" /></span><small>nature</small></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ⑩ PRICING */}
-      <section className="section shell pricing-section" id="pricing">
-        <div className="section-heading pricing-heading"><p className="section-label">One product · lifetime for the founding 100</p><h2>Join at {launchPrice}.<br /><em>Watch the price rise.</em></h2><p className="section-intro">There is one complete PLANET membership. The first 100 people pay once and keep lifetime access; after the founding circle closes, new members join by subscription.</p></div>
-        <FoundingProgress />
-        <div className="pricing-grid pricing-grid-single">
-          {plans.map((plan) => (
-            <article className={`price-card ${plan.featured ? "price-card-featured" : ""}`} key={plan.name}>
-              <p className="price-eyebrow">{plan.eyebrow}</p><h3>{plan.name}</h3><p className="price-description">{plan.description}</p><div className="price"><strong>{plan.price}</strong><span>{plan.unit}</span></div>
-              <ul>{plan.features.map((feature) => <li key={feature}><span><span className="icon icon-check" aria-hidden="true" /></span>{feature}</li>)}</ul>
-              <a className="button button-primary" href={checkoutUrl} data-event="checkout_click" data-event-category="pricing" data-event-label="price_card_main">Pay {launchPrice} · join for life <span className="icon icon-arrow-right" aria-hidden="true" /></a>
+        <div className="care-ribbon narrative-shell">
+          {careMoments.map((moment, index) => (
+            <article className={`care-moment care-moment-${moment.tone}`} key={moment.title}>
+              <div className="care-moment-top"><span>{moment.time}</span><i>{String(index + 1).padStart(2, "0")}</i></div>
+              <span className="care-moment-dot" />
+              <h3>{moment.title}</h3>
+              <p>{moment.detail}</p>
             </article>
           ))}
         </div>
-        <p className="pricing-note">Pay once now. Keep PLANET membership for life — one payment, no recurring charge for the founding 100. After 100 purchases, new members subscribe. Checkout is powered by Lemon Squeezy.</p>
-        <p className="pricing-note pricing-note-refund">Founding members get a 14-day no-questions refund. If we don&apos;t deliver what we promised, you get your money back. Lifetime access covers PLANET&apos;s core pet care, health timeline, and handoff features for at least 24 months; any future high-cost professional service would be priced separately and clearly. Questions before joining? <a href="/tools" style={{ borderBottom: "1px solid currentColor" }}>Try the free tools first</a> or <a href="mailto:hello@joinplanet.pet" style={{ borderBottom: "1px solid currentColor" }}>email us</a>.</p>
       </section>
 
-      <EmailCapture />
-
-      {/* EARLY BUILDERS — 招募早期合伙/贡献者 */}
-      <section className="section builders-section" id="builders">
-        <div className="shell builders-inner">
-          <div className="builders-copy">
-            <p className="section-label">More than a customer</p>
-            <h2>Help shape PLANET<br /><em>from the inside.</em></h2>
-            <p className="builders-lead">I&apos;m one person building something for every pet family. If you care about pets, design, veterinary care, or growth — and you want to help shape what this becomes — I want to talk to you.</p>
-            <div className="builders-roles">
-              <div className="builder-role"><span className="icon icon-paw-print" aria-hidden="true" /><div><strong>Pet parents</strong><span>Test early features, tell me what&apos;s broken, share what matters.</span></div></div>
-              <div className="builder-role"><span className="icon icon-heart-pulse" aria-hidden="true" /><div><strong>Vets &amp; vet techs</strong><span>Review symptom content, shape the health timeline, lend credibility.</span></div></div>
-              <div className="builder-role"><span className="icon icon-share" aria-hidden="true" /><div><strong>Builders &amp; designers</strong><span>Open to collaborators on product, growth, and brand — equity possible for the right person.</span></div></div>
-            </div>
-            <a className="button button-primary" href="mailto:hello@joinplanet.pet?subject=I%20want%20to%20help%20build%20PLANET"
-              data-event="builders_email" data-event-category="builders" data-event-label="builders_email">
-              Email me — let&apos;s talk <span className="icon icon-arrow-right" aria-hidden="true" />
-            </a>
-            <p className="builders-note">No formal application. Just tell me who you are and why this resonates.</p>
-          </div>
-          <div className="builders-visual" aria-hidden="true">
-            <div className="builders-orb builders-orb-1" />
-            <div className="builders-orb builders-orb-2" />
-            <div className="builders-orb builders-orb-3" />
-            <div className="builders-core"><span className="icon icon-paw-print" aria-hidden="true" /></div>
-          </div>
+      <section className="fragments-section narrative-shell">
+        <div className="fragments-copy">
+          <p className="narrative-eyebrow">And somehow</p>
+          <h2>Their story ends up<br /><em>everywhere.</em></h2>
+          <p>The information exists. It just doesn&apos;t stay together.</p>
+        </div>
+        <div className="fragments-stage" aria-label="Pet care information scattered between messages, photos, paper records, and memory">
+          <article className="fragment fragment-chat"><span>Family chat · 8:14</span><p>gave him the tablet<br />with breakfast ✓</p></article>
+          <article className="fragment fragment-photo"><img src="/mydog.JPG" alt="The dog after a visit" /><span>IMG_4821 · after the appointment</span></article>
+          <article className="fragment fragment-record"><span>SPRINGFIELD VET · MAY 04</span><h3>Bloodwork</h3><p>Report attached to an old email</p><i>PDF</i></article>
+          <article className="fragment fragment-note"><p>“Eating less<br />since maybe<br />last Tuesday?”</p><span>something you meant to remember</span></article>
+          <div className="fragment-memory">somewhere<br />in memory</div>
         </div>
       </section>
 
-      <section className="final-cta shell"><div><p className="section-label">Founding 100 · lifetime access</p><h2>Give their whole life<br /><em>a place to belong.</em></h2></div><a className="button button-primary" href="#pricing" data-event="cta_click" data-event-category="final_cta" data-event-label="final_lock_in">Lock in {launchPrice} <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></section>
+      <section className="question-section">
+        <div className="narrative-shell question-layout">
+          <div className="question-mark" aria-hidden="true">“</div>
+          <div className="question-copy"><p className="narrative-eyebrow">The moment it matters</p><h2>When did it start?</h2><p>You know the answer is somewhere—in a photo, a message, a receipt, a memory. But the appointment has already begun.</p></div>
+          <div className="question-answer"><span>What you wish you had</span><strong>One clear story.<br />Already in order.</strong></div>
+        </div>
+      </section>
 
-      <footer className="footer shell"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true" />PLANET</a><span>Their whole world. One place.</span><span>© 2026 PLANET</span></footer>
+      <section className="reveal-section" id="inside">
+        <div className="narrative-shell reveal-heading"><p className="narrative-eyebrow narrative-eyebrow-light">Imagine one continuous place</p><h2>What if their whole story<br /><em>could stay connected?</em></h2><p>PLANET is a shared place for the life you are already caring for—daily routines, health changes, records, people, and every important handoff.</p></div>
+        <PrototypeTabs />
+      </section>
 
+      <section className="living-scenes narrative-shell">
+        <div className="living-scenes-heading"><p className="narrative-eyebrow">One life, four moments</p><h2>Useful on an ordinary day.<br /><em>Ready when the day is not ordinary.</em></h2></div>
+
+        <article className="living-scene scene-change">
+          <div className="scene-copy"><span className="scene-number">01</span><p className="narrative-eyebrow">A small change</p><h3>Small moments have somewhere<br />to become a pattern.</h3><p>Appetite, weight, photos, medication and notes stay connected over time—so changes are easier to see and explain.</p></div>
+          <div className="timeline-visual"><div className="timeline-line" /><article><time>JUL 24</time><span /><div><strong>Weight · 5.4 kg</strong><p>Normal appetite</p></div></article><article><time>AUG 02</time><span /><div><strong>New medication</strong><p>16 mg with breakfast</p></div></article><article><time>AUG 13</time><span /><div><strong>Ate half of lunch</strong><p>Photo and note from Devin</p></div></article></div>
+        </article>
+
+        <article className="living-scene scene-vet">
+          <div className="vet-paper"><div className="vet-paper-head"><div><span>PLANET · VET SUMMARY</span><h4>Milo</h4><p>Prepared by his family · Aug 13</p></div><div className="sample-pill">SAMPLE</div></div><div className="vet-alert"><span>ALLERGIES</span><strong>No known drug allergies</strong></div><section><span>WHY WE&apos;RE HERE</span><p>Lower appetite since Aug 11 and noticeably slower on the morning walk.</p></section><div className="vet-columns"><section><span>CURRENT MEDICATION</span><p><strong>Apoquel · 16 mg</strong><br />Once daily with breakfast</p></section><section><span>RECENT CHANGE</span><p><strong>Weight 5.4 → 5.2 kg</strong><br />over three weeks</p></section></div><footer>Organized from family records. Review and correct before sharing.</footer></div>
+          <div className="scene-copy"><span className="scene-number">02</span><p className="narrative-eyebrow">At the vet</p><h3>Walk in with the story<br />already clear.</h3><p>A calm, reviewable summary of why you&apos;re here, current medication, allergies, recent changes and relevant history.</p><small>PLANET organizes what your family records. It does not diagnose or replace a veterinarian.</small></div>
+        </article>
+
+        <article className="living-scene scene-handoff">
+          <div className="scene-copy"><span className="scene-number">03</span><p className="narrative-eyebrow">Someone else cares</p><h3>Share exactly what they need.<br />Nothing more.</h3><p>Your partner, sitter or family member opens one calm view of today&apos;s routine, medicines, warning signs and emergency contacts—without learning a new system first.</p></div>
+          <div className="handoff-phone"><div className="handoff-status">SHARED BY DEVIN · EXPIRES SUNDAY</div><div className="handoff-pet"><img src="/mydog2.jpg" alt="Milo" /><div><strong>Caring for Milo</strong><span>Everything you need for today</span></div></div><div className="handoff-row"><span>08:00</span><div><strong>Breakfast + medicine</strong><small>½ cup · tablet with food</small></div><i>✓</i></div><div className="handoff-row"><span>18:30</span><div><strong>Evening walk</strong><small>Keep it gentle today</small></div><i>○</i></div><div className="handoff-emergency"><span>If something feels wrong</span><strong>Call Devin first · then Greenwoods Vet</strong></div></div>
+        </article>
+      </section>
+
+      <section className="whole-life-section">
+        <div className="narrative-shell whole-life-layout">
+          <div className="whole-life-copy"><p className="narrative-eyebrow narrative-eyebrow-light">Their whole life</p><h2>Not just a record<br />of what went wrong.<br /><em>A memory of who they are.</em></h2><p>Health and life were never separate to them. The first day home, the familiar park, the medicine that helped, the way they changed, and every person who cared—all part of one story.</p></div>
+          <div className="memory-film"><figure className="memory memory-one"><img src="/mydog2.jpg" alt="A quiet day at home" /><figcaption>2021 · the look that always worked</figcaption></figure><figure className="memory memory-two"><img src="/mydog.JPG" alt="After a grooming visit" /><figcaption>2026 · brave at the appointment</figcaption></figure><div className="memory-note"><span>A LIFE IN PROGRESS</span><p>Still changing.<br />Still deeply known.</p></div></div>
+        </div>
+      </section>
+
+      <section className="making-section narrative-shell" id="making">
+        <div className="making-heading"><p className="narrative-eyebrow">Built in the open</p><h2>This is not a finished promise.<br /><em>It is something we are making with families.</em></h2></div>
+        <div className="making-columns">
+          <article><span className="making-status available">Available now</span><h3>Small useful tools</h3><p>Pet Card, Symptom Guide and Care Schedule—real pieces you can try without an account.</p><a href="/tools">Open the tools <span aria-hidden="true">↗</span></a></article>
+          <article><span className="making-status testing">In active testing</span><h3>One connected care space</h3><p>Today, the living timeline, clear summaries and low-friction handoffs shown on this page.</p></article>
+          <article><span className="making-status direction">The larger idea</span><h3>A place that grows with them</h3><p>Practical enough for daily care. Personal enough to hold the life you build together.</p></article>
+        </div>
+      </section>
+
+      <section className="founder-section narrative-shell">
+        <div className="founder-photo"><img src="/mydog.JPG" alt="The real dog behind PLANET" /><span>THE REAL DOG BEHIND PLANET</span></div>
+        <div className="founder-copy"><p className="narrative-eyebrow">One dog and a question</p><h2>I didn&apos;t want another pet app.</h2><p>His life was already everywhere—photos, receipts, messages, appointments, and the things only I remembered. I wanted one place that could hold the practical work of caring for him and the life we were building together. So I started making PLANET.</p><a href="mailto:hello@joinplanet.pet">Talk to me directly <span aria-hidden="true">↗</span></a></div>
+      </section>
+
+      <section className="support-section" id="support">
+        <div className="narrative-shell support-layout">
+          <div className="support-copy"><p className="narrative-eyebrow">Help make the first version real</p><h2>You don&apos;t have to buy a promise.<br /><em>You can back the build.</em></h2><p>PLANET is being built in public, with the first families who believe this should exist. Your founding support gives us the time to turn the prototype into a real shared care space—and gives you a seat in the decisions that shape it.</p><div className="support-unlocks"><span><b>01</b>Build the connected timeline</span><span><b>02</b>Test it with real pet families</span><span><b>03</b>Share every meaningful release</span></div></div>
+          <div className="support-card"><div className="support-card-top"><span>FOUNDING CIRCLE · 100 FAMILIES</span><span className="support-live"><i /> OPEN</span></div><h3>Founding support</h3><p>One early contribution. A permanent place in the making of PLANET, early access to working versions, and a direct line to the builder.</p><FoundingProgress compact /><div className="support-price"><strong>{foundingPrice}</strong><span>one-time founding contribution</span></div><a className="narrative-button narrative-button-dark" href="/checkout?variant=current" data-event="checkout_click" data-event-category="founding_support" data-event-label="narrative_founding_support">Back the first build <span aria-hidden="true">↗</span></a><small>Not a finished app. Your support funds the next build, and the scope is shared openly as it takes shape. The exact access terms are shown at checkout.</small></div>
+        </div>
+      </section>
+
+      <section className="invitation-section" id="invitation">
+        <div className="narrative-shell invitation-layout">
+          <div className="invitation-copy"><p className="narrative-eyebrow narrative-eyebrow-light">A question for your family</p><h2>What would PLANET<br /><em>need to remember for you?</em></h2><p>Tell us about the pet at the centre of your home and the one thing you wish never had to live in one person&apos;s memory again.</p></div>
+          <CoCreateForm />
+        </div>
+      </section>
+
+      <footer className="narrative-footer narrative-shell"><a className="narrative-brand" href="#top"><span className="narrative-orbit" aria-hidden="true"><i /></span>PLANET</a><p>Their whole world. One place.</p><div><a href="/tools">Tools</a><a href="mailto:hello@joinplanet.pet">Contact</a><span>© 2026</span></div></footer>
     </main>
   );
 }

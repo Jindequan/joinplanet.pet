@@ -3,9 +3,25 @@ import { AnalyticsEvents } from "./components/analytics-events";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PLANET — Their whole world. One place.",
+  title: "PLANET — A thousand small acts become a life together.",
   description:
-    "Shared pet care, health timelines, and vet-ready handoffs for the people who care for them.",
+    "A shared place for the daily care, health changes, memories, people, and handoffs that make up a pet's whole life.",
+  metadataBase: new URL("https://www.joinplanet.pet"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "PLANET",
+    title: "PLANET — Their whole world. One place.",
+    description: "A thousand small acts become a life together. See what PLANET could become.",
+  },
+  twitter: {
+    card: "summary",
+    title: "PLANET — Their whole world. One place.",
+    description: "A thousand small acts become a life together. See what PLANET could become.",
+  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

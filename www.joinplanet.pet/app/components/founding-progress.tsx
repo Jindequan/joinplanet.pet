@@ -21,7 +21,7 @@ const TIERS = [
 
 const POLL_INTERVAL = 45000;
 
-export function FoundingProgress() {
+export function FoundingProgress({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<ProgressData | null>(null);
   const [syncedAt, setSyncedAt] = useState<Date | null>(null);
 
@@ -67,7 +67,7 @@ export function FoundingProgress() {
   const isSoldOut = data != null && paid >= capacity;
 
   return (
-    <div className="founding-meter" aria-live="polite">
+    <div className={`founding-meter${compact ? " founding-meter-compact" : ""}`} aria-live="polite">
       {/* Header: big count + status */}
       <div className="meter-header">
         <div className="meter-count">

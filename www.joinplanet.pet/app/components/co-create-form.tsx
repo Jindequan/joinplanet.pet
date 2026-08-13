@@ -44,7 +44,7 @@ export function CoCreateForm() {
   if (status === "done") {
     return (
       <div className="cocreate-success" role="status">
-        <span className="cocreate-success-mark" aria-hidden="true">✓</span>
+        <span className="cocreate-success-mark" aria-hidden="true"><span className="icon icon-check" /></span>
         <div>
           <p className="section-label">You helped shape PLANET</p>
           <h3>Thank you for telling us about {petName}.</h3>
@@ -71,7 +71,7 @@ export function CoCreateForm() {
       <div className="cocreate-submit cocreate-wide">
         <button className="narrative-button narrative-button-light" type="submit" disabled={status === "submitting"}>
           {status === "submitting" ? "Sending your story…" : "I want to help shape PLANET"}
-          <span aria-hidden="true">↗</span>
+          <span className="icon icon-arrow-up-right" aria-hidden="true" />
         </button>
         <p>One thoughtful note from us when there is something real to see. No sales sequence.</p>
         {status === "error" ? <p className="cocreate-error">We couldn&apos;t save this just now. Please try again or email hello@joinplanet.pet.</p> : null}

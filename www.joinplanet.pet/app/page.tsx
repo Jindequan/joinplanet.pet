@@ -20,7 +20,7 @@ export default function Home() {
           <a href="#story">The idea</a>
           <a href="#inside">Inside PLANET</a>
           <a href="#making">In the making</a>
-          <a className="narrative-nav-invite" href="#support">Back the build <span aria-hidden="true">↗</span></a>
+          <a className="narrative-nav-invite" href="#support">Back the build <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
         </div>
       </nav>
 
@@ -29,16 +29,16 @@ export default function Home() {
           <p className="narrative-eyebrow">For the life you are already building together</p>
           <h1>A thousand small acts<br /><em>become a life together.</em></h1>
           <p className="narrative-lead">The meal someone remembered. The walk someone else took. The change you almost missed. The story only your family knows.</p>
-          <a className="narrative-scroll" href="#story">See what PLANET could become <span aria-hidden="true">↓</span></a>
+          <a className="narrative-scroll" href="#story">See what PLANET could become <span className="icon icon-chevron-down" aria-hidden="true" /></a>
         </div>
         <div className="narrative-hero-stage" aria-label="A real dog and the small moments of care that make up a life together">
           <div className="narrative-photo-frame">
-            <img src="/mydog2.jpg" alt="The dog who inspired PLANET resting at home" />
+            <img src="/mydog.JPG" alt="The dog who inspired PLANET resting at home" />
             <div className="hero-photo-wash" />
           </div>
-          <div className="care-trace care-trace-one"><span className="trace-icon">✓</span><div><strong>Breakfast</strong><small>done by Devin · 8:12</small></div></div>
-          <div className="care-trace care-trace-two"><span className="trace-icon trace-icon-warm">○</span><div><strong>Quiet morning</strong><small>one photo kept</small></div></div>
-          <div className="care-trace care-trace-three"><span className="trace-icon trace-icon-gold">↗</span><div><strong>5.2 kg</strong><small>a small change over time</small></div></div>
+          <div className="care-trace care-trace-one"><span className="trace-icon"><span className="icon icon-check" aria-hidden="true" /></span><div><strong>Breakfast</strong><small>done by Devin · 8:12</small></div></div>
+          <div className="care-trace care-trace-two"><span className="trace-icon trace-icon-warm"><span className="icon icon-circle-dot" aria-hidden="true" /></span><div><strong>Quiet morning</strong><small>one photo kept</small></div></div>
+          <div className="care-trace care-trace-three"><span className="trace-icon trace-icon-gold"><span className="icon icon-arrow-up-right" aria-hidden="true" /></span><div><strong>5.2 kg</strong><small>a small change over time</small></div></div>
           <p className="hero-photo-note">Today is already becoming their story.</p>
         </div>
       </section>
@@ -68,7 +68,7 @@ export default function Home() {
           <p>The information exists. It just doesn&apos;t stay together.</p>
         </div>
         <div className="fragments-stage" aria-label="Pet care information scattered between messages, photos, paper records, and memory">
-          <article className="fragment fragment-chat"><span>Family chat · 8:14</span><p>gave him the tablet<br />with breakfast ✓</p></article>
+          <article className="fragment fragment-chat"><span>Family chat · 8:14</span><p>gave him the tablet<br />with breakfast <span className="icon icon-check" aria-hidden="true" /></p></article>
           <article className="fragment fragment-photo"><img src="/mydog.JPG" alt="The dog after a visit" /><span>IMG_4821 · after the appointment</span></article>
           <article className="fragment fragment-record"><span>SPRINGFIELD VET · MAY 04</span><h3>Bloodwork</h3><p>Report attached to an old email</p><i>PDF</i></article>
           <article className="fragment fragment-note"><p>“Eating less<br />since maybe<br />last Tuesday?”</p><span>something you meant to remember</span></article>
@@ -98,13 +98,13 @@ export default function Home() {
         </article>
 
         <article className="living-scene scene-vet">
-          <div className="vet-paper"><div className="vet-paper-head"><div><span>PLANET · VET SUMMARY</span><h4>Milo</h4><p>Prepared by his family · Aug 13</p></div><div className="sample-pill">SAMPLE</div></div><div className="vet-alert"><span>ALLERGIES</span><strong>No known drug allergies</strong></div><section><span>WHY WE&apos;RE HERE</span><p>Lower appetite since Aug 11 and noticeably slower on the morning walk.</p></section><div className="vet-columns"><section><span>CURRENT MEDICATION</span><p><strong>Apoquel · 16 mg</strong><br />Once daily with breakfast</p></section><section><span>RECENT CHANGE</span><p><strong>Weight 5.4 → 5.2 kg</strong><br />over three weeks</p></section></div><footer>Organized from family records. Review and correct before sharing.</footer></div>
+          <div className="vet-paper"><div className="vet-paper-head"><div><span>PLANET · VET SUMMARY</span><h4>Milo</h4><p>Prepared by his family · Aug 13</p></div><div className="sample-pill">SAMPLE</div></div><div className="vet-alert"><span>ALLERGIES</span><strong>No known drug allergies</strong></div><section><span>WHY WE&apos;RE HERE</span><p>Lower appetite since Aug 11 and noticeably slower on the morning walk.</p></section><div className="vet-columns"><section><span>CURRENT MEDICATION</span><p><strong>Apoquel · 16 mg</strong><br />Once daily with breakfast</p></section><section><span>RECENT CHANGE</span><p><strong>Weight 5.4 to 5.2 kg</strong><br />over three weeks</p></section></div><footer>Organized from family records. Review and correct before sharing.</footer></div>
           <div className="scene-copy"><span className="scene-number">02</span><p className="narrative-eyebrow">At the vet</p><h3>Walk in with the story<br />already clear.</h3><p>A calm, reviewable summary of why you&apos;re here, current medication, allergies, recent changes and relevant history.</p><small>PLANET organizes what your family records. It does not diagnose or replace a veterinarian.</small></div>
         </article>
 
         <article className="living-scene scene-handoff">
           <div className="scene-copy"><span className="scene-number">03</span><p className="narrative-eyebrow">Someone else cares</p><h3>Share exactly what they need.<br />Nothing more.</h3><p>Your partner, sitter or family member opens one calm view of today&apos;s routine, medicines, warning signs and emergency contacts—without learning a new system first.</p></div>
-          <div className="handoff-phone"><div className="handoff-status">SHARED BY DEVIN · EXPIRES SUNDAY</div><div className="handoff-pet"><img src="/mydog2.jpg" alt="Milo" /><div><strong>Caring for Milo</strong><span>Everything you need for today</span></div></div><div className="handoff-row"><span>08:00</span><div><strong>Breakfast + medicine</strong><small>½ cup · tablet with food</small></div><i>✓</i></div><div className="handoff-row"><span>18:30</span><div><strong>Evening walk</strong><small>Keep it gentle today</small></div><i>○</i></div><div className="handoff-emergency"><span>If something feels wrong</span><strong>Call Devin first · then Greenwoods Vet</strong></div></div>
+          <div className="handoff-phone"><div className="handoff-status">SHARED BY DEVIN · EXPIRES SUNDAY</div><div className="handoff-pet"><img src="/mydog2.jpg" alt="Milo" /><div><strong>Caring for Milo</strong><span>Everything you need for today</span></div></div><div className="handoff-row"><span>08:00</span><div><strong>Breakfast + medicine</strong><small>½ cup · tablet with food</small></div><i><span className="icon icon-check" aria-hidden="true" /></i></div><div className="handoff-row"><span>18:30</span><div><strong>Evening walk</strong><small>Keep it gentle today</small></div><i><span className="icon icon-circle-dot" aria-hidden="true" /></i></div><div className="handoff-emergency"><span>If something feels wrong</span><strong>Call Devin first · then Greenwoods Vet</strong></div></div>
         </article>
       </section>
 
@@ -118,7 +118,7 @@ export default function Home() {
       <section className="making-section narrative-shell" id="making">
         <div className="making-heading"><p className="narrative-eyebrow">Built in the open</p><h2>This is not a finished promise.<br /><em>It is something we are making with families.</em></h2></div>
         <div className="making-columns">
-          <article><span className="making-status available">Available now</span><h3>Small useful tools</h3><p>Pet Card, Symptom Guide and Care Schedule—real pieces you can try without an account.</p><a href="/tools">Open the tools <span aria-hidden="true">↗</span></a></article>
+          <article><span className="making-status available">Available now</span><h3>Small useful tools</h3><p>Pet Card, Symptom Guide and Care Schedule—real pieces you can try without an account.</p><a href="/tools">Open the tools <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></article>
           <article><span className="making-status testing">In active testing</span><h3>One connected care space</h3><p>Today, the living timeline, clear summaries and low-friction handoffs shown on this page.</p></article>
           <article><span className="making-status direction">The larger idea</span><h3>A place that grows with them</h3><p>Practical enough for daily care. Personal enough to hold the life you build together.</p></article>
         </div>
@@ -126,13 +126,13 @@ export default function Home() {
 
       <section className="founder-section narrative-shell">
         <div className="founder-photo"><img src="/mydog.JPG" alt="The real dog behind PLANET" /><span>THE REAL DOG BEHIND PLANET</span></div>
-        <div className="founder-copy"><p className="narrative-eyebrow">One dog and a question</p><h2>I didn&apos;t want another pet app.</h2><p>His life was already everywhere—photos, receipts, messages, appointments, and the things only I remembered. I wanted one place that could hold the practical work of caring for him and the life we were building together. So I started making PLANET.</p><a href="mailto:hello@joinplanet.pet">Talk to me directly <span aria-hidden="true">↗</span></a></div>
+        <div className="founder-copy"><p className="narrative-eyebrow">One dog and a question</p><h2>I didn&apos;t want another pet app.</h2><p>His life was already everywhere—photos, receipts, messages, appointments, and the things only I remembered. I wanted one place that could hold the practical work of caring for him and the life we were building together. So I started making PLANET.</p><a href="mailto:hello@joinplanet.pet">Talk to me directly <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></div>
       </section>
 
       <section className="support-section" id="support">
         <div className="narrative-shell support-layout">
           <div className="support-copy"><p className="narrative-eyebrow">Help make the first version real</p><h2>You don&apos;t have to buy a promise.<br /><em>You can back the build.</em></h2><p>PLANET is being built in public, with the first families who believe this should exist. Your founding support gives us the time to turn the prototype into a real shared care space—and gives you a seat in the decisions that shape it.</p><div className="support-unlocks"><span><b>01</b>Build the connected timeline</span><span><b>02</b>Test it with real pet families</span><span><b>03</b>Share every meaningful release</span></div></div>
-          <div className="support-card"><div className="support-card-top"><span>FOUNDING CIRCLE · 100 FAMILIES</span><span className="support-live"><i /> OPEN</span></div><h3>Founding support</h3><p>One early contribution. A permanent place in the making of PLANET, early access to working versions, and a direct line to the builder.</p><FoundingProgress compact /><div className="support-price"><strong>{foundingPrice}</strong><span>one-time founding contribution</span></div><a className="narrative-button narrative-button-dark" href="/checkout?variant=current" data-event="checkout_click" data-event-category="founding_support" data-event-label="narrative_founding_support">Back the first build <span aria-hidden="true">↗</span></a><small>Not a finished app. Your support funds the next build, and the scope is shared openly as it takes shape. The exact access terms are shown at checkout.</small></div>
+          <div className="support-card"><div className="support-card-top"><span>FOUNDING CIRCLE · 100 FAMILIES</span><span className="support-live"><i /> OPEN</span></div><h3>Founding support</h3><p>One early contribution. A permanent place in the making of PLANET, early access to working versions, and a direct line to the builder.</p><FoundingProgress compact /><div className="support-price"><strong>{foundingPrice}</strong><span>one-time founding contribution</span></div><a className="narrative-button narrative-button-dark" href="/checkout?variant=current" data-event="checkout_click" data-event-category="founding_support" data-event-label="narrative_founding_support">Back the first build <span className="icon icon-arrow-up-right" aria-hidden="true" /></a><small>Not a finished app. Your support funds the next build, and the scope is shared openly as it takes shape. The exact access terms are shown at checkout.</small></div>
         </div>
       </section>
 

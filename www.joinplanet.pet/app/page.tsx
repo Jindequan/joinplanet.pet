@@ -1,6 +1,7 @@
 import { CoCreateForm } from "./components/co-create-form";
-import { FoundingProgress } from "./components/founding-progress";
+import { PilotSignup } from "./components/pilot-signup";
 import { PrototypeTabs } from "./components/prototype-tabs";
+import { QuickDemo } from "./components/quick-demo";
 
 const careMoments = [
   { time: "07:42", title: "Breakfast", detail: "Remembered before the first call of the day", tone: "sage" },
@@ -8,8 +9,6 @@ const careMoments = [
   { time: "12:06", title: "A small change", detail: "He left half his lunch. Worth remembering.", tone: "gold" },
   { time: "19:34", title: "The long way home", detail: "A slow walk, a good mood, one new photo", tone: "sage" },
 ];
-
-const foundingPrice = process.env.NEXT_PUBLIC_LIFETIME_PRICE_DISPLAY || "S$29.99";
 
 export default function Home() {
   return (
@@ -20,7 +19,7 @@ export default function Home() {
           <a href="#story">The idea</a>
           <a href="#inside">Inside PLANET</a>
           <a href="#making">In the making</a>
-          <a className="narrative-nav-invite" href="#support">Back the build <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
+          <a className="narrative-nav-invite" href="#quick-demo">Try the demo <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
         </div>
       </nav>
 
@@ -28,8 +27,8 @@ export default function Home() {
         <div className="narrative-hero-copy">
           <p className="narrative-eyebrow">For the life you are already building together</p>
           <h1>A thousand small acts<br /><em>become a life together.</em></h1>
-          <p className="narrative-lead">The meal someone remembered. The walk someone else took. The change you almost missed. The story only your family knows.</p>
-          <a className="narrative-scroll" href="#story">See what PLANET could become <span className="icon icon-chevron-down" aria-hidden="true" /></a>
+          <p className="narrative-lead">PLANET turns messages, photos, medicines and vet notes into one care view your whole family can use today.</p>
+          <div className="narrative-hero-actions"><a className="narrative-button narrative-button-dark" href="#quick-demo" data-event="quick_demo_cta" data-event-category="quick_demo" data-event-label="hero">Try the 30-second care view <span className="icon icon-arrow-right" aria-hidden="true" /></a><a className="narrative-scroll" href="#story">See the idea behind it <span className="icon icon-chevron-down" aria-hidden="true" /></a></div>
         </div>
         <div className="narrative-hero-stage" aria-label="A real dog and the small moments of care that make up a life together">
           <div className="narrative-photo-frame">
@@ -42,6 +41,8 @@ export default function Home() {
           <p className="hero-photo-note">Today is already becoming their story.</p>
         </div>
       </section>
+
+      <QuickDemo />
 
       <section className="ordinary-section" id="story">
         <div className="narrative-shell ordinary-heading">
@@ -126,13 +127,13 @@ export default function Home() {
 
       <section className="founder-section narrative-shell">
         <div className="founder-photo"><img src="/mydog.JPG" alt="The real dog behind PLANET" /><span>THE REAL DOG BEHIND PLANET</span></div>
-        <div className="founder-copy"><p className="narrative-eyebrow">One dog and a question</p><h2>I didn&apos;t want another pet app.</h2><p>His life was already everywhere—photos, receipts, messages, appointments, and the things only I remembered. I wanted one place that could hold the practical work of caring for him and the life we were building together. So I started making PLANET.</p><a href="mailto:hello@joinplanet.pet">Talk to me directly <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></div>
+        <div className="founder-copy"><p className="narrative-eyebrow">One dog and a question</p><h2>I didn&apos;t want another pet app.</h2><p>His life was already everywhere—photos, receipts, messages, appointments, and the things only I remembered. I wanted one place that could hold the practical work of caring for him and the life we were building together. So I started making PLANET.</p><a href="mailto:support@joinplanet.pet">Talk to me directly <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></div>
       </section>
 
       <section className="support-section" id="support">
         <div className="narrative-shell support-layout">
           <div className="support-copy"><p className="narrative-eyebrow">Help make the first version real</p><h2>You don&apos;t have to buy a promise.<br /><em>You can back the build.</em></h2><p>PLANET is being built in public, with the first families who believe this should exist. Your founding support gives us the time to turn the prototype into a real shared care space—and gives you a seat in the decisions that shape it.</p><div className="support-unlocks"><span><b>01</b>Build the connected timeline</span><span><b>02</b>Test it with real pet families</span><span><b>03</b>Share every meaningful release</span></div></div>
-          <div className="support-card"><div className="support-card-top"><span>FOUNDING CIRCLE · 100 FAMILIES</span><span className="support-live"><i /> OPEN</span></div><h3>Founding support</h3><p>One early contribution. A permanent place in the making of PLANET, early access to working versions, and a direct line to the builder.</p><FoundingProgress compact /><div className="support-price"><strong>{foundingPrice}</strong><span>one-time founding contribution</span></div><a className="narrative-button narrative-button-dark" href="/checkout?variant=current" data-event="checkout_click" data-event-category="founding_support" data-event-label="narrative_founding_support">Back the first build <span className="icon icon-arrow-up-right" aria-hidden="true" /></a><small>Not a finished app. Your support funds the next build, and the scope is shared openly as it takes shape. The exact access terms are shown at checkout.</small></div>
+          <div className="support-card"><div className="support-card-top"><span>FIRST PILOT · 10 FAMILIES</span><span className="support-live"><i /> OPEN</span></div><h3>Join the first real version</h3><p>Start with the free care view above. If it feels useful, join the first families who will test the working timeline, vet summary and handoff.</p><PilotSignup /></div>
         </div>
       </section>
 
@@ -143,7 +144,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="narrative-footer narrative-shell"><a className="narrative-brand" href="#top"><span className="narrative-orbit" aria-hidden="true"><i /></span>PLANET</a><p>Their whole world. One place.</p><div><a href="/tools">Tools</a><a href="mailto:hello@joinplanet.pet">Contact</a><span>© 2026</span></div></footer>
+      <footer className="narrative-footer narrative-shell"><a className="narrative-brand" href="#top"><span className="narrative-orbit" aria-hidden="true"><i /></span>PLANET</a><p>Their whole world. One place.</p><div><a href="/tools">Tools</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refund">Refunds</a><a href="mailto:support@joinplanet.pet">Contact</a><span>© 2026</span></div></footer>
     </main>
   );
 }

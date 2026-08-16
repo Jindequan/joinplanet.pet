@@ -117,6 +117,17 @@ paid total >= 100 → 关闭 checkout 链接
 5. 生产模式完成一笔小额真实支付，确认订单、退款路径和收款主体信息。
 6. 记录每笔订单的产品、邮箱、来源和同意的交付/退款说明。
 7. 在预付款达到验证门槛前，不接入复杂的宠物数据和医疗功能开发。
+8. 在 Lemon Squeezy 后台 checkout 设置里，把条款链接指向站点政策页：`https://www.joinplanet.pet/terms`、`/privacy`、`/refund`（Settings → Store → 相关字段，或在产品 checkout 编辑器里配置）。
+
+## 退款 SOP（用户邮件到 support@joinplanet.pet 时）
+
+承诺口径见 `/refund` 页：首版发布前无条件全额退；发布后 14 天内对已发布版本不满意也全额退。收到退款请求后：
+
+1. 在 Lemon Squeezy 后台 Orders 里按邮箱或 order ID 找到订单，点 Refund（全额）。退款原路退回，通常 5–10 个工作日到账。
+2. Lemon 会向 `/webhook` 发送 `order_refunded` 事件；后端 `markRefunded` 会把对应 `membership_claims` 记录翻成 refunded（幂等），`/progress` 的活跃席位计数自动回落，无需手工改数据库。
+3. 回邮件确认：已退款、到账时间、席位已释放、欢迎继续参加免费试点。模板不用客套，一句话说清楚即可。
+4. 若 webhook 因故丢失（`/progress` 计数没有回落），检查 `webhook_events` 表里是否有该事件；确认丢失则手动 `UPDATE membership_claims SET status='refunded', refunded_at=now() WHERE order_id='...'`，并去 Lemon 后台 Resend webhook。
+5. 每月底看一眼：refunded 席位数 × 单价 = 验证口径里的「订金净额」，别用流水自欺。
 
 ## 第二阶段：真实 App 上线时接回 saas-core
 

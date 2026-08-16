@@ -21,7 +21,10 @@ const TIERS = [
 
 const POLL_INTERVAL = 45000;
 
-export function FoundingProgress({ compact = false }: { compact?: boolean }) {
+// mode "auto" keeps the pilot-recruiting fallback for the free pilot card;
+// mode "founding" always shows the paid-seat meter, even before the first
+// payment lands — used where the founding deposit itself is the offer.
+export function FoundingProgress({ compact = false, mode = "auto" }: { compact?: boolean; mode?: "auto" | "founding" }) {
   const [data, setData] = useState<ProgressData | null>(null);
   const [syncedAt, setSyncedAt] = useState<Date | null>(null);
 
@@ -65,6 +68,24 @@ export function FoundingProgress({ compact = false }: { compact?: boolean }) {
   const percent = data?.percent ?? 0;
   const currentTier = TIERS.find((t) => paid < t.max) ?? TIERS[TIERS.length - 1];
   const isSoldOut = data != null && paid >= capacity;
+
+  if (mode !== "founding" && compact && data == null) {
+    return (
+      <div className="pilot-meter" aria-label="PLANET is recruiting pilot families">
+        <div><strong>Recruiting the first 10 pilot families</strong><span>Help test the first real care view.</span></div>
+        <span className="pilot-meter-status">Open</span>
+      </div>
+    );
+  }
+
+  if (mode !== "founding" && compact && data != null && paid === 0) {
+    return (
+      <div className="pilot-meter" aria-label="PLANET is recruiting pilot families">
+        <div><strong>Recruiting the first 10 pilot families</strong><span>Be among the first to test a working version.</span></div>
+        <span className="pilot-meter-status">Open</span>
+      </div>
+    );
+  }
 
   return (
     <div className={`founding-meter${compact ? " founding-meter-compact" : ""}`} aria-live="polite">

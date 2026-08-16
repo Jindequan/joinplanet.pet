@@ -47,13 +47,37 @@ test("server-renders the PLANET narrative home", async () => {
   assert.match(html, /Walk in with the story/);
   assert.match(html, /What would PLANET/);
   assert.match(html, /INTERACTIVE PROTOTYPE/);
-  assert.match(html, /Help make the first version real/);
+  assert.match(html, /Try the 30-second care view/);
+  assert.match(html, /See a care view/);
+  assert.match(html, /Join the first real version/);
+  assert.match(html, /No payment during pilot signup/);
   assert.match(html, /Back the first build/);
-  assert.match(html, /S\$29\.99/);
-  assert.match(html, /mydog\.JPG/);
-  assert.doesNotMatch(html, /Lifetime Membership|Founding 100/);
   assert.match(html, /href="\/checkout\?variant=current"/);
+  assert.match(html, /refundable/i);
+  assert.match(html, /mydog\.JPG/);
+  assert.match(html, /support@joinplanet\.pet/);
+  assert.match(html, /href="\/terms"/);
+  assert.match(html, /href="\/privacy"/);
+  assert.match(html, /href="\/refund"/);
+  assert.doesNotMatch(html, /Lifetime Membership|Founding 100/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton|Building your site/);
+});
+
+test("policy pages render and keep the support contact visible", async () => {
+  for (const path of ["/terms", "/privacy", "/refund"]) {
+    const response = await fetch(`${server.origin}${path}`);
+    assert.equal(response.status, 200, `${path} should return 200`);
+    const html = await response.text();
+    assert.match(html, /support@joinplanet\.pet/, `${path} must show the support email`);
+    assert.match(html, /Last updated: August 16, 2026/, `${path} must carry the policy date`);
+  }
+
+  const refund = await (await fetch(`${server.origin}/refund`)).text();
+  assert.match(refund, /refundable/i);
+  const terms = await (await fetch(`${server.origin}/terms`)).text();
+  assert.match(terms, /not a medical device/i);
+  const privacy = await (await fetch(`${server.origin}/privacy`)).text();
+  assert.match(privacy, /Google Analytics 4 with IP/i);
 });
 
 test("the page is no longer coupled to the starter preview", async () => {
@@ -64,7 +88,7 @@ test("the page is no longer coupled to the starter preview", async () => {
   ]);
 
   assert.match(page, /CoCreateForm/);
-  assert.match(page, /FoundingProgress/);
+  assert.match(page, /PilotSignup/);
   assert.match(page, /A thousand small acts/);
   assert.doesNotMatch(page, /checkoutUrl|Lifetime Membership/);
   assert.doesNotMatch(page, /SkeletonPreview|_sites-preview/);

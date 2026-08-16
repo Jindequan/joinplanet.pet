@@ -97,6 +97,12 @@ export function CheckoutRedirect({ variant }: Props) {
           <p>{message}</p>
         </>
       )}
+      {state === "loading" ? (
+        <p className="checkout-legal">
+          One-time founding seat · <a href="/refund">fully refundable before the first version ships</a> ·{" "}
+          <a href="/terms">Terms</a> · Questions? <a href="mailto:support@joinplanet.pet">support@joinplanet.pet</a>
+        </p>
+      ) : null}
       {state !== "loading" ? (
         <Link className="button button-primary" href="/">Back to PLANET <span className="icon icon-arrow-right" aria-hidden="true" /></Link>
       ) : null}

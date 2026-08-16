@@ -74,7 +74,7 @@ export function CoCreateForm() {
           <span className="icon icon-arrow-up-right" aria-hidden="true" />
         </button>
         <p>One thoughtful note from us when there is something real to see. No sales sequence.</p>
-        {status === "error" ? <p className="cocreate-error">We couldn&apos;t save this just now. Please try again or email hello@joinplanet.pet.</p> : null}
+        {status === "error" ? <p className="cocreate-error">We couldn&apos;t save this just now. Please try again or email support@joinplanet.pet.</p> : null}
       </div>
     </form>
   );

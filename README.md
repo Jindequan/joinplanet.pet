@@ -40,6 +40,8 @@ joinplanet.pet/
 - [产品总览](docs/product/PRD.md)
 - [MVP 范围](docs/product/MVP.md)
 - [App 设计规划](docs/product/APP-DESIGN.md)
+- [App 技术与组件选型](docs/product/APP-TECH-STACK.md)
+- [App 页面布局草稿](docs/design/APP-LAYOUTS.md)
 - [设计团队审查（对标×全生命周期）](docs/research/DESIGN-REVIEW.md)
 - [外部评估报告 2026-08-17（定锚：digital home / WAP / Pet Intelligence）](docs/research/DESIGN-EVALUATION-20260817.md)
 - [设计方向](docs/design/DESIGN.md)

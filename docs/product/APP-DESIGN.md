@@ -190,7 +190,9 @@ Today 每天使用 → Timeline 自然积累 → 形成完整 Pet History
 
 1. Resend 账号 + `mail.joinplanet.pet` 的 SPF/DKIM（Cloudflare DNS）；
 2. R2 bucket 与 `files.joinplanet.pet` 绑定；
-3. Phase 0 门槛若未达标，本设计冻结不动工（ROADMAP 约定，写在这里防自我破例）。
+3. （门槛已撤，2026-08-17 起 W0.5 只等上面两件基建。）
+
+组件/工具级选型见 [APP-TECH-STACK](APP-TECH-STACK.md)（Radix 无样式件 + TanStack Query + Tailwind 4 复用现有 token；每项含拒绝清单）；各页布局结构见 [APP-LAYOUTS](../design/APP-LAYOUTS.md)。
 
 ---
 

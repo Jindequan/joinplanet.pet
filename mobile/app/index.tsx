@@ -43,7 +43,7 @@ export default function BootstrapScreen() {
 
   return (
     <View style={[styles.container, ready && styles.routed]}>
-      <Image source={require('../../assets/icon.png')} style={styles.logo} contentFit="contain" />
+      <Image source={require('../assets/icon.png')} style={styles.logo} contentFit="contain" />
       <View style={styles.skeletonWrap}>
         <Skeleton width={140} height={12} round />
         <Skeleton width={90} height={12} round />

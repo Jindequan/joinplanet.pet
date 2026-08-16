@@ -235,12 +235,19 @@ export function insertTimelineEvent(
   petId: string,
   event: TimelineEvent,
 ): void {
-  client.setQueryData<TimelinePage[]>(qk.timeline(petId), (pages) => {
-    if (!pages || pages.length === 0) return [{ events: [event], next_cursor: null }];
-    const next = pages.map((p) => ({ ...p, events: [...p.events] }));
-    next[0].events.unshift(event);
-    return next;
-  });
+  // TanStack v5 stores infinite queries as { pages, pageParams } — write
+  // through that structure, creating it on first insert.
+  client.setQueryData<{ pages: TimelinePage[]; pageParams: unknown[] }>(
+    qk.timeline(petId),
+    (data) => {
+      if (!data || data.pages.length === 0) {
+        return { pages: [{ events: [event], next_cursor: null }], pageParams: [undefined] };
+      }
+      const pages = data.pages.map((p) => ({ ...p, events: [...p.events] }));
+      pages[0].events.unshift(event);
+      return { ...data, pages };
+    },
+  );
 }
 
 /* ------------------------------- Mutations ------------------------------- */

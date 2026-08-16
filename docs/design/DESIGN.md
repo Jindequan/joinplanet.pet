@@ -20,21 +20,21 @@
 
 [APP-UI-SPEC-V1](APP-UI-SPEC-V1.md) 的设计系统**结构与纪律全量采纳**：4pt 间距、radius 阶梯（28/24/18/16/999）、shadow 克制（背景对比+边框优先）、44px 触达、语义色（症状/用药/AI 紫预留）、motion 时长表、token 强制（禁止裸 hex/17px/19px）。
 
-**唯一绑定决策——色相体系**：spec 参考稿是蓝白系（Brand Blue #47B9E2），但线上 landing 已建立暖纸/sage/Georgia 品牌且 vet-paper 视觉被明确设计为"营销演示变成真货"。为保持品牌连续性，**Phase 1 的 token 值映射到现有暖色系**：
+**绑定决策更新（2026-08-17 晚，App 独立原生路线后）**：App 与落地页是完全独立的两套东西（独立代码库、独立构建），"与 landing 视觉连续"不再是约束。**App 默认采用 spec 原生的蓝白 token 值**（bg `#F5F8F9` / surface `#FFFFFF` / surface-soft `#EDF6F9` / border `#DFE7EA` / text `#152126` / Brand 500 `#47B9E2` / 主 CTA `#152126` 底白字）；落地页维持现有暖纸/sage 不动——两者各自成立，靠名字与 wordmark 认亲，不靠像素。字体：SF Pro/系统 sans（spec 原案），Georgia 衬线留在落地页。
 
-| spec token | Phase 1 落地值（暖色映射） | 用途 |
+暖色映射降级为**已记录备选**（token 结构下换肤只改值）：
+
+| spec token | 暖色备选值 | 用途 |
 |---|---|---|
-| `bg` | `#F7F8F3`（现有 --paper） | App 背景 |
+| `bg` | `#F7F8F3`（landing --paper） | App 背景 |
 | `surface` | `#FFFEFA`（--white） | 卡片 |
 | `surface-soft` | `#F3EFE6`（--cream） | 次级面 |
 | `border` | `#DCE2DA`（--line） | 分隔线 |
 | `text` | `#1B2B27`（--ink） | 主文字 |
-| brand 500 | `#245348`（--green 深松绿） | Tab active/进度/链接/＋ |
-| 主 CTA | `#1B2B27` 底 + 白字 | 同 spec"大 CTA 不用品牌色"原则 |
+| brand 500 | `#245348`（--green） | Tab active/进度/链接/＋ |
 
 - 语义色照抄 spec 数值（Success #57A879 / Warning #D89A3A / Symptom #D75E67 / Medication #318EB3 / AI 紫 #796BEA Phase 2 才启用）；
-- 字体：正文系统 sans（spec），Hero/Section 标题保留 Georgia 衬线（品牌资产，spec 禁的是卡通字体不是衬线）；
-- **蓝白方案为已记录备选**：token 结构下换肤只改值，若创始人偏好蓝白参考稿，一次 `@theme` 替换即可，不动任何组件代码。
+- 本节其余结构与纪律（4pt/radius 阶梯/shadow 克制/motion 表/token 强制）不变。
 
 ## 4. Logo / Icon 原则
 

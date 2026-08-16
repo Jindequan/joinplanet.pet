@@ -8,7 +8,9 @@
 
 ## 0. 一句话与边界
 
-**做**：一个 PWA，让 2–4 人的家庭照护圈对一只宠物共享「今日任务 + 健康时间线 + 可撤销的临时分享」，就诊前一键生成 Vet-ready Summary。
+**做**：一个跨平台原生 App（**Expo / React Native，一套代码编译 iOS 与 Android**），让 2–4 人的家庭照护圈对一只宠物共享「今日任务 + 健康时间线 + 可撤销的临时分享」，就诊前一键生成 Vet-ready Summary。
+
+**产品关系（2026-08-17 修正）**：App 与落地页是**完全独立的两套东西**——落地页（www.joinplanet.pet，Next.js）只做营销与获客；App 是独立代码库、独立构建、独立发布。二者不共享代码，只共享品牌与同一个 Go API。
 
 **产品本质（评估采纳）**：不是 Pet Health Tracker，是多人共养时的 **Shared Pet Care System**，长期是 **The digital home for your pet**——越来越深地拥有这只宠物的一生数据，而不是横向扩品类（社区/商城/找医生/保险/AI 问诊/百科均不做）。
 
@@ -154,17 +156,14 @@ Today 每天使用 → Timeline 自然积累 → 形成完整 Pet History
 ## 2. 技术架构（选型与理由）
 
 ```text
-用户浏览器
-   │
-   ├── www.joinplanet.pet（Vercel，现有 Next.js）
-   │      ├── /            营销页（现状不动）
-   │      ├── /app/*       应用路由组（新增，登录后可用）
-   │      └── /s/[token]   公开分享页（免登录，只读）
-   │             │  Next.js rewrites: /api/* → api.joinplanet.pet（同源，绕开 CORS）
-   │             ▼
-   └── api.joinplanet.pet（现有 Go 二进制，扩展）
+iOS App ─┐                                  ┌─ 落地页 www.joinplanet.pet（Vercel，Next.js）
+          ├─ Expo / React Native 一套代码   │    独立的营销站，只管获客（现状不动）
+Android ─┘         │                        │
+                   │ HTTPS + Bearer token   │
+                   ▼                        │
+          api.joinplanet.pet（现有 Go 二进制，扩展）
           ├── 既有 7 个端点（checkout/progress/intake/… 不动）
-          ├── /api/v1/auth/*      F1
+          ├── /api/v1/auth/*      F1（验证码登录 → 签发 token）
           ├── /api/v1/circle/*    F2
           ├── /api/v1/pet/*       F3（含 medications）
           ├── /api/v1/tasks/*     F4
@@ -172,27 +171,39 @@ Today 每天使用 → Timeline 自然积累 → 形成完整 Pet History
           ├── /api/v1/share/*     F6 + F7（Summary 即一种 share kind）
           └── /api/v1/data/*      F8（导出/删除）
           PostgreSQL（同库新表，见 §3）  ·  Cloudflare R2（附件）
+          公开分享页 /s/:token 为 Web（接收方不装 App 的前提）
+```
+
+```text
+仓库结构：
+joinplanet.pet/
+├── www.joinplanet.pet/   落地页（Next.js，独立部署 Vercel，含公开分享页）
+├── mobile/               App（Expo 项目，独立 package.json/构建，与落地页零代码共享）
+├── server/               Go API（两端共用）
+└── docs/
 ```
 
 **关键决定与理由：**
 
 | 决定 | 选择 | 理由 |
 |---|---|---|
-| 应用放哪 | 同一 Next.js 仓库 `/app` 路由组，不建第二个前端 | 单人开发者，一条部署流水线；营销页与 App 共用设计 token |
-| 后端 | 扩展现有 Go 服务，按业务功能拆模块（auth.go / circle.go / pet.go / tasks.go / timeline.go / share.go / data.go） | 模块边界 = §1.2 的功能边界，代码结构跟着业务走 |
-| 跨域 | Next rewrites 把 `/api/*` 代理到 Go 域名 | 浏览器只见同源，cookie 会话自然工作 |
-| 认证 | 邮箱验证码/魔法链接 + httpOnly cookie 会话（7 天滑动续期） | 试点承诺要发邮件，Resend 基建本来就必须上；免密码摩擦最低 |
-| 附件 | Cloudflare R2（S3 API），上传经 Go 代理签名 | 域名已在 Cloudflare；VPS 本地盘不可靠 |
-| PDF | Phase 1 不做服务端 PDF：Summary 用打印优化网页 + 分享链接交付 | 接收方本就无需注册；服务端 PDF 推迟到有人真的抱怨 |
-| PWA | manifest + 轻量 SW（app-shell 缓存），不做离线写 | 「安装到主屏」心智 > 真离线；离线写冲突不值工期 |
+| App 客户端 | **Expo (React Native)**，一套代码编译 iOS + Android | 与仓库 TS/React 技术栈同构；EAS 云构建免本地双端环境；OTA 热修复对单人试点期极关键；expo-router 实现三 Tab IA |
+| 与落地页关系 | **完全独立代码库**（同仓不同根 `mobile/`，零 import 共享，未来可整体迁出为独立 repo） | 落地页是营销、App 是产品，生命周期/发布节奏/依赖完全不同 |
+| 通信 | App **直连** api.joinplanet.pet，HTTPS + Bearer token | 原生 App 无同源 cookie 约束，Next rewrites 方案随 PWA 一并作废；CORS 不适用于原生 |
+| 认证 | 邮箱验证码 → 服务端 session 表签发 token，App 存 expo-secure-store（Keychain/Keystore） | 会话可撤销；验证码流程不变，交付从 cookie 改为 token |
+| 后端 | 扩展现有 Go 服务，按业务功能拆模块（auth/circle/pet/tasks/timeline/share/data.go + entitlement.go） | 模块边界 = §1.2 功能边界；同一 API 服务落地页与 App |
+| 附件 | Cloudflare R2，App 拿预签名 URL 直传（expo-image-manipulator 先压缩） | 既有决策不变 |
+| 支付 | iOS App 内数字订阅**必须走 IAP**（Apple 规则）——Phase 2 Pro 经 RevenueCat/StoreKit 适配进 entitlements；落地页 founding 席位继续走 Lemon Squeezy（Web） | 原生路线使多计费适配器从"预留"变为**必需**，权益层设计正好承接 |
+| 分发 | Phase 1 试点走 **TestFlight 公开链接 + Google Play 内部测试轨道**（100 installs 漏斗可达成），公开上架在 WAP 验证后再启动商店审核 | 商店审核周期不可控，不该挡住试点 |
+| 触达 | 摘要邮件（Resend）照旧；原生使推送可行（Expo Push），但 Phase 1 纪律不变：不建通知闭环，借家庭群聊 | 推送是 Phase 2 选项，不是 Phase 1 需求 |
 
 **未决问题（开工前确认）**：
 
 1. Resend 账号 + `mail.joinplanet.pet` 的 SPF/DKIM（Cloudflare DNS）；
 2. R2 bucket 与 `files.joinplanet.pet` 绑定；
-3. （门槛已撤，2026-08-17 起 W0.5 只等上面两件基建。）
+3. Apple Developer 账号（US$99/年，TestFlight 必需）+ Google Play 开发者账号（US$25 一次性）。
 
-组件/工具级选型见 [APP-TECH-STACK](APP-TECH-STACK.md)（Radix 无样式件 + TanStack Query + Tailwind 4 复用现有 token；每项含拒绝清单）；各页布局结构见 [APP-LAYOUTS](../design/APP-LAYOUTS.md)。
+组件/工具级选型见 [APP-TECH-STACK](APP-TECH-STACK.md)（Expo/RN 生态版）；各页布局结构见 [APP-LAYOUTS](../design/APP-LAYOUTS.md)，UI 规则以 [APP-UI-SPEC-V1](../design/APP-UI-SPEC-V1.md) 为准（其中 PWA 专项——Web Share API、网页 Bottom Sheet、44px 命中——按原生等价物落地：系统分享面板、原生模态手势、平台触控标准）。
 
 ---
 
@@ -335,6 +346,7 @@ Phase 纪律回答"什么时候做"，本节回答"做了之后怎么长"。**�
 
 ```text
 /app/welcome    首次进入：创建宠物或输邀请码加入              F1→F2→F3
+（上表路径 = Expo Router 屏幕名；/s/[token] 公开页保持 Web——接收方不装 App 是产品前提）
 /app            Today      今日照护（默认首页）                F4
 /app/timeline   Timeline   健康时间线（页头 [Share]）          F5 + F7
 /app/pet        Pet        档案/成员/用药（[Prepare for vet] [Share with sitter]）  F2+F3+F6+F7
@@ -396,13 +408,13 @@ Phase 纪律回答"什么时候做"，本节回答"做了之后怎么长"。**�
 
 | 周 | 交付 | 试用动作 |
 |---|---|---|
-| W0.5 | Resend + R2 + schema（§3.3 全量，**含权益层**）+ auth + `can()` 裁决路径 + `/app` 空壳 | 创始人自用 |
+| W0.5 | Resend + R2 + schema（§3.3 全量，**含权益层**）+ auth + `can()` 裁决路径 + `mobile/` Expo 壳（三 Tab 骨架） | 创始人自用 |
 | W1 | F3 档案（含用药清单）+ F4 Today（单用户）+「Tell Devin」反馈按钮 | 家庭 #1 手动开通，每天真用 |
 | W2 | F2 邀请成员 + F5 快速记录 + Today「Share as image」 | 家庭 #1 邀第二人；观察「记录≤5秒」与卡片进群聊的转发 |
 | W3 | F5 附件上传（R2）+ F6 Summary 模板 + F7 分享链接 + 公开页 | 家庭 #1 真就诊或模拟交接一次（最重的一周，刻意为之） |
-| W4 | F8 删除/导出 + T1 每日摘要邮件 + PWA 安装 + 空状态打磨 + 埋点补全 | 公开发布，跑 100 installs 漏斗（§8） |
+| W4 | F8 删除/导出 + T1 每日摘要邮件 + TestFlight/内部测试轨道接入 + 空状态打磨 + 埋点补全 | 试点分发，跑 100 installs 漏斗（§8） |
 
-**排期纪律（评估第四节的警告）**：问题从来不是开发能力，而是"把时间花在完成产品，而不是观察用户用什么"。W4 的摘要邮件/PWA/导出都是可让位项——**三屏（Today/Timeline/Pet）打磨到漂亮、低摩擦、愿意每天打开，优先级高于上表任何一项**；第一版真正聚焦的只有 Pet / Today / Timeline / Share-Summary 四件事。
+**排期纪律（评估第四节的警告）**：问题从来不是开发能力，而是"把时间花在完成产品，而不是观察用户用什么"。W4 的摘要邮件/商店接入/导出都是可让位项——**三屏（Today/Timeline/Pet）打磨到漂亮、低摩擦、愿意每天打开，优先级高于上表任何一项**；第一版真正聚焦的只有 Pet / Today / Timeline / Share-Summary 四件事。
 
 （图片上传从 W2 挪到 W3：附件是分享与 Summary 的前置，跟 W3 天然一组；W2 的重心是「第二个人进来了」。）
 

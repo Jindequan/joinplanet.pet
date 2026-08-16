@@ -1,7 +1,9 @@
 # PLANET App UI / UX / Layout 全方位设计方案 v1.0
 
 > 来源：外部设计规格（2026-08-17 原文照存，未删改）。
-> 采纳决定：结构与规则全量采纳（IA 锁定 Today/Timeline/Pet＋、数据边界、交互规则、组件库、页面树、五问纪律）；唯一绑定决策——色相体系 Phase 1 映射回现有暖纸/sage 品牌（token 结构照抄，蓝白为已记录备选，换肤只改 token 值）。详见 docs/design/DESIGN.md 与 docs/design/APP-LAYOUTS.md 的对齐说明。
+> 采纳决定：结构与规则全量采纳（IA 锁定 Today/Timeline/Pet＋、数据边界、交互规则、组件库、页面树、五问纪律）。
+> 平台修订（2026-08-17 晚）：App 采用 **Expo / React Native，一套代码编译 iOS + Android**，与落地页完全独立——原文中 PWA/Web 表述按原生等价物落地（Web Share API→系统分享面板、网页 Bottom Sheet→@gorhom/bottom-sheet、Haptics 从可选变为 expo-haptics、44px→平台触控标准）；/s/:token 与 /invite/:code 保持 Web（接收方不装 App 是产品前提）。
+> 配色：App 默认采用本文蓝白 token 原值（暖色映射为备选，见 DESIGN.md §3）；App 字体用 SF Pro/系统 sans 原案。
 > 本文件为 UI 层的唯一权威（canonical）。
 
 ---

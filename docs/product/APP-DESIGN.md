@@ -47,7 +47,7 @@
 |---|---|---|---|---|
 | F1 | 身份与访问 | 支撑 | 用户：进入 | 邮箱验证码登录、会话管理 |
 | F2 | 照护圈与成员 | 支撑 | 用户：建立协作 | 建圈、邀请、Owner/Caregiver 两角色 |
-| F3 | 宠物档案 | 支撑 | 宠物：全程 | 基础信息、过敏、慢病、**用药清单**、紧急联系人 |
+| F3 | 宠物档案 | 支撑 | 宠物：全程 | 基础信息、过敏、慢病、**用药清单**、紧急联系人、**紧急医疗授权** |
 | F4 | 今日照护协作 | **核心** | 宠物：健康日常 | 任务模板 + 每日执行 + 完成人记录 + 卡片分享 |
 | F5 | 健康时间线 | **核心** | 宠物：异常/慢病/沉淀 | ≤5 秒记录症状、体重、用药、就诊、照片 |
 | F6 | 就诊准备 Summary | **核心** | 宠物：就医 | 从结构化数据拼装 Vet-ready 页，可勾选排除 |
@@ -69,7 +69,25 @@
 |---|---|---|
 | A 多人照护："今天谁喂过药" | 健康日常 | F2 → F4（→ T1 摘要邮件提醒不开 App 的那位） |
 | B 就诊准备："完整病史 3 秒讲清" | 异常 → 就医 | F5 记录 → F3 用药清单 → F6 拼装 → F7 送达兽医 |
-| C 临时交接："保姆只看今天" | 交接/寄养 | F7（sitter 视图 = 今日任务 + 紧急联系人，不含病史） |
+| C 临时交接："保姆只看今天" | 交接/寄养 | F7（sitter 视图 = 今日任务 + 紧急联系人含医疗授权人，不含病史） |
+
+### 1.4 北极星能力地图（全生命周期 × Phase）
+
+「为宠物提供全生命周期管理」的显式承诺。Phase 1 的 8 个功能只打验证靶心，但每个生命周期阶段都有归属能力、每个能力都有 Phase 标签，**全面性靠地图保证，工期靠 Phase 纪律保证**：
+
+| 生命周期阶段 | Phase 1 | Phase 2 | Phase 3 |
+|---|---|---|---|
+| 领养/初到 | F3 档案 + 领养日事件 | — | — |
+| 幼年 | 疫苗记录（F5） | 疫苗 due 提醒 | — |
+| 成年日常 | F4 + F5 | — | — |
+| 异常/急病 | F5 + 紧急医疗授权（F3） | — | — |
+| 慢病/老年 | 用药清单 + 症状波动 | 体重趋势图、QoL 量表前置数据 | 生活质量量表 |
+| 就医 | F6 + F7 | AI 辅助摘要、OCR 导入 | — |
+| 交接/寄养 | F7 sitter 链接 | 实时推送 | 寄养模板包 |
+| 临终/纪念 | — | — | 告别册/纪念页/数据赠予 |
+| 横切 | 数据所有权（F8）、摘要邮件 | 多宠、推送 | 费用/保险理赔材料 |
+
+（对标依据与竞品矩阵见 [团队审查报告](../research/DESIGN-REVIEW.md)，2026-08-16 复核。）
 
 ---
 
@@ -156,8 +174,10 @@ circle_members (circle_id FK, user_id FK, role 'owner'|'caregiver', joined_at,
 -- F3 档案
 pets         (id, circle_id FK, name, species, breed, birthday,
               allergies JSONB, conditions JSONB,   -- 低频事实，无独立流转
-              emergency_contacts JSONB, notes,
-              avatar_attachment_id FK NULL, created_by, created_at)
+              emergency_contacts JSONB,            -- {primary, vet, authorized_decision_maker}
+                                                   -- authorized：联系不上主人时有权做医疗决定的人——
+                                                   -- 竞品全空白（调研需求6），Sitter 视图与 Summary 渲染
+              notes, avatar_attachment_id FK NULL, created_by, created_at)
 medications  (id, pet_id FK, name, dose, schedule, note,
               active BOOL, started_on, ended_on NULL, created_by, created_at)
 -- 用药独立成表的理由：有生命周期（active→ended），
@@ -259,7 +279,7 @@ DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页；屏幕标注
 
 **Vet-ready Summary（Phase 1 = 确定性模板，无 AI）**：由结构化字段拼装——基础信息 / 过敏 / 当前用药（`medications` where active）/ 最近 30 天异常（symptom 事件聚合）/ 最近就诊与体重趋势 / 家人备注。生成前全字段可勾选排除（分享的最小集由用户决定）。页面复用 landing 页 vet-paper 的视觉（营销演示变成真货）。
 
-**临时分享生命周期**：生成 → 有效期内可看 → 到期/撤销立即失效（查询时校验，无清理任务）→ 每次打开计 view_count → 撤销不可恢复但可再生成。Sitter 视图只含"今天该做什么 + 紧急联系人"，不含病史。
+**临时分享生命周期**：生成 → 有效期内可看 → 到期/撤销立即失效（查询时校验，无清理任务）→ 每次打开计 view_count → 撤销不可恢复但可再生成。Sitter 视图只含"今天该做什么 + 紧急联系人（含医疗授权人）"，不含病史。
 
 ---
 

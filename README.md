@@ -39,6 +39,7 @@ joinplanet.pet/
 
 - [产品总览](docs/product/PRD.md)
 - [MVP 范围](docs/product/MVP.md)
+- [App 设计规划](docs/product/APP-DESIGN.md)
 - [设计方向](docs/design/DESIGN.md)
 - [验证计划](docs/research/VALIDATION.md)
 - [路线图](docs/ROADMAP.md)

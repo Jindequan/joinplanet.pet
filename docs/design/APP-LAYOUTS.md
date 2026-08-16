@@ -1,180 +1,141 @@
-# App 页面布局草稿（仅结构，不含视觉）
+# App 页面布局速览
 
-> 日期：2026-08-17 · 对应 [APP-DESIGN](../product/APP-DESIGN.md) §5 IA（三 Tab + 全局＋，Share 为上下文动作）
-> 约定：移动优先（PWA 主场），桌面 = 同结构居中单列（max 720px），不另做桌面布局。`F#` 对应功能编号。
+> 2026-08-17：布局/交互/UI 规则以 [APP-UI-SPEC-V1](APP-UI-SPEC-V1.md) 为唯一权威（原文照存，canonical）。本文件是开发用的速览版，已对齐 spec；两者冲突时以 spec 为准。
+> 本轮对齐修正的四处：① 快速记录去掉 Medication、加 Vet visit（spec §37 语义拆分）；② Pet 页降为 Overview + 二级页（spec §42-43）；③ 顶栏不放通知铃铛（spec §11）；④ Timeline 输入文案改为"Record something about Milo…"（spec §27）。
+> `F#` 对应 [APP-DESIGN](../product/APP-DESIGN.md) 功能编号。移动优先，桌面单列 max 720px。
 
-## 0. App 外壳（所有 /app 页共用）
+## 0. App 外壳
 
 ```text
 ┌──────────────────────────────┐
-│ 顶栏（固定）                   │
-│  [Milo ▾]         [🔔] [⋯]   │   宠物切换 / 通知入口 / 更多菜单
+│ [avatar Milo]           •••  │   左：宠物名（Phase 1 不可切换）；右：菜单
 ├──────────────────────────────┤
-│                              │
 │         页面内容（滚动）        │
-│                              │
 ├──────────────────────────────┤
-│  Today   Timeline   (＋)  Pet │   底部 Tab；＋为居中悬浮的快速记录
+│ ╭──────────────────────────╮ │
+│ │ Today  Timeline   ＋   Pet│ │   浮动 Tab Bar（radius 26，中央＋ 52×52）
+│ ╰──────────────────────────╯ │
 └──────────────────────────────┘
 ```
 
-- 单宠期 `[Milo ▾]` 不可切换（P2 多宠解锁后启用）；
-- `[⋯]` 菜单：账号、退出、Tell Devin、Terms/Privacy。
+- 无通知铃铛（Phase 1 没有通知中心，不做空入口）；
+- `•••`：Account / Feedback / Privacy / Terms / Sign out。
 
-## 1. /app/welcome（登录 + 引导）
+## 1. welcome（认证与建宠拆开，spec §13-15）
 
 ```text
-┌──────────────────────────────┐
-│        PLANET orbit           │
-│   Their whole world. One place.│
-│                              │
-│  ┌─────────┐  ┌─────────┐   │
-│  │ 加入照护圈 │  │ 创建新宠物 │   │   ← 两分支卡片，平级入口
-│  └─────────┘  └─────────┘   │
-│                              │
-│  （任一分支先进邮箱 → 验证码）    │
-│  你的邮箱 [………………]  [Send]     │
-│  验证码   [＿ ＿ ＿ ＿ ＿ ＿] →  │   F1：6 位码，两用途（登录/注册合一）
-│                              │
-│  分支A·加入：输入邀请码 → 进圈    │   F2
-│  分支B·创建：宠物名 → 物种/品种   │   F3 最小档案，生日可选
-│            → 生日(可选) → 完成  │      全部可跳过、事后补
-└──────────────────────────────┘
+认证（登录注册合一）：         邀请深链（spec §14）：
+  Email → [Continue]           Invite → 验证 Email → Preview circle
+  → 6 位码（末位自动验证）       "You're invited to care for Milo"
+                                 → [Join]
+
+建宠（最小 onboarding）：
+  名字 → Dog/Cat/Other → 照片(可跳过) → "Meet Milo."
+  Breed/Birthday/过敏/用药全部后补，不做健康问卷
 ```
 
-## 2. /app（Today）——默认首页，成败屏
+## 2. /app（Today）——成败页
 
 ```text
-┌ 顶栏 ────────────────────────┐
-│ Today · Sat, Aug 17  [⇪ Share]│   右上：导出今日卡片图（进家人群）
-│ ┌──────────────────────────┐ │
-│ │ ●●●○○   3 of 5 done      │ │   今日进度行（点=任务，可点）
-│ └──────────────────────────┘ │
-│                              │
-│ 08:00  ●  Breakfast   Amy ✓  │   行结构：时间｜状态点｜标题｜完成人
-│ 09:00  ●  Apoquel 16mg Devin✤│   ✤=完成但有备注；整行可点看详情
-│ 12:00  ○  Walk           —   │   未完成：点行=完成；长按/右缘=跳过
-│ 18:00  ○  Dinner          —  │
-│                              │
-│ ── Skipped ──                 │   折叠区（今天跳过的，可恢复）
-│                              │
-│ [+ Add a task]                │   模板：喂药/喂饭/遛弯/自定义+时间
-└──────────────────────────────┘
+╭ Hero（145–170px，Brand-100 极浅渐变，右下宠物照片小图＋↗分享）╮
+│ TODAY · Saturday · Aug 17                                   │
+│ Good morning, Milo.                                         │
+│ 3 of 5 complete   ●●●○○                                     │
+╰─────────────────────────────────────────────────────────────╯
+Morning                          ← 按 Daypart 分组，不按机械时间列表
+  08:00  ✓ Breakfast      Amy · 8:03
+  09:00  ✓ Apoquel 16mg   Devin · 9:04
+Afternoon
+  12:00  ○ Walk
+Evening
+  18:00  ○ Dinner
+Skipped (1) ▾                    ← 折叠区，可 Restore；Skip=左滑或详情页
+[+ Add care task]                ← Bottom Sheet 模板：Breakfast/Dinner/Medication/Walk/Custom
 ```
 
-- 数据：`care_tasks × task_logs(today)`；完成走乐观更新；
-- 空状态：三张任务模板卡任点一张即建第一个任务。
+- 完成即乐观更新（无确认弹窗）+ Toast 带 Undo；全部完成 Hero 变 "All cared for today."（不撒花）；
+- 空状态 = 模板卡即建任务（"What does Milo do every day?"）；
+- ↗ = Share today card（生成图 / Web Share API，直发家人群）。
 
 ## 3. /app/timeline
 
 ```text
-┌ 顶栏 ────────────────────────┐
-│ Timeline · Milo        [↗ Share]│  页头分享=分享时间线视图（F7）
-│ ┌──────────────────────────┐ │
-│ │ Milo 怎么了？……          📷│ │   常驻聚焦输入（≤5 秒记录），📷=拍照记录
-│ └──────────────────────────┘ │
-│ [All][Symptom][Med][Visit]   │   筛选 chips（横向滚动）
-│ [Photo][Weight]               │
-│                              │
-│ ── Today ──                   │   按日分组，向下滚=更早
-│ 20:31  ⚠ Vomited ×2    Devin  │   行结构：时间｜类型标｜标题｜记录人
-│ 18:13    Walk 31min     Amy   │   ⚠=症状类加重标记；📎=有附件
-│ ── Yesterday ──               │
-│ 09:02  ⚖ 5.9 kg        Devin │   ⚖=体重（读 data JSONB 数值）
-│ …                             │
-└──────────────────────────────┘
+Timeline
+╭ Record something about Milo…            📷 ╮   ← 常驻聚焦输入（≤5 秒）
+╰─────────────────────────────────────────╯
+[All][Health][Weight][Visit][Photo]           ← 用户语言筛选，不暴露 DB enum
+TODAY
+20:31  ╭ Health 卡（大卡：症状/就诊/带照片/长备注）╮
+       │ Vomited twice after dinner            │
+       │ 📎1 photo · Devin · 20:31              │
+       ╰────────────────────────────────────────╯
+18:13  Weight · 5.9 kg · Devin                 ← 紧凑行（体重/简note）
+YESTERDAY …
 ```
 
-- 点行 = 事件详情（来源/时间/附件/编辑/删除）；
-- 空状态：引导记录"最近一次异常或体重"。
+- **数据边界（spec §31，重要）**：日常任务完成**不**自动进 Timeline（否则淹没健康记录）；只有用药开始/停止等长期变化自动生成事件；
+- 空状态："Milo's story starts here."
 
-## 4. /app/pet（档案 + 成员 + 数据）
+## 4. /app/pet——Overview + 二级页（spec §42-43）
 
 ```text
-┌ 顶栏 ────────────────────────┐
-│ Milo                    [Edit]│
-│ [头像] Milo · 金毛 · 7y2m · 5.9kg│
-│ [Prepare for vet] [Share sitter]│  ← 两个上下文动作按钮（F6 / F7）
-│                              │
-│ ── Profile ───────────────    │
-│  Allergies    Chicken (重)    │
-│  Conditions   Atopic dermatitis│
-│                              │
-│ ── Medication ────────────    │
-│  ● Apoquel 16mg · daily · since Jul │  ●=active；灰点=ended
-│  [+ Add medication]           │   F3：建档即问"要加进今日任务吗"
-│                              │
-│ ── Family ────────────────    │
-│  [D] Devin · Owner            │
-│  [A] Amy   · Caregiver        │
-│  [+ Invite a caregiver]       │   ← 北极星动作（复制链接/二维码）
-│                              │
-│ ── Emergency ─────────────    │
-│  Primary     Devin · +65 …    │
-│  Vet         Greenwoods · +65…│
-│  Authorized  李萍（联系不上时    │   ← 紧急医疗授权（差异化字段）
-│              的医疗决定人）      │
-│                              │
-│ ── Data ─────────────────     │
-│  [Export my data]  [Delete pet]│   F8：导出=JSON+照片清单；删除=级联+确认
-└──────────────────────────────┘
+        [Milo 大照片]              ← 页面视觉中心
+             Milo
+  Golden Retriever · 7y2m
+  5.9 kg（派生自最新体重事件）· Male
+[ Prepare for vet ]
+Share Milo's care →
+─────────────────────────────
+Health profile      ›   （过敏/慢病）
+Medications         ›   （active/past，建档后问"加进 Today？"）
+Care circle         ›   （Owner/Caregiver + Invite——北极星动作）
+Emergency & Vet     ›   （primary/vet/医疗决定人；平静视觉，不红色警示）
+Data & Privacy      ›   （导出/下载照片/活跃链接/删除——红色只进 Danger Zone）
 ```
 
-## 5. 全局＋：快速记录（底部抽屉，任何页唤起）
+二级路由：`/app/pet/{profile|medications|circle|emergency|data}`。
+
+## 5. 全局＋：Quick Record（spec §35-38）
 
 ```text
-┌───── 底部抽屉 ──────┐
-│ + Note + Symptom + Weight + Medication + Photo │  类型行（横滑）
-│ ───────────────── │
-│ （选中类型后展开最小表单，回车即存）           │
-│  Note:      一行文本 → Save                   │
-│  Symptom:   文本（+可选 轻/中/重）→ Save       │
-│  Weight:    数字键盘 + kg/lb → Save           │
-│  Medication:名称+剂量+频次 → Save（建档+可选入今日任务）│
-│  Photo:     拍照/选图 → 压缩上传 → 一句话(可选)  │
-└──────────────────┘
+╭ Quick record ────────────╮
+│ 📝 Note   ♥ Symptom      │
+│ ⚖ Weight  + Vet visit   │
+│ 📷 Photo                 │
+╰──────────────────────────╯
 ```
 
-- 所有类型默认"现在"为发生时间，可事后在详情改——5 秒纪律的实现。
+- **不含 Medication/Add task/邀请/分享**（管理动作不进＋）——用药的长期语义走 Pet→Medications，今日服药走 Today 任务，开始/停止自动生成 Timeline 事件；
+- 表单最小化：默认时间=Now，Severity 可选，Save 后键盘收起+乐观插入。
 
-## 6. /s/[token]（公开只读，免注册）
-
-**Summary 视图（kind=summary，打印友好）：**
+## 6. /s/[token] 公开页（免注册，无导航无 cookie 弹窗）
 
 ```text
-│ MILO · VET SUMMARY             │
-│ 金毛 · 7y · Prepared by family · Aug 17 │
-│                                │
-│ Why we're here    家人一句话    │
-│ Allergies         …            │
-│ Medication        Apoquel 16mg daily │
-│ Recent changes    近30天症状/体重事件列表 │
-│ Visits & weight   最近2次就诊 + 体重趋势行 │
-│                                │
-│ read-only · 71h 后过期 · powered by PLANET │
+Vet Summary（白+极浅蓝+中性排版，打印友好）：
+  MILO · VET SUMMARY · Prepared by family
+  WHY WE'RE HERE → IMPORTANT(过敏) → ACTIVE MEDICATION
+  → RECENT CHANGES → Weight → Visits        ← 兽医优先级排序（spec §56）
+  Private link · Expires in 71h · powered by PLANET
+
+Care Card（ex-Sitter，稍暖）：
+  CARING FOR MILO · shared by Devin · expires Sunday
+  TODAY: 任务+状态
+  IF SOMETHING FEELS WRONG: Devin → Vet → 医疗决定人
+  Health history stays private.
 ```
 
-**Sitter 视图（kind=sitter）：**
+- 过期/撤销：不解释内部机制，只说"Ask Milo's family for a new link"。
+
+## 7. Prepare for vet 三步流（spec §53-55）
 
 ```text
-│ CARING FOR MILO · shared by Devin · expires Sunday │
-│                                │
-│ Today's care                   │
-│  08:00 Breakfast + Apoquel ✓   │
-│  18:30 Evening walk (gentle)   │
-│                                │
-│ If something feels wrong       │
-│  Call Devin first → Greenwoods Vet │
-│  Authorized: 李萍               │
-│                                │
-│ powered by PLANET              │
+reason（为什么就诊，一句话）→ select（逐项勾选包含内容）→ preview（编辑选择/私链/打印）
 ```
 
-- 无导航、无登录、无 cookie 横幅；过期/撤销页只写"链接已失效，找分享人要新链接"。
+## 布局总原则
 
-## 布局总原则（从评估报告导出）
-
-1. 每屏只有一个主操作（Today=完成任务；Timeline=快速记录；Pet=邀请）；
-2. 记录路径任何入口 ≤2 次点击到达（全局＋ 一次、聚焦输入框零次）；
-3. 完成与记录永远带人名和时间，UI 不允许"无名氏"状态出现；
-4. 空状态即引导（模板卡、示例行），不出现纯空白页。
+1. 一页一问题：Today=还有什么没做；Timeline=发生过什么；Pet= Milo 是谁；＋= 刚发生什么；
+2. 记录 ≤2 次点击可达，输入默认 Now；
+3. 完成与记录永远带人名时间；
+4. 空状态即教学，绝不出 "No Tasks"；
+5. 可撤销操作不确认，不可逆操作才确认（spec §87）。

@@ -11,6 +11,9 @@
 | 样式 | **Tailwind 4 utilities + 现有 token**（`@theme` 把 `--paper/--green/...` 映射进 Tailwind） | 已接线零成本启动；v4 CSS-first 配置不冲突手写类；布局用 utilities 提速，品牌组件（卡片/任务行）继续语义类 | 引入第二套 CSS-in-JS；推倒重写成全 utility |
 | 交互组件 | **Radix UI Primitives**（dialog / popover / dropdown-menu / tabs / select / switch / tooltip），无样式直配 token | 要 a11y 正确的交互件但不要视觉主张；纸感衬线的品牌视觉必须自己长 | MUI/Chakra/AntD（视觉强主张，与温暖纸感冲突）；完整 shadcn（依赖面大、默认灰调）——只借鉴其 copy-in 组件模式 |
 | 服务端状态 | **TanStack Query v5** | 任务列表轮询、完成任务的乐观更新（点完成立刻实心、失败回滚）、缓存失效，都是它的标准场景 | Redux Toolkit（无全局客户端状态需求）；裸 useEffect（四周内必写出竞态） |
+| 刷新策略 | page focus / window foreground revalidate + mutation 后 invalidate（UI spec §66） | 2–4 人家庭不需要 WebSocket，30–60s 后台刷新兜底 | 实时推送基建（Phase 1 无） |
+| 查询键约定 | `pet:{id}` `today:{petId}:{date}` `timeline:{petId}` `medications:{petId}` `circle:{circleId}` `shares:{petId}` | mutation 只 invalidate 相关键（UI spec §69） | — |
+| 列表分页 | Timeline **cursor 分页**（`?before=<cursor>`，触底加载更早） | 一年后 500 条记录仍稳定，offset 分页会漂移（UI spec §72） | page=1&page=2 |
 | 表单 | **react-hook-form + zod** | 建档/任务/药品表单的非受控性能；zod schema 同一份供表单提示与提交前校验 | Formik（维护迟缓） |
 | 图标 | **lucide-react**（stroke-width 1.75 匹配现有细线图标） | 树摇友好、风格中性；品牌 orbit logo 继续自绘 | icon 库全家桶（bundle 膨胀） |
 | 日期时间 | **dayjs** + 原生 `input[type=date/time]` 自定义皮肤 | 格式化够用；原生选择器免 30KB 库且移动端体验最好 | react-datepicker/moment（重） |

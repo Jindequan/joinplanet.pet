@@ -42,6 +42,7 @@ joinplanet.pet/
 - [App 设计规划](docs/product/APP-DESIGN.md)
 - [App 技术与组件选型](docs/product/APP-TECH-STACK.md)
 - [App 页面布局草稿](docs/design/APP-LAYOUTS.md)
+- [App UI/UX 规格 v1（canonical）](docs/design/APP-UI-SPEC-V1.md)
 - [设计团队审查（对标×全生命周期）](docs/research/DESIGN-REVIEW.md)
 - [外部评估报告 2026-08-17（定锚：digital home / WAP / Pet Intelligence）](docs/research/DESIGN-EVALUATION-20260817.md)
 - [设计方向](docs/design/DESIGN.md)

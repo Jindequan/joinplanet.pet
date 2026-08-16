@@ -73,12 +73,16 @@ users           (id, email UNIQUE, email_hash, display_name, created_at)
 sessions        (id, user_id, expires_at, created_at)          -- 撤销用
 login_codes     (email, code_hash, expires_at, used_at)        -- 魔法链接/验证码
 
-circles         (id, name, invite_code UNIQUE, created_at)     -- 一个照护圈
+circles         (id, name, timezone, invite_code UNIQUE, created_at)
+                                                             -- timezone：圈子本地时区，
+                                                             -- 任务 time_of_day 按它解释（出差/寄养跨时区是目标场景）
 circle_members  (circle_id, user_id, role 'owner'|'caregiver', joined_at,
                  PRIMARY KEY(circle_id, user_id))
 
 pets            (id, circle_id, name, species, breed, birthday,
-                 allergies, conditions, emergency_contacts JSONB,
+                 allergies, conditions,
+                 medications JSONB,        -- [{name, dose, schedule}]，Summary 的「当前用药」段直接读这里
+                 emergency_contacts JSONB,
                  notes, avatar_key, created_by, created_at)
 -- MVP：一个 circle 只建一只宠物（应用层约束，schema 不锁）
 
@@ -141,11 +145,24 @@ DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页：
 
 ```text
 邮件邀请码 → 登录（验证码）→ 创建 Milo
-  → 模板加今日任务 → 截图发家人群（产品自传播时刻）
-  → 邀请第二位照顾者 → 对方免注册 30 秒上手
+  → 模板加今日任务 → 把 Today 卡片分享进家人群（产品自传播时刻）
+  → 邀请第二位照顾者 → 对方输邮箱验证码，30 秒上手
   → 记录一次症状 + 拍一张病历
   → 就诊前：生成 Vet-ready Summary 链接 → 兽医手机直接打开
 ```
+
+**角色权限（一行写死，避免实现时含糊）**：
+
+| 动作 | Owner | Caregiver | 临时链接接收方 |
+|---|---|---|---|
+| 记录任务 / 事件 / 上传 | ✓ | ✓ | — |
+| 生成 / 撤销分享链接 | ✓ | ✗ | — |
+| 邀请 / 移除成员、删除宠物、解散圈子 | ✓ | ✗ | — |
+
+**提醒策略（修订）**：Phase 1 不做推送，但要接受一个事实——第二位照顾者（通常是另一半）不会主动开 App，PLANET 真正的竞争对手是家庭群聊。对策两条，都不需要推送基建：
+
+1. Today 视图加「Share as image」：把今日任务卡导出成一张发群里很好看的图——骑在家人已经在截图转发的行为上（W2）；
+2. 每日摘要邮件（Resend 已在架构内）：早上发给圈成员「Today for Milo · 待办 + 谁已完成」（W4，一天一封，不做实时）。
 
 **Vet-ready Summary（Phase 1 = 确定性模板，无 AI）**：由结构化字段拼装——基础信息 / 过敏 / 当前用药 / 最近 30 天异常（symptom 事件聚合）/ 最近就诊与体重趋势 / 家人备注。生成前全字段可勾选排除（隐私原则：分享的最小集由用户决定）。落地的页面复用 landing 页 vet-paper 的视觉（同一张"纸"从营销变成真货）。
 
@@ -160,10 +177,12 @@ DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页：
 | 周 | 交付 | 试用动作 |
 |---|---|---|
 | W0.5 | Resend + R2 + schema + auth + `/app` 空壳 | 创始人自用 |
-| W1 | 宠物档案 + Today 任务（单用户） | 家庭 #1 手动开通，每天真用 |
-| W2 | 邀请成员 + Timeline 快速记录 + 图片上传 | 家庭 #1 邀第二人；观察"记录≤5秒"达不达标 |
-| W3 | 分享链接 + Summary 模板 + 公开页 | 家庭 #1 真就诊或模拟交接一次 |
-| W4 | PWA 安装 + 空状态打磨 + 删除/导出 + 埋点补全 | 10 个家庭全量 + 付费 founding 兑换终身 |
+| W1 | 宠物档案 + Today 任务（单用户）+「Tell Devin」反馈按钮 | 家庭 #1 手动开通，每天真用 |
+| W2 | 邀请成员 + Timeline 快速记录 + Today「Share as image」 | 家庭 #1 邀第二人；观察「记录≤5秒」与卡片进群聊的转发 |
+| W3 | 图片/PDF 上传（R2）+ 分享链接 + Summary 模板 + 公开页 | 家庭 #1 真就诊或模拟交接一次（最重的一周，刻意为之） |
+| W4 | PWA 安装 + 空状态打磨 + 删除/导出 + 每日摘要邮件 + 埋点补全 | 10 个家庭全量 + 付费 founding 兑换终身 |
+
+（修订：图片上传从 W2 挪到 W3——W2 的重心是「第二个人进来了」，附件是分享与 Summary 的前置，跟 W3 天然一组。）
 
 **Go 服务结构**（从单 main.go 长出模块）：
 
@@ -186,6 +205,8 @@ GA4（现有）+ 关键服务端事件；指标直接对应 PRD 成功标准：
 4. **付费衔接**：founding 兑换数、试点转付费数。
 
 Phase 1 结束时的 go/no-go：激活 ≥ 5/10 家庭，且 ≥ 3 个家庭在真实就诊/交接用过 Summary。达不到则回炉场景，不进 Phase 2。
+
+（样本只有 10 个家庭，比例是方向性信号不是统计结论；更硬的判据是质性事件——真实就诊场景里被用过、被主动转发过。每周记录家庭原话，比看漏斗诚实。）
 
 ---
 

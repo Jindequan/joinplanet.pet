@@ -91,10 +91,11 @@ CREATE TABLE IF NOT EXISTS medications (
 CREATE INDEX IF NOT EXISTS medications_pet_idx ON medications(pet_id);
 
 CREATE TABLE IF NOT EXISTS care_tasks (
-  id          BIGSERIAL PRIMARY KEY,
-  circle_id   BIGINT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
-  pet_id      BIGINT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
-  title       TEXT NOT NULL,
+  id            BIGSERIAL PRIMARY KEY,
+  circle_id     BIGINT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+  pet_id        BIGINT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+  medication_id BIGINT REFERENCES medications(id) ON DELETE SET NULL,
+  title         TEXT NOT NULL,
   time_of_day TIME NOT NULL DEFAULT '08:00',
   repeat      TEXT NOT NULL DEFAULT 'daily',
   note        TEXT NOT NULL DEFAULT '',

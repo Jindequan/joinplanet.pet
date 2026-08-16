@@ -64,7 +64,7 @@ R=$(curl -s -X POST "$BASE/api/v1/pets/$PET/shares" -H "$J" -H "$A" -d '{"kind":
 need "create care share" '"url"' "$R"
 CARE_URL=$(echo "$R" | sed -n 's/.*"url":"\([^"]*\)".*/\1/p')
 R=$(curl -s "$SHARE_URL")
-need "public summary page renders" 'WHY WE' "$R"
+need "public summary page renders" "Why we're here" "$R"
 R=$(curl -s "$CARE_URL")
 need "public care card renders" 'CARING FOR' "$R"
 R=$(curl -s "$BASE/api/v1/pets/$PET/shares" -H "$A")

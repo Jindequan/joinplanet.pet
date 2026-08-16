@@ -331,6 +331,9 @@ func (a *app) webhook(w http.ResponseWriter, req *http.Request) {
 			jsonResponse(w, http.StatusInternalServerError, errBody("webhook processing failed"))
 			return
 		}
+		// Founding entitlement: link by email hash when the user already
+		// exists; otherwise /auth/verify replays this grant at signup.
+		_ = grantFoundingByEmailHash(ctx, a.pool, emailHash, event.Data.ID)
 		_ = markWebhookProcessed(ctx, a.pool, eventID, "")
 		jsonResponse(w, http.StatusOK, map[string]any{"ok": true, "status": finalStatus})
 		return

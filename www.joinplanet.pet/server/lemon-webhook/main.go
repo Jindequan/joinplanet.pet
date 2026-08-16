@@ -65,6 +65,7 @@ func main() {
 	mux.HandleFunc("/intake", a.withCORS(a.intake))
 	mux.HandleFunc("/email-capture", a.withCORS(a.emailCapture))
 	mux.HandleFunc("/membership/claim", a.claim)
+	a.mountAPI(mux) // /api/v1/* modules + public /s/ + /invite/ pages
 
 	address := ":" + cfg.port
 	// Timeouts protect against slowloris-style resource exhaustion and ensure

@@ -61,7 +61,7 @@
 - T1 触达：每日摘要邮件（W4，Resend）；
 - T2 会员兑换：founding 付款 → 终身身份（复用既有 `membership_claims` + email_hash）。
 
-**为什么不更多**：每多一个功能就多一份 W1–W4 的实现与维护面。上表 8 个已覆盖三条生命周期的每个阶段且无孤岛（每个功能至少被一个阶段需要、每个阶段至少被一个功能覆盖）。候选功能（提醒推送、OCR、AI 摘要、多宠物、语音）全部有明确推迟位置，见 §8。
+**为什么不更多**：每多一个功能就多一份 W1–W4 的实现与维护面。上表 8 个已覆盖三条生命周期的每个阶段且无孤岛（每个功能至少被一个阶段需要、每个阶段至少被一个功能覆盖）。候选功能（提醒推送、OCR、AI 摘要、多宠物、语音）全部有明确推迟位置，见 §9。
 
 **为什么不更少**：去掉任何一个核心功能，照护生命周期就断一环——没有 F5 则 F6 无料可拼；没有 F7 则 F6 出不了门；没有 F4 则健康日常（占比最高的时间）无事可做，留存归零。
 
@@ -124,6 +124,8 @@
 **转化时刻（全部在 App 内，由使用强度触发）**：附件配额触顶、添加第二只宠物、点「AI 摘要」、打开趋势图、上传病历做 OCR——全是 power-user 时刻，不是 core-need 时刻。用户是"用得越来越深才付费"，不是"看了介绍就付费"。
 
 **founding 席位与本分层的关系**：founding（一次性 S$29.99 起）是 Phase 0 的验证工具和支持者特权——终身含未来全部 Pro 能力，作为"早期相信"的对价。它不是主转化引擎；主引擎是上面的免费体验 → 习惯 → 高级能力时刻。落地页"试点优先、订金其次"的双路径与这个定位一致。
+
+**分层的技术承接**：上表不是愿望清单，每一条付费边界都有唯一的技术裁决点——权益层（§4.2），Phase 1 建表建路径，Phase 2 接订阅时零改造。
 
 ---
 
@@ -192,6 +194,7 @@
 | F8 数据生命周期 | （无新表） | 各表统一软删/硬删策略 + 导出查询 |
 | T1 摘要邮件 | `digest_sends` | 仅防重发（circle × 日期 唯一） |
 | T2 会员兑换 | `membership_claims`（既有） | users.email_hash ↔ claims.email_hash |
+| **横切：权益** | `entitlements` | **新增付费内容的唯一扩展点**，见 §4.2 |
 
 ### 3.3 DDL 草图
 
@@ -230,7 +233,9 @@ task_logs  (id, task_id FK, log_date, status 'done'|'skipped',
 -- F5 时间线
 timeline_events (id, pet_id FK, type 'symptom'|'weight'|'medication'|'vaccine'
                  |'visit'|'note'|'photo', occurred_at, title, body,
-                 medication_id FK NULL,              -- 可选关联用药实体
+                 data JSONB,                           -- 结构化负载：体重数值、疫苗 next-due 等，
+                                                      -- 新事件类型不改表，见 §4.3
+                 medication_id FK NULL,                -- 可选关联用药实体
                  recorded_by FK, source 'manual'|'import', created_at)
 attachments     (id, pet_id FK, event_id FK NULL, kind 'image'|'pdf',
                  r2_key, filename, size, uploaded_by, created_at)
@@ -242,6 +247,13 @@ share_links (id, pet_id FK, kind 'summary'|'sitter'|'timeline',
 
 -- T1 摘要防重发
 digest_sends (circle_id FK, send_date, PRIMARY KEY(circle_id, send_date))
+
+-- 横切：权益层（新增付费内容的唯一扩展点，裁决逻辑见 §4.2）
+entitlements (id, user_id FK, feature_key TEXT,      -- '*' = 通配（founding 终身全含）
+              source 'founding'|'pro_sub'|'pilot'|'manual',
+              source_ref TEXT NULL,                  -- 授予来源 id（claim / subscription）
+              granted_at, expires_at NULL,           -- NULL = 永久
+              UNIQUE(user_id, feature_key, source))
 ```
 
 **衔接现有资产**：已付款 founding member 注册时以 `email_hash` 查 `membership_claims` 自动兑换终身；`email_captures` 是试点账号种子；`pet_intakes` 的痛点预填为时间线第一条事件（新家庭打开不是空白）。
@@ -261,7 +273,39 @@ digest_sends (circle_id FK, send_date, PRIMARY KEY(circle_id, send_date))
 
 ---
 
-## 4. 信息架构与屏幕清单
+## 4. 扩展性设计（前瞻性）
+
+Phase 纪律回答"什么时候做"，本节回答"做了之后怎么长"。**限制管范围，不管架构**——所有已知的未来方向（新付费内容、新事件类型、新分享种类、多宠、OAuth、推送、换计费商）今天都埋好接缝，将来只做加法。
+
+### 4.1 三条演进原则
+
+1. **加法演进**：schema 变更只增不破（新表、新列、新枚举值），永不改写既有用户数据的语义；
+2. **单一裁决路径**：任何"这个用户能不能用 X"只走一处代码（权益层 `can()`），禁止散落的 `if founding` / `if pilot`——新增付费内容时只动权益层与配置，不动业务模块；
+3. **模块 = 功能的开闭单元**：新能力 = 新 Go 模块 + 新路由组 + （若付费）新 feature key，老模块不改。
+
+### 4.2 权益层——"后续新增付费内容"的技术承接
+
+- **裁决**：`can(user, key)` = 存在未过期的 `feature_key` 或 `'*'`（通配）权益。Phase 1 它只回答两件事：founding 通配（终身含未来全部 Pro）、pilot 授权（10 个家庭的门）；
+- **授予**：权益只能由事件派生——既有 webhook ledger 的 `order_created` → 授 founding `'*'`；将来 `subscription_created / renewed / cancelled` → 授予 / 续期 / 过期对应键。**换计费商（Lemon Squeezy → Stripe）只换事件适配器，权益数据一行不动**；
+- **配额**：附件 20 张/月等限额是代码配置（plan → limits 映射），不是用户数据——调量改配置发布，零迁移；
+- **新付费内容的上线路径**：新 `feature_key` → 业务模块挂 `requireEntitlement(key)` → 归入某个 plan 配置。全程加法，`users` 表永远不知道"付费内容"的存在。
+
+（这就是 §1.5"推迟的只是计费实现"的技术含义：订阅页面和计费流程是 Phase 2，但权益层的表与 `can()` 路径 **Phase 1 就建**——现在不建，将来就是穿透式改造。）
+
+### 4.3 已知扩展点清单（今天埋的点 vs 将来怎么接）
+
+| 未来方向 | 今天埋的点 | 将来怎么接（不动什么） |
+|---|---|---|
+| 新付费能力 | `entitlements` + `can()` | 新 key + 挂 gate，零用户数据迁移 |
+| 新事件类型（疫苗 due、体重结构化、QoL 量表） | `type` CHECK + `data JSONB` | 加枚举值 + 定义 data 结构，不改表 |
+| 新分享种类（寄养模板包、告别册链接） | `share_links.kind` 枚举 | 新 kind + 新渲染器 |
+| 多宠解锁 | pets 本就是独立实体，仅 UI 锁 1/circle | 挂 `multi_pet` gate，schema 不动 |
+| 第三方登录（Google OAuth） | users 无密码字段、以 email 为锚 | 新增 `auth_identities(user_id, provider, provider_uid)` 挂靠表 |
+| 推送 / 新触达渠道 | T1 摘要走通知接口（channel 适配器） | 加 push 适配器，摘要生成逻辑复用 |
+| 换计费商 / 上订阅 | webhook 事件 ledger + 权益派生 | 写新适配器，权益与用户数据不动 |
+| API 演进 | `/api/v1/` 已版本化 | v1 只加字段不删改；破坏性变更开 v2 |
+
+## 5. 信息架构与屏幕清单
 
 DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页；屏幕标注承载的功能编号：
 
@@ -290,7 +334,7 @@ DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页；屏幕标注
 
 ---
 
-## 5. 关键流程（happy path）
+## 6. 关键流程（happy path）
 
 ```text
 邮件邀请码 → 登录（验证码）→ 创建 Milo
@@ -319,11 +363,11 @@ DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页；屏幕标注
 
 ---
 
-## 6. 构建顺序（4 周，每周结束可试用，功能编号标注进度）
+## 7. 构建顺序（4 周，每周结束可试用，功能编号标注进度）
 
 | 周 | 交付 | 试用动作 |
 |---|---|---|
-| W0.5 | Resend + R2 + schema（§3.3 全量）+ auth + `/app` 空壳 | 创始人自用 |
+| W0.5 | Resend + R2 + schema（§3.3 全量，**含权益层**）+ auth + `can()` 裁决路径 + `/app` 空壳 | 创始人自用 |
 | W1 | F3 档案（含用药清单）+ F4 Today（单用户）+「Tell Devin」反馈按钮 | 家庭 #1 手动开通，每天真用 |
 | W2 | F2 邀请成员 + F5 快速记录 + Today「Share as image」 | 家庭 #1 邀第二人；观察「记录≤5秒」与卡片进群聊的转发 |
 | W3 | F5 附件上传（R2）+ F6 Summary 模板 + F7 分享链接 + 公开页 | 家庭 #1 真就诊或模拟交接一次（最重的一周，刻意为之） |
@@ -337,12 +381,13 @@ DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页；屏幕标注
 server/lemon-webhook/
 ├── main.go      # 既有入口 + 新 mux 挂载
 ├── auth.go circle.go pet.go tasks.go timeline.go share.go data.go
+├── entitlement.go   # 权益层：can() / requireEntitlement() / 配额配置——唯一裁决路径
 └── db.go        # 既有 + 新查询
 ```
 
 ---
 
-## 7. 埋点与验证指标（Phase 1 出口条件）
+## 8. 埋点与验证指标（Phase 1 出口条件）
 
 GA4（现有）+ 关键服务端事件；指标直接对应 PRD 成功标准：
 
@@ -358,6 +403,6 @@ Phase 1 结束时的 go/no-go：激活 ≥ 5/10 家庭，且 ≥ 3 个家庭在�
 
 ---
 
-## 8. 明确推迟到 Phase 2+（防止范围爬升）
+## 9. 明确推迟到 Phase 2+（防止范围爬升）
 
-OCR/结构化导入、AI 摘要与自动时间线、语音记录、推送提醒（实时触达）、多宠物、数据导出全家桶、**Pro 计费系统（分层边界已在 §1.5 定死：基础版永久免费，Pro 卖高级能力——推迟的只是计费实现，不是边界本身）**、原生 App 决策。任何一项进入 Phase 1 的唯一途径：pilot 家庭用它换掉了第四周的打磨周。
+OCR/结构化导入、AI 摘要与自动时间线、语音记录、推送提醒（实时触达）、多宠物、数据导出全家桶、**Pro 订阅计费流程（分层边界在 §1.5 定死、权益层本体 Phase 1 已建（§4.2）——推迟的只是订阅页面与计费对接，不是扩展架构）**、原生 App 决策。任何一项进入 Phase 1 的唯一途径：pilot 家庭用它换掉了第四周的打磨周。

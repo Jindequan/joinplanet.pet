@@ -1,47 +1,53 @@
 # PLANET 路线图
 
-## Phase 0：先验证再开发（2–4 周）
+> 2026-08-17 按[外部评估报告](research/DESIGN-EVALUATION-20260817.md)重构：产品定位为 The digital home for your pet——Phase 1: PLANET remembers → Phase 2: PLANET understands → Phase 3: PLANET accompanies the pet throughout its life。
 
-- 完成 15–20 个用户访谈；
-- 建立 Landing Page（免费试点为主路径 + 可退款创始席位为辅路径，二者并存）；
-- 展示基础宠物管理能力、多人成员协助和便捷就医服务；
-- 用人工方式生成第一批健康摘要；
-- 招募 10 个家庭完成试点申请（邮箱 + 宠物情况，试点期间不收费）；
-- 测试第二位照顾者邀请；
-- 收取至少 5 个可退款创始订金（S$29.99，首版发布前可全额退），或试点家庭的试用后付费。
+## Phase 0：落地页与支持者通道（进行中，与开发并行）
 
-进入开发（go）的门槛：试点申请有真实转化（非刷量邮箱），且 ≥5 个订金/付费；否则停或换方向。邮箱 waitlist 数量只作参考，不作为 go 信号。
+- Landing Page 双路径（免费试点申请为主 + 可退款创始席位为辅）继续运转，作为获客与支持者入口；
+- **不再作为开发门槛**（评估第十三节）：要验证的是"免费给你，你到底会不会持续使用"，不是"愿不愿预付一个尚不存在的产品"；
+- founding 席位（S$29.99 起，终身含未来全部 Pro）= 早期相信的对价，退款承诺照旧；
+- Reddit（r/IMadeThis）等渠道持续灌流量，收集试点申请。
 
-交付物：验证结论、用户原话、真实付款或订金、真实使用记录、是否进入开发的决定。
+## Phase 1：The Best Free Pet Care App（约 4 周）
 
-## Phase 1：MVP（约 4 周）
+目标不是赚钱，是**让用户愿意把 PLANET 当作这只宠物的数字档案**。
 
-- PWA 登录和宠物档案；
-- 今日照护任务；
-- 多人邀请；
-- 健康时间线；
-- PDF/链接分享；
-- 基础事件埋点；
-- 删除、撤回和导出。
+- 三屏聚焦：Today / Timeline / Pet（Share 为上下文动作 + 全局 + 快速记录）；
+- F1 身份（邮箱验证码）→ F3 档案（含用药清单、紧急医疗授权）→ F4 今日照护协作 → F5 时间线（≤5 秒记录）→ F6 Summary 模板 → F7 免注册分享链接；
+- 权益层（entitlements + can()）随 W0.5 建立，为 Phase 2 订阅预留；
+- 排期纪律：问题不是开发能力，是别把时间花在"完成产品"而不是观察用户用什么；W4 的摘要邮件/PWA/导出可让位于三屏打磨；
+- **第一版禁止因为"全面"加功能**（评估硬限制）。
 
-## Phase 2：可用版本（约 4 周）
+北极星：**Weekly Active Pets**（不是 WAU）。目标漏斗：
 
-- 图片/PDF 上传；
-- OCR 和结构化抽取；
-- AI 健康摘要；
-- 分享链接过期和撤销；
-- 付费方案；
-- 数据备份与隐私设置。
+```text
+100 installs → 40 create pet → 20 create first task → 12 use 3+ days
+→ 8 invite another caregiver → 5 use 2+ weeks
+```
 
-## Phase 3：增长验证（约 4 周）
+出口条件：漏斗走通到"5 只宠物持续使用 2+ 周"。达不到回炉三屏摩擦，不加功能。
 
-- 英文 Landing Page SEO；
-- 宠物保姆交接模板；
-- 看兽医前准备清单；
-- 老年宠物照护模板；
-- 邀请裂变和分享页面；
-- 决定是否做原生 App。
+## Phase 2：Pet Intelligence——Pro 订阅
+
+> Free = Remember everything；Pro = Understand everything。
+
+- AI 从 UI 消失：无聊天框；一句话自由文本后台结构化（症状/次数/时间），用户不再填表；
+- AI 能力：结构化记录、病历 OCR、时间线整理、智能搜索、AI 就诊准备、健康趋势、智能提醒、自动摘要；
+- 免费用户每月 3 次 AI 体验额度；
+- AI 只做 organize / retrieve / correlate / summarize / remind，永不 diagnose / prescribe；
+- 计费走权益层多适配器：Lemon Squeezy/Web 先行，预留 App Store IAP / Google Play（业务代码不知道钱从哪付的）；
+- 多宠解锁（挂 entitlement gate）。
+
+## Phase 3：全程陪伴
+
+- 纪念册 / 告别册（时间线 + 照片 + 导出天然支撑）；
+- 寄养模板包、旅行交接；
+- 费用 / 保险理赔材料；
+- 原生 App 决策（若 Pro 订阅成功且 iOS 内购必要）。
 
 ## 关键决策
 
-在 Phase 0 收款前，不做大规模 UI、原生 App、复杂后端和完整 AI 能力。产品是否成立，优先由真实付款、真实协作和真实分享行为决定。
+- Phase 1 不做 AI——刻意做到没有 AI 也非常好用，AI 上线时才像 "PLANET suddenly became intelligent"；
+- 应急永不设卡、分享不收费、导出不收费、核心闭环永久免费（品牌价值观，长期不动）；
+- 不扩品类：社区、商城、找医生、保险、AI 问诊、宠物百科都不做——越来越深地拥有这只宠物的一生数据，而不是横向铺开。

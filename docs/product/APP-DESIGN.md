@@ -1,7 +1,7 @@
 # PLANET App 设计规划（Phase 1 MVP）
 
-日期：2026-08-16（结构修订版：先业务功能与生命周期，后表设计）
-状态：设计定稿，**开工以 Phase 0 门槛为前提**（10 个试点申请真实转化 + ≥5 个订金/付费，见 ROADMAP）
+日期：2026-08-16（2026-08-17 采纳[外部评估报告](../research/DESIGN-EVALUATION-20260817.md)结构性修订）
+状态：设计定稿。**开发不再受订金门槛限制**（评估第十三节：要验证的是"免费给你，你用不用"，不是"愿不愿预付"）；founding 席位继续作为支持者通道并行运转
 上游文档：[PRD](PRD.md) · [MVP 范围](MVP.md) · [设计方向](../design/DESIGN.md) · [路线图](../ROADMAP.md)
 
 ---
@@ -10,7 +10,9 @@
 
 **做**：一个 PWA，让 2–4 人的家庭照护圈对一只宠物共享「今日任务 + 健康时间线 + 可撤销的临时分享」，就诊前一键生成 Vet-ready Summary。
 
-**商业模式（目标修正后的一句话）**：免费基础版（核心闭环永久免费、做到 80 分）+ Pro 订阅（高级能力）；founding 席位是 Phase 0 验证与支持者特权，不是主转化引擎。
+**产品本质（评估采纳）**：不是 Pet Health Tracker，是多人共养时的 **Shared Pet Care System**，长期是 **The digital home for your pet**——越来越深地拥有这只宠物的一生数据，而不是横向扩品类（社区/商城/找医生/保险/AI 问诊/百科均不做）。
+
+**商业模式（评估采纳）**：免费 = **Remember everything**（极其完整、极其好用——"完整"不等于"全面"，免费是核心任务零受阻，不是什么都有）；Pro = **Understand everything**（Pet Intelligence，见 §1.5）。founding 席位是 Phase 0 支持者特权，不是主转化引擎。
 
 **不做**（Phase 1 硬边界，来自 MVP.md）：
 
@@ -73,6 +75,18 @@
 | B 就诊准备："完整病史 3 秒讲清" | 异常 → 就医 | F5 记录 → F3 用药清单 → F6 拼装 → F7 送达兽医 |
 | C 临时交接："保姆只看今天" | 交接/寄养 | F7（sitter 视图 = 今日任务 + 紧急联系人含医疗授权人，不含病史） |
 
+### 1.3.1 增长与 aha 模型（评估第六节采纳）
+
+真正创造留存的是**多人照护**：就医半年一次、寄养一年几次，而喂药/喂饭/遛狗/清理每天发生。增长模型：
+
+```text
+Today 每天使用 → Timeline 自然积累 → 形成完整 Pet History
+  → 某天生病 → "过去六个月的数据全在 PLANET" ← 真正的 aha moment
+  → Summary 有了原料，Pro（理解）有了数据地基
+```
+
+由此推导开发重心的优先级：**Today > Timeline > Pet 三屏的打磨优先于一切新功能**——成败由 Today 决定，不是 Health。
+
 ### 1.4 北极星能力地图（全生命周期 × Phase）
 
 「为宠物提供全生命周期管理」的显式承诺。Phase 1 的 8 个功能只打验证靶心，但每个生命周期阶段都有归属能力、每个能力都有 Phase 标签，**全面性靠地图保证，工期靠 Phase 纪律保证**：
@@ -122,6 +136,14 @@
 | T1 每日摘要邮件 | ✓ | ✓ |
 
 **转化时刻（全部在 App 内，由使用强度触发）**：附件配额触顶、添加第二只宠物、点「AI 摘要」、打开趋势图、上传病历做 OCR——全是 power-user 时刻，不是 core-need 时刻。用户是"用得越来越深才付费"，不是"看了介绍就付费"。
+
+**Pro 的最终形态：Pet Intelligence，不是功能加法（评估第八/九/十节采纳）**
+
+- **AI 从 UI 中消失**：没有 "Ask PLANET AI" 聊天框。用户照旧一句话记录（"昨晚 Milo 吐了两次，今早没怎么吃"），Pro 在后台把自由文本结构化（Symptoms: Vomiting ×2 / last night；Appetite: reduced / this morning）——用户不再选类型、填次数、挑日期。这才是 AI 真正改变产品；
+- **AI 做关联理解**：体重连降 × 呕吐两次 × 换药 → 就诊准备时自动选出相关事件。AI 只做 organize / retrieve / correlate / summarize / remind，**永远不做 diagnose / prescribe**；
+- **免费用户每月 3 次 AI 额度**：让他体验一次"半年 Timeline 一键变成 Vet Summary"——转化力远大于展示 Pro 功能列表；
+- **铺垫节奏**：第一版刻意做到**没有 AI 也非常好用**。AI 上线时才像 "PLANET suddenly became intelligent"，而不是"又一个套壳宠物 App"；
+- Pro 清单随之升级：AI 结构化记录、AI 病历 OCR、AI 时间线整理、AI 智能搜索、AI 就诊准备、健康趋势、智能提醒、自动摘要、多宠、无限附件、高级报告。
 
 **founding 席位与本分层的关系**：founding（一次性 S$29.99 起）是 Phase 0 的验证工具和支持者特权——终身含未来全部 Pro 能力，作为"早期相信"的对价。它不是主转化引擎；主引擎是上面的免费体验 → 习惯 → 高级能力时刻。落地页"试点优先、订金其次"的双路径与这个定位一致。
 
@@ -302,29 +324,32 @@ Phase 纪律回答"什么时候做"，本节回答"做了之后怎么长"。**�
 | 多宠解锁 | pets 本就是独立实体，仅 UI 锁 1/circle | 挂 `multi_pet` gate，schema 不动 |
 | 第三方登录（Google OAuth） | users 无密码字段、以 email 为锚 | 新增 `auth_identities(user_id, provider, provider_uid)` 挂靠表 |
 | 推送 / 新触达渠道 | T1 摘要走通知接口（channel 适配器） | 加 push 适配器，摘要生成逻辑复用 |
-| 换计费商 / 上订阅 | webhook 事件 ledger + 权益派生 | 写新适配器，权益与用户数据不动 |
+| 换计费商 / 上订阅 / 原生内购 | webhook 事件 ledger + 权益派生 | 写新 Billing Adapter（Lemon Squeezy/Web、App Store IAP、Google Play）。评估第十二节点名：Apple 要求数字解锁走 IAP，届时只需 `Transaction → Adapter → Entitlement`——业务代码不知道钱从哪付的 |
 | API 演进 | `/api/v1/` 已版本化 | v1 只加字段不删改；破坏性变更开 v2 |
 
 ## 5. 信息架构与屏幕清单
 
-DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页；屏幕标注承载的功能编号：
+**IA（评估第五节采纳：Share 是动作，不是空间）**——一级 Tab 只有三个高频空间，Share 变成出现在它有意义的地方的上下文按钮，全局「+」承载快速记录：
 
 ```text
-/app/welcome    首次进入：创建宠物或输邀请码加入          F1→F2→F3
-/app            Today      今日照护（默认首页）            F4
-/app/timeline   Timeline   健康时间线                      F5
-/app/share      Share      分享与交接                      F6+F7
-/app/pet        Pet        宠物档案 + 成员管理             F2+F3+F8
-/s/[token]      公开只读页（兽医/保姆打开，无需注册）      F7
+/app/welcome    首次进入：创建宠物或输邀请码加入              F1→F2→F3
+/app            Today      今日照护（默认首页）                F4
+/app/timeline   Timeline   健康时间线（页头 [Share]）          F5 + F7
+/app/pet        Pet        档案/成员/用药（[Prepare for vet] [Share with sitter]）  F2+F3+F6+F7
+全局 +          + Note / + Symptom / + Weight / + Medication / + Photo   F5 快速记录
+/s/[token]      公开只读页（兽医/保姆打开，无需注册）          F7
 ```
+
+（用户不会"每天去看看 Share"——把低频动作从导航里拿掉，三个 Tab 更纯粹。）
 
 | 屏幕 | 目的 | 主操作 | 空状态 |
 |---|---|---|---|
 | Today | 一眼回答"今天还有什么没做、谁做的" | 点完成/跳过（带人与时间） | 引导加第一个任务（喂药/遛弯模板一键加） |
-| Timeline | 最近发生了什么，可追溯 | 一句话快速添加 + 拍照 | 引导记录"最近一次异常或体重" |
-| Share | 把对的视图给对的人 | 生成限时链接（24h/72h/7天） | 示例卡：给兽医/给保姆分别长什么样 |
-| Pet | 档案与谁在圈里 | 邀请第二位照顾者 | 邀请链接复制 + 二维码 |
+| Timeline | 最近发生了什么，可追溯 | 一句话快速添加 + 拍照（全局 +） | 引导记录"最近一次异常或体重" |
+| Pet | 档案、用药与谁在圈里 | 邀请第二位照顾者；[Prepare for vet] 生成 Summary | 邀请链接复制 + 二维码 |
 | /s/[token] | 接收方 3 秒看懂 | 无（纯只读） | 过期/撤销页写"找 Devin 要新链接" |
+
+（Share 不再有专属屏幕——生成 Summary、给保姆链接都是 Timeline/Pet 内的上下文动作，见 §5 IA。）
 
 **交互三原则**（PRD 产品原则落地）：
 
@@ -371,7 +396,9 @@ DESIGN.md 的四栏 IA 原样落地，加 onboarding 与公开页；屏幕标注
 | W1 | F3 档案（含用药清单）+ F4 Today（单用户）+「Tell Devin」反馈按钮 | 家庭 #1 手动开通，每天真用 |
 | W2 | F2 邀请成员 + F5 快速记录 + Today「Share as image」 | 家庭 #1 邀第二人；观察「记录≤5秒」与卡片进群聊的转发 |
 | W3 | F5 附件上传（R2）+ F6 Summary 模板 + F7 分享链接 + 公开页 | 家庭 #1 真就诊或模拟交接一次（最重的一周，刻意为之） |
-| W4 | F8 删除/导出 + T1 每日摘要邮件 + PWA 安装 + 空状态打磨 + 埋点补全 | 10 个家庭全量 + T2 founding 兑换终身 |
+| W4 | F8 删除/导出 + T1 每日摘要邮件 + PWA 安装 + 空状态打磨 + 埋点补全 | 公开发布，跑 100 installs 漏斗（§8） |
+
+**排期纪律（评估第四节的警告）**：问题从来不是开发能力，而是"把时间花在完成产品，而不是观察用户用什么"。W4 的摘要邮件/PWA/导出都是可让位项——**三屏（Today/Timeline/Pet）打磨到漂亮、低摩擦、愿意每天打开，优先级高于上表任何一项**；第一版真正聚焦的只有 Pet / Today / Timeline / Share-Summary 四件事。
 
 （图片上传从 W2 挪到 W3：附件是分享与 Summary 的前置，跟 W3 天然一组；W2 的重心是「第二个人进来了」。）
 
@@ -389,20 +416,28 @@ server/lemon-webhook/
 
 ## 8. 埋点与验证指标（Phase 1 出口条件）
 
-GA4（现有）+ 关键服务端事件；指标直接对应 PRD 成功标准：
+**北极星（评估第十三节采纳）：Weekly Active Pets，不是 WAU。** 一只宠物 = 2 个照顾者、8 个任务、3 条事件的活跃实体——以 Pet 为单位衡量才符合"数字档案"的产品本质。
 
-1. **激活**：第二位照顾者被邀请率（加入家庭中 ≥2 人的比例）——北极星；
-2. **留存**：周任务完成 ≥4 天的家庭占比；
-3. **价值**：生成过 Summary 且分享链接被打开 ≥1 次的家庭占比；
-4. **付费衔接**：founding 兑换数、试点转付费数；
-5. **分层健康度（Phase 2 计费上线后）**：免费激活 → Pro 转化率、配额触达用户的占比、转化前的中位数使用天数——检验"用得深才付费"是否成立。
+**安装漏斗（Phase 1 目标线）**：
 
-Phase 1 结束时的 go/no-go：激活 ≥ 5/10 家庭，且 ≥ 3 个家庭在真实就诊/交接用过 Summary。达不到则回炉场景，不进 Phase 2。
+```text
+100 installs → 40 create pet → 20 create first task → 12 use 3+ days
+→ 8 invite another caregiver → 5 use 2+ weeks
+```
 
-（样本只有 10 个家庭，比例是方向性信号不是统计结论；更硬的判据是质性事件——真实就诊场景里被用过、被主动转发过。每周记录家庭原话，比看漏斗诚实。）
+GA4（现有）+ 关键服务端事件：
+
+1. **激活**：第二位照顾者被邀请率——北极星的前置环节；
+2. **留存**：周任务完成 ≥4 天的宠物占比（WAP 的构成质量）；
+3. **价值**：生成过 Summary 且分享链接被打开 ≥1 次的宠物占比；
+4. **付费衔接**：founding 兑换数、免费→Pro 转化（P2 计费上线后：配额触达率、转化前中位数使用天数）。
+
+**Phase 1 出口：漏斗走通到"5 只宠物持续使用 2+ 周"。** 达不到就回炉 Today/Timeline/Pet 三屏的摩擦——不加功能（评估的硬限制）。质性判据并行保留：真实就诊场景用过、被主动转发过、每周记录用户原话。
 
 ---
 
 ## 9. 明确推迟到 Phase 2+（防止范围爬升）
 
 OCR/结构化导入、AI 摘要与自动时间线、语音记录、推送提醒（实时触达）、多宠物、数据导出全家桶、**Pro 订阅计费流程（分层边界在 §1.5 定死、权益层本体 Phase 1 已建（§4.2）——推迟的只是订阅页面与计费对接，不是扩展架构）**、原生 App 决策。任何一项进入 Phase 1 的唯一途径：pilot 家庭用它换掉了第四周的打磨周。
+
+**评估的硬限制（2026-08-17）**：第一版**禁止**因为"全面"继续加功能。精力全部给 Today + Timeline + Pet 三屏——漂亮、极低摩擦、让人真的愿意每天打开。AI 等数据真的开始产生以后再进去，那时它才不是 gimmick，而是最强的付费层（Phase 1: PLANET remembers → Phase 2: PLANET understands → Phase 3: PLANET accompanies the pet throughout its life）。

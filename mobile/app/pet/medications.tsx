@@ -29,6 +29,7 @@ import { qk, useActivePet, useMedications, type Medication } from '../../src/lib
 import { colors, radius, spacing, typography, withAlpha } from '../../src/theme';
 
 interface Followup {
+  id: number | string;
   name: string;
   dose: string;
   schedule: string;
@@ -83,15 +84,24 @@ export default function MedicationsScreen() {
     if (!trimmed || !petId || saving) return;
     setSaving(true);
     try {
-      await post(`/pets/${petId}/medications`, {
-        name: trimmed,
-        dose: dose.trim() || undefined,
-        schedule: schedule.trim() || undefined,
-      });
+      const res = await post<{ medication: { id: number | string } }>(
+        `/pets/${petId}/medications`,
+        {
+          name: trimmed,
+          dose: dose.trim() || undefined,
+          schedule: schedule.trim() || undefined,
+        },
+      );
       invalidate();
       haptics.light();
       const detail = [dose.trim(), schedule.trim()].filter(Boolean).join(' · ');
-      setFollowup({ name: trimmed, dose: dose.trim(), schedule: schedule.trim(), detail });
+      setFollowup({
+        id: res.medication.id,
+        name: trimmed,
+        dose: dose.trim(),
+        schedule: schedule.trim(),
+        detail,
+      });
     } catch (err) {
       toast({ message: err instanceof Error ? err.message : 'Could not save' });
     } finally {
@@ -99,7 +109,9 @@ export default function MedicationsScreen() {
     }
   };
 
-  /** Follow-up (spec §46): offer to add "{name} {dose}" to Today at 08:00. */
+  /** Follow-up (spec §46): offer to add "{name} {dose}" to Today at 08:00.
+   *  medication_id links the task to its medication (MED badge, contract F4);
+   *  the server expects a numeric id in JSON. */
   const addToToday = async () => {
     if (!followup || !petId || followupBusy) return;
     setFollowupBusy(true);
@@ -107,6 +119,7 @@ export default function MedicationsScreen() {
       await post(`/pets/${petId}/tasks`, {
         title: [followup.name, followup.dose].filter(Boolean).join(' '),
         time_of_day: '08:00',
+        ...(followup.id != null ? { medication_id: Number(followup.id) } : {}),
       });
       void client.invalidateQueries({
         queryKey: qk.today(petId, dayjs().format('YYYY-MM-DD')),

@@ -16,9 +16,11 @@ const THUMB_SIZE = 64; // spec §28 attachment thumbnail row
 export function EventLargeCard({
   event,
   onPress,
+  tz,
 }: {
   event: TimelineEvent;
   onPress: () => void;
+  tz?: string;
 }) {
   const badge = eventBadge(event);
   const attachments = event.attachments ?? [];
@@ -62,7 +64,7 @@ export function EventLargeCard({
             ))}
           </ScrollView>
         ) : null}
-        <Text style={styles.meta}>{eventMeta(event)}</Text>
+        <Text style={styles.meta}>{eventMeta(event, tz)}</Text>
       </Card>
     </Pressable>
   );
@@ -71,9 +73,11 @@ export function EventLargeCard({
 export function EventCompactRow({
   event,
   onPress,
+  tz,
 }: {
   event: TimelineEvent;
   onPress: () => void;
+  tz?: string;
 }) {
   return (
     <Pressable
@@ -82,7 +86,7 @@ export function EventCompactRow({
       onPress={onPress}
       style={({ pressed }) => [styles.compact, pressed && styles.compactPressed]}
     >
-      <Text style={styles.compactTime}>{formatTime(event.occurred_at)}</Text>
+      <Text style={styles.compactTime}>{formatTime(event.occurred_at, tz)}</Text>
       <Text style={styles.compactTitle} numberOfLines={1}>
         {compactTitle(event)}
       </Text>

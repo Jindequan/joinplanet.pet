@@ -126,7 +126,7 @@ export default function HealthProfileScreen() {
       return;
     }
     setBirthdayError(null);
-    savePet.mutate({ species: species.trim(), breed: breed.trim(), birthday: trimmed });
+    savePet.mutate({ species: species.trim(), breed: breed.trim(), birthday: trimmed || null });
   };
 
   const startHealthEdit = () => {

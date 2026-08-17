@@ -102,7 +102,8 @@ export default function EventDetailScreen() {
   const params = useLocalSearchParams<{ eventID?: string | string[] }>();
   const eventId = normalizeId(params.eventID);
   const client = useQueryClient();
-  const { pet } = useActivePet();
+  const { pet, circle } = useActivePet();
+  const tz = circle?.timezone;
   const petId = pet?.id;
   const { toast } = useToast();
 
@@ -212,7 +213,7 @@ export default function EventDetailScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.titleBlock}>
           <Text style={styles.titleText}>{event.title}</Text>
-          <Text style={styles.dateText}>{formatDetailDate(event.occurred_at)}</Text>
+          <Text style={styles.dateText}>{formatDetailDate(event.occurred_at, tz)}</Text>
         </View>
 
         {event.body ? <Text style={styles.bodyText}>{event.body}</Text> : null}

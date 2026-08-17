@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PawPrint } from 'lucide-react-native';
 import { EmptyState, PrimaryButton, Skeleton } from '../../src/components/ui';
+import { attachmentUrl } from '../../src/components/timeline/parts';
 import { ApiError, get, getToken, post } from '../../src/lib/api';
 import { qk } from '../../src/lib/queries';
 import { colors, radius, spacing, typography } from '../../src/theme';
@@ -123,7 +124,7 @@ export default function InviteScreen() {
       <View style={styles.center}>
         {data?.photo_url ? (
           <Image
-            source={{ uri: data.photo_url }}
+            source={{ uri: attachmentUrl(data.photo_url) }}
             style={styles.photo}
             contentFit="cover"
             accessibilityLabel={`Photo of ${petName}`}

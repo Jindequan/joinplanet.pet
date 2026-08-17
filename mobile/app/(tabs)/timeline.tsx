@@ -33,7 +33,8 @@ import { EventCompactRow, EventLargeCard } from '../../src/components/timeline/e
 import { QuickInputCard } from '../../src/components/timeline/quick-input';
 
 export default function TimelineScreen() {
-  const { pet } = useActivePet();
+  const { pet, circle } = useActivePet();
+  const tz = circle?.timezone;
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
   const { toast } = useToast();
@@ -44,7 +45,7 @@ export default function TimelineScreen() {
     () => feed.data?.pages.flatMap((page) => page.events) ?? [],
     [feed.data],
   );
-  const rows = useMemo(() => buildTimelineRows(events), [events]);
+  const rows = useMemo(() => buildTimelineRows(events, tz), [events, tz]);
 
   // Notes are only visible under "All" — the optimistic key mirrors that.
   const optimisticKey =
@@ -64,9 +65,9 @@ export default function TimelineScreen() {
   const renderItem = ({ item }: ListRenderItemInfo<TimelineRow>) => {
     if (item.kind === 'day') return <DayHeader label={item.label} />;
     if (isLargeEvent(item.event)) {
-      return <EventLargeCard event={item.event} onPress={() => openEvent(item.event.id)} />;
+      return <EventLargeCard event={item.event} tz={tz} onPress={() => openEvent(item.event.id)} />;
     }
-    return <EventCompactRow event={item.event} onPress={() => openEvent(item.event.id)} />;
+    return <EventCompactRow event={item.event} tz={tz} onPress={() => openEvent(item.event.id)} />;
   };
 
   return (

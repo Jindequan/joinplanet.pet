@@ -2,7 +2,7 @@
  * Quick Record (spec §35–§39) — "Record what happened", not a universal create.
  * Five record types; default occurred_at = now; optimistic timeline insert + toast.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -163,21 +163,31 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
     setPhoto({ uri: asset.uri, width: asset.width, height: asset.height });
   };
 
-  /** Save photo: create event, then upload attachment bound via event_id (contract F5). */
+  /** Save photo: create event once, then upload attachment bound via event_id
+   *  (contract F5). Retry reuses the already-created event so a flaky upload
+   *  never duplicates timeline rows. */
+  const photoEventRef = useRef<string | null>(null);
+
   const savePhoto = async () => {
     if (!petId || !photo) return;
     setBusy(true);
     try {
       const uri = await compressForUpload(photo.uri, photo.width, photo.height);
-      const event = await createEvent.mutateAsync({
-        type: 'photo',
-        title: text.trim() || 'Photo',
-        occurred_at: new Date().toISOString(),
-      });
+      let eventId = photoEventRef.current;
+      if (!eventId) {
+        const event = await createEvent.mutateAsync({
+          type: 'photo',
+          title: text.trim() || 'Photo',
+          occurred_at: new Date().toISOString(),
+        });
+        eventId = String(event.id);
+        photoEventRef.current = eventId;
+      }
       const form = new FormData();
       form.append('file', { uri, name: 'photo.jpg', type: 'image/jpeg' } as unknown as Blob);
-      form.append('event_id', event.id);
+      form.append('event_id', eventId);
       await upload(`/pets/${petId}/attachments`, form);
+      photoEventRef.current = null;
       haptics.light();
       toast({ message: 'Saved' });
       finish();

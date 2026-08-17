@@ -6,11 +6,16 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import { Card, Chip, Skeleton, type StatusBadgeVariant } from '../ui';
 import { colors, spacing, typography } from '../../theme';
 import { API_BASE } from '../../lib/api';
 import type { TimelineEvent } from '../../lib/queries';
 import { TIMELINE_FILTERS, type TimelineFilterKey } from './feed';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 /* ------------------------------ Formatting -------------------------------- */
 
@@ -22,6 +27,11 @@ export function attachmentUrl(url: string): string {
   return `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
+/** In the circle's timezone when given, else device-local (spec §75-76). */
+function inZone(iso: string, tz?: string): dayjs.Dayjs {
+  return tz ? dayjs.tz(iso, tz) : dayjs(iso);
+}
+
 /** "Manual" for manual/app entries; otherwise a capitalized source. */
 export function sourceLabel(source?: string): string {
   if (!source) return 'Manual';
@@ -30,13 +40,13 @@ export function sourceLabel(source?: string): string {
 }
 
 /** "20:31" */
-export function formatTime(iso: string): string {
-  return dayjs(iso).format('HH:mm');
+export function formatTime(iso: string, tz?: string): string {
+  return inZone(iso, tz).format('HH:mm');
 }
 
 /** Detail date line: "Aug 17 · 20:31" (spec §34). */
-export function formatDetailDate(iso: string): string {
-  return dayjs(iso).format('MMM D · HH:mm');
+export function formatDetailDate(iso: string, tz?: string): string {
+  return inZone(iso, tz).format('MMM D · HH:mm');
 }
 
 /* ------------------------------ Type language ------------------------------ */
@@ -84,8 +94,8 @@ export function compactTitle(event: TimelineEvent): string {
 }
 
 /** Large-card footer meta: "Devin · 20:31 · Manual". */
-export function eventMeta(event: TimelineEvent): string {
-  return [event.by_name, formatTime(event.occurred_at), sourceLabel(event.source)]
+export function eventMeta(event: TimelineEvent, tz?: string): string {
+  return [event.by_name, formatTime(event.occurred_at, tz), sourceLabel(event.source)]
     .filter(Boolean)
     .join(' · ');
 }
@@ -96,23 +106,23 @@ export type TimelineRow =
   | { kind: 'day'; key: string; label: string }
   | { kind: 'event'; key: string; event: TimelineEvent };
 
-function dayLabel(iso: string): string {
-  const d = dayjs(iso);
-  const now = dayjs();
+function dayLabel(iso: string, tz?: string): string {
+  const d = inZone(iso, tz);
+  const now = tz ? dayjs.tz(tz) : dayjs();
   if (d.isSame(now, 'day')) return 'TODAY';
   if (d.isSame(now.subtract(1, 'day'), 'day')) return 'YESTERDAY';
   return d.format('MM-DD');
 }
 
 /** Group a DESC event list into day-header + event rows (spec §28). */
-export function buildTimelineRows(events: TimelineEvent[]): TimelineRow[] {
+export function buildTimelineRows(events: TimelineEvent[], tz?: string): TimelineRow[] {
   const rows: TimelineRow[] = [];
   let currentDay = '';
   for (const event of events) {
-    const dayKey = dayjs(event.occurred_at).format('YYYY-MM-DD');
+    const dayKey = inZone(event.occurred_at, tz).format('YYYY-MM-DD');
     if (dayKey !== currentDay) {
       currentDay = dayKey;
-      rows.push({ kind: 'day', key: `day-${dayKey}`, label: dayLabel(event.occurred_at) });
+      rows.push({ kind: 'day', key: `day-${dayKey}`, label: dayLabel(event.occurred_at, tz) });
     }
     rows.push({ kind: 'event', key: event.id, event });
   }

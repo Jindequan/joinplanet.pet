@@ -82,7 +82,7 @@ func (a *app) handleTodayList(w http.ResponseWriter, req *http.Request, _ int64,
 	if date == "" {
 		var err error
 		if date, err = a.taskCircleToday(req.Context(), petID); err != nil {
-			jsonResponse(w, http.StatusInternalServerError, errBody("could not load today"))
+			jsonResponse(w, http.StatusInternalServerError, errBody("could not load today: "+err.Error()))
 			return
 		}
 	}
@@ -92,7 +92,7 @@ func (a *app) handleTodayList(w http.ResponseWriter, req *http.Request, _ int64,
 	}
 	tasks, err := a.listTodayTasks(req.Context(), petID, date)
 	if err != nil {
-		jsonResponse(w, http.StatusInternalServerError, errBody("could not load tasks"))
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not load tasks: "+err.Error()))
 		return
 	}
 	jsonResponse(w, http.StatusOK, map[string]any{"date": date, "tasks": tasks})
@@ -134,7 +134,7 @@ func (a *app) listTodayTasks(ctx context.Context, petID int64, date string) ([]t
 		var byUserID *int64
 		var at, logDate *time.Time
 		if err := rows.Scan(&t.ID, &t.Title, &t.TimeOfDay, &t.Note, &t.MedicationID,
-			&status, &byUserID, &byName, &logNote, &at, &logDate); err != nil {
+			&status, &byUserID, &byName, &at, &logNote, &logDate); err != nil {
 			return nil, err
 		}
 		t.Active = true

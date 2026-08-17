@@ -108,7 +108,7 @@ export type TimelineRow =
 
 function dayLabel(iso: string, tz?: string): string {
   const d = inZone(iso, tz);
-  const now = tz ? dayjs.tz(tz) : dayjs();
+  const now = tz ? dayjs().tz(tz) : dayjs();
   if (d.isSame(now, 'day')) return 'TODAY';
   if (d.isSame(now.subtract(1, 'day'), 'day')) return 'YESTERDAY';
   return d.format('MM-DD');

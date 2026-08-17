@@ -1,13 +1,23 @@
 /**
  * Care Circle (spec §48–§49) — Owner/Caregiver groups with role badges.
- * Owner can invite (POST /circles/{id}/invite → rotating code, shared via
- * Share sheet) and remove caregivers (DELETE member, confirmed).
+ * Member rows use the AvatarBubble letter fallback (brand100/brand700 — the
+ * same rhythm as PetPhoto). Owner can invite (POST /circles/{id}/invite →
+ * rotating code, shared via Share sheet or copied to the clipboard) and
+ * remove caregivers (DELETE member, confirmed).
  */
 import React, { useState } from 'react';
 import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useQueryClient } from '@tanstack/react-query';
-import { Share2, X } from 'lucide-react-native';
-import { Card, IconButton, PrimaryButton, Skeleton, StatusBadge } from '../../src/components/ui';
+import { Copy, Share2, X } from 'lucide-react-native';
+import {
+  Card,
+  IconButton,
+  PrimaryButton,
+  SecondaryButton,
+  Skeleton,
+  StatusBadge,
+} from '../../src/components/ui';
 import { useToast } from '../../src/components/toast';
 import { AvatarBubble, GroupLabel, PageShell, useCircleMembers } from '../../src/components/pet/parts';
 import { del, post } from '../../src/lib/api';
@@ -61,6 +71,16 @@ export default function CareCircleScreen() {
       });
     } catch {
       // user dismissed the share sheet — nothing to do
+    }
+  };
+
+  const copyInviteCode = async () => {
+    if (!inviteCode) return;
+    try {
+      await Clipboard.setStringAsync(inviteCode);
+      toast({ message: 'Invite code copied' });
+    } catch {
+      toast({ message: 'Could not copy code' });
     }
   };
 
@@ -179,12 +199,22 @@ export default function CareCircleScreen() {
               <Text style={styles.inviteHint}>
                 Anyone with this invite can join {petName}&rsquo;s care circle.
               </Text>
-              <PrimaryButton
-                label="Share invite"
-                icon={Share2}
-                disabled={!inviteCode}
-                onPress={() => void shareInvite()}
-              />
+              <View style={styles.inviteActions}>
+                <PrimaryButton
+                  label="Share invite"
+                  icon={Share2}
+                  disabled={!inviteCode}
+                  onPress={() => void shareInvite()}
+                  style={styles.inviteAction}
+                />
+                <SecondaryButton
+                  label="Copy code"
+                  icon={Copy}
+                  disabled={!inviteCode}
+                  onPress={() => void copyInviteCode()}
+                  style={styles.inviteAction}
+                />
+              </View>
             </Card>
           ) : null}
         </>
@@ -227,4 +257,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  inviteActions: { flexDirection: 'row', gap: spacing.s8 },
+  inviteAction: { flex: 1 },
 });

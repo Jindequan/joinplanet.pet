@@ -1,8 +1,9 @@
 /**
  * Pet Overview (spec §41–§42) — "This is Milo."
- * Hero (photo placeholder, name, breed · age, latest weight from the timeline
- * cache) → Prepare for vet → Share care link → five secondary entries
- * (spec §43 IA). Never a settings dump.
+ * Hero (real photo via PetPhoto — spec §3/§84 the pet is the visual center —
+ * name, breed · age, latest weight from the timeline cache) → Prepare for vet
+ * → Share care link → five secondary entries with live summaries (spec §42–§43
+ * IA). Never a settings dump.
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -11,15 +12,22 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { HeartPulse, Phone, Pill, ShieldCheck, Users, type LucideIcon } from 'lucide-react-native';
 import { Card, EmptyState, ListRow, PrimaryButton, Skeleton } from '../../src/components/ui';
+import { PetPhoto } from '../../src/components/pet-photo';
 import {
-  AvatarBubble,
   Chevron,
   ageLabel,
   formatWeight,
   latestWeight,
   useCircleMembers,
 } from '../../src/components/pet/parts';
-import { qk, useActivePet, useMedications, type TimelinePage } from '../../src/lib/queries';
+import {
+  qk,
+  useActivePet,
+  useMedications,
+  usePet,
+  type Medication,
+  type TimelinePage,
+} from '../../src/lib/queries';
 import { colors, radius, spacing, typography } from '../../src/theme';
 
 interface Entry {
@@ -30,6 +38,14 @@ interface Entry {
   href: string;
 }
 
+/** "Apoquel +1 more" (spec §42) — falls back to a count when names are missing. */
+function medicationsSummary(active: Medication[]): string {
+  if (active.length === 0) return 'None active';
+  const first = active[0].name?.trim();
+  if (!first) return `${active.length} active`;
+  return active.length > 1 ? `${first} +${active.length - 1} more` : first;
+}
+
 export default function PetOverviewScreen() {
   const { pet, circle, isLoading } = useActivePet();
   const petId = pet?.id;
@@ -38,6 +54,7 @@ export default function PetOverviewScreen() {
   const client = useQueryClient();
 
   const medications = useMedications(petId);
+  const petDetail = usePet(petId); // allergies live on the full pet record, not the /me summary
   const { data: circleData } = useCircleMembers(circle?.id);
 
   // Latest weight lives on the timeline — read the shared cache, never fetch (§44).
@@ -47,17 +64,21 @@ export default function PetOverviewScreen() {
 
   const metaLine = [pet?.breed || pet?.species, ageLabel(pet?.birthday)].filter(Boolean).join(' · ');
   const memberNames = (circleData?.members ?? []).map((m) => m.display_name).join(' · ');
+  // Conservative degradation: while a cache is still cold the row keeps its
+  // bare title rather than flashing a placeholder (spec §68–§72).
+  const allergies = petDetail.data?.allergies;
+  const healthSubtitle =
+    allergies === undefined ? undefined : allergies.length > 0 ? allergies[0] : 'None recorded';
+  const medicationsSubtitle = medications.data
+    ? medicationsSummary(medications.data.active)
+    : undefined;
 
   const entries: Entry[] = [
-    { key: 'profile', title: 'Health profile', icon: HeartPulse, href: '/pet/profile' },
+    { key: 'profile', title: 'Health profile', subtitle: healthSubtitle, icon: HeartPulse, href: '/pet/profile' },
     {
       key: 'medications',
       title: 'Medications',
-      subtitle: medications.data
-        ? medications.data.active.length > 0
-          ? `${medications.data.active.length} active`
-          : 'None active'
-        : undefined,
+      subtitle: medicationsSubtitle,
       icon: Pill,
       href: '/pet/medications',
     },
@@ -87,12 +108,12 @@ export default function PetOverviewScreen() {
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 112 }]}
       >
-        {/* Hero (spec §41) — the photo is the visual center of the page */}
+        {/* Hero (spec §41) — the pet's real photo is the visual center of the page */}
         <View style={styles.hero}>
           {isLoading ? (
             <Skeleton width={128} height={128} round />
           ) : (
-            <AvatarBubble label={petName} size={128} />
+            <PetPhoto avatarKey={pet?.avatar_key} name={petName} size={128} />
           )}
           {isLoading ? (
             <Skeleton width={120} height={28} />

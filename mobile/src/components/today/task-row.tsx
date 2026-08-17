@@ -2,11 +2,12 @@
  * TaskRow (spec §18–§22): ≥64pt row — time, status mark (○ / ✓), title (+MED),
  * sub-line (note / "by_name · HH:mm"). Tap pending → complete immediately
  * (no confirm modal); tap done → expand Undo/Skip; swipe a pending row left →
- * skip. The check pops with a small spring on completion (spec §20).
+ * skip. The check pops with a small spring on completion and the "by · time"
+ * sub-line fades in behind it (spec §20); pressing the row scales it 0.99 with
+ * a soft background tint over the tap budget (spec §77).
  *
- * Swipe is built on RN Animated + PanResponder: Reanimated 4 needs its
- * react-native-worklets peer dependency, which isn't installed in this project —
- * same UX, zero new packages.
+ * Swipe stays on RN Animated + PanResponder (unchanged); press feedback runs
+ * on Reanimated (worklets installed) so it can share the swipe's UI thread.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +20,12 @@ import {
   type GestureResponderEvent,
   type PanResponderGestureState,
 } from 'react-native';
+import Reanimated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Check, Minus, RotateCcw, SkipForward } from 'lucide-react-native';
 import type { TodayTask } from '../../lib/queries';
 import { haptics } from '../../lib/haptics';
@@ -58,6 +65,7 @@ export function TaskRow({
 
   const translateX = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(1)).current;
+  const sublineOpacity = useRef(new Animated.Value(1)).current;
   const wasDone = useRef(done);
 
   // Latest-callback refs so the once-created PanResponder never goes stale.
@@ -68,7 +76,8 @@ export function TaskRow({
     onSkipRef.current = actions.onSkip;
   });
 
-  // Check pop when this row flips to done (spec §20) — spring, tiny, fast.
+  // Check pop when this row flips to done (spec §20) — spring, tiny, fast —
+  // with the "Devin · just now" sub-line fading in behind it (row budget §77).
   useEffect(() => {
     if (done && !wasDone.current) {
       checkScale.setValue(0.4);
@@ -78,9 +87,28 @@ export function TaskRow({
         bounciness: 7,
         useNativeDriver: true,
       }).start();
+      sublineOpacity.setValue(0);
+      Animated.timing(sublineOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
     }
     wasDone.current = done;
-  }, [done, checkScale]);
+  }, [done, checkScale, sublineOpacity]);
+
+  // Press feedback (spec §77 tap 100–150ms): scale 0.99 + soft background tint.
+  const press = useSharedValue(0);
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - 0.01 * press.value }],
+    backgroundColor: interpolateColor(press.value, [0, 1], [colors.surface, colors.surfaceSoft]),
+  }));
+  const pressIn = () => {
+    press.value = withTiming(1, { duration: motion.tap });
+  };
+  const pressOut = () => {
+    press.value = withTiming(0, { duration: motion.tap });
+  };
 
   const snapClosed = () => {
     Animated.spring(translateX, {
@@ -155,37 +183,43 @@ export function TaskRow({
           accessibilityHint={a11yHint}
           accessibilityState={{ expanded: done && expanded }}
           onPress={onPress}
-          style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surfaceSoft }]}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
         >
-          <View style={styles.timeCol} pointerEvents="none">
-            <Text style={styles.time}>{task.time_of_day}</Text>
-          </View>
-
-          <View style={styles.markSlot} pointerEvents="none">
-            {done ? (
-              <Animated.View
-                style={[styles.markDone, { transform: [{ scale: checkScale }] }]}
-              >
-                <Check size={14} color={colors.onDark} strokeWidth={3} />
-              </Animated.View>
-            ) : (
-              <View style={styles.markPending} />
-            )}
-          </View>
-
-          <View style={styles.textCol} pointerEvents="none">
-            <View style={styles.titleRow}>
-              <Text style={styles.title} numberOfLines={1}>
-                {task.title}
-              </Text>
-              {task.medication_id ? <Text style={styles.medBadge}>MED</Text> : null}
+          <Reanimated.View style={[styles.row, pressStyle]} pointerEvents="none">
+            <View style={styles.timeCol}>
+              <Text style={styles.time}>{task.time_of_day}</Text>
             </View>
-            {subline ? (
-              <Text style={styles.subline} numberOfLines={1}>
-                {subline}
-              </Text>
-            ) : null}
-          </View>
+
+            <View style={styles.markSlot}>
+              {done ? (
+                <Animated.View
+                  style={[styles.markDone, { transform: [{ scale: checkScale }] }]}
+                >
+                  <Check size={14} color={colors.onDark} strokeWidth={3} />
+                </Animated.View>
+              ) : (
+                <View style={styles.markPending} />
+              )}
+            </View>
+
+            <View style={styles.textCol}>
+              <View style={styles.titleRow}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {task.title}
+                </Text>
+                {task.medication_id ? <Text style={styles.medBadge}>MED</Text> : null}
+              </View>
+              {subline ? (
+                <Animated.Text
+                  style={[styles.subline, { opacity: done ? sublineOpacity : 1 }]}
+                  numberOfLines={1}
+                >
+                  {subline}
+                </Animated.Text>
+              ) : null}
+            </View>
+          </Reanimated.View>
         </Pressable>
 
         {done && expanded ? (

@@ -1,7 +1,11 @@
 /**
- * Create pet — minimal onboarding (spec §15): name → species chips → photo
- * (optional, local-only) → POST /circles → "Meet {name}." → tabs.
- * An "Have an invite code? Join instead" link hands off to /join.
+ * Create pet — minimal onboarding (spec §15): name → species chips → photo →
+ * POST /circles → avatar upload (multipart POST /pets/{id}/attachments with no
+ * event binding; the storage key is extracted from the attachment url since the
+ * response carries none — contract F5) → PATCH /pets/{id} {avatar_key} →
+ * "Meet {name}." → tabs. A failed photo upload never blocks circle creation
+ * (toast, then continue). An "Have an invite code? Join instead" link hands
+ * off to /join.
  */
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -9,9 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Camera, Image as ImageIcon, PawPrint } from 'lucide-react-native';
 import { Chip, Field, PrimaryButton, SecondaryButton } from '../src/components/ui';
-import { ApiError, AuthError, post } from '../src/lib/api';
+import { useToast } from '../src/components/toast';
+import { ApiError, AuthError, patch, post, upload } from '../src/lib/api';
 import { queryClient } from '../src/lib/query-client';
 import { qk } from '../src/lib/queries';
 import { colors, radius, spacing, typography } from '../src/theme';
@@ -35,6 +41,38 @@ function errText(err: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Compress before upload (spec §39): max side 1600, JPEG quality 0.8. */
+async function compressPhoto(uri: string, width: number, height: number): Promise<string> {
+  const actions =
+    Math.max(width, height) > 1600
+      ? [{ resize: width >= height ? { width: 1600 } : { height: 1600 } }]
+      : [];
+  const result = await ImageManipulator.manipulateAsync(uri, actions, {
+    compress: 0.8,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  return result.uri;
+}
+
+/**
+ * Attachment responses carry no storage_key (contract F5) — the key is the
+ * last path segment of the returned `/…/api/v1/files/{key}` url.
+ */
+function attachmentKeyFromUrl(url: string): string | null {
+  const last = url.split('?')[0].split('#')[0].split('/').filter(Boolean).pop();
+  return last ? last : null;
+}
+
+/** Upload the pet avatar (no event binding) and point the pet at it via avatar_key. */
+async function uploadAvatar(petId: string, uri: string): Promise<void> {
+  const form = new FormData();
+  form.append('file', { uri, name: 'avatar.jpg', type: 'image/jpeg' } as unknown as Blob);
+  const res = await upload<{ attachment: { url: string } }>(`/pets/${petId}/attachments`, form);
+  const key = attachmentKeyFromUrl(res.attachment.url);
+  if (!key) throw new ApiError(0, 'Attachment response is missing the file key');
+  await patch(`/pets/${petId}`, { avatar_key: key });
+}
+
 export default function CreatePetScreen() {
   const [step, setStep] = useState<Step>('name');
   const [name, setName] = useState('');
@@ -43,6 +81,7 @@ export default function CreatePetScreen() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const petName = name.trim();
 
@@ -58,14 +97,18 @@ export default function CreatePetScreen() {
     }
     const result =
       source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8 })
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 1 })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
-            quality: 0.8,
+            quality: 1, // compression happens once, in the manipulator step below
           });
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset) return;
+    try {
+      setPhotoUri(await compressPhoto(asset.uri, asset.width, asset.height));
+    } catch {
+      setPhotoUri(asset.uri); // still try the original — the server caps size anyway
     }
   }, []);
 
@@ -78,9 +121,21 @@ export default function CreatePetScreen() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // TODO(contract v1): no pet-avatar upload endpoint yet — the photo is
-      // local-only for this preview; wiring it up lands with the avatar API.
-      await post('/circles', { pet_name: petName, species: species ?? 'other', breed: '' });
+      const res = await post<{ pet: { id: string | number } }>('/circles', {
+        pet_name: petName,
+        species: species ?? 'other',
+        breed: '',
+      });
+      const petId = String(res.pet.id);
+      if (photoUri) {
+        // The photo is polish, not a gate (spec §15) — a failed upload must
+        // never block the circle: toast and continue to "Meet {name}."
+        try {
+          await uploadAvatar(petId, photoUri);
+        } catch {
+          toast({ message: "Photo couldn't be uploaded." });
+        }
+      }
       await queryClient.invalidateQueries({ queryKey: qk.me });
       setStep('done');
     } catch (err) {
@@ -92,7 +147,7 @@ export default function CreatePetScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [petName, species, submitting]);
+  }, [petName, photoUri, species, submitting, toast]);
 
   const goJoin = useCallback(() => router.push('/join'), []);
 

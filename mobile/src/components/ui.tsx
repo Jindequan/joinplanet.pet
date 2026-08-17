@@ -16,7 +16,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { colors, radius, spacing, touchTarget, typography, withAlpha } from '../theme';
+import { colors, radius, shadows, spacing, touchTarget, typography, withAlpha } from '../theme';
 
 /* ------------------------------- Buttons --------------------------------- */
 
@@ -148,13 +148,24 @@ export function IconButton({
 export function Card({
   children,
   padding = spacing.s16,
+  shadow = 'none',
   style,
 }: {
   children: React.ReactNode;
   padding?: number;
+  /**
+   * 'soft' drops the border and lifts the card on the spec §10 whisper shadow
+   * (shadows.card + white surface) — for emphasis contexts like cards inside
+   * the Hero. Default keeps the flat border look.
+   */
+  shadow?: 'none' | 'soft';
   style?: StyleProp<ViewStyle>;
 }) {
-  return <View style={[styles.card, { padding }, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, { padding }, shadow === 'soft' && styles.cardSoft, style]}>
+      {children}
+    </View>
+  );
 }
 
 export function SectionHeader({
@@ -355,15 +366,22 @@ export function EmptyState({
   subtitle,
   action,
   icon: Icon,
+  emoji,
 }: {
   title: string;
   subtitle?: string;
   action?: { label: string; onPress: () => void };
   icon?: LucideIcon;
+  /** Optional emoji in the icon bubble — warmer than a line icon when one fits. */
+  emoji?: string;
 }) {
   return (
     <View style={styles.emptyState}>
-      {Icon ? (
+      {emoji ? (
+        <View style={styles.emptyStateIcon}>
+          <Text style={styles.emptyStateEmoji}>{emoji}</Text>
+        </View>
+      ) : Icon ? (
         <View style={styles.emptyStateIcon}>
           <Icon size={28} color={colors.brand700} />
         </View>
@@ -433,6 +451,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  cardSoft: { ...shadows.card, borderWidth: 0 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -507,6 +526,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.s4,
   },
+  emptyStateEmoji: { ...typography.page, fontWeight: '400' },
   emptyStateTitle: { ...typography.section, color: colors.text, textAlign: 'center' },
   emptyStateSubtitle: {
     ...typography.bodySm,

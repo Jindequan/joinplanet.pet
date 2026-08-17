@@ -19,9 +19,10 @@ import { colors, radius, spacing, typography, withAlpha } from '../../src/theme'
 const MONOSPACE = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
 export default function DataPrivacyScreen() {
-  const { pet } = useActivePet();
+  const { pet, circle } = useActivePet();
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
+  const isOwner = circle?.role === 'owner';
   const client = useQueryClient();
   const { toast } = useToast();
 
@@ -144,23 +145,27 @@ export default function DataPrivacyScreen() {
             Deleting {petName} permanently removes every record, photo and share.
             This cannot be undone.
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Delete ${petName}`}
-            accessibilityState={{ disabled: deleting || !petId, busy: deleting }}
-            disabled={deleting || !petId}
-            onPress={confirmDelete}
-            style={({ pressed }) => [
-              styles.dangerButton,
-              pressed && { opacity: 0.7 },
-              (deleting || !petId) && { opacity: 0.4 },
-            ]}
-          >
-            <Trash2 size={typography.body.fontSize} color={colors.symptom} />
-            <Text style={styles.dangerButtonLabel}>
-              {deleting ? 'Deleting…' : `Delete ${petName}`}
-            </Text>
-          </Pressable>
+          {isOwner ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${petName}`}
+              accessibilityState={{ disabled: deleting || !petId, busy: deleting }}
+              disabled={deleting || !petId}
+              onPress={confirmDelete}
+              style={({ pressed }) => [
+                styles.dangerButton,
+                pressed && { opacity: 0.7 },
+                (deleting || !petId) && { opacity: 0.4 },
+              ]}
+            >
+              <Trash2 size={typography.body.fontSize} color={colors.symptom} />
+              <Text style={styles.dangerButtonLabel}>
+                {deleting ? 'Deleting…' : `Delete ${petName}`}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.ownerOnlyNote}>Only the owner can delete {petName}</Text>
+          )}
         </Card>
       </View>
     </PageShell>
@@ -194,6 +199,7 @@ const styles = StyleSheet.create({
     borderColor: withAlpha(colors.symptom, 0.5),
   },
   dangerText: { ...typography.bodySm, color: colors.textSecondary },
+  ownerOnlyNote: { ...typography.caption, color: colors.textSecondary },
   dangerButton: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -7,10 +7,9 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { CalendarDays, Share2 } from 'lucide-react-native';
+import { CalendarDays } from 'lucide-react-native';
 import { colors, spacing, typography } from '../../src/theme';
-import { EmptyState, IconButton } from '../../src/components/ui';
-import { useToast } from '../../src/components/toast';
+import { EmptyState } from '../../src/components/ui';
 import { haptics } from '../../src/lib/haptics';
 import { useActivePet } from '../../src/lib/queries';
 import {
@@ -37,7 +36,6 @@ export default function TimelineScreen() {
   const tz = circle?.timezone;
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
-  const { toast } = useToast();
   const [filter, setFilter] = useState<TimelineFilter>(TIMELINE_FILTERS[0]);
 
   const feed = useTimelineFeed(petId, filter.types);
@@ -74,12 +72,6 @@ export default function TimelineScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Timeline</Text>
-        {/* TODO(share): share the timeline view (summary-style private link, spec §52) — placeholder for now. */}
-        <IconButton
-          icon={Share2}
-          label="Share timeline"
-          onPress={() => toast({ message: 'Coming soon' })}
-        />
       </View>
 
       <FlatList

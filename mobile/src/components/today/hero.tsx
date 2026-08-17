@@ -1,30 +1,47 @@
 /**
- * Today Hero (spec §17 §25): ~160 high, Brand100 base with the faintest brand
- * wash (flat tokens + soft circles stand in for a gradient — no gradient lib),
- * TODAY micro label + weekday date in the circle's clock, daypart greeting
- * ("All cared for today." when everything is resolved — success is a light
- * tint only, never confetti), dot progress, pet-initial avatar, share ↗.
+ * Today Hero (spec §17 §25): 160 high, Brand100 → surface gradient at 135°
+ * (expo-linear-gradient) with soft start/end alpha, TODAY micro label +
+ * weekday date, daypart greeting ("All cared for today." when everything is
+ * resolved — success is a light tint only, never confetti), dot progress that
+ * pops with a quick spring when a completion lands (spec §20), the pet's real
+ * photo bottom-right (spec §84), share ↗.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { ArrowUpRight } from 'lucide-react-native';
-import { colors, radius, spacing, typography, withAlpha } from '../../theme';
+import { colors, radius, shadows, spacing, typography, withAlpha } from '../../theme';
 import { IconButton, Progress } from '../ui';
+import { PetPhoto } from '../pet-photo';
 import { greetingFor, nowInZone } from './time';
 
 const HERO_HEIGHT = 160;
 const AVATAR_SIZE = 44;
 /** Dots are per-task; past this count the text row already tells the story. */
 const MAX_DOTS = 12;
+/** 135° — Brand100 wash at the top-left easing toward white (spec §17). */
+const GRADIENT_START = { x: 0, y: 0 };
+const GRADIENT_END = { x: 1, y: 1 };
+/** Progress pop: quick, barely-bouncy spring (spec §20 / §77 spring budget). */
+const POP_DURATION = 130;
+const POP_FROM = 0.92;
 
 export function Hero({
   petName,
+  avatarKey,
   timezone,
   done,
   total,
   onShare,
 }: {
   petName: string;
+  avatarKey?: string | null;
   timezone?: string | null;
   done: number;
   total: number;
@@ -33,13 +50,29 @@ export function Hero({
   const now = nowInZone(timezone);
   const allDone = total > 0 && done >= total;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+  const greetingText = allDone ? 'All cared for today.' : greetingFor(now.hour(), petName);
+
+  // Number + dot matrix spring when the count moves (spec §20 "Hero progress 动画").
+  const progressPop = useSharedValue(1);
+  const prevDone = useRef(done);
+  useEffect(() => {
+    if (done !== prevDone.current) {
+      progressPop.value = POP_FROM;
+      progressPop.value = withSpring(1, { duration: POP_DURATION, dampingRatio: 0.6 });
+      prevDone.current = done;
+    }
+  }, [done, progressPop]);
+  const progressPopStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: progressPop.value }],
+  }));
 
   return (
-    <View
+    <LinearGradient
+      colors={[withAlpha(colors.brand100, 0.95), withAlpha(colors.surface, 0.9)]}
+      start={GRADIENT_START}
+      end={GRADIENT_END}
       style={styles.card}
-      accessibilityLabel={`Today. ${
-        allDone ? 'All cared for today.' : greetingFor(now.hour(), petName)
-      } ${done} of ${total} complete.`}
+      accessibilityLabel={`Today. ${greetingText} ${done} of ${total} complete.`}
     >
       {/* decorative brand wash */}
       <View style={styles.washBig} pointerEvents="none" />
@@ -59,31 +92,44 @@ export function Hero({
             style={styles.shareButton}
           />
         </View>
-        <Text style={[styles.greeting, allDone && styles.greetingDone]} numberOfLines={1}>
-          {allDone ? 'All cared for today.' : greetingFor(now.hour(), petName)}
-        </Text>
+        {/* Greeting swap (daypart / all-done) fades in on the row-update budget (§77). */}
+        <Animated.Text
+          key={greetingText}
+          entering={FadeIn.duration(180)}
+          style={[styles.greeting, allDone && styles.greetingDone]}
+          numberOfLines={1}
+        >
+          {greetingText}
+        </Animated.Text>
       </View>
 
-      <View style={styles.progressWrap}>
-        <View style={styles.progressRow}>
-          <Text style={[styles.progressText, allDone && styles.progressDone]}>
-            {done} of {total} complete
-          </Text>
-          <Text style={[styles.percent, allDone && styles.progressDone]}>{percent}%</Text>
+      <Animated.View style={progressPopStyle} pointerEvents="none">
+        <View style={styles.progressWrap}>
+          <View style={styles.progressRow}>
+            <Text style={[styles.progressText, allDone && styles.progressDone]}>
+              {done} of {total} complete
+            </Text>
+            <Text style={[styles.percent, allDone && styles.progressDone]}>{percent}%</Text>
+          </View>
+          <Progress
+            count={Math.min(total, MAX_DOTS)}
+            filled={Math.min(done, MAX_DOTS)}
+            dotSize={8}
+            gap={spacing.s8}
+          />
         </View>
-        <Progress
-          count={Math.min(total, MAX_DOTS)}
-          filled={Math.min(done, MAX_DOTS)}
-          dotSize={8}
-          gap={spacing.s8}
+      </Animated.View>
+
+      {/* pet photo, real when avatar_key exists (spec §84) */}
+      <View style={styles.avatar} pointerEvents="none">
+        <PetPhoto
+          avatarKey={avatarKey}
+          name={petName}
+          size={AVATAR_SIZE}
+          style={styles.avatarPhoto}
         />
       </View>
-
-      {/* pet-initial avatar placeholder (spec §84: real photo once avatar_key ships) */}
-      <View style={styles.avatar} pointerEvents="none">
-        <Text style={styles.avatarLabel}>{petName.charAt(0).toUpperCase()}</Text>
-      </View>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -91,7 +137,6 @@ const styles = StyleSheet.create({
   card: {
     height: HERO_HEIGHT,
     borderRadius: radius.hero,
-    backgroundColor: colors.brand100,
     padding: spacing.s20,
     overflow: 'hidden',
     justifyContent: 'space-between',
@@ -144,12 +189,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing.s16,
     bottom: spacing.s16,
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radius.chip,
-    backgroundColor: colors.brand300,
-    alignItems: 'center',
-    justifyContent: 'center',
+    ...shadows.card,
   },
-  avatarLabel: { ...typography.card, color: colors.text },
+  avatarPhoto: {
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
 });

@@ -15,12 +15,14 @@ import { EmptyState, PrimaryButton, Skeleton } from '../../src/components/ui';
 import { attachmentUrl } from '../../src/components/timeline/parts';
 import { ApiError, get, getToken, post } from '../../src/lib/api';
 import { qk } from '../../src/lib/queries';
-import { colors, radius, spacing, typography } from '../../src/theme';
+import { colors, spacing, typography } from '../../src/theme';
 
 /** Shared with app/welcome.tsx — deep-link invite parked until auth completes. */
 const PENDING_INVITE_KEY = 'planet_pending_invite';
 
-const PHOTO_SIZE = 160;
+/** Invite shows a large pet avatar (spec §84) — PetPhoto rhythm, no photo_key in this contract. */
+const PHOTO_SIZE = 96;
+const INITIAL_FONT = Math.max(14, PHOTO_SIZE * 0.36);
 
 interface InvitePreview {
   pet_name: string;
@@ -118,6 +120,7 @@ export default function InviteScreen() {
 
   const data = preview.data;
   const petName = data?.pet_name ?? 'this pet';
+  const initial = (data?.pet_name || '?').charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -131,7 +134,7 @@ export default function InviteScreen() {
           />
         ) : (
           <View style={[styles.photo, styles.photoPlaceholder]}>
-            <PawPrint size={typography.page.fontSize * 2} color={colors.brand700} />
+            <Text style={styles.photoInitial}>{initial}</Text>
           </View>
         )}
 
@@ -162,17 +165,22 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.s32,
     gap: spacing.s12,
   },
+  /** Same circle + fallback rhythm as PetPhoto (brand100 / brand700). */
   photo: {
     width: PHOTO_SIZE,
     height: PHOTO_SIZE,
-    borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: PHOTO_SIZE / 2,
+    backgroundColor: colors.surfaceSoft,
   },
   photoPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.brand100,
+  },
+  photoInitial: {
+    fontSize: INITIAL_FONT,
+    color: colors.brand700,
+    fontWeight: '600',
   },
   title: {
     ...typography.page,

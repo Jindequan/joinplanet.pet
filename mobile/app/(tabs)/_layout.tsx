@@ -1,16 +1,24 @@
 /**
- * Tabs shell with custom Floating Tab Bar (spec §12):
- * height 64 / radius 26 / safe-area+8 / white + floating shadow,
- * central 52×52 Brand500 ＋ raised 5px, opening the Quick Record sheet (spec §35).
+ * Tabs shell (spec §11 App Shell) with the persistent AppHeader at the top of
+ * the content area, a custom Floating Tab Bar (spec §12: height 64 / radius 26 /
+ * safe-area+8 / white + floating shadow) and the central 52×52 Brand500 ＋
+ * raised 5px, opening the Quick Record sheet (spec §35). On web the whole
+ * shell is capped at maxWidth 720 and centered (tab bar included).
  */
-import React, { useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { CalendarDays, Dog, Plus, Sunrise, type LucideIcon } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  useSafeAreaFrame,
+  useSafeAreaInsets,
+  type Metrics,
+} from 'react-native-safe-area-context';
 import { colors, radius, shadows, spacing, touchTarget, typography } from '../../src/theme';
+import { AppHeader } from '../../src/components/app-header';
 import { QuickRecordScrollable } from '../../src/components/quick-record';
 import { haptics } from '../../src/lib/haptics';
 
@@ -102,22 +110,36 @@ function FloatingTabBar({ state, navigation, onPlus }: BottomTabBarProps & { onP
 
 export default function TabsLayout() {
   const sheetRef = useRef<BottomSheetModal>(null);
+  const insets = useSafeAreaInsets();
+  const frame = useSafeAreaFrame();
+
+  // AppHeader above the navigator already consumes the top inset, so the
+  // screens below must read 0 there — otherwise their own SafeAreaView
+  // (edges: top) pads it twice. The nested provider re-publishes the insets
+  // for everything inside the tabs (tab bar still gets the real bottom).
+  const screenMetrics = useMemo<Metrics>(
+    () => ({ frame, insets: { ...insets, top: 0 } }),
+    [frame, insets],
+  );
 
   return (
-    <View style={styles.container}>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          sceneStyle: { backgroundColor: colors.bg },
-        }}
-        tabBar={(props) => (
-          <FloatingTabBar {...props} onPlus={() => sheetRef.current?.present()} />
-        )}
-      >
-        <Tabs.Screen name="index" options={{ title: 'Today' }} />
-        <Tabs.Screen name="timeline" options={{ title: 'Timeline' }} />
-        <Tabs.Screen name="pet" options={{ title: 'Pet' }} />
-      </Tabs>
+    <View style={[styles.container, Platform.OS === 'web' && styles.containerWeb]}>
+      <AppHeader />
+      <SafeAreaProvider initialMetrics={screenMetrics}>
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            sceneStyle: { backgroundColor: colors.bg },
+          }}
+          tabBar={(props) => (
+            <FloatingTabBar {...props} onPlus={() => sheetRef.current?.present()} />
+          )}
+        >
+          <Tabs.Screen name="index" options={{ title: 'Today' }} />
+          <Tabs.Screen name="timeline" options={{ title: 'Timeline' }} />
+          <Tabs.Screen name="pet" options={{ title: 'Pet' }} />
+        </Tabs>
+      </SafeAreaProvider>
 
       <BottomSheetModal
         ref={sheetRef}
@@ -135,6 +157,8 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+  /** Web only (react-native-web): cap the whole shell at 720, centered. */
+  containerWeb: { alignSelf: 'center', width: '100%', maxWidth: 720 },
   barOverlay: { justifyContent: 'flex-end' },
   bar: {
     height: BAR_HEIGHT,

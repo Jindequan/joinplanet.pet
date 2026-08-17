@@ -277,6 +277,7 @@ export default function TodayScreen() {
       >
         <Hero
           petName={petName}
+          avatarKey={pet.avatar_key}
           timezone={timezone}
           done={doneCount}
           total={tasks.length}

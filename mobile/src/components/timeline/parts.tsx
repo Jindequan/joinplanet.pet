@@ -89,7 +89,9 @@ export function isLargeEvent(event: TimelineEvent): boolean {
 
 /** Compact one-liner title; weight reads "Weight · 5.9 kg" (spec §28). */
 export function compactTitle(event: TimelineEvent): string {
-  if (event.type === 'weight') return `Weight · ${event.title}`;
+  if (event.type === 'weight' && !/^weight/i.test(event.title.trim())) {
+    return `Weight · ${event.title}`;
+  }
   return event.title;
 }
 

@@ -8,6 +8,10 @@
 import React, { useMemo, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
+import { enableScreens } from 'react-native-screens';
+// react-native-screens keeps inactive tab screens visible on web (all three
+// screens stack); the pure-JS navigator hides them correctly.
+if (Platform.OS === 'web') enableScreens(false);
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { CalendarDays, Dog, Plus, Sunrise, type LucideIcon } from 'lucide-react-native';

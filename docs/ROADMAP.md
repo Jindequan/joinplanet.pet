@@ -1,6 +1,9 @@
 # PLANET 路线图
 
 > 2026-08-17 按[外部评估报告](research/DESIGN-EVALUATION-20260817.md)重构：产品定位为 The digital home for your pet——Phase 1: PLANET remembers → Phase 2: PLANET understands → Phase 3: PLANET accompanies the pet throughout its life。
+> **同日晚，[产品+AI+商业蓝图](product/PRODUCT-AI-BLUEPRINT-20260817.md)升格为正典**：产品循环 Observe→Record→Understand→Act→Follow up→Remember；AI 是 Intelligence Layer（无 AI 首页）；Credits=内部成本预算层（1 credit ≤ $0.003 供应商成本，配 Usage Ledger/AI Gateway 预授权/Model Router）；免费层可变成本封顶 ~$0.05-0.06/活跃账户/月。
+>
+> **阶段名冲突裁决**：蓝图将 V1.5 定义为 "PLANET Together"（多宠+家庭免费 2 宠 2 人）；本仓库此前把 V1.5 用作"照护环四翼"。裁决：四翼归入 V1（Personal + 照护环，已交付）；V1.5 保留给蓝图的 Together 语义。当前进度对照：**V1 已交付**（含多人圈子——比蓝图 V1 的单人定义更超前，视为已提前完成 Together 的一部分）；多宠 UI 与免费配额闸门是 V1.5 剩余工作。
 
 ## Phase 0：落地页与支持者通道（进行中，与开发并行）
 
@@ -21,12 +24,12 @@
 - F1 身份（邮箱验证码）→ F3 档案（含用药清单、紧急医疗授权、真照片）→ F4 今日照护协作 → F5 时间线（≤5 秒记录+照片）→ F6 Summary 模板 → F7 免注册分享链接 → F8 导出/删除；
 - 权益层（entitlements + can()）已就位，为 Pro 上架预留。
 
-**V1.5 照护环四翼（免费，~1 周）——把"记了→存了"补成"看见→惦记→传出去"**：
+**照护环四翼（免费，已交付 2026-08-17 晚，`06a2b62`）**：
 
 1. 体重趋势图：weight 事件的确定性折线 + "9 天 −4.9%"式变化摘要（**基础图免费**；AI 洞察/关联分析仍属 Pro）；
 2. 疫苗/驱虫到期：事件录入可选"下次到期日"，档案页聚合到期清单；
 3. 基础本地提醒：任务到点本机通知（expo-notifications，无需服务端推送；智能/自适应提醒仍属 Pro）；
-4. Today 图片分享卡：生成进家人群的图片卡（文本版已上线，图片版补齐）。
+4. Today 图片分享卡：生成进家人群的图片卡（iOS 图片、Android/web 文本降级）。
 
 **纪律不变**：禁止为"全面"堆功能——四翼每件都直连付费画像（慢性病/老年宠物多人家庭）的 JTBD；社区/商城/问诊/保险/AI 诊断仍不做。
 
@@ -39,16 +42,25 @@
 
 出口条件：漏斗走通到"5 只宠物持续使用 2+ 周"。达不到回炉摩擦，不加功能。
 
+## Phase 1.5：PLANET Together（蓝图定义，V1 验证后）
+
+- 免费 **2 active pets + 2 members**（"共同照护本身就是免费价值"）；
+- 多宠 UI（Pet Switcher，schema 早已就绪）+ entitlement 闸门 `multi_pet`；
+- **配额制切换**：媒体从"20 张/月"改为**字节制 500MB**（Pro 10GB / Family 50GB）——需 storage_usage 统计表；
+- Archived Pet 不占宠位：去世宠物永久可看/可导出，绝不逼迫删除；
+- 降级不扣押数据：超额宠物转只读归档。
+
 ## Phase 2：Pet Intelligence——Pro 订阅（V1 验证后开发上架）
 
 > Free = Remember everything；Pro = Understand everything。免费层完整跑通、WAP 漏斗验证后，才动工计费。
+> 实现细节以[蓝图](product/PRODUCT-AI-BLUEPRINT-20260817.md) §7-§18 为准：Pet State Projection 供上下文、AI Orchestrator（Interpreter/Retriever/Extractor + Correlator/Composer/Planner）、**Credits=内部成本预算（1 credit ≤ $0.003）**、AI Gateway 预授权（超预算先压缩上下文再降模型，不硬调）、Usage Ledger 不可变流水、Model Router 按质量分级+失败升级、**健康数据只用付费 API 层**（不用供应商免费 AI 处理医疗数据）。
 
 - AI 从 UI 消失：无聊天框；一句话自由文本后台结构化（症状/次数/时间），用户不再填表；
 - AI 能力：结构化记录、病历 OCR、时间线整理、智能搜索、AI 就诊准备、健康趋势洞察（基础确定性图表已在 V1 免费）、智能提醒、自动摘要；
-- 免费用户每月 3 次 AI 体验额度；
+- 免费用户每月 10 AI credits（解锁条件：邮箱验证+已建宠，防白嫖）；
 - AI 只做 organize / retrieve / correlate / summarize / remind，永不 diagnose / prescribe；
 - 计费走权益层多适配器：Lemon Squeezy/Web 先行，预留 App Store IAP / Google Play（业务代码不知道钱从哪付的）；
-- 多宠解锁（挂 entitlement gate）。
+- 套餐（蓝图 §28-§32）：**Pro $4.99/月 · $39.99/年（5 宠 6 人 10GB 250 credits/月）**；**Family $8.99/月 · $79.99/年（10 宠 10 人 50GB 700 共享 credits/月）**；credits 滚存 1 月并计 AI liability reserve；经营口径按售价 75% 做净收入预算——套餐在用户吃满上限时仍盈利（蓝图 §29 的算术）；多宠挂 entitlement gate `multi_pet`。
 
 ## Phase 3：全程陪伴
 
@@ -58,6 +70,8 @@
 - 原生 App 决策（若 Pro 订阅成功且 iOS 内购必要）。
 
 ## 关键决策
+
+- **商业原则（蓝图 §40，长期不可违反）**：核心照护永不收费（记录/Today/用药/提醒/基础 Summary/Emergency/Share/Export 全免费）；付费只买规模、资源、自动化与 Intelligence；Archived Pet 永不占位、降级永不扣押数据；邮件触达改为 **Only notify when useful**（废弃无条件每日摘要——Resend 成本与打扰双输）；护城河 = 多年积累的 Pet Knowledge + 照护历史 + 家庭上下文，模型可换、上下文不可替代。
 
 - Phase 1 不做 AI——刻意做到没有 AI 也非常好用，AI 上线时才像 "PLANET suddenly became intelligent"；
 - 应急永不设卡、分享不收费、导出不收费、核心闭环永久免费（品牌价值观，长期不动）；

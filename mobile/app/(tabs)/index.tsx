@@ -7,6 +7,7 @@
  * run in the circle timezone (spec §75).
  */
 import React, { useMemo, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
   Platform,
   Pressable,
@@ -52,7 +53,7 @@ import {
 } from '../../src/components/today/time';
 import { ShareCard } from '../../src/components/today/share-card';
 
-export default function TodayScreen() {
+function TodayScreen() {
   const insets = useSafeAreaInsets();
   const {
     pet,
@@ -514,3 +515,12 @@ const styles = StyleSheet.create({
     marginVertical: spacing.s4,
   },
 });
+
+
+// Web keeps blurred tab screens mounted-visible; render content only when
+// focused (data lives in the TanStack cache, refocus is instant).
+export default function TodayScreenTab() {
+  const focused = useIsFocused();
+  if (!focused) return null;
+  return <TodayScreen />;
+}

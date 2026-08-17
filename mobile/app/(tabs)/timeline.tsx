@@ -4,6 +4,7 @@
  * §29) with cursor pagination (§72) and optimistic inserts (§63).
  */
 import React, { useMemo, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { FlatList, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -31,7 +32,7 @@ import {
 import { EventCompactRow, EventLargeCard } from '../../src/components/timeline/event-cards';
 import { QuickInputCard } from '../../src/components/timeline/quick-input';
 
-export default function TimelineScreen() {
+function TimelineScreen() {
   const { pet, circle } = useActivePet();
   const tz = circle?.timezone;
   const petId = pet?.id;
@@ -130,3 +131,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.s32 * 3, // clear the floating tab bar (64 + safe area)
   },
 });
+
+
+// Web keeps blurred tab screens mounted-visible; render content only when
+// focused (data lives in the TanStack cache, refocus is instant).
+export default function TimelineScreenTab() {
+  const focused = useIsFocused();
+  if (!focused) return null;
+  return <TimelineScreen />;
+}

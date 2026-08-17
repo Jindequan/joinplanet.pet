@@ -7,6 +7,7 @@
  * Never a settings dump.
  */
 import React, { useMemo } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -98,7 +99,7 @@ function medicationsSummary(active: Medication[]): string {
   return active.length > 1 ? `${first} +${active.length - 1} more` : first;
 }
 
-export default function PetOverviewScreen() {
+function PetOverviewScreen() {
   const { pet, circle, isLoading } = useActivePet();
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
@@ -303,3 +304,12 @@ const styles = StyleSheet.create({
   dueDate: { ...typography.caption, color: colors.textSecondary },
   dueDateSoon: { color: colors.warning, fontWeight: '600' },
 });
+
+
+// Web keeps blurred tab screens mounted-visible; render content only when
+// focused (data lives in the TanStack cache, refocus is instant).
+export default function PetOverviewScreenTab() {
+  const focused = useIsFocused();
+  if (!focused) return null;
+  return <PetOverviewScreen />;
+}

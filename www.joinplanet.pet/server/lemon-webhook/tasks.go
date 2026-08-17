@@ -46,6 +46,7 @@ type taskJSON struct {
 	Note         string       `json:"note"`
 	Active       bool         `json:"active"`
 	MedicationID *int64       `json:"medication_id"`
+	Reminder     bool         `json:"reminder"`
 	Log          *taskLogJSON `json:"log"`
 }
 
@@ -116,7 +117,7 @@ func (a *app) taskCircleToday(ctx context.Context, petID int64) (string, error) 
 
 func (a *app) listTodayTasks(ctx context.Context, petID int64, date string) ([]taskJSON, error) {
 	rows, err := a.pool.Query(ctx, `
-		SELECT t.id, t.title, to_char(t.time_of_day, 'HH24:MI'), t.note, t.medication_id,
+		SELECT t.id, t.title, to_char(t.time_of_day, 'HH24:MI'), t.note, t.medication_id, t.reminder,
 		       l.status, l.by_user_id, u.display_name, l.at, l.note, l.log_date
 		  FROM care_tasks t
 		  LEFT JOIN task_logs l ON l.task_id = t.id AND l.log_date = $2::date
@@ -133,7 +134,7 @@ func (a *app) listTodayTasks(ctx context.Context, petID int64, date string) ([]t
 		var status, byName, logNote *string
 		var byUserID *int64
 		var at, logDate *time.Time
-		if err := rows.Scan(&t.ID, &t.Title, &t.TimeOfDay, &t.Note, &t.MedicationID,
+		if err := rows.Scan(&t.ID, &t.Title, &t.TimeOfDay, &t.Note, &t.MedicationID, &t.Reminder,
 			&status, &byUserID, &byName, &at, &logNote, &logDate); err != nil {
 			return nil, err
 		}
@@ -174,6 +175,7 @@ func (a *app) handleTaskCreate(w http.ResponseWriter, req *http.Request, userID,
 		TimeOfDay    string `json:"time_of_day"`
 		Note         string `json:"note"`
 		MedicationID *int64 `json:"medication_id"`
+		Reminder     bool   `json:"reminder"`
 	}
 	if err := readJSON(req, &body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))
@@ -194,11 +196,11 @@ func (a *app) handleTaskCreate(w http.ResponseWriter, req *http.Request, userID,
 	}
 	var task taskJSON
 	err := a.pool.QueryRow(req.Context(), `
-		INSERT INTO care_tasks (circle_id, pet_id, title, time_of_day, note, medication_id, created_by)
-		VALUES ((SELECT circle_id FROM pets WHERE id = $1), $1, $2, $3::time, $4, $5, $6)
-		RETURNING id, title, to_char(time_of_day, 'HH24:MI'), note, medication_id, active`,
-		petID, title, tod, truncate(strings.TrimSpace(body.Note), 2000), body.MedicationID, userID,
-	).Scan(&task.ID, &task.Title, &task.TimeOfDay, &task.Note, &task.MedicationID, &task.Active)
+		INSERT INTO care_tasks (circle_id, pet_id, title, time_of_day, note, medication_id, reminder, created_by)
+		VALUES ((SELECT circle_id FROM pets WHERE id = $1), $1, $2, $3::time, $4, $5, $6, $7)
+		RETURNING id, title, to_char(time_of_day, 'HH24:MI'), note, medication_id, reminder, active`,
+		petID, title, tod, truncate(strings.TrimSpace(body.Note), 2000), body.MedicationID, body.Reminder, userID,
+	).Scan(&task.ID, &task.Title, &task.TimeOfDay, &task.Note, &task.MedicationID, &task.Reminder, &task.Active)
 	if err != nil {
 		jsonResponse(w, http.StatusInternalServerError, errBody("could not create task"))
 		return
@@ -226,6 +228,7 @@ func (a *app) handleTaskUpdate(w http.ResponseWriter, req *http.Request, userID 
 		TimeOfDay *string `json:"time_of_day"`
 		Note      *string `json:"note"`
 		Active    *bool   `json:"active"`
+		Reminder  *bool   `json:"reminder"`
 	}
 	if err := readJSON(req, &body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))
@@ -233,6 +236,7 @@ func (a *app) handleTaskUpdate(w http.ResponseWriter, req *http.Request, userID 
 	}
 	var title, tod, note any
 	var active any
+	var reminder any
 	if body.Title != nil {
 		v := truncate(strings.TrimSpace(*body.Title), 200)
 		if v == "" {
@@ -255,17 +259,21 @@ func (a *app) handleTaskUpdate(w http.ResponseWriter, req *http.Request, userID 
 	if body.Active != nil {
 		active = *body.Active
 	}
+	if body.Reminder != nil {
+		reminder = *body.Reminder
+	}
 	var task taskJSON
 	err := a.pool.QueryRow(req.Context(), `
 		UPDATE care_tasks SET
 			title = COALESCE($1, title),
 			time_of_day = COALESCE($2::time, time_of_day),
 			note = COALESCE($3, note),
-			active = COALESCE($4, active)
-		WHERE id = $5
-		RETURNING id, title, to_char(time_of_day, 'HH24:MI'), note, active`,
-		title, tod, note, active, taskID,
-	).Scan(&task.ID, &task.Title, &task.TimeOfDay, &task.Note, &task.Active)
+			active = COALESCE($4, active),
+			reminder = COALESCE($5, reminder)
+		WHERE id = $6
+		RETURNING id, title, to_char(time_of_day, 'HH24:MI'), note, reminder, active`,
+		title, tod, note, active, reminder, taskID,
+	).Scan(&task.ID, &task.Title, &task.TimeOfDay, &task.Note, &task.Reminder, &task.Active)
 	if err != nil {
 		jsonResponse(w, http.StatusInternalServerError, errBody("could not update task"))
 		return

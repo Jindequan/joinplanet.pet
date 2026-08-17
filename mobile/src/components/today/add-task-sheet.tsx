@@ -5,14 +5,17 @@
  * pet's active medications (spec §37: daily dosing lives in Today, not Quick
  * Record); picking one prefills "{name} {dose}" and links medication_id.
  * The Today empty state reuses TASK_TEMPLATES for one-tap creation (spec §24).
+ * "Remind me daily" (V1.5 wing 3) opts the task into a local notification on
+ * this device; the server only stores the flag — scheduling is client-side.
  */
 import React, { useState } from 'react';
-import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Check, ChevronLeft, Croissant, Footprints, Pill, Plus, Utensils, type LucideIcon } from 'lucide-react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Bell, Check, ChevronLeft, Croissant, Footprints, Pill, Plus, Utensils, type LucideIcon } from 'lucide-react-native';
 import { colors, radius, spacing, touchTarget, typography } from '../../theme';
 import { Field, PrimaryButton } from '../ui';
 import { useToast } from '../toast';
 import { haptics } from '../../lib/haptics';
+import { ensurePermission, scheduleTaskReminder } from '../../lib/notifications';
 import { useActivePet, useCreateTask, useMedications, type Medication } from '../../lib/queries';
 
 export interface TaskTemplate {
@@ -59,6 +62,7 @@ export function AddTaskSheetContent({
   const [title, setTitle] = useState(initialTemplate?.title ?? '');
   const [time, setTime] = useState(initialTemplate?.time ?? '09:00');
   const [timeError, setTimeError] = useState<string | null>(null);
+  const [remind, setRemind] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const activeMeds = medications.data?.active ?? [];
@@ -71,6 +75,7 @@ export function AddTaskSheetContent({
     setTitle(next.title);
     setTime(next.time);
     setTimeError(null);
+    setRemind(false);
   };
 
   const backToTemplates = () => {
@@ -79,6 +84,14 @@ export function AddTaskSheetContent({
     setMedication(null);
     setTitle('');
     setTimeError(null);
+    setRemind(false);
+  };
+
+  /** Ask at intent time (scheduling re-checks); web/denied degrade silently. */
+  const toggleRemind = (next: boolean) => {
+    haptics.select();
+    setRemind(next);
+    if (next) void ensurePermission();
   };
 
   const submit = () => {
@@ -94,11 +107,24 @@ export function AddTaskSheetContent({
     }
     setBusy(true);
     createTask.mutate(
-      { title: trimmed, time_of_day: time, medication_id: medication?.id },
+      { title: trimmed, time_of_day: time, medication_id: medication?.id, reminder: remind },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           haptics.light();
           toast({ message: 'Added to routine' });
+          if (remind) {
+            const task = (
+              data as { task?: { id: string | number; title: string; time_of_day: string } } | undefined
+            )?.task;
+            if (task) {
+              // Local nag on this device; web/unsupported returns null silently.
+              void scheduleTaskReminder({
+                id: String(task.id),
+                title: task.title,
+                time_of_day: task.time_of_day,
+              });
+            }
+          }
           Keyboard.dismiss();
           onClose?.();
         },
@@ -215,6 +241,38 @@ export function AddTaskSheetContent({
             error={timeError}
             editable={!busy}
           />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Remind me daily"
+            accessibilityState={{ checked: remind }}
+            onPress={() => toggleRemind(!remind)}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.reminderRow,
+              remind && styles.reminderRowSelected,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Bell size={18} color={remind ? colors.brand700 : colors.textSecondary} />
+            <View style={styles.reminderText}>
+              <Text
+                style={[styles.reminderLabel, remind && { color: colors.brand700 }]}
+                numberOfLines={1}
+              >
+                Remind me daily
+              </Text>
+              <Text style={styles.reminderHint} numberOfLines={1}>
+                A notification on this device
+              </Text>
+            </View>
+            {/* Row press and switch drag both route through toggleRemind. */}
+            <Switch
+              accessible={false}
+              value={remind}
+              onValueChange={toggleRemind}
+              trackColor={{ false: colors.border, true: colors.brand500 }}
+            />
+          </Pressable>
           <PrimaryButton
             label="Add to routine"
             loading={busy}
@@ -289,6 +347,22 @@ const styles = StyleSheet.create({
   },
   medRowSelected: { backgroundColor: colors.brand100, borderColor: colors.brand300 },
   medRowLabel: { ...typography.bodySm, color: colors.text, flex: 1 },
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s12,
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.s12,
+    paddingVertical: spacing.s4,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  reminderRowSelected: { backgroundColor: colors.brand100, borderColor: colors.brand300 },
+  reminderText: { flex: 1, gap: spacing.s4 },
+  reminderLabel: { ...typography.bodySm, color: colors.text, fontWeight: '600' },
+  reminderHint: { ...typography.caption, color: colors.textSecondary },
 });
 
 /** Sheet host: scrollable + keyboard-aware via BottomSheetModal options. */

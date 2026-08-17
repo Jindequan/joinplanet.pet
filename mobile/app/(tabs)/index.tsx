@@ -3,10 +3,12 @@
  * Daypart-grouped routine, one-tap optimistic completion + Undo toast (no
  * confirm modals), swipe-to-skip with a restorable fold, template-driven add
  * sheet, pull-to-refresh + focus revalidation (multi-caregiver, spec §66) and
- * the text share card. All dates/clocks run in the circle timezone (spec §75).
+ * the image share card (text on web + fallback, spec §26). All dates/clocks
+ * run in the circle timezone (spec §75).
  */
 import React, { useMemo, useRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,6 +17,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import ViewShot, { releaseCapture } from 'react-native-view-shot';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,6 +50,7 @@ import {
   daypartOf,
   todayInZone,
 } from '../../src/components/today/time';
+import { ShareCard } from '../../src/components/today/share-card';
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
@@ -77,6 +81,18 @@ export default function TodayScreen() {
   const [skippedOpen, setSkippedOpen] = useState(false);
   const sheetRef = useRef<BottomSheetModal>(null);
   const [preset, setPreset] = useState<TaskTemplate | null>(null);
+
+  // spec §26 — hidden image card, captured on demand (never disturbs layout).
+  const shareRef = useRef<ViewShot>(null);
+  const shareTasks = useMemo(
+    () =>
+      tasks.map((t) => ({
+        title: t.title,
+        done: t.log?.status === 'done',
+        by_name: t.log?.status === 'done' ? t.log.by_name : undefined,
+      })),
+    [tasks],
+  );
 
   // Focus → revalidate: 2–4 caregiver families reconcile without websockets (spec §66).
   useFocusEffect(
@@ -149,10 +165,8 @@ export default function TodayScreen() {
     );
   };
 
-  /** spec §26 — formatted text share via the system sheet (graphic card is a TODO). */
-  const handleShare = async () => {
-    // TODO(spec §26): swap for a rendered image card via react-native-view-shot
-    // once the package is added; this text card is the sanctioned fallback.
+  /** spec §26 preview body — the sanctioned text card (web + capture-failure fallback). */
+  const textShareMessage = () => {
     const lines = tasks.map((t) => {
       if (t.log?.status === 'done') {
         return `✓ ${t.title}${t.log.by_name ? ` · ${t.log.by_name}` : ''}`;
@@ -160,11 +174,48 @@ export default function TodayScreen() {
       if (t.log?.status === 'skipped') return `— ${t.title} · skipped`;
       return `○ ${t.title}`;
     });
-    const message = [`${petName || 'Your pet'} · Today`, '', ...lines, '', 'PLANET'].join('\n');
+    return [`${petName || 'Your pet'} · Today`, '', ...lines, '', 'PLANET'].join('\n');
+  };
+
+  /** spec §26 — formatted text share via the system sheet; dismissal is not an error. */
+  const shareAsText = async () => {
     try {
-      await Share.share({ message, title: `${petName}'s day` });
+      await Share.share({ message: textShareMessage(), title: `${petName}'s day` });
     } catch {
       // user dismissed the share sheet — not an error
+    }
+  };
+
+  /**
+   * spec §26 — rendered image card: ViewShot captures the off-screen ShareCard,
+   * Share carries it as a url. Web keeps the text card (view-shot blob sharing
+   * is unreliable there); a failed capture (permissions/native) falls back to
+   * text + a toast so sharing never breaks.
+   */
+  const handleShare = async () => {
+    if (Platform.OS === 'web') {
+      await shareAsText();
+      return;
+    }
+    try {
+      const uri = await shareRef.current?.capture?.();
+      if (!uri) throw new Error('capture unavailable');
+      try {
+        // iOS shares the PNG (+ text); Android's core Share ignores `url`, so
+        // the full text card rides along as the message either way.
+        await Share.share({
+          url: uri,
+          message: textShareMessage(),
+          title: `${petName}'s day`,
+        });
+      } catch {
+        // user dismissed the share sheet — not an error
+      } finally {
+        releaseCapture(uri); // tmpfile cleanup once the sheet has done its job
+      }
+    } catch {
+      toast({ message: "Couldn't create the image card — shared as text instead." });
+      await shareAsText();
     }
   };
 
@@ -349,6 +400,16 @@ export default function TodayScreen() {
 
         <SecondaryButton label="Add care task" icon={Plus} onPress={() => openSheet(null)} />
       </ScrollView>
+
+      {/* spec §26 — off-screen image card, captured to a PNG when ↗ is tapped */}
+      <ViewShot ref={shareRef} options={{ format: 'png', result: 'tmpfile' }}>
+        <ShareCard
+          petName={petName}
+          avatarKey={pet.avatar_key}
+          date={date}
+          tasks={shareTasks}
+        />
+      </ViewShot>
 
       <BottomSheetModal
         ref={sheetRef}

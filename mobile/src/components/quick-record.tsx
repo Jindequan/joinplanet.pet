@@ -1,12 +1,15 @@
 /**
  * Quick Record (spec §35–§39) — "Record what happened", not a universal create.
  * Five record types; default occurred_at = now; optimistic timeline insert + toast.
+ * Vet visits may carry data.next_due (YYYY-MM-DD) for the V1.5 upcoming-due list;
+ * vaccines/deworming ride the Vet visit type until a dedicated one exists.
  */
 import React, { useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Image } from 'expo-image';
+import dayjs from 'dayjs';
 import {
   Camera,
   Check,
@@ -61,6 +64,12 @@ async function compressForUpload(uri: string, width: number, height: number): Pr
   return result.uri;
 }
 
+/** YYYY-MM-DD sanity check for the optional "Next due" date. */
+function isValidDueDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return dayjs(value).isValid();
+}
+
 export function QuickRecord({ onClose }: { onClose?: () => void }) {
   const { pet } = useActivePet();
   const petId = pet?.id;
@@ -72,6 +81,8 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
   const [severity, setSeverity] = useState<(typeof SEVERITIES)[number] | null>(null);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<{ uri: string; width: number; height: number } | null>(null);
+  const [nextDue, setNextDue] = useState('');
+  const [nextDueError, setNextDueError] = useState<string | null>(null);
 
   const createEvent = useCreateEvent(petId);
 
@@ -80,6 +91,8 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
     setText('');
     setSeverity(null);
     setPhoto(null);
+    setNextDue('');
+    setNextDueError(null);
   };
 
   const finish = () => {
@@ -125,10 +138,24 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
   const saveTextRecord = (t: 'note' | 'symptom' | 'visit') => {
     const value = text.trim();
     if (!value || busy) return;
+    // Vet visit only: optional next due date → data.next_due (timeline.go JSONB passthrough).
+    let data: Record<string, unknown> | undefined;
+    if (t === 'visit') {
+      const trimmed = nextDue.trim();
+      if (trimmed) {
+        if (!isValidDueDate(trimmed)) {
+          setNextDueError('Use YYYY-MM-DD');
+          return;
+        }
+        data = { next_due: trimmed };
+      }
+      setNextDueError(null);
+    }
     void saveEvent({
       type: t,
       title: value,
       severity: t === 'symptom' && severity ? SEVERITY_TO_API[severity] : undefined,
+      data,
     });
   };
 
@@ -219,6 +246,8 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
                 haptics.select();
                 setText('');
                 setSeverity(null);
+                setNextDue('');
+                setNextDueError(null);
                 setType(active ? null : option.key);
               }}
               style={({ pressed }) => [
@@ -320,16 +349,33 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
       ) : null}
 
       {type === 'visit' ? (
-        <Field
-          label="Vet visit"
-          placeholder="Reason or outcome"
-          value={text}
-          onChangeText={setText}
-          autoFocus
-          returnKeyType="done"
-          onSubmitEditing={() => saveTextRecord('visit')}
-          editable={!busy}
-        />
+        <View style={styles.formGap}>
+          <Field
+            label="Vet visit"
+            placeholder="Reason or outcome"
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={() => saveTextRecord('visit')}
+            editable={!busy}
+          />
+          <Field
+            label="Next due (optional)"
+            placeholder="YYYY-MM-DD"
+            hint="e.g. vaccine or deworming due date"
+            value={nextDue}
+            onChangeText={(value) => {
+              setNextDue(value);
+              if (nextDueError) setNextDueError(null);
+            }}
+            keyboardType="numbers-and-punctuation"
+            returnKeyType="done"
+            onSubmitEditing={() => saveTextRecord('visit')}
+            error={nextDueError}
+            editable={!busy}
+          />
+        </View>
       ) : null}
 
       {type === 'photo' ? (

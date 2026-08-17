@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS care_tasks (
   circle_id     BIGINT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   pet_id        BIGINT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
   medication_id BIGINT REFERENCES medications(id) ON DELETE SET NULL,
+  reminder      BOOLEAN NOT NULL DEFAULT FALSE,  -- local daily reminder opt-in (V1.5 wing 3, free tier)
   title         TEXT NOT NULL,
   time_of_day TIME NOT NULL DEFAULT '08:00',
   repeat      TEXT NOT NULL DEFAULT 'daily',

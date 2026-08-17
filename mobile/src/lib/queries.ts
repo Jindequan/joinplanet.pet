@@ -412,6 +412,8 @@ export interface CreateTaskInput {
   time_of_day: string;
   note?: string;
   medication_id?: string;
+  /** Daily local reminder opt-in (V1.5 wing 3) — drives the server flag; the client schedules the notification itself. */
+  reminder?: boolean;
 }
 
 /** POST /pets/{petID}/tasks. */

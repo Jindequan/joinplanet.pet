@@ -168,7 +168,13 @@ func (a *app) mountAPI(rootMux *http.ServeMux) {
 	for _, m := range apiModules {
 		m(api, a)
 	}
-	rootMux.Handle("/api/v1/", http.StripPrefix("/api/v1", api))
+	// CORS-wrapped: the Expo web build calls these from the dev-server origin.
+	corsAPI := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		a.withCORS(func(hw http.ResponseWriter, hr *http.Request) {
+			api.ServeHTTP(hw, hr)
+		})(w, req)
+	})
+	rootMux.Handle("/api/v1/", http.StripPrefix("/api/v1", corsAPI))
 	for _, m := range pubModules {
 		m(rootMux, a)
 	}

@@ -168,6 +168,11 @@ export function AppHeader() {
               <Text style={styles.petRowName} numberOfLines={1}>
                 {p.name}
               </Text>
+              {p.archived ? (
+                <View style={styles.archivedBadge}>
+                  <Text style={styles.archivedBadgeLabel}>Archived</Text>
+                </View>
+              ) : null}
               {p.id === pet?.id ? <Check size={20} color={colors.brand700} /> : null}
             </Pressable>
           ))}
@@ -249,6 +254,21 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.s8,
   },
   petRowName: { ...typography.bodySm, color: colors.text, flex: 1 },
+  archivedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.s8,
+    paddingVertical: 2,
+    borderRadius: radius.chip,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  archivedBadgeLabel: {
+    ...typography.micro,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
   addPetIcon: {
     width: 24,
     height: 24,

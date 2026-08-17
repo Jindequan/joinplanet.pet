@@ -382,6 +382,20 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
     );
   }
 
+  // Archived pets are read-only (V1.5): quick record is disabled — unarchive
+  // first to resume logging.
+  if (pet?.archived) {
+    return (
+      <View style={styles.sheet}>
+        <Text style={styles.title}>Quick record</Text>
+        <Text style={styles.hint}>
+          {petName} is archived and read-only. Unarchive them in Data &amp; Privacy to record
+          again.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.sheet}>
       <Text style={styles.title}>Quick record</Text>

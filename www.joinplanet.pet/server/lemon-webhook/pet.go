@@ -21,6 +21,8 @@ func init() {
 		mux.HandleFunc("POST /pets", a.requireAuth(a.handleCreatePet))
 		mux.HandleFunc("GET /pets/{petID}", a.requirePetMember(a.handleGetPet))
 		mux.HandleFunc("PATCH /pets/{petID}", a.requirePetMember(a.handlePatchPet))
+		mux.HandleFunc("POST /pets/{petID}/archive", a.requirePetOwner(a.handleArchivePet))
+		mux.HandleFunc("POST /pets/{petID}/unarchive", a.requirePetOwner(a.handleUnarchivePet))
 		mux.HandleFunc("GET /pets/{petID}/medications", a.requirePetMember(a.handleListMedications))
 		mux.HandleFunc("POST /pets/{petID}/medications", a.requirePetMember(a.handleCreateMedication))
 		// /medications/{id} routes have no pet in the path: resolve pet_id from
@@ -49,6 +51,7 @@ type petJSON struct {
 	EmergencyContacts map[string]*emergencyContactJSON `json:"emergency_contacts"`
 	Notes             string                           `json:"notes"`
 	AvatarKey         *string                          `json:"avatar_key"`
+	Archived          bool                             `json:"archived"`
 }
 
 type petRow struct {
@@ -62,13 +65,14 @@ type petRow struct {
 	emergencyContacts []byte
 	notes             string
 	avatarKey         *string
+	archivedAt        *time.Time
 }
 
-const petColumns = `id, name, species, breed, birthday, allergies, conditions, emergency_contacts, notes, avatar_key`
+const petColumns = `id, name, species, breed, birthday, allergies, conditions, emergency_contacts, notes, avatar_key, archived_at`
 
 func (r *petRow) dest() []any {
 	return []any{&r.id, &r.name, &r.species, &r.breed, &r.birthday,
-		&r.allergies, &r.conditions, &r.emergencyContacts, &r.notes, &r.avatarKey}
+		&r.allergies, &r.conditions, &r.emergencyContacts, &r.notes, &r.avatarKey, &r.archivedAt}
 }
 
 func (r *petRow) toJSON() petJSON {
@@ -82,6 +86,7 @@ func (r *petRow) toJSON() petJSON {
 		EmergencyContacts: jsonContacts(r.emergencyContacts),
 		Notes:             r.notes,
 		AvatarKey:         r.avatarKey,
+		Archived:          r.archivedAt != nil,
 	}
 	if r.birthday != nil {
 		day := r.birthday.Format("2006-01-02")
@@ -106,11 +111,13 @@ func insertPetRow(ctx context.Context, q pgxQuerier, circleID, userID int64, nam
 
 // ---- additional pet creation (multi-pet, V1) --------------------------------------
 
-// petsForCircle loads every pet of a circle in creation order (petJSON shape).
-// Pets are hard-deleted (F8), so every remaining row counts as active.
+// petsForCircle loads every pet of a circle (petJSON shape). Archived pets stay
+// in the list (so the pet switcher can show and reopen them) but sort after
+// active ones; archived pets do not count against the plan's pet-slot quota.
 func (a *app) petsForCircle(ctx context.Context, circleID int64) ([]petJSON, error) {
 	rows, err := a.pool.Query(ctx,
-		`SELECT `+petColumns+` FROM pets WHERE circle_id = $1 ORDER BY id`, circleID)
+		`SELECT `+petColumns+` FROM pets WHERE circle_id = $1
+		 ORDER BY (archived_at IS NOT NULL), id`, circleID)
 	if err != nil {
 		return nil, err
 	}
@@ -175,8 +182,9 @@ func (a *app) handleCreatePet(w http.ResponseWriter, req *http.Request, userID i
 	}
 	limits := a.limitsFor(ctx, userID)
 	var petCount int
+	// Archived pets never count against the pet-slot quota (ROADMAP V1.5).
 	if err := a.pool.QueryRow(ctx,
-		`SELECT count(*) FROM pets WHERE circle_id = $1`, circleID).Scan(&petCount); err != nil {
+		`SELECT count(*) FROM pets WHERE circle_id = $1 AND archived_at IS NULL`, circleID).Scan(&petCount); err != nil {
 		jsonResponse(w, http.StatusInternalServerError, errBody("could not create pet"))
 		return
 	}
@@ -287,7 +295,66 @@ func (a *app) handleGetPet(w http.ResponseWriter, req *http.Request, userID, pet
 	jsonResponse(w, http.StatusOK, map[string]any{"pet": r.toJSON()})
 }
 
+// ensurePetNotArchived rejects writes to an archived pet with 403. Archived
+// pets are read-only (permanent memorialization, ROADMAP V1.5); the archive
+// flag is cleared only by the owner via /unarchive.
+func (a *app) ensurePetNotArchived(w http.ResponseWriter, ctx context.Context, petID int64) bool {
+	var archived *time.Time
+	if err := a.pool.QueryRow(ctx,
+		`SELECT archived_at FROM pets WHERE id = $1`, petID).Scan(&archived); err != nil {
+		jsonResponse(w, http.StatusNotFound, errBody("pet not found"))
+		return false
+	}
+	if archived != nil {
+		jsonResponse(w, http.StatusForbidden, errBody("pet is archived and read-only"))
+		return false
+	}
+	return true
+}
+
+// handleArchivePet soft-archives a pet (owner only): it becomes read-only but
+// stays permanently viewable and exportable, never counts against the pet-slot
+// quota, and is never silently deleted. Idempotent — re-archiving returns the
+// pet as-is.
+func (a *app) handleArchivePet(w http.ResponseWriter, req *http.Request, _, petID int64) {
+	var r petRow
+	err := a.pool.QueryRow(req.Context(),
+		`UPDATE pets SET archived_at = now() WHERE id = $1 RETURNING `+petColumns,
+		petID).Scan(r.dest()...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		jsonResponse(w, http.StatusNotFound, errBody("pet not found"))
+		return
+	}
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not archive pet"))
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]any{"pet": r.toJSON()})
+}
+
+// handleUnarchivePet clears the archive flag so the pet becomes active (and
+// writable) again. Owner only.
+func (a *app) handleUnarchivePet(w http.ResponseWriter, req *http.Request, _, petID int64) {
+	var r petRow
+	err := a.pool.QueryRow(req.Context(),
+		`UPDATE pets SET archived_at = NULL WHERE id = $1 RETURNING `+petColumns,
+		petID).Scan(r.dest()...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		jsonResponse(w, http.StatusNotFound, errBody("pet not found"))
+		return
+	}
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not unarchive pet"))
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]any{"pet": r.toJSON()})
+}
+
 func (a *app) handlePatchPet(w http.ResponseWriter, req *http.Request, userID, petID int64, role string) {
+	ctx := req.Context()
+	if !a.ensurePetNotArchived(w, ctx, petID) {
+		return
+	}
 	var body map[string]json.RawMessage
 	if err := readJSON(req, &body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))
@@ -578,6 +645,10 @@ func (a *app) handleListMedications(w http.ResponseWriter, req *http.Request, us
 }
 
 func (a *app) handleCreateMedication(w http.ResponseWriter, req *http.Request, userID, petID int64, role string) {
+	ctx := req.Context()
+	if !a.ensurePetNotArchived(w, ctx, petID) {
+		return
+	}
 	var body struct {
 		Name     string `json:"name"`
 		Dose     string `json:"dose"`
@@ -593,7 +664,6 @@ func (a *app) handleCreateMedication(w http.ResponseWriter, req *http.Request, u
 		jsonResponse(w, http.StatusBadRequest, errBody("medication name is required"))
 		return
 	}
-	ctx := req.Context()
 	tz, err := a.petCircleTimezone(ctx, petID)
 	if err != nil {
 		jsonResponse(w, http.StatusNotFound, errBody("pet not found"))
@@ -699,6 +769,9 @@ func (a *app) handlePatchMedication(w http.ResponseWriter, req *http.Request, us
 	}
 	if _, _, err := a.circleRoleForPet(ctx, current.petID, userID); err != nil {
 		jsonResponse(w, http.StatusNotFound, errBody("medication not found"))
+		return
+	}
+	if !a.ensurePetNotArchived(w, ctx, current.petID) {
 		return
 	}
 	var body map[string]json.RawMessage
@@ -819,6 +892,9 @@ func (a *app) handleDeleteMedication(w http.ResponseWriter, req *http.Request, u
 	}
 	if role != "owner" {
 		jsonResponse(w, http.StatusForbidden, errBody("owner only"))
+		return
+	}
+	if !a.ensurePetNotArchived(w, ctx, current.petID) {
 		return
 	}
 	if err := a.deleteMedication(ctx, medID); err != nil {

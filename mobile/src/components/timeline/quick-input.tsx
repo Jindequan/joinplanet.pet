@@ -45,11 +45,14 @@ async function compressForUpload(uri: string, width: number, height: number): Pr
 export function QuickInputCard({
   petId,
   petName,
+  /** Archived pets are read-only (V1.5): the input is replaced by a notice. */
+  archived = false,
   /** Active feed key — passed only when notes are visible under the current filter. */
   optimisticKey,
 }: {
   petId: string | undefined;
   petName: string;
+  archived?: boolean;
   optimisticKey?: QueryKey;
 }) {
   const client = useQueryClient();
@@ -162,6 +165,17 @@ export function QuickInputCard({
       text.trim(),
     );
   };
+
+  if (archived) {
+    return (
+      <Card style={styles.card}>
+        <Text style={styles.hint}>
+          {petName} is archived and read-only — unarchive them in Data &amp; Privacy to add to the
+          timeline.
+        </Text>
+      </Card>
+    );
+  }
 
   return (
     <Card style={styles.card}>

@@ -8,12 +8,12 @@ import React, { useState } from 'react';
 import { Alert, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Download, Link2, Share2, Trash2 } from 'lucide-react-native';
+import { Archive, ArchiveRestore, Download, Link2, Share2, Trash2 } from 'lucide-react-native';
 import { Card, ListRow, PrimaryButton, SectionHeader, Skeleton } from '../../src/components/ui';
 import { useToast } from '../../src/components/toast';
 import { Chevron, PageShell } from '../../src/components/pet/parts';
 import { del, get } from '../../src/lib/api';
-import { useActivePet } from '../../src/lib/queries';
+import { useActivePet, useArchivePet } from '../../src/lib/queries';
 import { colors, radius, spacing, typography, withAlpha } from '../../src/theme';
 
 const MONOSPACE = Platform.select({ ios: 'Menlo', default: 'monospace' });
@@ -44,8 +44,11 @@ export default function DataPrivacyScreen() {
   const circleId = circle?.id;
   const petName = pet?.name ?? 'your pet';
   const isOwner = circle?.role === 'owner';
+  const isArchived = !!pet?.archived;
   const client = useQueryClient();
   const { toast } = useToast();
+  const archivePet = useArchivePet();
+  const [archiving, setArchiving] = useState(false);
 
   /** Circle storage quota (M1) — informational card below the links row. */
   const usageQuery = useQuery({
@@ -132,6 +135,42 @@ export default function DataPrivacyScreen() {
     }
   };
 
+  /** Archive → two-step confirm (V1.5 memorialization, not a deletion). */
+  const confirmArchive = () => {
+    if (!petId || archiving) return;
+    Alert.alert(
+      `Archive ${petName}?`,
+      `This keeps all of ${petName}'s history — profile, timeline, medications, photos — but makes the pet read-only and it stops counting toward your plan. You can unarchive at any time.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Archive', style: 'destructive', onPress: () => void archive(true) },
+      ],
+    );
+  };
+
+  /** Unarchive → restores read-write + an active pet slot. No confirm needed (reversible). */
+  const confirmUnarchive = () => {
+    if (!petId || archiving) return;
+    void archive(false);
+  };
+
+  const archive = async (toArchive: boolean) => {
+    if (!petId || archiving) return;
+    setArchiving(true);
+    try {
+      await archivePet.mutateAsync({ petId, archived: toArchive });
+      toast({
+        message: toArchive
+          ? `${petName} archived — kept safe, read-only`
+          : `${petName} is active again`,
+      });
+    } catch (err) {
+      toast({ message: err instanceof Error ? err.message : 'Could not update' });
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   return (
     <PageShell title="Data & Privacy">
       <View>
@@ -209,13 +248,57 @@ export default function DataPrivacyScreen() {
         </Card>
       ) : null}
 
+      {/* Archive / memorialize (V1.5) — soft, reversible, owner only */}
+      <View>
+        <SectionHeader title="Pet memorial" />
+        <Card style={styles.dangerCard}>
+          <Text style={styles.dangerText}>
+            {isArchived
+              ? `${petName} is archived — read-only and kept permanently. It no longer counts toward your plan's pet slots and all history stays exportable.`
+              : `Archive ${petName} to keep all their history — profile, timeline, medications, photos — read-only. An archived pet is kept forever, stays exportable, and doesn't count toward your plan.`}
+          </Text>
+          {isOwner ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isArchived ? `Unarchive ${petName}` : `Archive ${petName}`}
+              accessibilityState={{ disabled: archiving || !petId, busy: archiving }}
+              disabled={archiving || !petId}
+              onPress={isArchived ? confirmUnarchive : confirmArchive}
+              style={({ pressed }) => [
+                styles.dangerButton,
+                pressed && { opacity: 0.7 },
+                (archiving || !petId) && { opacity: 0.4 },
+              ]}
+            >
+              {isArchived ? (
+                <ArchiveRestore size={typography.body.fontSize} color={colors.brand700} />
+              ) : (
+                <Archive size={typography.body.fontSize} color={colors.symptom} />
+              )}
+              <Text style={[styles.dangerButtonLabel, isArchived && styles.unarchiveLabel]}>
+                {archiving
+                  ? isArchived
+                    ? 'Unarchiving…'
+                    : 'Archiving…'
+                  : isArchived
+                    ? `Unarchive ${petName}`
+                    : `Archive ${petName}`}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.ownerOnlyNote}>Only the owner can archive or unarchive {petName}</Text>
+          )}
+        </Card>
+      </View>
+
       {/* Danger Zone — red only appears here (spec §51) */}
       <View>
         <SectionHeader title="Danger zone" />
         <Card style={styles.dangerCard}>
           <Text style={styles.dangerText}>
-            Deleting {petName} permanently removes every record, photo and share.
-            This cannot be undone.
+            {isArchived
+              ? `${petName} is archived, so everything is already preserved read-only. Deleting is the permanent, irreversible alternative to archiving — it removes every record, photo and share.`
+              : `Deleting ${petName} permanently removes every record, photo and share. This cannot be undone.`}
           </Text>
           {isOwner ? (
             <Pressable
@@ -301,4 +384,5 @@ const styles = StyleSheet.create({
     color: colors.symptom,
     fontWeight: '600',
   },
+  unarchiveLabel: { color: colors.brand700 },
 });

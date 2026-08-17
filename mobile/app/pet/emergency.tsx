@@ -47,6 +47,8 @@ export default function EmergencyScreen() {
   const { pet: petSummary, circle } = useActivePet();
   const petId = petSummary?.id;
   const { data: pet } = usePet(petId);
+  // Archived pets are read-only (V1.5) — emergency contacts are view-only.
+  const isArchived = !!(petSummary?.archived ?? pet?.archived);
   const { data: me } = useMe();
   const { data: circleData } = useCircleMembers(circle?.id);
   const client = useQueryClient();
@@ -84,6 +86,10 @@ export default function EmergencyScreen() {
   });
 
   const startEdit = () => {
+    if (isArchived) {
+      toast({ message: `${petSummary?.name ?? 'This pet'} is archived and read-only` });
+      return;
+    }
     const toDraft = (c: EmergencyContact | null | undefined): Draft => ({
       name: c?.name ?? '',
       phone: c?.phone ?? '',
@@ -168,7 +174,7 @@ export default function EmergencyScreen() {
 
       <SectionHeader
         title="Contacts"
-        action={editing ? undefined : { label: 'Edit', onPress: startEdit }}
+        action={editing || isArchived ? undefined : { label: 'Edit', onPress: startEdit }}
       />
 
       {editing ? (

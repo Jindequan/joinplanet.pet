@@ -87,7 +87,12 @@ function TimelineScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View style={styles.headerBlock}>
-            <QuickInputCard petId={petId} petName={petName} optimisticKey={optimisticKey} />
+            <QuickInputCard
+              petId={petId}
+              petName={petName}
+              archived={pet?.archived}
+              optimisticKey={optimisticKey}
+            />
             <FilterChips value={filter.key} onChange={selectFilter} />
           </View>
         }

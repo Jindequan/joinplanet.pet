@@ -40,6 +40,7 @@ export default function MedicationsScreen() {
   const { pet } = useActivePet();
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
+  const isArchived = !!pet?.archived;
   const { data, isLoading } = useMedications(petId);
   const client = useQueryClient();
   const { toast } = useToast();
@@ -75,6 +76,10 @@ export default function MedicationsScreen() {
   };
 
   const openSheet = () => {
+    if (isArchived) {
+      toast({ message: `${petName} is archived and read-only` });
+      return;
+    }
     resetForm();
     sheetRef.current?.present();
   };
@@ -135,6 +140,10 @@ export default function MedicationsScreen() {
   };
 
   const confirmEnd = (med: Medication) => {
+    if (isArchived) {
+      toast({ message: `${petName} is archived and read-only` });
+      return;
+    }
     Alert.alert(
       'End medication',
       `End ${med.name}? It will move to Past.`,
@@ -250,7 +259,10 @@ export default function MedicationsScreen() {
         </View>
       ) : null}
 
-      <PrimaryButton label="Add medication" onPress={openSheet} />
+      <PrimaryButton
+        label={isArchived ? 'Add medication — read-only' : 'Add medication'}
+        onPress={openSheet}
+      />
 
       {/* Add medication sheet (spec §46) + follow-up */}
       <BottomSheetModal

@@ -3,7 +3,7 @@
 > 2026-08-17 按[外部评估报告](research/DESIGN-EVALUATION-20260817.md)重构：产品定位为 The digital home for your pet——Phase 1: PLANET remembers → Phase 2: PLANET understands → Phase 3: PLANET accompanies the pet throughout its life。
 > **同日晚，[产品+AI+商业蓝图](product/PRODUCT-AI-BLUEPRINT-20260817.md)升格为正典**：产品循环 Observe→Record→Understand→Act→Follow up→Remember；AI 是 Intelligence Layer（无 AI 首页）；Credits=内部成本预算层（1 credit ≤ $0.003 供应商成本，配 Usage Ledger/AI Gateway 预授权/Model Router）；免费层可变成本封顶 ~$0.05-0.06/活跃账户/月。
 >
-> **阶段名冲突裁决**：蓝图将 V1.5 定义为 "PLANET Together"（多宠+家庭免费 2 宠 2 人）；本仓库此前把 V1.5 用作"照护环四翼"。裁决：四翼归入 V1（Personal + 照护环，已交付）；V1.5 保留给蓝图的 Together 语义。当前进度对照：**V1 已交付**（含多人圈子——比蓝图 V1 的单人定义更超前，视为已提前完成 Together 的一部分）；多宠 UI 与免费配额闸门是 V1.5 剩余工作。
+> **阶段名冲突裁决**：蓝图将 V1.5 定义为 "PLANET Together"（多宠+家庭免费 2 宠 2 人）；本仓库此前把 V1.5 用作"照护环四翼"。裁决：四翼归入 V1（Personal + 照护环，已交付）；V1.5 保留给蓝图的 Together 语义。当前进度对照：**V1 已交付**（含多人圈子——比蓝图 V1 的单人定义更超前，视为已提前完成 Together 的一部分）；**V1.5 已交付（2026-08-18）**：多宠 UI（Pet Switcher）、免费配额闸门（2 宠/2 人/50MB）、byte 制媒体计量、Archived Pet（软归档、只读、可导出、不占宠位）、以及 plan 层从 entitlements 解析配额（`resolvePlanLimits`，为 Phase 2 计费铺路）。
 
 ## Phase 0：落地页与支持者通道（进行中，与开发并行）
 
@@ -42,10 +42,10 @@
 
 出口条件：漏斗走通到"5 只宠物持续使用 2+ 周"。达不到回炉摩擦，不加功能。
 
-## Phase 1.5：PLANET Together（蓝图定义，V1 验证后）
+## Phase 1.5：PLANET Together（蓝图定义，V1 验证后）— ✅ 已交付 2026-08-18
 
 - 免费 **2 active pets + 2 members + 50MB 媒体**（"共同照护本身就是免费价值"；配额在 V1.5 提前落地：宠物数/成员数/存储在创建与上传路径强制）；
-- 多宠 UI（Pet Switcher，schema 早已就绪）+ entitlement 闸门 `multi_pet`；
+- ✅ 多宠 UI（Pet Switcher，schema 早已就绪）+ entitlement 闸门 `multi_pet`（`limitsFor`/`resolvePlanLimits` 从 entitlements 解析）；
 - **配额制切换**：媒体按字节制计量——**免费 50MB（2026-08-17 创始人裁决，覆盖蓝图 §24 的 500MB）**，Pro 10GB / Family 50GB；免费层其余配额照蓝图：2 active pets + 2 members + 10 AI credits/月（AI credits 到 V2 才生效）；
 - Archived Pet 不占宠位：去世宠物永久可看/可导出，绝不逼迫删除；
 - 降级不扣押数据：超额宠物转只读归档。
@@ -76,3 +76,4 @@
 - Phase 1 不做 AI——刻意做到没有 AI 也非常好用，AI 上线时才像 "PLANET suddenly became intelligent"；
 - 应急永不设卡、分享不收费、导出不收费、核心闭环永久免费（品牌价值观，长期不动）；
 - 不扩品类：社区、商城、找医生、保险、AI 问诊、宠物百科都不做——越来越深地拥有这只宠物的一生数据，而不是横向铺开。
+�地拥有这只宠物的一生数据，而不是横向铺开。

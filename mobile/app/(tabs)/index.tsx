@@ -23,7 +23,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { ChevronDown, ChevronUp, Dog, Plus } from 'lucide-react-native';
+import { Archive, ChevronDown, ChevronUp, Dog, Plus } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../src/theme';
 import { Chip, EmptyState, SecondaryButton, SectionHeader, Skeleton } from '../../src/components/ui';
 import { useToast } from '../../src/components/toast';
@@ -246,11 +246,14 @@ function TodayScreen() {
     );
   };
 
-  const rowActions: TaskRowActions = {
-    onComplete: handleComplete,
-    onSkip: handleSkip,
-    onUndo: handleUndo,
-  };
+  const isArchived = !!pet?.archived;
+  const archivedNotice = () =>
+    toast({ message: `${petName} is archived and read-only` });
+
+  // Archived pets are read-only (V1.5): task toggles and skips are disabled.
+  const rowActions: TaskRowActions = isArchived
+    ? { onComplete: archivedNotice, onSkip: archivedNotice, onUndo: archivedNotice }
+    : { onComplete: handleComplete, onSkip: handleSkip, onUndo: handleUndo };
 
   const onRefresh = () => {
     void today.refetch();
@@ -336,6 +339,16 @@ function TodayScreen() {
           onShare={() => void handleShare()}
         />
 
+        {isArchived ? (
+          <View style={styles.archivedBanner} accessibilityRole="alert">
+            <Archive size={16} color={colors.textSecondary} />
+            <Text style={styles.archivedBannerText}>
+              {petName} is archived — read-only. History stays intact and exportable. Visit Data
+              &amp; Privacy to unarchive.
+            </Text>
+          </View>
+        ) : null}
+
         {tasks.length === 0 ? (
           <View style={styles.emptyBlock}>
             <EmptyState
@@ -344,7 +357,11 @@ function TodayScreen() {
             />
             <View style={styles.chipRow}>
               {TASK_TEMPLATES.filter((t) => t.key !== 'dinner').map((t) => (
-                <Chip key={t.key} label={t.label} onPress={() => handleQuickCreate(t)} />
+                <Chip
+                  key={t.key}
+                  label={t.label}
+                  onPress={isArchived ? archivedNotice : () => handleQuickCreate(t)}
+                />
               ))}
             </View>
           </View>
@@ -399,7 +416,11 @@ function TodayScreen() {
           </>
         )}
 
-        <SecondaryButton label="Add care task" icon={Plus} onPress={() => openSheet(null)} />
+        {isArchived ? (
+          <SecondaryButton label="Pet is archived — read-only" icon={Plus} onPress={archivedNotice} />
+        ) : (
+          <SecondaryButton label="Add care task" icon={Plus} onPress={() => openSheet(null)} />
+        )}
       </ScrollView>
 
       {/* spec §26 — off-screen image card, captured to a PNG when ↗ is tapped */}
@@ -484,6 +505,22 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
     marginHorizontal: spacing.s16,
+  },
+  archivedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.s8,
+    padding: spacing.s12,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceSoft,
+  },
+  archivedBannerText: {
+    flex: 1,
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   skippedToggle: {
     minHeight: 44,

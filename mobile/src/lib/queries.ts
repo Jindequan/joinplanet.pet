@@ -31,6 +31,8 @@ export interface PetSummary {
   breed?: string;
   birthday?: string;
   avatar_key?: string;
+  /** Soft "archive" flag (V1.5): deceased pets are read-only and never count against the plan's pet-slot quota. */
+  archived?: boolean;
 }
 
 export interface Circle {
@@ -61,6 +63,8 @@ export interface Pet {
   emergency_contacts?: { primary?: string; vet?: string; authorized_decision_maker?: string };
   notes?: string;
   avatar_key?: string;
+  /** Soft "archive" flag (V1.5): deceased pets are read-only and never count against the plan's pet-slot quota. */
+  archived?: boolean;
 }
 
 export interface TaskLog {
@@ -558,6 +562,27 @@ export function useUpdateEvent(petId: string | undefined) {
       })),
     onSettled: () => {
       if (petId) void client.invalidateQueries({ queryKey: qk.timeline(petId) });
+    },
+  });
+}
+
+/**
+ * Archive/unarchive a pet (V1.5): POST /pets/{petID}/archive|unarchive.
+ * Archiving makes a pet read-only (keeps all history, never counts against
+ * the plan's pet-slot quota); unarchiving reopens it. Owner only — the server
+ * enforces that. On success we invalidate /me so the switcher and active-pet
+ * derivation pick up the new archived state everywhere.
+ */
+export function useArchivePet() {
+  const client = useQueryClient();
+  return useMutation<Pet, ApiError, { petId: string; archived: boolean }>({
+    mutationFn: ({ petId, archived }) =>
+      (archived
+        ? post<{ pet: Pet }>(`/pets/${petId}/archive`)
+        : post<{ pet: Pet }>(`/pets/${petId}/unarchive`)
+      ).then((r) => r.pet),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: qk.me });
     },
   });
 }

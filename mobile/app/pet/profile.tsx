@@ -84,6 +84,8 @@ export default function HealthProfileScreen() {
   const { data: pet } = usePet(petId);
   const client = useQueryClient();
   const { toast } = useToast();
+  // Archived pets are read-only (V1.5) — the profile is view-only.
+  const isArchived = !!pet?.archived;
 
   // Current weight is derived from the latest timeline weight event (§44).
   const weight = latestWeight(
@@ -112,6 +114,10 @@ export default function HealthProfileScreen() {
   });
 
   const startBasicEdit = () => {
+    if (isArchived) {
+      toast({ message: `${pet?.name ?? 'This pet'} is archived and read-only` });
+      return;
+    }
     setSpecies(pet?.species ?? '');
     setBreed(pet?.breed ?? '');
     setBirthday(pet?.birthday ?? '');
@@ -130,6 +136,10 @@ export default function HealthProfileScreen() {
   };
 
   const startHealthEdit = () => {
+    if (isArchived) {
+      toast({ message: `${pet?.name ?? 'This pet'} is archived and read-only` });
+      return;
+    }
     setAllergies(pet?.allergies ?? []);
     setConditions(pet?.conditions ?? []);
     setEditingHealth(true);
@@ -150,7 +160,7 @@ export default function HealthProfileScreen() {
       <View>
         <SectionHeader
           title="Basic"
-          action={editingBasic ? undefined : { label: 'Edit', onPress: startBasicEdit }}
+          action={editingBasic || isArchived ? undefined : { label: 'Edit', onPress: startBasicEdit }}
         />
         {editingBasic ? (
           <Card style={styles.editCard}>
@@ -189,7 +199,7 @@ export default function HealthProfileScreen() {
       <View>
         <SectionHeader
           title="Health"
-          action={editingHealth ? undefined : { label: 'Edit', onPress: startHealthEdit }}
+          action={editingHealth || isArchived ? undefined : { label: 'Edit', onPress: startHealthEdit }}
         />
         {editingHealth ? (
           <Card style={styles.editCard}>

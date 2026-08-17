@@ -6,20 +6,25 @@
  * "Meet {name}." → tabs. A failed photo upload never blocks circle creation
  * (toast, then continue). An "Have an invite code? Join instead" link hands
  * off to /join.
+ *
+ * Add mode (?mode=add, multi-pet M1): same flow for an existing circle —
+ * POST /pets skips circle creation; on success the new pet is selected and the
+ * tabs open directly. Hitting the free-plan 403 shows a quiet empty state —
+ * no upsell copy; the limit itself is the message.
  */
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Camera, Image as ImageIcon, PawPrint } from 'lucide-react-native';
-import { Chip, Field, PrimaryButton, SecondaryButton } from '../src/components/ui';
+import { Chip, EmptyState, Field, PrimaryButton, SecondaryButton } from '../src/components/ui';
 import { useToast } from '../src/components/toast';
 import { ApiError, AuthError, patch, post, upload } from '../src/lib/api';
 import { queryClient } from '../src/lib/query-client';
-import { qk } from '../src/lib/queries';
+import { qk, useActivePet } from '../src/lib/queries';
 import { colors, radius, spacing, typography } from '../src/theme';
 
 type Species = 'dog' | 'cat' | 'other';
@@ -74,6 +79,10 @@ async function uploadAvatar(petId: string, uri: string): Promise<void> {
 }
 
 export default function CreatePetScreen() {
+  const params = useLocalSearchParams<{ mode?: string | string[] }>();
+  const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const addMode = mode === 'add';
+  const { selectPet } = useActivePet();
   const [step, setStep] = useState<Step>('name');
   const [name, setName] = useState('');
   const [species, setSpecies] = useState<Species | null>(null);
@@ -81,6 +90,7 @@ export default function CreatePetScreen() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const { toast } = useToast();
 
   const petName = name.trim();
@@ -112,7 +122,12 @@ export default function CreatePetScreen() {
     }
   }, []);
 
-  const createCircle = useCallback(async () => {
+  /**
+   * Final step: create the circle (onboarding) or just the pet (?mode=add —
+   * the server attaches it to the user's existing circle). The photo is
+   * polish, not a gate (spec §15): a failed upload never blocks either flow.
+   */
+  const submit = useCallback(async () => {
     if (submitting) return;
     if (!petName) {
       setStep('name');
@@ -121,15 +136,19 @@ export default function CreatePetScreen() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await post<{ pet: { id: string | number } }>('/circles', {
-        pet_name: petName,
-        species: species ?? 'other',
-        breed: '',
-      });
+      const res = addMode
+        ? await post<{ pet: { id: string | number } }>('/pets', {
+            name: petName,
+            species: species ?? 'other',
+            breed: '',
+          })
+        : await post<{ pet: { id: string | number } }>('/circles', {
+            pet_name: petName,
+            species: species ?? 'other',
+            breed: '',
+          });
       const petId = String(res.pet.id);
       if (photoUri) {
-        // The photo is polish, not a gate (spec §15) — a failed upload must
-        // never block the circle: toast and continue to "Meet {name}."
         try {
           await uploadAvatar(petId, photoUri);
         } catch {
@@ -137,19 +156,46 @@ export default function CreatePetScreen() {
         }
       }
       await queryClient.invalidateQueries({ queryKey: qk.me });
+      if (addMode) {
+        // Switch straight into the new pet — petId-keyed queries refetch on key change.
+        selectPet(petId);
+        router.replace('/(tabs)');
+        return;
+      }
       setStep('done');
     } catch (err) {
       if (err instanceof AuthError) {
         router.replace('/welcome');
         return;
       }
-      setSubmitError(errText(err, `Couldn't create ${petName}'s home. Try again.`));
+      if (addMode && err instanceof ApiError && err.status === 403) {
+        // Free-plan pet limit: {"error":"pet limit reached","limit":2}
+        setLimitReached(true);
+        return;
+      }
+      setSubmitError(
+        errText(err, addMode ? `Couldn't add ${petName}. Try again.` : `Couldn't create ${petName}'s home. Try again.`),
+      );
     } finally {
       setSubmitting(false);
     }
-  }, [petName, photoUri, species, submitting, toast]);
+  }, [addMode, petName, photoUri, selectPet, species, submitting, toast]);
 
   const goJoin = useCallback(() => router.push('/join'), []);
+
+  if (limitReached) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.limitWrap}>
+          <EmptyState
+            title="Free plan covers 2 active pets"
+            subtitle="Archived pets never count."
+            action={{ label: 'Go back', onPress: () => router.back() }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (step === 'done') {
     return (
@@ -200,18 +246,20 @@ export default function CreatePetScreen() {
               disabled={!petName}
               style={styles.cta}
             />
-            <Pressable
-              accessibilityRole="button"
-              onPress={goJoin}
-              hitSlop={spacing.s8}
-              style={styles.altLink}
-            >
-              {({ pressed }) => (
-                <Text style={[styles.altLinkText, pressed && styles.linkDim]}>
-                  Have an invite code? Join instead
-                </Text>
-              )}
-            </Pressable>
+            {addMode ? null : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={goJoin}
+                hitSlop={spacing.s8}
+                style={styles.altLink}
+              >
+                {({ pressed }) => (
+                  <Text style={[styles.altLinkText, pressed && styles.linkDim]}>
+                    Have an invite code? Join instead
+                  </Text>
+                )}
+              </Pressable>
+            )}
           </>
         ) : null}
 
@@ -263,13 +311,13 @@ export default function CreatePetScreen() {
             {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
             <PrimaryButton
               label="Continue"
-              onPress={createCircle}
+              onPress={() => void submit()}
               loading={submitting}
               style={styles.cta}
             />
             <Pressable
               accessibilityRole="button"
-              onPress={createCircle}
+              onPress={() => void submit()}
               disabled={submitting}
               hitSlop={spacing.s8}
               style={styles.altLink}
@@ -307,6 +355,7 @@ function BackLink({ onPress }: { onPress: () => void }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  limitWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.s16 },
   scroll: { flex: 1 },
   scrollContent: {
     flexGrow: 1,

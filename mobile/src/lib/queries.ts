@@ -10,7 +10,11 @@ import {
   type UseMutationResult,
 } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import { useCallback, useSyncExternalStore } from 'react';
+import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { ApiError, del, get, patch, post } from './api';
+import { queryClient } from './query-client';
 
 /* ------------------------------- API types ------------------------------- */
 
@@ -34,6 +38,9 @@ export interface Circle {
   name: string;
   timezone?: string;
   role?: string;
+  /** All active pets in the circle (multi-pet M1). Optional until the backend ships. */
+  pets?: PetSummary[];
+  /** Phase-1 single-pet field — the first pet; kept for backward compatibility. */
   pet?: PetSummary;
 }
 
@@ -172,11 +179,106 @@ export function useMe(enabled = true) {
   });
 }
 
-/** Convenience: the "active" pet of the first circle (Phase 1 is single-pet, spec §11). */
+/* ----------------------------- Active pet store ---------------------------- */
+
+const ACTIVE_PET_KEY = 'planet_active_pet';
+
+/**
+ * Module singleton — the user's selected pet, shared app-wide (multi-pet M1).
+ * `null` means "no explicit selection" → the first pet is active. Persisted to
+ * secure-store (localStorage on web) so the choice survives restarts.
+ */
+let selectedPetId: string | null = null;
+const activePetListeners = new Set<() => void>();
+
+function notifyActivePetChange(): void {
+  for (const listener of activePetListeners) listener();
+}
+
+/** Best-effort persistence — selection still holds for the session on failure. */
+async function persistActivePet(id: string | null): Promise<void> {
+  try {
+    if (Platform.OS === 'web') {
+      if (id) window.localStorage.setItem(ACTIVE_PET_KEY, id);
+      else window.localStorage.removeItem(ACTIVE_PET_KEY);
+      return;
+    }
+    if (id) await SecureStore.setItemAsync(ACTIVE_PET_KEY, id);
+    else await SecureStore.deleteItemAsync(ACTIVE_PET_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// Hydrate the persisted selection once at module load. Secure-store is
+// async-only, but /me is slower (network + the bootstrap screen awaits it
+// before routing), so the selection resolves before the first pet render.
+void (async () => {
+  try {
+    const stored =
+      Platform.OS === 'web'
+        ? window.localStorage.getItem(ACTIVE_PET_KEY)
+        : await SecureStore.getItemAsync(ACTIVE_PET_KEY);
+    if (stored && !selectedPetId) selectedPetId = stored;
+  } catch {
+    // unreadable storage — fall back to the first pet
+  } finally {
+    notifyActivePetChange();
+  }
+})();
+
+/** Re-render components whenever the selection singleton changes. */
+function useSelectedPetId(): string | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      activePetListeners.add(onChange);
+      return () => {
+        activePetListeners.delete(onChange);
+      };
+    },
+    () => selectedPetId,
+  );
+}
+
+/** All active pets of a circle — the M1 `pets` array, falling back to the legacy `pet`. */
+function petsOf(circle: Circle): PetSummary[] {
+  if (circle.pets && circle.pets.length > 0) return circle.pets;
+  return circle.pet ? [circle.pet] : [];
+}
+
+/**
+ * The active pet (multi-pet M1). `pet` is the selected id's match, defaulting
+ * to the first pet when nothing is selected (or the stored id no longer
+ * resolves — e.g. archived). `selectPet` updates the singleton, persists it,
+ * and invalidates `me` so every consumer re-renders; petId-keyed queries
+ * (today/timeline/pet/…) refetch automatically because the key changes.
+ */
 export function useActivePet() {
+  const selectedId = useSelectedPetId();
   const { data, ...rest } = useMe();
-  const pet = data?.circles.find((c) => c.pet)?.pet ?? null;
-  return { pet, circle: data?.circles.find((c) => c.pet) ?? null, ...rest };
+
+  const circle = data?.circles.find((c) => petsOf(c).length > 0) ?? null;
+  const pets = circle ? petsOf(circle) : [];
+  const pet =
+    (selectedId != null ? pets.find((p) => p.id === selectedId) : undefined) ??
+    pets[0] ??
+    null;
+
+  const selectPet = useCallback((petId: string) => {
+    if (selectedPetId === petId) return;
+    selectedPetId = petId;
+    void persistActivePet(petId);
+    notifyActivePetChange();
+    void queryClient.invalidateQueries({ queryKey: qk.me });
+  }, []);
+
+  return { pet, circle, pets, selectPet, loading: rest.isLoading, ...rest };
+}
+
+/** Convenience: the active circle's pet list (multi-pet switcher, add-pet flows). */
+export function usePets() {
+  const { pets, circle, loading } = useActivePet();
+  return { pets, circle, loading };
 }
 
 export function useToday(petId: string | undefined, date?: string) {

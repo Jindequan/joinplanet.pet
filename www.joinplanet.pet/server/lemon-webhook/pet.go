@@ -18,6 +18,7 @@ import (
 
 func init() {
 	apiModules = append(apiModules, func(mux *http.ServeMux, a *app) {
+		mux.HandleFunc("POST /pets", a.requireAuth(a.handleCreatePet))
 		mux.HandleFunc("GET /pets/{petID}", a.requirePetMember(a.handleGetPet))
 		mux.HandleFunc("PATCH /pets/{petID}", a.requirePetMember(a.handlePatchPet))
 		mux.HandleFunc("GET /pets/{petID}/medications", a.requirePetMember(a.handleListMedications))
@@ -96,6 +97,122 @@ func insertPetRow(ctx context.Context, q pgxQuerier, circleID, userID int64, nam
 		`INSERT INTO pets (circle_id, name, species, breed, created_by)
 		 VALUES ($1, $2, $3, $4, $5) RETURNING `+petColumns,
 		circleID, name, species, breed, userID).Scan(r.dest()...)
+	if err != nil {
+		return nil, err
+	}
+	p := r.toJSON()
+	return &p, nil
+}
+
+// ---- additional pet creation (multi-pet, V1) --------------------------------------
+
+// petsForCircle loads every pet of a circle in creation order (petJSON shape).
+// Pets are hard-deleted (F8), so every remaining row counts as active.
+func (a *app) petsForCircle(ctx context.Context, circleID int64) ([]petJSON, error) {
+	rows, err := a.pool.Query(ctx,
+		`SELECT `+petColumns+` FROM pets WHERE circle_id = $1 ORDER BY id`, circleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	pets := []petJSON{}
+	for rows.Next() {
+		var r petRow
+		if err := rows.Scan(r.dest()...); err != nil {
+			return nil, err
+		}
+		pets = append(pets, r.toJSON())
+	}
+	return pets, rows.Err()
+}
+
+// handleCreatePet adds another pet to the caller's first circle. POST /pets
+// carries no circle_id: the implicit target is the caller's earliest circle,
+// and a caller without any circle must create one first. Enforces the
+// per-circle pet quota from the plan layer (403 "pet limit reached").
+func (a *app) handleCreatePet(w http.ResponseWriter, req *http.Request, userID int64) {
+	var body struct {
+		Name     string  `json:"name"`
+		Species  string  `json:"species"`
+		Breed    string  `json:"breed"`
+		Birthday *string `json:"birthday"`
+	}
+	if err := readJSON(req, &body); err != nil {
+		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))
+		return
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		jsonResponse(w, http.StatusBadRequest, errBody("pet name is required"))
+		return
+	}
+	species := body.Species
+	if species == "" {
+		species = "dog"
+	}
+	if species != "dog" && species != "cat" && species != "other" {
+		jsonResponse(w, http.StatusBadRequest, errBody("species must be dog, cat, or other"))
+		return
+	}
+	var birthday *string
+	if body.Birthday != nil {
+		day := strings.TrimSpace(*body.Birthday)
+		if _, err := time.Parse("2006-01-02", day); err != nil {
+			jsonResponse(w, http.StatusBadRequest, errBody("birthday must be YYYY-MM-DD"))
+			return
+		}
+		birthday = &day
+	}
+	ctx := req.Context()
+	circleID, err := a.firstCircleID(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		jsonResponse(w, http.StatusBadRequest, errBody("create a circle first"))
+		return
+	}
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not create pet"))
+		return
+	}
+	limits := a.limitsFor(ctx, userID)
+	var petCount int
+	if err := a.pool.QueryRow(ctx,
+		`SELECT count(*) FROM pets WHERE circle_id = $1`, circleID).Scan(&petCount); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not create pet"))
+		return
+	}
+	if petCount >= limits.Pets {
+		jsonResponse(w, http.StatusForbidden, map[string]any{
+			"error": "pet limit reached", "limit": limits.Pets,
+		})
+		return
+	}
+	pet, err := a.createPetInCircle(ctx, circleID, userID, name, species,
+		strings.TrimSpace(body.Breed), birthday)
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not create pet"))
+		return
+	}
+	jsonResponse(w, http.StatusCreated, map[string]any{"pet": pet})
+}
+
+// firstCircleID resolves the caller's earliest circle (implicit target of
+// POST /pets); pgx.ErrNoRows when the caller belongs to none.
+func (a *app) firstCircleID(ctx context.Context, userID int64) (int64, error) {
+	var circleID int64
+	err := a.pool.QueryRow(ctx,
+		`SELECT circle_id FROM circle_members WHERE user_id = $1
+		 ORDER BY circle_id LIMIT 1`, userID).Scan(&circleID)
+	return circleID, err
+}
+
+// createPetInCircle inserts an additional pet (optional birthday) into an
+// existing circle and returns it in API shape.
+func (a *app) createPetInCircle(ctx context.Context, circleID, userID int64, name, species, breed string, birthday *string) (*petJSON, error) {
+	var r petRow
+	err := a.pool.QueryRow(ctx,
+		`INSERT INTO pets (circle_id, name, species, breed, birthday, created_by)
+		 VALUES ($1, $2, $3, $4, $5::date, $6) RETURNING `+petColumns,
+		circleID, name, species, breed, birthday, userID).Scan(r.dest()...)
 	if err != nil {
 		return nil, err
 	}

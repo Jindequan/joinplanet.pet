@@ -18,6 +18,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 func init() {
@@ -25,6 +26,7 @@ func init() {
 		mux.HandleFunc("POST /auth/request-code", a.requestCode)
 		mux.HandleFunc("POST /auth/verify", a.verifyCode)
 		mux.HandleFunc("GET /me", a.requireAuth(a.me))
+		mux.HandleFunc("PATCH /me", a.requireAuth(a.patchMe))
 	})
 }
 
@@ -222,6 +224,39 @@ func (a *app) me(w http.ResponseWriter, req *http.Request, userID int64) {
 	})
 }
 
+// ---- PATCH /me ---------------------------------------------------------------
+
+// patchMe updates the caller's display_name (1-40 characters after trim).
+func (a *app) patchMe(w http.ResponseWriter, req *http.Request, userID int64) {
+	var body struct {
+		DisplayName string `json:"display_name"`
+	}
+	if err := readJSON(req, &body); err != nil {
+		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))
+		return
+	}
+	name := strings.TrimSpace(body.DisplayName)
+	if n := utf8.RuneCountInString(name); n < 1 || n > 40 {
+		jsonResponse(w, http.StatusBadRequest, errBody("display_name must be 1-40 characters"))
+		return
+	}
+	user, err := a.updateDisplayName(req.Context(), userID, name)
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not update profile"))
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]any{"user": user})
+}
+
+func (a *app) updateDisplayName(ctx context.Context, userID int64, name string) (userRow, error) {
+	var u userRow
+	err := a.pool.QueryRow(ctx,
+		`UPDATE users SET display_name = $2 WHERE id = $1
+		 RETURNING id, email, display_name`, userID, name,
+	).Scan(&u.ID, &u.Email, &u.DisplayName)
+	return u, err
+}
+
 func loadUser(ctx context.Context, q pgxQuerier, userID int64) (userRow, error) {
 	var u userRow
 	err := q.QueryRow(ctx,
@@ -230,17 +265,15 @@ func loadUser(ctx context.Context, q pgxQuerier, userID int64) (userRow, error) 
 	return u, err
 }
 
-// listMyCircles returns the caller's memberships with each circle's first pet.
+// listMyCircles returns the caller's memberships. Each circle carries the
+// full "pets" array (all pets of the circle, petJSON shape); the top-level
+// "pet" field is kept as a deprecated alias for pets[0] so old clients keep
+// working.
 func (a *app) listMyCircles(ctx context.Context, userID int64) ([]map[string]any, error) {
 	rows, err := a.pool.Query(ctx,
-		`SELECT c.id, c.name, c.timezone, m.role,
-		        p.id, p.name, p.species, p.breed, p.birthday, p.avatar_key
+		`SELECT c.id, c.name, c.timezone, m.role
 		   FROM circle_members m
 		   JOIN circles c ON c.id = m.circle_id
-		   LEFT JOIN LATERAL (
-		     SELECT id, name, species, breed, birthday, avatar_key FROM pets
-		      WHERE circle_id = c.id ORDER BY id LIMIT 1
-		   ) p ON true
 		  WHERE m.user_id = $1
 		  ORDER BY c.id`, userID)
 	if err != nil {
@@ -251,25 +284,21 @@ func (a *app) listMyCircles(ctx context.Context, userID int64) ([]map[string]any
 	for rows.Next() {
 		var circleID int64
 		var name, timezone, role string
-		var petID *int64
-		var petName, species, breed, avatarKey *string
-		var birthday *time.Time
-		if err := rows.Scan(&circleID, &name, &timezone, &role,
-			&petID, &petName, &species, &breed, &birthday, &avatarKey); err != nil {
+		if err := rows.Scan(&circleID, &name, &timezone, &role); err != nil {
+			return nil, err
+		}
+		pets, err := a.petsForCircle(ctx, circleID)
+		if err != nil {
 			return nil, err
 		}
 		circle := map[string]any{
-			"id": circleID, "name": name, "timezone": timezone, "role": role, "pet": nil,
+			"id": circleID, "name": name, "timezone": timezone, "role": role,
+			"pets": pets,
+			// deprecated: use circles[].pets; pets[0] when present, else nil
+			"pet": nil,
 		}
-		if petID != nil {
-			circle["pet"] = map[string]any{
-				"id":         *petID,
-				"name":       derefString(petName),
-				"species":    derefString(species),
-				"breed":      derefString(breed),
-				"birthday":   formatDate(birthday),
-				"avatar_key": derefString(avatarKey),
-			}
+		if len(pets) > 0 {
+			circle["pet"] = pets[0]
 		}
 		out = append(out, circle)
 	}
@@ -336,19 +365,4 @@ func validEmail(email string) bool {
 	}
 	domain := email[at+1:]
 	return strings.Contains(domain, ".") && !strings.HasPrefix(domain, ".") && !strings.HasSuffix(domain, ".")
-}
-
-func derefString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
-// formatDate renders a DATE column as YYYY-MM-DD (nil stays nil).
-func formatDate(t *time.Time) any {
-	if t == nil {
-		return nil
-	}
-	return t.Format("2006-01-02")
 }

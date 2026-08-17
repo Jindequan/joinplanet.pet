@@ -1,10 +1,13 @@
 /**
- * AppHeader — the persistent shell header (spec §11): "[PetPhoto] Milo" on
- * the left (display-only in Phase 1; the switcher arrives with multi-pet) and
- * a ••• overflow on the right opening the shell menu (Tell Devin / Privacy /
- * Terms / Sign out). No notification bell — nothing to notify yet (§11).
- * Rendered above the tabs navigator, so it applies the top safe-area inset
- * itself; the shell below must not pad it again.
+ * AppHeader — the persistent shell header (spec §11): "[PetPhoto] Milo ⌄" on
+ * the left, tappable to open the pet switcher (multi-pet M1: one row per pet
+ * with a check on the active one + "Add a pet"), and a ••• overflow on the
+ * right opening the shell menu (Settings / Tell Devin / Privacy / Terms /
+ * Sign out). "Add a pet" stays visible past the free limit — the create flow
+ * surfaces the 403 gently instead of hiding the entry point. No notification
+ * bell — nothing to notify yet (§11). Rendered above the tabs navigator, so
+ * it applies the top safe-area inset itself; the shell below must not pad it
+ * again.
  */
 import React, { useRef } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -13,10 +16,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  Check,
+  ChevronDown,
   FileText,
   LogOut,
   Mail,
   MoreHorizontal,
+  Plus,
+  Settings,
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react-native';
@@ -57,15 +64,39 @@ function MenuRow({ icon: Icon, label, onPress, destructive }: MenuRowProps) {
 }
 
 export function AppHeader() {
-  const { pet, isLoading } = useActivePet();
+  const { pet, pets, selectPet, isLoading } = useActivePet();
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
   const { toast } = useToast();
   const menuRef = useRef<BottomSheetModal>(null);
+  const switcherRef = useRef<BottomSheetModal>(null);
 
   const openMenu = () => {
     haptics.light();
     menuRef.current?.present();
+  };
+
+  const openSwitcher = () => {
+    haptics.light();
+    switcherRef.current?.present();
+  };
+
+  /** Pick a pet from the switcher — selectPet drives the app-wide re-render. */
+  const choosePet = (petId: string) => {
+    switcherRef.current?.close();
+    if (petId === pet?.id) return;
+    haptics.light();
+    selectPet(petId);
+  };
+
+  const addPet = () => {
+    switcherRef.current?.close();
+    router.push('/create-pet?mode=add');
+  };
+
+  const openSettings = () => {
+    menuRef.current?.close();
+    router.push('/settings');
   };
 
   /** mailto/https entries open in the system handler (spec §11 menu). */
@@ -95,17 +126,68 @@ export function AppHeader() {
                 <Skeleton width={72} height={13} />
               </>
             ) : (
-              <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Switch pet, current pet ${petName}`}
+                onPress={openSwitcher}
+                style={({ pressed }) => [styles.identityButton, pressed && { opacity: 0.6 }]}
+              >
                 <PetPhoto avatarKey={pet?.avatar_key} name={petName} size={28} />
                 <Text style={styles.petName} numberOfLines={1}>
                   {petName}
                 </Text>
-              </>
+                <ChevronDown size={16} color={colors.textSecondary} />
+              </Pressable>
             )}
           </View>
           <IconButton icon={MoreHorizontal} label="More options" onPress={openMenu} />
         </View>
       </View>
+
+      <BottomSheetModal
+        ref={switcherRef}
+        enableDynamicSizing
+        backgroundStyle={styles.sheetBackground}
+        handleIndicatorStyle={styles.sheetHandle}
+      >
+        <View style={styles.menu}>
+          <Text style={styles.switcherTitle}>Your pets</Text>
+          {pets.map((p) => (
+            <Pressable
+              key={p.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Switch to ${p.name}`}
+              accessibilityState={{ selected: p.id === pet?.id }}
+              onPress={() => choosePet(p.id)}
+              style={({ pressed }) => [
+                styles.menuRow,
+                pressed && { backgroundColor: colors.surfaceSoft },
+              ]}
+            >
+              <PetPhoto avatarKey={p.avatar_key} name={p.name} size={24} />
+              <Text style={styles.petRowName} numberOfLines={1}>
+                {p.name}
+              </Text>
+              {p.id === pet?.id ? <Check size={20} color={colors.brand700} /> : null}
+            </Pressable>
+          ))}
+          <View style={styles.menuDivider} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add a pet"
+            onPress={addPet}
+            style={({ pressed }) => [
+              styles.menuRow,
+              pressed && { backgroundColor: colors.surfaceSoft },
+            ]}
+          >
+            <View style={styles.addPetIcon}>
+              <Plus size={16} color={colors.brand700} />
+            </View>
+            <Text style={styles.addPetLabel}>Add a pet</Text>
+          </Pressable>
+        </View>
+      </BottomSheetModal>
 
       <BottomSheetModal
         ref={menuRef}
@@ -114,6 +196,7 @@ export function AppHeader() {
         handleIndicatorStyle={styles.sheetHandle}
       >
         <View style={styles.menu}>
+          <MenuRow icon={Settings} label="Settings" onPress={openSettings} />
           <MenuRow
             icon={Mail}
             label="Tell Devin"
@@ -143,11 +226,38 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.s8,
     marginRight: spacing.s8,
+  },
+  identityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s8,
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.s8,
+    marginLeft: -spacing.s8,
+    borderRadius: radius.card,
+    alignSelf: 'flex-start',
   },
   petName: { ...typography.caption, color: colors.text, fontWeight: '600' },
   menu: { paddingHorizontal: spacing.s8, paddingBottom: spacing.s24 },
+  switcherTitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    paddingHorizontal: spacing.s12,
+    paddingTop: spacing.s4,
+    paddingBottom: spacing.s8,
+  },
+  petRowName: { ...typography.bodySm, color: colors.text, flex: 1 },
+  addPetIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.chip,
+    backgroundColor: colors.brand100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPetLabel: { ...typography.bodySm, color: colors.brand700, fontWeight: '600', flex: 1 },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',

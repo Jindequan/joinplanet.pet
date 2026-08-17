@@ -6,6 +6,7 @@ package main
 // as path-traversal protection.
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -46,6 +47,7 @@ var fileContentTypes = map[string]string{
 func init() {
 	apiModules = append(apiModules, func(mux *http.ServeMux, a *app) {
 		mux.HandleFunc("POST /pets/{petID}/attachments", a.requirePetMember(a.handleAttachmentUpload))
+		mux.HandleFunc("GET /circles/{circleID}/usage", a.requireCircleMember(a.handleCircleUsage))
 		mux.HandleFunc("GET /files/{key}", handleFileGet) // public: random key = permission
 	})
 }
@@ -83,6 +85,23 @@ func (a *app) handleAttachmentUpload(w http.ResponseWriter, req *http.Request, u
 	}
 	if len(data) > maxUploadBytes {
 		jsonResponse(w, http.StatusRequestEntityTooLarge, errBody("file too large"))
+		return
+	}
+	// Plan gate: the circle's total attachment bytes plus this upload must stay
+	// within the caller's storage quota (413 with usage detail).
+	ctx := req.Context()
+	limits := a.limitsFor(ctx, userID)
+	used, err := a.circleStorageUsed(ctx, petID)
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not store file"))
+		return
+	}
+	if used+int64(len(data)) > limits.StorageBytes {
+		jsonResponse(w, http.StatusRequestEntityTooLarge, map[string]any{
+			"error":       "storage limit reached",
+			"used_bytes":  used,
+			"limit_bytes": limits.StorageBytes,
+		})
 		return
 	}
 	eventID, err := a.uploadEventID(req, petID)
@@ -145,6 +164,45 @@ func (a *app) uploadEventID(req *http.Request, petID int64) (any, error) {
 }
 
 var errBadUploadEvent = errors.New("event not found")
+
+// circleStorageUsed sums attachment bytes across every pet of the circle
+// owning petID — storage quota is circle-wide, matching /usage.
+func (a *app) circleStorageUsed(ctx context.Context, petID int64) (int64, error) {
+	var used int64
+	err := a.pool.QueryRow(ctx,
+		`SELECT COALESCE(SUM(a.size), 0)
+		   FROM attachments a JOIN pets p ON p.id = a.pet_id
+		  WHERE p.circle_id = (SELECT circle_id FROM pets WHERE id = $1)`,
+		petID).Scan(&used)
+	return used, err
+}
+
+// ---- GET /circles/{circleID}/usage ---------------------------------------------
+
+// handleCircleUsage reports the circle's quota usage against the caller's
+// plan (pets, members, attachment storage). Any member may read their circle.
+func (a *app) handleCircleUsage(w http.ResponseWriter, req *http.Request, userID, circleID int64, _ string) {
+	ctx := req.Context()
+	limits := a.limitsFor(ctx, userID)
+	var storageBytes int64
+	var petCount, memberCount int
+	err := a.pool.QueryRow(ctx, `
+		SELECT (SELECT COALESCE(SUM(a.size), 0)
+		          FROM attachments a JOIN pets p ON p.id = a.pet_id
+		         WHERE p.circle_id = $1),
+		       (SELECT count(*) FROM pets WHERE circle_id = $1),
+		       (SELECT count(*) FROM circle_members WHERE circle_id = $1)`,
+		circleID).Scan(&storageBytes, &petCount, &memberCount)
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not load usage"))
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"storage_bytes": storageBytes, "storage_limit_bytes": limits.StorageBytes,
+		"pet_count": petCount, "pet_limit": limits.Pets,
+		"member_count": memberCount, "member_limit": limits.Members,
+	})
+}
 
 // newUploadKey returns "{random32hex}.{ext}" (16 random bytes, hex-encoded).
 func newUploadKey(ext string) (string, error) {

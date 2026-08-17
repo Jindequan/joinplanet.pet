@@ -21,13 +21,13 @@ import {
 import { useToast } from '../../src/components/toast';
 import { AvatarBubble, GroupLabel, PageShell, useCircleMembers } from '../../src/components/pet/parts';
 import { del, post } from '../../src/lib/api';
-import { qk, useMe, type CircleMember } from '../../src/lib/queries';
+import { qk, useActivePet, type CircleMember } from '../../src/lib/queries';
 import { colors, spacing, typography } from '../../src/theme';
 
 export default function CareCircleScreen() {
-  const { data: me } = useMe();
-  const circleWithPet = me?.circles.find((c) => c.pet);
-  const petName = circleWithPet?.pet?.name ?? 'your pet';
+  // The active pet's circle (multi-pet M1) — selection flows through useActivePet.
+  const { circle: circleWithPet, pet } = useActivePet();
+  const petName = pet?.name ?? 'your pet';
   const circleId = circleWithPet?.id;
   const isOwner = circleWithPet?.role === 'owner';
 

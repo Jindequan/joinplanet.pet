@@ -1,22 +1,26 @@
 /**
  * Quick Record (spec §35–§39) — "Record what happened", not a universal create.
- * Five record types; default occurred_at = now; optimistic timeline insert + toast.
- * Vet visits may carry data.next_due (YYYY-MM-DD) for the V1.5 upcoming-due list;
- * vaccines/deworming ride the Vet visit type until a dedicated one exists.
+ * Seven record types; default occurred_at = now; optimistic timeline insert + toast.
+ * Vet visits and vaccines may carry data.next_due (YYYY-MM-DD) for the V1.5
+ * upcoming-due list. Documents ride a note event + PDF attachment (contract F5)
+ * until a dedicated event type exists (Phase 2).
  */
 import React, { useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as DocumentPicker from 'expo-document-picker';
 import { Image } from 'expo-image';
 import dayjs from 'dayjs';
 import {
   Camera,
   Check,
+  FileText,
   HeartPulse,
   Scale,
   StickyNote,
   Stethoscope,
+  Syringe,
   type LucideIcon,
 } from 'lucide-react-native';
 import { colors, radius, spacing, typography, withAlpha } from '../theme';
@@ -26,7 +30,7 @@ import { haptics } from '../lib/haptics';
 import { useActivePet, useCreateEvent } from '../lib/queries';
 import { upload } from '../lib/api';
 
-type RecordType = 'note' | 'symptom' | 'weight' | 'visit' | 'photo';
+type RecordType = 'note' | 'symptom' | 'weight' | 'visit' | 'photo' | 'vaccine' | 'document';
 
 interface TypeOption {
   key: RecordType;
@@ -41,6 +45,8 @@ const TYPE_OPTIONS: TypeOption[] = [
   { key: 'weight', label: 'Weight', icon: Scale, color: colors.medication },
   { key: 'visit', label: 'Vet visit', icon: Stethoscope, color: colors.success },
   { key: 'photo', label: 'Photo', icon: Camera, color: colors.brand700 },
+  { key: 'vaccine', label: 'Vaccine', icon: Syringe, color: colors.medication },
+  { key: 'document', label: 'Document', icon: FileText, color: colors.neutral },
 ];
 
 const SEVERITIES = ['Mild', 'Moderate', 'Severe'] as const;
@@ -70,6 +76,18 @@ function isValidDueDate(value: string): boolean {
   return dayjs(value).isValid();
 }
 
+/** Client-side PDF cap for the Document type (contract F5 attachment limits). */
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
+
+/** "2.4 MB" / "500 KB" — one decimal, trailing ".0" trimmed. */
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
+  }
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
 export function QuickRecord({ onClose }: { onClose?: () => void }) {
   const { pet } = useActivePet();
   const petId = pet?.id;
@@ -81,6 +99,9 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
   const [severity, setSeverity] = useState<(typeof SEVERITIES)[number] | null>(null);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<{ uri: string; width: number; height: number } | null>(null);
+  const [docFile, setDocFile] = useState<{ uri: string; name: string; size: number | null } | null>(
+    null,
+  );
   const [nextDue, setNextDue] = useState('');
   const [nextDueError, setNextDueError] = useState<string | null>(null);
 
@@ -91,6 +112,7 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
     setText('');
     setSeverity(null);
     setPhoto(null);
+    setDocFile(null);
     setNextDue('');
     setNextDueError(null);
   };
@@ -172,6 +194,24 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
     });
   };
 
+  /** Vaccine: named event (backend enum has "vaccine") + optional data.next_due
+   *  for the V1.5 upcoming-due list. */
+  const saveVaccine = () => {
+    const value = text.trim();
+    if (!value || busy) return;
+    let data: Record<string, unknown> | undefined;
+    const trimmed = nextDue.trim();
+    if (trimmed) {
+      if (!isValidDueDate(trimmed)) {
+        setNextDueError('Use YYYY-MM-DD');
+        return;
+      }
+      data = { next_due: trimmed };
+    }
+    setNextDueError(null);
+    void saveEvent({ type: 'vaccine', title: value, data });
+  };
+
   /** Pick only — the preview and caption stay local until Save (spec §39). */
   const pickPhoto = async () => {
     if (busy) return;
@@ -223,6 +263,71 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
       toast({
         message: 'Upload failed',
         action: { label: 'Retry', onPress: () => void savePhoto() },
+        duration: 5000,
+      });
+      void err;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Event id for the in-flight document upload (see saveDocument). */
+  const docEventRef = useRef<string | null>(null);
+
+  /** Pick a PDF for the Document type — 10 MB client-side cap. */
+  const pickDocument = async () => {
+    if (busy) return;
+    const picked = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      multiple: false,
+    });
+    if (picked.canceled) return;
+    const asset = picked.assets[0];
+    if (!asset) return;
+    if (asset.size != null && asset.size > MAX_PDF_BYTES) {
+      toast({ message: 'PDF must be 10 MB or smaller' });
+      return;
+    }
+    docEventRef.current = null; // a fresh file must never bind to a previous event
+    setDocFile({ uri: asset.uri, name: asset.name || 'document.pdf', size: asset.size ?? null });
+  };
+
+  /** Save document: create the event first, then upload the PDF bound via
+   *  event_id (contract F5 — same order as the photo flow). Retry reuses the
+   *  already-created event so a flaky upload never duplicates timeline rows.
+   *  TODO(Phase 2): dedicated "document" event type; until then the timeline
+   *  entry is a note titled "Document · <filename>". */
+  const saveDocument = async () => {
+    if (!petId || !docFile) return;
+    setBusy(true);
+    try {
+      let eventId = docEventRef.current;
+      if (!eventId) {
+        const event = await createEvent.mutateAsync({
+          type: 'note',
+          title: `Document · ${docFile.name}`,
+          body: 'Document uploaded',
+          occurred_at: new Date().toISOString(),
+        });
+        eventId = String(event.id);
+        docEventRef.current = eventId;
+      }
+      const form = new FormData();
+      form.append(
+        'file',
+        { uri: docFile.uri, name: docFile.name, type: 'application/pdf' } as unknown as Blob,
+      );
+      form.append('event_id', eventId);
+      await upload(`/pets/${petId}/attachments`, form); // kind inferred from file: pdf
+      docEventRef.current = null;
+      haptics.light();
+      toast({ message: 'Saved' });
+      finish();
+    } catch (err) {
+      // spec §39: keep the picked file, offer Retry
+      toast({
+        message: 'Upload failed',
+        action: { label: 'Retry', onPress: () => void saveDocument() },
         duration: 5000,
       });
       void err;
@@ -378,6 +483,36 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
         </View>
       ) : null}
 
+      {type === 'vaccine' ? (
+        <View style={styles.formGap}>
+          <Field
+            label="Vaccine"
+            placeholder="e.g. Rabies vaccine"
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={saveVaccine}
+            editable={!busy}
+          />
+          <Field
+            label="Next due (optional)"
+            placeholder="YYYY-MM-DD"
+            hint="e.g. booster due date"
+            value={nextDue}
+            onChangeText={(value) => {
+              setNextDue(value);
+              if (nextDueError) setNextDueError(null);
+            }}
+            keyboardType="numbers-and-punctuation"
+            returnKeyType="done"
+            onSubmitEditing={saveVaccine}
+            error={nextDueError}
+            editable={!busy}
+          />
+        </View>
+      ) : null}
+
       {type === 'photo' ? (
         <View style={styles.formGap}>
           {photo ? (
@@ -404,6 +539,37 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
           />
         </View>
       ) : null}
+
+      {type === 'document' ? (
+        <View style={styles.formGap}>
+          {docFile ? (
+            <Card padding={spacing.s8}>
+              <View style={styles.docMeta}>
+                <FileText size={20} color={colors.brand700} />
+                <View style={styles.docMetaText}>
+                  <Text style={styles.docName} numberOfLines={1}>
+                    {docFile.name}
+                  </Text>
+                  <Text style={styles.photoStatus}>
+                    {busy
+                      ? 'Uploading…'
+                      : docFile.size != null
+                        ? formatFileSize(docFile.size)
+                        : 'Ready to save'}
+                  </Text>
+                </View>
+                {busy ? null : <Check size={16} color={colors.success} />}
+              </View>
+            </Card>
+          ) : null}
+          <PrimaryButton
+            label={docFile ? 'Save' : 'Choose PDF'}
+            loading={busy}
+            icon={FileText}
+            onPress={() => (docFile ? void saveDocument() : void pickDocument())}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -419,11 +585,12 @@ const styles = StyleSheet.create({
   hint: { ...typography.bodySm, color: colors.textSecondary, marginTop: -spacing.s8 },
   typeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: spacing.s4,
   },
   typeButton: {
-    flex: 1,
+    // ~4 per row; the row wraps as more record types land.
+    flexBasis: '23.5%',
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -458,6 +625,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.s8,
   },
   photoStatus: { ...typography.caption, color: colors.textSecondary },
+  docMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.s8 },
+  docMetaText: { flex: 1, gap: 2 },
+  docName: { ...typography.card, color: colors.text },
 });
 
 /** Sheet host wrapper: scrollable, keyboard-aware via BottomSheetModal. */

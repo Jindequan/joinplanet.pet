@@ -214,6 +214,21 @@ func (a *app) handleJoinCircle(w http.ResponseWriter, req *http.Request, userID 
 		jsonResponse(w, http.StatusInternalServerError, errBody("could not join circle"))
 		return
 	}
+	// Plan gate: member count (owner included) vs the caller's plan quota.
+	limits := a.limitsFor(ctx, userID)
+	var memberCount int
+	if err := a.pool.QueryRow(ctx,
+		`SELECT count(*) FROM circle_members WHERE circle_id = $1`, circleID,
+	).Scan(&memberCount); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not join circle"))
+		return
+	}
+	if memberCount >= limits.Members {
+		jsonResponse(w, http.StatusForbidden, map[string]any{
+			"error": "member limit reached", "limit": limits.Members,
+		})
+		return
+	}
 	tag, err := a.pool.Exec(ctx,
 		`INSERT INTO circle_members (circle_id, user_id, role) VALUES ($1, $2, 'caregiver')
 		 ON CONFLICT DO NOTHING`, circleID, userID)
@@ -233,15 +248,11 @@ func (a *app) handleJoinCircle(w http.ResponseWriter, req *http.Request, userID 
 
 // firstPetForCircle returns the circle's first pet (nil when none remain).
 func (a *app) firstPetForCircle(ctx context.Context, circleID int64) *petJSON {
-	var r petRow
-	err := a.pool.QueryRow(ctx,
-		`SELECT `+petColumns+` FROM pets WHERE circle_id = $1 ORDER BY id LIMIT 1`,
-		circleID).Scan(r.dest()...)
-	if err != nil {
+	pets, err := a.petsForCircle(ctx, circleID)
+	if err != nil || len(pets) == 0 {
 		return nil
 	}
-	p := r.toJSON()
-	return &p
+	return &pets[0]
 }
 
 func (a *app) handleGetCircle(w http.ResponseWriter, req *http.Request, userID, circleID int64, role string) {

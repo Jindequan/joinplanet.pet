@@ -1,8 +1,10 @@
 /**
  * API client for the PLANET backend (API contract v1).
  * Base: `${EXPO_PUBLIC_API_BASE || http://localhost:8080}/api/v1`
- * Auth: Bearer token stored in expo-secure-store under `planet_token`.
+ * Auth: Bearer token stored per platform — expo-secure-store on native
+ * (Keychain/Keystore), localStorage on web (secure-store has no web impl).
  */
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const TOKEN_KEY = 'planet_token';
@@ -32,6 +34,13 @@ export class AuthError extends ApiError {
 }
 
 export async function getToken(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    try {
+      return window.localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  }
   try {
     return await SecureStore.getItemAsync(TOKEN_KEY);
   } catch {
@@ -40,10 +49,26 @@ export async function getToken(): Promise<string | null> {
 }
 
 export async function setToken(token: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    try {
+      window.localStorage.setItem(TOKEN_KEY, token);
+    } catch {
+      // storage unavailable — session lives in memory only
+    }
+    return;
+  }
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function clearToken(): Promise<void> {
+  if (Platform.OS === 'web') {
+    try {
+      window.localStorage.removeItem(TOKEN_KEY);
+    } catch {
+      // already gone
+    }
+    return;
+  }
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
   } catch {

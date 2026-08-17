@@ -87,10 +87,15 @@ function OrbitMark({ size = 96 }: { size?: number }) {
 
 type Step = 'email' | 'code';
 
+/** Demo/dev stack (local API base): prefill the demo account for one-tap login. */
+const IS_DEV_SERVER = /localhost|127\.0\.0\.1|192\.168\./.test(
+  (process.env as Record<string, string | undefined>).EXPO_PUBLIC_API_BASE ?? '',
+);
+
 export default function WelcomeScreen() {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(IS_DEV_SERVER ? 'devin@planet.dev' : '');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [resending, setResending] = useState(false);
@@ -119,11 +124,18 @@ export default function WelcomeScreen() {
     try {
       const res = await post<RequestCodeResponse>('/auth/request-code', { email: next });
       setEmail(next);
-      setDevCode(typeof res.dev_code === 'string' ? res.dev_code : null);
+      const dc = typeof res.dev_code === 'string' ? res.dev_code : null;
+      setDevCode(dc);
       setCode('');
       setCodeError(null);
       setResendIn(RESEND_SECONDS);
       setStep('code');
+      // Demo mode: auto-fill + auto-submit the dev code, so a demo login is
+      // one email entry with zero code typing.
+      if (dc) {
+        setCode(dc);
+        setTimeout(() => void verifyRef.current(dc), 400);
+      }
     } catch (err) {
       setEmailError(errText(err, "Couldn't send the code. Try again."));
     } finally {
@@ -187,6 +199,12 @@ export default function WelcomeScreen() {
     },
     [email, routeAfterAuth],
   );
+
+  // Latest verify for the dev-code auto-submit timer (declared after verify).
+  const verifyRef = useRef(verify);
+  useEffect(() => {
+    verifyRef.current = verify;
+  }, [verify]);
 
   const handleCodeChange = useCallback(
     (raw: string) => {

@@ -44,9 +44,9 @@
 
 ## Phase 1.5：PLANET Together（蓝图定义，V1 验证后）
 
-- 免费 **2 active pets + 2 members**（"共同照护本身就是免费价值"）；
+- 免费 **2 active pets + 2 members + 50MB 媒体**（"共同照护本身就是免费价值"；配额在 V1.5 提前落地：宠物数/成员数/存储在创建与上传路径强制）；
 - 多宠 UI（Pet Switcher，schema 早已就绪）+ entitlement 闸门 `multi_pet`；
-- **配额制切换**：媒体从"20 张/月"改为**字节制 500MB**（Pro 10GB / Family 50GB）——需 storage_usage 统计表；
+- **配额制切换**：媒体按字节制计量——**免费 50MB（2026-08-17 创始人裁决，覆盖蓝图 §24 的 500MB）**，Pro 10GB / Family 50GB；免费层其余配额照蓝图：2 active pets + 2 members + 10 AI credits/月（AI credits 到 V2 才生效）；
 - Archived Pet 不占宠位：去世宠物永久可看/可导出，绝不逼迫删除；
 - 降级不扣押数据：超额宠物转只读归档。
 

@@ -191,11 +191,17 @@ export function useToday(petId: string | undefined, date?: string) {
 export function useTimeline(petId: string | undefined) {
   return useInfiniteQuery({
     queryKey: qk.timeline(petId ?? ''),
-    queryFn: ({ pageParam }) => {
+    queryFn: async ({ pageParam }) => {
       const before = pageParam ? `?before=${pageParam}` : '';
-      return get<TimelinePage>(
+      const page = await get<TimelinePage>(
         `/pets/${petId}/timeline${before}${before ? '&' : '?'}limit=${TIMELINE_PAGE_SIZE}`,
       );
+      // Normalize ids to strings (server sends numeric BIGSERIAL ids) and
+      // keep the cache shape consistent with the timeline feed layer.
+      return {
+        events: page.events.map((ev) => ({ ...ev, id: String(ev.id) })),
+        next_cursor: page.next_cursor == null ? null : String(page.next_cursor),
+      } satisfies TimelinePage;
     },
     initialPageParam: null as string | null,
     getNextPageParam: (last: TimelinePage) => last.next_cursor ?? undefined,
@@ -391,7 +397,7 @@ export function useCreateEvent(petId: string | undefined) {
         occurred_at: input.occurred_at ?? new Date().toISOString(),
         severity: input.severity,
         data: input.data,
-      }).then((r) => r.event),
+      }).then((r) => ({ ...r.event, id: String(r.event.id) })),
     onSuccess: (event) => {
       if (petId) {
         insertTimelineEvent(client, petId, event);
@@ -442,7 +448,10 @@ export function useUpdateEvent(petId: string | undefined) {
     { eventId: string; patch: Partial<Pick<TimelineEvent, 'title' | 'body' | 'severity'>> }
   >({
     mutationFn: ({ eventId, patch: p }) =>
-      patch<{ event: TimelineEvent }>(`/events/${eventId}`, p).then((r) => r.event),
+      patch<{ event: TimelineEvent }>(`/events/${eventId}`, p).then((r) => ({
+        ...r.event,
+        id: String(r.event.id),
+      })),
     onSettled: () => {
       if (petId) void client.invalidateQueries({ queryKey: qk.timeline(petId) });
     },

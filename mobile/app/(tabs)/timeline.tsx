@@ -55,9 +55,10 @@ export default function TimelineScreen() {
     setFilter(TIMELINE_FILTERS.find((f) => f.key === key) ?? TIMELINE_FILTERS[0]);
   };
 
-  const openEvent = (id: string) => {
-    if (id.startsWith('temp-')) return; // optimistic row — wait for the server copy
-    router.push(`/event/${encodeURIComponent(id)}`);
+  const openEvent = (id: string | number) => {
+    const key = String(id); // server ids are numeric — normalize before use
+    if (key.startsWith('temp-')) return; // optimistic row — wait for the server copy
+    router.push(`/event/${encodeURIComponent(key)}`);
   };
 
   const renderItem = ({ item }: ListRenderItemInfo<TimelineRow>) => {

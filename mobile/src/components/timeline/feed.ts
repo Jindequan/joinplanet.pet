@@ -58,16 +58,34 @@ export interface TimelineFeedData {
   pageParams: (string | null)[];
 }
 
+/**
+ * Normalize a server event for client use: Postgres BIGSERIAL ids arrive as
+ * JSON numbers while the app speaks string ids everywhere (routes, temp-
+ * optimistic rows). Coerce once at the boundary.
+ */
+export function normalizeEvent(ev: TimelineEvent): TimelineEvent {
+  return { ...ev, id: String(ev.id) };
+}
+
+function normalizePage(page: TimelinePage): TimelinePage {
+  return {
+    events: page.events.map(normalizeEvent),
+    next_cursor:
+      page.next_cursor == null ? null : String(page.next_cursor),
+  };
+}
+
 /** Cursor-paginated feed (spec §72): before=<eventID>&limit&types. */
 export function useTimelineFeed(petId: string | undefined, types: string[]) {
   return useInfiniteQuery({
     queryKey: timelineFeedKey(petId ?? '', types),
-    queryFn: ({ pageParam }) => {
+    queryFn: async ({ pageParam }) => {
       const parts: string[] = [];
       if (pageParam) parts.push(`before=${encodeURIComponent(pageParam)}`);
       parts.push(`limit=${TIMELINE_PAGE_SIZE}`);
       if (types.length > 0) parts.push(`types=${types.join(',')}`);
-      return get<TimelinePage>(`/pets/${petId}/timeline?${parts.join('&')}`);
+      const page = await get<TimelinePage>(`/pets/${petId}/timeline?${parts.join('&')}`);
+      return normalizePage(page);
     },
     initialPageParam: null as string | null,
     getNextPageParam: (last: TimelinePage) => last.next_cursor ?? undefined,
@@ -178,7 +196,7 @@ export function useCreateTimelineEvent(petId: string | undefined) {
         occurred_at: input.occurred_at ?? new Date().toISOString(),
         severity: input.severity,
         data: input.data,
-      }).then((r) => r.event),
+      }).then((r) => normalizeEvent(r.event)),
     onSuccess: (event) => {
       if (!petId) return;
       insertEventIntoMatchingFeeds(client, petId, event);

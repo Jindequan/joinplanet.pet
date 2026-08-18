@@ -5,7 +5,7 @@
  * raised 5px, opening the Quick Record sheet (spec §35). On web the whole
  * shell is capped at maxWidth 720 and centered (tab bar included).
  */
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { enableScreens } from 'react-native-screens';
@@ -13,8 +13,7 @@ import { enableScreens } from 'react-native-screens';
 // screens stack); the pure-JS navigator hides them correctly.
 if (Platform.OS === 'web') enableScreens(false);
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { CalendarDays, Dog, Plus, Sunrise, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, Dog, Sunrise, type LucideIcon } from 'lucide-react-native';
 import {
   SafeAreaProvider,
   useSafeAreaFrame,
@@ -23,12 +22,9 @@ import {
 } from 'react-native-safe-area-context';
 import { colors, radius, shadows, spacing, touchTarget, typography } from '../../src/theme';
 import { AppHeader } from '../../src/components/app-header';
-import { QuickRecordScrollable } from '../../src/components/quick-record';
 import { haptics } from '../../src/lib/haptics';
 
 const BAR_HEIGHT = 64;
-const FAB_SIZE = 52;
-const FAB_PROTRUSION = 5; // ＋ sits 4–6px above the bar (spec §12)
 
 const TAB_META: Record<string, { label: string; icon: LucideIcon }> = {
   index: { label: 'Today', icon: Sunrise },
@@ -36,11 +32,11 @@ const TAB_META: Record<string, { label: string; icon: LucideIcon }> = {
   pet: { label: 'Pet', icon: Dog },
 };
 
-function FloatingTabBar({ state, navigation, onPlus }: BottomTabBarProps & { onPlus: () => void }) {
+function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   const tabPill = (routeKey: string, name: string, edge: 'left' | 'right') => {
-    const meta = TAB_META[name] ?? { label: name, icon: Plus as LucideIcon };
+    const meta = TAB_META[name] ?? { label: name, icon: Dog as LucideIcon };
     const isFocused = state.routes[state.index]?.name === name;
     const Icon = meta.icon;
 
@@ -91,22 +87,9 @@ function FloatingTabBar({ state, navigation, onPlus }: BottomTabBarProps & { onP
         <View style={styles.bar}>
           {today ? tabPill(today.key, today.name, 'left') : null}
           {timeline ? tabPill(timeline.key, timeline.name, 'left') : null}
-          {/* Central floating ＋ — in-flow inside the slot, raised via negative
-              margin. 绝对定位 + alignSelf 在 react-native-web 上不生效（掉到最左
-              压住 Today tab），流内 + 负边才是跨端确定性的。 */}
-          <View style={styles.fabSlot}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Quick record"
-              onPress={() => {
-                haptics.light();
-                onPlus();
-              }}
-              style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.94 }] }]}
-            >
-              <Plus size={26} color={colors.onDark} strokeWidth={2.4} />
-            </Pressable>
-          </View>
+          {/* 2026-08-19：全局＋浮窗移除（founder 决策）——结构化记录入口收敛到
+              Timeline 顶部卡片；三 Tab 布局更干净，也消除了浮窗的跨端定位复杂度。 */}
+          <View style={{ flex: 1 }} />
           {pet ? tabPill(pet.key, pet.name, 'right') : null}
         </View>
       </View>
@@ -115,7 +98,6 @@ function FloatingTabBar({ state, navigation, onPlus }: BottomTabBarProps & { onP
 }
 
 export default function TabsLayout() {
-  const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const frame = useSafeAreaFrame();
 
@@ -137,9 +119,7 @@ export default function TabsLayout() {
             headerShown: false,
             sceneStyle: { backgroundColor: colors.bg },
           }}
-          tabBar={(props) => (
-            <FloatingTabBar {...props} onPlus={() => sheetRef.current?.present()} />
-          )}
+          tabBar={(props) => <FloatingTabBar {...props} />}
         >
           <Tabs.Screen name="index" options={{ title: 'Today' }} />
           <Tabs.Screen name="timeline" options={{ title: 'Timeline' }} />
@@ -147,16 +127,6 @@ export default function TabsLayout() {
         </Tabs>
       </SafeAreaProvider>
 
-      <BottomSheetModal
-        ref={sheetRef}
-        enableDynamicSizing
-        backgroundStyle={styles.sheetBackground}
-        handleIndicatorStyle={styles.sheetHandle}
-        keyboardBehavior="interactive"
-        keyboardBlurBehavior="restore"
-      >
-        <QuickRecordScrollable onClose={() => sheetRef.current?.close()} />
-      </BottomSheetModal>
     </View>
   );
 }
@@ -191,17 +161,5 @@ const styles = StyleSheet.create({
   tabPillRight: { marginLeft: spacing.s4 },
   tabPillActive: { backgroundColor: colors.brand100 },
   tabLabel: { ...typography.micro, color: colors.text },
-  fabSlot: { width: FAB_SIZE + spacing.s16, alignItems: 'center', justifyContent: 'center' },
-  fab: {
-    marginTop: -FAB_PROTRUSION,
-    width: FAB_SIZE,
-    height: FAB_SIZE,
-    borderRadius: radius.chip,
-    backgroundColor: colors.brand500,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.floating,
-  },
-  sheetBackground: { backgroundColor: colors.surface, borderRadius: radius.cardLg },
-  sheetHandle: { backgroundColor: colors.border },
+
 });

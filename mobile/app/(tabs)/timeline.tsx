@@ -3,12 +3,13 @@
  * type filters + a day-grouped event stream (large cards vs compact rows,
  * §29) with cursor pagination (§72) and optimistic inserts (§63).
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { FlatList, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { CalendarDays } from 'lucide-react-native';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { colors, spacing, typography } from '../../src/theme';
 import { EmptyState } from '../../src/components/ui';
 import { haptics } from '../../src/lib/haptics';
@@ -31,6 +32,7 @@ import {
 } from '../../src/components/timeline/parts';
 import { EventCompactRow, EventLargeCard } from '../../src/components/timeline/event-cards';
 import { QuickInputCard } from '../../src/components/timeline/quick-input';
+import { QuickRecordScrollable } from '../../src/components/quick-record';
 
 function TimelineScreen() {
   const { pet, circle } = useActivePet();
@@ -38,6 +40,7 @@ function TimelineScreen() {
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
   const [filter, setFilter] = useState<TimelineFilter>(TIMELINE_FILTERS[0]);
+  const recordSheetRef = useRef<BottomSheetModal>(null);
 
   const feed = useTimelineFeed(petId, filter.types);
   const events = useMemo(
@@ -92,6 +95,7 @@ function TimelineScreen() {
               petName={petName}
               archived={pet?.archived}
               optimisticKey={optimisticKey}
+              onMoreTypes={() => recordSheetRef.current?.present()}
             />
             <FilterChips value={filter.key} onChange={selectFilter} />
           </View>
@@ -116,6 +120,16 @@ function TimelineScreen() {
           )
         }
       />
+
+      {/* 结构化记录面板（症状/体重/疫苗/就诊）——全局浮窗移除后收敛于此 */}
+      <BottomSheetModal
+        ref={recordSheetRef}
+        enableDynamicSizing
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+      >
+        <QuickRecordScrollable onClose={() => recordSheetRef.current?.close()} />
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }

@@ -10,7 +10,7 @@ import { Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { Camera } from 'lucide-react-native';
+import { Camera, PlusCircle } from 'lucide-react-native';
 import { colors, spacing, touchTarget, typography } from '../../theme';
 import { Card, IconButton } from '../ui';
 import { useToast } from '../toast';
@@ -49,11 +49,14 @@ export function QuickInputCard({
   archived = false,
   /** Active feed key — passed only when notes are visible under the current filter. */
   optimisticKey,
+  /** 打开完整记录面板（症状/体重/疫苗/就诊）——全局浮窗移除后唯一结构化入口。 */
+  onMoreTypes,
 }: {
   petId: string | undefined;
   petName: string;
   archived?: boolean;
   optimisticKey?: QueryKey;
+  onMoreTypes?: () => void;
 }) {
   const client = useQueryClient();
   const { toast } = useToast();
@@ -187,6 +190,15 @@ export function QuickInputCard({
           editable={!uploading}
           accessibilityLabel={`Quick note about ${petName}`}
         />
+        {onMoreTypes ? (
+          <IconButton
+            icon={PlusCircle}
+            label="Record"
+            onPress={onMoreTypes}
+            disabled={uploading}
+            color={colors.textSecondary}
+          />
+        ) : null}
         <IconButton
           icon={Camera}
           label="Add photo"

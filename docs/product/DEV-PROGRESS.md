@@ -25,7 +25,18 @@
 | 分享（care_card/summary/撤销） | ✅ | 创建/列表 UI 已有；对接新契约 ⬜；Web 查看页 ⬜ |
 | 配额（数据化限额/usage） | ✅ | ⬜ usage 卡片 + 配额文案驱动 |
 
-**V1 剩余工作 = 前端**，工作分解见 FRONTEND-V1-PLAN §7。
+**V1 剩余工作 = 前端**（FRONTEND-V1-PLAN §7 六个工作包）：
+
+| WP | 内容 | 状态 |
+|---|---|---|
+| WP1 数据层（types/api/errors/queries 重写） | 契约 v2 全量对接 + 兼容层 | ✅ 浏览器实跑验证 |
+| WP2 认证 + onboarding 两步 | verify-code / 建 family→建 pet / join | ✅ 实跑验证 |
+| WP3 Today/Timeline/Pet 切换 | 409 采用/补记/归档/停药/体重 payload | ✅ 实跑验证（抓出并修复服务端 done_by_name 丢失） |
+| WP4 家庭治理 + usage + 转移界面 | 移交/删家庭引导/转移收件箱（hooks 已备） | ⬜ |
+| WP5 Shares 对接 + Web 查看器 | kind/ttl UI + landing /s/[token] 页 | ⬜ |
+| WP6 全量联调验收 | 双账号剧本 × 全功能 + 真机 | ⬜（已知打磨项：Web 调试环境时间线时区分组显示 UTC；native 设备时区兜底正确） |
+
+实跑环境备忘：`CORS_ORIGINS=http://localhost:8082` 起后端；`EXPO_PUBLIC_API_BASE=http://<IP>:8081 EXPO_PUBLIC_WEB_SHARE_BASE=http://localhost:3000 npx expo start --port 8082`。
 
 ## 队列
 

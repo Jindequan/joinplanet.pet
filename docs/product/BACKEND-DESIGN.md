@@ -482,7 +482,7 @@ SELECT count(*) FROM pets
 > `planet-cli plans set` 修改即生效；上表只是播种时的 canon 数值。
 > `entitlements.PlanForEntitlement` 读表，缺行回退编译期 `DefaultPlans`（fail-safe）。
 
-### 5.1 锚定模型实现（D2）
+### 5.1 锚定模型实现（D2；**V2 实现，V1 仅 free 档不启用**）
 
 ```sql
 CREATE TABLE subscription_anchors (
@@ -623,11 +623,11 @@ POST /api/v1/transfers/{id}/decline              目标圈 owner 拒绝
 > B0–B5、B7 已实现并通过验收；B6（R2 附件）整体推迟到 V2。
 > **V1 收尾项（下述 B10）完成后 V1 关版。**
 
-### B10 V1 收尾（2026-08-18 新增，V1 关版条件）
-- 锚定模型（§5.1）：`subscription_anchors` 迁移、`circlePlan` 单点改造、`PUT /api/v1/subscription/anchor`、降级宽限（usage 含 over 标记）、拥有圈数上限（`QUOTA_FAMILIES_EXCEEDED`）。
+### B10 V1 收尾（2026-08-18 修订：**V1 不做付费**，锚定退出 V1）
+- **不实现**：锚定模型（§5.1）、`PUT /subscription/anchor`、多档位启用、降级宽限——保留为 V2 付费落地时的设计；V1 仅 free 档（plans 表已为未来预留）。
 - 家庭治理（§8A.1/8A.2）：所有权移交、删除家庭（FAMILY_NOT_EMPTY + 30 天恢复窗 + 到期清理 job）。
 - 宠物转移（§8A.3）：`pet_transfers` + 双同意流 + 分享自动撤销 + `auto:transfer` 事件注册。
-- **验收**：付费用户换锚后旧圈降级不删数据、新圈即时升档；删家庭必须先清空；转移后任务模板可见于新家庭、旧分享全部 410；并发换锚/转移安全。
+- **验收**：删家庭必须先清空；转移后任务模板可见于新家庭、旧分享全部 410；并发移交/转移安全。
 
 ### B0 工程地基（无业务）✅
 - 仓库脚手架、CI（build/vet/test/集成 PG/migration up-down-up）、双 DB 角色、config、日志、错误契约、`/healthz` `/readyz`、Caddy+systemd 骨架。

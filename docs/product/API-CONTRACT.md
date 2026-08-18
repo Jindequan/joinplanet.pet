@@ -2,7 +2,7 @@
 
 - 状态：v2，2026-08-18 重写——**与 planet-api 实现逐一对齐**（2026-08-17 版与实现路由分歧，作废；差异要点：verify→verify-code、/circles 建圈不再捆绑建宠、错误契约为结构化 envelope）
 - 事实来源：`PRODUCT-SPEC.md`（产品）、`BACKEND-DESIGN.md`（后端设计）；实现仓库 `/Users/devin/code/planet-api`
-- 标注：✅ 已实现并有集成测试；⬜ B10 待实现（V1 关版条件）
+- 标注：✅ 已实现并有集成测试；⬜ B10 待实现（V1 关版条件：家庭治理 + 宠物转移；**V1 无任何付费端点**）
 
 ## 通用约定
 
@@ -59,12 +59,13 @@ POST   /api/v1/circles/{id}/invite/refresh                        → {invite_co
 POST   /api/v1/circles/join               {code}                  → {circle}（caregiver；成员配额；已活跃成员→409 ALREADY_MEMBER）
 DELETE /api/v1/circles/{id}/members/{userId}                      → 204（owner；触发器保最后 owner）
 POST   /api/v1/circles/{id}/leave                                 → 204（最后 owner → 409 LAST_OWNER）
-GET    /api/v1/circles/{id}/usage                                 → {plan, members, member_max, pets, pet_max, over_* ⬜}
+GET    /api/v1/circles/{id}/usage                                 → {plan, members, member_max, pets, pet_max}
 POST   /api/v1/circles/{id}/transfer      {to_user_id}            → ⬜ {circle}（所有权移交，owner）
 DELETE /api/v1/circles/{id}                                       → ⬜ 204（清空才能删；否则 409 FAMILY_NOT_EMPTY；30 天恢复窗）
 POST   /api/v1/circles/{id}/restore                              → ⬜ {circle}（恢复窗内，删除发起者）
-PUT    /api/v1/subscription/anchor        {circle_id}             → ⬜ {anchored_circle}（付费权益换锚，须为目标圈成员）
 ```
+
+（`PUT /subscription/anchor` 换锚端点随 V2 付费落地，V1 不实现。）
 
 ## Pet ✅（转移 ⬜ B10）
 

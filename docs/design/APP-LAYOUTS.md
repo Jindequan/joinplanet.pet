@@ -106,7 +106,8 @@ Data & Privacy      ›   （导出/下载照片/活跃链接/删除——红色
 ```
 
 - **不含 Medication/Add task/邀请/分享**（管理动作不进＋）——用药的长期语义走 Pet→Medications，今日服药走 Today 任务，开始/停止自动生成 Timeline 事件；
-- 表单最小化：默认时间=Now，Severity 可选，Save 后键盘收起+乐观插入。
+- 表单最小化：默认时间=Now，Severity 可选，Save 后键盘收起+乐观插入；
+- **V1.5 扩充（2026-08-18 回写，依据 APP-DESIGN §1.5 边界表）**：＋ 额外含 **Vaccine**（疫苗/驱虫事件，可带 next_due 喂给"到期清单"）与 **Document**（PDF 附件事件，attachments kind=pdf）。spec §35-38 的五项为 Phase 1 基线，此二项为免费层 V1.5 已上线能力；spec 原文未删改。
 
 ## 6. /s/[token] 公开页（免注册，无导航无 cookie 弹窗）
 

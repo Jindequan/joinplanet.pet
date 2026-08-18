@@ -468,10 +468,13 @@ SELECT count(*) FROM pets
 | 配额 | Free | Pro（`pro` 权益） | 错误码 |
 |---|---|---|---|
 | **拥有的家庭**（用户为活跃 owner 的圈数） | 1 | 3 | `QUOTA_FAMILIES_EXCEEDED` |
-| 成员/圈 | 2 | 8 | `QUOTA_MEMBERS_EXCEEDED` |
-| 活跃宠物/圈 | 2 | 25 | `QUOTA_PETS_EXCEEDED` |
-| 附件总量/圈（B6+，V1 冻结） | 50MB | 10GB | `QUOTA_STORAGE_EXCEEDED` |
+| 成员/圈 | 2 | 6† | `QUOTA_MEMBERS_EXCEEDED` |
+| 活跃宠物/圈 | 2 | 5† | `QUOTA_PETS_EXCEEDED` |
+| 附件总量/圈（B6+，V1 冻结） | 50MB‡ | 10GB | `QUOTA_STORAGE_EXCEEDED` |
 | 单文件（B6+） | 10MB | 50MB | `PAYLOAD_TOO_LARGE` |
+
+† 与 AI 蓝图定价档对齐（Pro $4.99：5 宠/10GB）；Pro 成员数 B10 随定价终版复核。
+‡ 蓝图调整为 500MB（字节计），B6 接附件时生效。数字以 PRODUCT-SPEC §2.4 为准。
 
 归档宠物不占宠物槽。`GET /api/v1/circles/{id}/usage` 返回各项用量（含超限标记，降级宽限用）。
 

@@ -84,7 +84,13 @@ export default function SharesScreen() {
   };
 
   const shareUrl = (share: ShareRecord) => {
-    Share.share({ url: share.url }).catch(() => undefined);
+    // V1 契约：token 仅创建时返回一次，列表不可再取链接。
+    // Android's core Share ignores `url` — the link rides along as the message.
+    if (share.url) Share.share({ url: share.url, message: share.url }).catch(() => undefined);
+    else
+      toast({
+        message: 'Links are shown only when created — create a new one to share it again.',
+      });
   };
 
   if (!petId) {

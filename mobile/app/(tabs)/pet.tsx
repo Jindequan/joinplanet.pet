@@ -34,6 +34,7 @@ import {
 } from '../../src/components/pet/parts';
 import { get } from '../../src/lib/api';
 import {
+  normalizeEvent,
   qk,
   useActivePet,
   useMedications,
@@ -101,6 +102,9 @@ function medicationsSummary(active: Medication[]): string {
 
 function PetOverviewScreen() {
   const { pet, circle, isLoading } = useActivePet();
+  // Permission table (APP-DESIGN §6): link generation is owner-only, so the
+  // two share entries never render for caregivers.
+  const isOwner = circle?.role === 'owner';
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
   const insets = useSafeAreaInsets();
@@ -127,7 +131,16 @@ function PetOverviewScreen() {
   // Keyed under the timeline prefix so event creation invalidates it too.
   const dueQuery = useQuery({
     queryKey: [...qk.timeline(petId ?? ''), 'due'],
-    queryFn: () => get<TimelinePage>(`/pets/${petId}/timeline?types=visit,vaccine&limit=100`),
+    // 服务端 v2 无 types 过滤（宽容契约：客户端过滤 + normalizeEvent）
+    queryFn: async () => {
+      const r = await get<{ events: Parameters<typeof normalizeEvent>[0][] }>(
+        `/pets/${petId}/timeline?limit=100`,
+      );
+      const events: TimelinePage['events'] = r.events
+        .map(normalizeEvent)
+        .filter((e) => e.type === 'vet_visit' || e.type === 'vaccine');
+      return { events };
+    },
     enabled: !!petId,
     staleTime: 60_000,
   });
@@ -204,17 +217,21 @@ function PetOverviewScreen() {
           {weight ? <Text style={styles.heroMeta}>{formatWeight(weight.kg)}</Text> : null}
         </View>
 
-        <PrimaryButton
-          label="Prepare for vet"
-          onPress={() => router.push('/prepare-vet')}
-        />
-        <Pressable
-          accessibilityRole="link"
-          onPress={() => router.push('/share-care')}
-          style={({ pressed }) => [styles.shareLink, pressed && { opacity: 0.6 }]}
-        >
-          <Text style={styles.shareLinkText}>Share {petName}&rsquo;s care →</Text>
-        </Pressable>
+        {isOwner ? (
+          <>
+            <PrimaryButton
+              label="Prepare for vet"
+              onPress={() => router.push('/prepare-vet')}
+            />
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.push('/share-care')}
+              style={({ pressed }) => [styles.shareLink, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={styles.shareLinkText}>Share {petName}&rsquo;s care →</Text>
+            </Pressable>
+          </>
+        ) : null}
 
         {/* Secondary IA (spec §42–§43) — six entries, nothing more */}
         <Card padding={0} style={styles.entriesCard}>

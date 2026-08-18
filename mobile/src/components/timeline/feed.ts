@@ -15,8 +15,10 @@ import {
 } from '@tanstack/react-query';
 import { ApiError, del, get, post } from '../../lib/api';
 import {
+  normalizeEvent as normalizeEventQ,
   qk,
   TIMELINE_PAGE_SIZE,
+  type CreateEventInput,
   type TimelineEvent,
   type TimelinePage,
 } from '../../lib/queries';
@@ -35,7 +37,7 @@ export interface TimelineFilter {
 /** User-facing filters never expose the raw database enum (spec §30). */
 export const TIMELINE_FILTERS: TimelineFilter[] = [
   { key: 'all', label: 'All', types: [] },
-  { key: 'health', label: 'Health', types: ['symptom', 'medication'] },
+  { key: 'health', label: 'Health', types: ['symptom', 'medication', 'vaccine'] },
   { key: 'symptom', label: 'Symptom', types: ['symptom'] },
   { key: 'weight', label: 'Weight', types: ['weight'] },
   { key: 'visit', label: 'Visit', types: ['visit'] },
@@ -63,29 +65,32 @@ export interface TimelineFeedData {
  * JSON numbers while the app speaks string ids everywhere (routes, temp-
  * optimistic rows). Coerce once at the boundary.
  */
-export function normalizeEvent(ev: TimelineEvent): TimelineEvent {
-  return { ...ev, id: String(ev.id) };
+/** 服务端原始事件 → 客户端形状（payload→title/body 归一化在 queries 层）。 */
+export function normalizeServerEvent(ev: Parameters<typeof normalizeEventQ>[0]): TimelineEvent {
+  return normalizeEventQ(ev);
 }
 
-function normalizePage(page: TimelinePage): TimelinePage {
-  return {
-    events: page.events.map(normalizeEvent),
-    next_cursor:
-      page.next_cursor == null ? null : String(page.next_cursor),
-  };
-}
-
-/** Cursor-paginated feed (spec §72): before=<eventID>&limit&types. */
+/**
+ * Cursor-paginated feed（契约 v2）：`before=<occurred_at>&limit`，无 types 参数
+ * —— 过滤在客户端做（宽容策略：服务端只增不改，客户端永不复制校验规则）。
+ */
 export function useTimelineFeed(petId: string | undefined, types: string[]) {
   return useInfiniteQuery({
     queryKey: timelineFeedKey(petId ?? '', types),
     queryFn: async ({ pageParam }) => {
       const parts: string[] = [];
       if (pageParam) parts.push(`before=${encodeURIComponent(pageParam)}`);
-      parts.push(`limit=${TIMELINE_PAGE_SIZE}`);
-      if (types.length > 0) parts.push(`types=${types.join(',')}`);
-      const page = await get<TimelinePage>(`/pets/${petId}/timeline?${parts.join('&')}`);
-      return normalizePage(page);
+      parts.push(`limit=${TIMELINE_PAGE_SIZE * 2}`); // 过滤在前，多取一页
+      const r = await get<{ events: Parameters<typeof normalizeServerEvent>[0][] }>(
+        `/pets/${petId}/timeline?${parts.join('&')}`,
+      );
+      const all = r.events.map(normalizeServerEvent);
+      const events = types.length > 0 ? all.filter((e) => types.includes(e.type)) : all;
+      const oldest = all.length > 0 ? all[all.length - 1].occurred_at : null;
+      return {
+        events,
+        next_cursor: oldest && all.length >= TIMELINE_PAGE_SIZE * 2 ? oldest : null,
+      } satisfies TimelinePage;
     },
     initialPageParam: null as string | null,
     getNextPageParam: (last: TimelinePage) => last.next_cursor ?? undefined,
@@ -189,14 +194,10 @@ export function useCreateTimelineEvent(petId: string | undefined) {
   const client = useQueryClient();
   return useMutation<TimelineEvent, ApiError, CreateTimelineEventInput>({
     mutationFn: (input) =>
-      post<{ event: TimelineEvent }>(`/pets/${petId}/events`, {
-        type: input.type,
-        title: input.title,
-        body: input.body,
-        occurred_at: input.occurred_at ?? new Date().toISOString(),
-        severity: input.severity,
-        data: input.data,
-      }).then((r) => normalizeEvent(r.event)),
+      post<{ event: Parameters<typeof normalizeServerEvent>[0] }>(
+        `/pets/${petId}/timeline`,
+        buildEventBody(input),
+      ).then((r) => normalizeServerEvent(r.event)),
     onSuccess: (event) => {
       if (!petId) return;
       insertEventIntoMatchingFeeds(client, petId, event);
@@ -209,7 +210,7 @@ export function useCreateTimelineEvent(petId: string | undefined) {
 export function useDeleteTimelineEvent(petId: string | undefined) {
   const client = useQueryClient();
   return useMutation<unknown, ApiError, { eventId: string }>({
-    mutationFn: ({ eventId }) => del(`/events/${eventId}`),
+    mutationFn: ({ eventId }) => del(`/timeline-events/${eventId}`),
     onMutate: ({ eventId }) => {
       if (petId) removeEventFromFeeds(client, petId, eventId);
     },
@@ -221,4 +222,41 @@ export function useDeleteTimelineEvent(petId: string | undefined) {
       if (petId) void client.invalidateQueries({ queryKey: qk.timeline(petId) });
     },
   });
+}
+
+
+/** 屏幕输入 → 契约 v2 请求体（type + occurred_at + payload）。 */
+function buildEventBody(input: CreateTimelineEventInput): Record<string, unknown> {
+  const payload: Record<string, unknown> = { ...(input.data ?? {}) };
+  switch (input.type) {
+    case 'symptom':
+      if (input.title) payload.title = input.title;
+      if (input.body) payload.detail = input.body;
+      if (input.severity) payload.severity = input.severity;
+      break;
+    case 'note':
+      if (input.body ?? input.title) payload.text = input.body ?? input.title;
+      break;
+    case 'vaccine':
+      if (input.title) payload.name = input.title;
+      break;
+    case 'vet_visit':
+      if (input.title) payload.title = input.title;
+      if (input.body) payload.summary = input.body;
+      break;
+    case 'photo':
+      if (input.title) payload.title = input.title;
+      break;
+    case 'weight':
+      if (input.body) payload.weight_g = Math.round(parseFloat(input.body) * 1000);
+      break;
+    default:
+      if (input.title) payload.title = input.title;
+      if (input.body) payload.text = input.body;
+  }
+  return {
+    type: input.type === 'visit' ? 'vet_visit' : input.type,
+    occurred_at: input.occurred_at ?? new Date().toISOString(),
+    payload,
+  };
 }

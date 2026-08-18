@@ -158,7 +158,8 @@ export default function EventDetailScreen() {
     try {
       const updated = await updateEvent.mutateAsync({
         eventId: event.id,
-        patch: {
+        input: {
+          type: event.type,
           title: trimmed,
           body: bodyText.trim(),
           ...(severity ? { severity } : {}),

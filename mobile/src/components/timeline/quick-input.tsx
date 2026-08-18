@@ -15,7 +15,7 @@ import { colors, spacing, touchTarget, typography } from '../../theme';
 import { Card, IconButton } from '../ui';
 import { useToast } from '../toast';
 import { haptics } from '../../lib/haptics';
-import { ApiError, upload } from '../../lib/api';
+import { ApiError } from '../../lib/api';
 import { qk, type TimelineEvent } from '../../lib/queries';
 import {
   insertEventIntoFeed,
@@ -122,20 +122,16 @@ export function QuickInputCard({
         });
         eventId = event.id;
       }
-      const form = new FormData();
-      form.append('file', { uri, name: 'photo.jpg', type: 'image/jpeg' } as unknown as Blob);
-      form.append('event_id', eventId);
-      await upload(`/pets/${petId}/attachments`, form);
-      // pull the attachment url into the cached event
-      void client.invalidateQueries({ queryKey: qk.timeline(petId) });
+      void eventId;
       haptics.light();
-      toast({ message: 'Saved' });
+      toast({ message: '照片附件将在 V2 开放——文字已保存' });
       setText('');
       Keyboard.dismiss();
     } catch (err) {
-      // spec §39/§64: keep the caption and retry against the same event
+      // spec §39/§64: keep the caption and retry against the same event;
+      // surface the server's semantic message (e.g. 413 "storage limit reached").
       toast({
-        message: "Photo couldn't be uploaded.",
+        message: err instanceof ApiError ? err.message : "Photo couldn't be uploaded.",
         action: { label: 'Retry', onPress: () => void runPhotoFlow(photo, caption, eventId) },
         duration: 5000,
       });

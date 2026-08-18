@@ -28,6 +28,10 @@ export default function BootstrapScreen() {
             queryKey: qk.me,
             queryFn: () => get<Me>('/me'),
           });
+          await queryClient.fetchQuery({
+            queryKey: qk.circles,
+            queryFn: () => get<{ circles: { id: string }[] }>('/circles').then((r) => r.circles),
+          });
           if (!cancelled) router.replace('/(tabs)');
         } catch {
           await clearToken();

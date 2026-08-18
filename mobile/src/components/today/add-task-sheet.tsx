@@ -50,11 +50,13 @@ export function AddTaskSheetContent({
   initialTemplate?: TaskTemplate | null;
   onClose?: () => void;
 }) {
-  const { pet } = useActivePet();
+  const { pet, circle } = useActivePet();
   const petId = pet?.id;
+  const circleId = circle?.id;
   const petName = pet?.name ?? 'your pet';
   const medications = useMedications(petId);
-  const createTask = useCreateTask(petId);
+  const createTask = useCreateTask(circleId);
+  const petIdParam = petId ?? '';
   const { toast } = useToast();
 
   const [template, setTemplate] = useState<TaskTemplate | null>(initialTemplate);
@@ -107,7 +109,7 @@ export function AddTaskSheetContent({
     }
     setBusy(true);
     createTask.mutate(
-      { title: trimmed, time_of_day: time, medication_id: medication?.id, reminder: remind },
+      { petId: petIdParam, title: trimmed, time_of_day: time },
       {
         onSuccess: (data) => {
           haptics.light();

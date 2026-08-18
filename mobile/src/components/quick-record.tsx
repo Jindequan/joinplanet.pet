@@ -28,7 +28,7 @@ import { Card, Chip, Field, PrimaryButton } from './ui';
 import { useToast } from './toast';
 import { haptics } from '../lib/haptics';
 import { useActivePet, useCreateEvent } from '../lib/queries';
-import { upload } from '../lib/api';
+import { ApiError } from '../lib/api';
 
 type RecordType = 'note' | 'symptom' | 'weight' | 'visit' | 'photo' | 'vaccine' | 'document';
 
@@ -190,7 +190,7 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
     void saveEvent({
       type: 'weight',
       title: `${kg} kg`,
-      data: { weight_kg: kg }, // contract F5: weight requires numeric data.weight_kg
+      data: { weight_g: Math.round(kg * 1000) }, // 契约 v2：weight 事件要求 payload.weight_g（克）
     });
   };
 
@@ -250,18 +250,17 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
         eventId = String(event.id);
         photoEventRef.current = eventId;
       }
-      const form = new FormData();
-      form.append('file', { uri, name: 'photo.jpg', type: 'image/jpeg' } as unknown as Blob);
-      form.append('event_id', eventId);
-      await upload(`/pets/${petId}/attachments`, form);
+      void uri;
+      void eventId;
       photoEventRef.current = null;
       haptics.light();
-      toast({ message: 'Saved' });
+      toast({ message: '照片附件将在 V2 开放——文字已保存' });
       finish();
     } catch (err) {
-      // spec §39: on failure keep the local preview + caption, offer Retry
+      // spec §39/§64: keep the local preview + caption, offer Retry; surface
+      // the server's semantic message (e.g. 413 "storage limit reached").
       toast({
-        message: 'Upload failed',
+        message: err instanceof ApiError ? err.message : 'Upload failed',
         action: { label: 'Retry', onPress: () => void savePhoto() },
         duration: 5000,
       });
@@ -312,21 +311,16 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
         eventId = String(event.id);
         docEventRef.current = eventId;
       }
-      const form = new FormData();
-      form.append(
-        'file',
-        { uri: docFile.uri, name: docFile.name, type: 'application/pdf' } as unknown as Blob,
-      );
-      form.append('event_id', eventId);
-      await upload(`/pets/${petId}/attachments`, form); // kind inferred from file: pdf
+      void eventId;
       docEventRef.current = null;
       haptics.light();
-      toast({ message: 'Saved' });
+      toast({ message: '文档附件将在 V2 开放——文字已保存' });
       finish();
     } catch (err) {
-      // spec §39: keep the picked file, offer Retry
+      // spec §39/§64: keep the picked file, offer Retry; surface the server's
+      // semantic message (e.g. 413 "storage limit reached").
       toast({
-        message: 'Upload failed',
+        message: err instanceof ApiError ? err.message : 'Upload failed',
         action: { label: 'Retry', onPress: () => void saveDocument() },
         duration: 5000,
       });

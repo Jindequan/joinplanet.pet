@@ -15,8 +15,9 @@ export function ShareLinkCard({ url, expiresAt }: { url: string; expiresAt: stri
   const { toast } = useToast();
 
   const share = () => {
-    // Dismissal is not an error worth surfacing.
-    Share.share({ url }).catch(() => undefined);
+    // Dismissal is not an error worth surfacing. Android's core Share ignores
+    // `url`, so the link rides along as the message.
+    Share.share({ url, message: url }).catch(() => undefined);
   };
 
   const copy = async () => {

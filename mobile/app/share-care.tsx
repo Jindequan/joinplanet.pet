@@ -38,9 +38,12 @@ const INCLUDES = [
 ] as const;
 
 export default function ShareCareScreen() {
-  const { pet } = useActivePet();
+  const { pet, circle } = useActivePet();
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
+  // Permission table (APP-DESIGN §6): link generation is owner-only. The Pet
+  // page hides the entry; this guard keeps deep links honest too.
+  const isOwner = circle?.role === 'owner';
 
   const [ttlHours, setTtlHours] = useState<24 | 72 | 168>(72);
   const [busy, setBusy] = useState(false);
@@ -58,7 +61,8 @@ export default function ShareCareScreen() {
       haptics.success();
       toast({ message: 'Private link created' });
       void client.invalidateQueries({ queryKey: qk.shares(petId) });
-      Share.share({ url: share.url }).catch(() => undefined);
+      // Android's core Share ignores `url` — the link rides along as the message.
+      Share.share({ url: share.url, message: share.url }).catch(() => undefined);
     } catch (err) {
       toast({
         message: err instanceof ApiError ? err.message : 'Could not create the link',
@@ -68,15 +72,19 @@ export default function ShareCareScreen() {
     }
   };
 
-  if (!petId) {
+  if (!petId || !isOwner) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ScreenHeader title="Share care" />
         <View style={styles.center}>
           <EmptyState
             icon={HeartHandshake}
-            title="No pet yet"
-            subtitle="Add a pet first to share care."
+            title={!petId ? 'No pet yet' : 'Owner only'}
+            subtitle={
+              !petId
+                ? 'Add a pet first to share care.'
+                : `Only ${petName}'s owner can create private links.`
+            }
           />
         </View>
       </SafeAreaView>

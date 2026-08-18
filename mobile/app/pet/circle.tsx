@@ -53,7 +53,7 @@ export default function CareCircleScreen() {
     setInviteCode(null);
     setInviteBusy(true);
     try {
-      const res = await post<{ invite_code: string }>(`/circles/${circleId}/invite`);
+      const res = await post<{ invite_code: string }>(`/circles/${circleId}/invite/refresh`);
       setInviteCode(res.invite_code);
     } catch (err) {
       toast({ message: err instanceof Error ? err.message : 'Could not create invite' });

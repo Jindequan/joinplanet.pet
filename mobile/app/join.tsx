@@ -34,7 +34,7 @@ export default function JoinScreen() {
     setJoining(true);
     setFormError(null);
     try {
-      await post('/circles/join', { invite_code: inviteCode });
+      await post('/circles/join', { code: inviteCode });
       await queryClient.invalidateQueries({ queryKey: qk.me });
       router.replace('/(tabs)');
     } catch (err) {

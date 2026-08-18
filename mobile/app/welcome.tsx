@@ -164,8 +164,10 @@ export default function WelcomeScreen() {
     if (pending) {
       try {
         await post('/circles/join', { invite_code: pending });
-      } catch {
-        toast({ message: 'That invite is no longer valid.' });
+      } catch (err) {
+        // Surface the server's semantic message (e.g. 403 "member limit
+        // reached") instead of a generic invalid-invite line (spec §64).
+        toast({ message: errText(err, 'That invite is no longer valid.') });
       }
       await clearPendingInvite();
     }
@@ -175,9 +177,13 @@ export default function WelcomeScreen() {
         queryKey: qk.me,
         queryFn: () => get<Me>('/me'),
       });
-      hasCircle = (queryClient.getQueryData<Me>(qk.me)?.circles.length ?? 0) > 0;
+      const circles = await queryClient.fetchQuery({
+        queryKey: qk.circles,
+        queryFn: () => get<{ circles: { id: string }[] }>('/circles').then((r) => r.circles),
+      });
+      hasCircle = (circles?.length ?? 0) > 0;
     } catch {
-      // Tabs will re-fetch /me; don't block sign-in on a transient failure.
+      // Tabs will re-fetch; don't block sign-in on a transient failure.
     }
     router.replace(hasCircle ? '/(tabs)' : '/create-pet');
   }, [toast]);
@@ -187,7 +193,7 @@ export default function WelcomeScreen() {
       setVerifying(true);
       setCodeError(null);
       try {
-        const res = await post<VerifyResponse>('/auth/verify', { email, code: digits });
+        const res = await post<VerifyResponse>('/auth/verify-code', { email, code: digits });
         await setToken(res.token);
         if (routing.current) return;
         routing.current = true;

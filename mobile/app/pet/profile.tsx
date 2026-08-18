@@ -102,8 +102,18 @@ export default function HealthProfileScreen() {
   const [allergies, setAllergies] = useState<string[]>([]);
   const [conditions, setConditions] = useState<string[]>([]);
 
+  // 基础字段（species/breed/birthday…）走 /pets；健康档案（allergies/conditions）走 /pets/{id}/profile
   const savePet = useMutation({
-    mutationFn: (body: Record<string, unknown>) => patch(`/pets/${petId}`, body),
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { allergies: _a, conditions: _c, ...basic } = body;
+      if (Object.keys(basic).length > 0) await patch(`/pets/${petId}`, basic);
+      if (body.allergies != null || body.conditions != null) {
+        await patch(`/pets/${petId}/profile`, {
+          allergies: (body.allergies as string[] | undefined)?.map((name) => ({ name })),
+          conditions: (body.conditions as string[] | undefined)?.map((name) => ({ name })),
+        });
+      }
+    },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: qk.pet(petId ?? '') });
       toast({ message: 'Saved' });

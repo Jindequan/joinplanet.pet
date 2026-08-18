@@ -13,7 +13,7 @@ import { Card, EmptyState, SectionHeader, Skeleton } from '../../src/components/
 import { PageShell, formatShortDate, formatWeight } from '../../src/components/pet/parts';
 import { WeightChart, type WeightPoint } from '../../src/components/trends/weight-chart';
 import { get } from '../../src/lib/api';
-import { qk, useActivePet, type TimelinePage } from '../../src/lib/queries';
+import { normalizeEvent, qk, useActivePet } from '../../src/lib/queries';
 import { colors, radius, spacing, typography } from '../../src/theme';
 
 /** A drop larger than this is highlighted (warning color, still no diagnosis). */
@@ -25,7 +25,13 @@ export default function WeightTrendsScreen() {
 
   const weightQuery = useQuery({
     queryKey: [...qk.timeline(petId ?? ''), 'weight'],
-    queryFn: () => get<TimelinePage>(`/pets/${petId}/timeline?types=weight&limit=100`),
+    // 服务端 v2 无 types 过滤：客户端过滤 + payload.weight_g（克）
+    queryFn: async () => {
+      const r = await get<{ events: Parameters<typeof normalizeEvent>[0][] }>(
+        `/pets/${petId}/timeline?limit=100`,
+      );
+      return { events: r.events.map(normalizeEvent).filter((e) => e.type === 'weight') };
+    },
     enabled: !!petId,
     staleTime: 60_000,
   });
@@ -34,7 +40,8 @@ export default function WeightTrendsScreen() {
   const points: WeightPoint[] = React.useMemo(() => {
     return (weightQuery.data?.events ?? [])
       .map((event) => {
-        const kg = event.data?.weight_kg;
+        const g = event.data?.weight_g;
+        const kg = typeof g === 'number' ? g / 1000 : undefined;
         return typeof kg === 'number' && Number.isFinite(kg) && kg > 0
           ? { date: event.occurred_at, kg }
           : null;

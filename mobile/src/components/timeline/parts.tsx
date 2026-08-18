@@ -59,6 +59,7 @@ const TYPE_LABELS: Record<string, string> = {
   weight: 'Weight',
   visit: 'Visit',
   photo: 'Photo',
+  vaccine: 'Vaccine', // V1.5 upcoming-due events — never fall back to "Record"
 };
 
 const TYPE_BADGE_VARIANT: Record<string, StatusBadgeVariant> = {
@@ -66,6 +67,7 @@ const TYPE_BADGE_VARIANT: Record<string, StatusBadgeVariant> = {
   medication: 'medication', // blue dot
   visit: 'neutral',
   photo: 'brand',
+  vaccine: 'medication', // blue dot — preventive care, not an alert
 };
 
 export function eventBadge(event: TimelineEvent): {
@@ -87,12 +89,13 @@ export function isLargeEvent(event: TimelineEvent): boolean {
   return (event.attachments ?? []).length > 0;
 }
 
-/** Compact one-liner title; weight reads "Weight · 5.9 kg" (spec §28). */
+/** Compact one-liner title; weight reads "Weight · 5.9 kg" (spec §28)。宽容解析：title 缺失时回退类型名。 */
 export function compactTitle(event: TimelineEvent): string {
-  if (event.type === 'weight' && !/^weight/i.test(event.title.trim())) {
-    return `Weight · ${event.title}`;
+  const title = event.title?.trim() || event.type;
+  if (event.type === 'weight' && !/^weight/i.test(title)) {
+    return `Weight · ${title}`;
   }
-  return event.title;
+  return title;
 }
 
 /** Large-card footer meta: "Devin · 20:31 · Manual". */

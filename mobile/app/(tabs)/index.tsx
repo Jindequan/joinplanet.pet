@@ -19,6 +19,7 @@ import {
   View,
 } from 'react-native';
 import ViewShot, { releaseCapture } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,7 +36,7 @@ import {
   useCreateTask,
   useSkipTask,
   useToday,
-  useUndoLog,
+  useUndoTask,
   type TodayTask,
 } from '../../src/lib/queries';
 import { Hero } from '../../src/components/today/hero';
@@ -69,13 +70,18 @@ function TodayScreen() {
   // Circle-local "today" keeps query + log dates aligned (contract F4, spec §76).
   const date = useMemo(() => todayInZone(timezone), [timezone]);
 
-  const today = useToday(petId, date);
-  const tasks = today.data?.tasks ?? [];
+  // Today 是圈级视图（服务端按圈展开全部宠物）；本屏聚焦活跃宠物，
+  // 其他宠物经顶部切换器访问（多宠 M1）。
+  const today = useToday(circle?.id, date);
+  const tasks = useMemo(
+    () => today.data?.groups.find((g) => g.pet_id === petId)?.tasks ?? [],
+    [today.data, petId],
+  );
 
-  const complete = useCompleteTask(petId, date);
-  const skip = useSkipTask(petId, date);
-  const undo = useUndoLog(petId, date);
-  const createTask = useCreateTask(petId, date);
+  const complete = useCompleteTask(circle?.id, date);
+  const skip = useSkipTask(circle?.id, date);
+  const undo = useUndoTask(circle?.id, date);
+  const createTask = useCreateTask(circle?.id, date);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -90,7 +96,7 @@ function TodayScreen() {
       tasks.map((t) => ({
         title: t.title,
         done: t.log?.status === 'done',
-        by_name: t.log?.status === 'done' ? t.log.by_name : undefined,
+        by_name: t.log?.status === 'done' ? (t.log.by_name ?? undefined) : undefined,
       })),
     [tasks],
   );
@@ -98,8 +104,8 @@ function TodayScreen() {
   // Focus → revalidate: 2–4 caregiver families reconcile without websockets (spec §66).
   useFocusEffect(
     React.useCallback(() => {
-      if (petId) void queryClient.invalidateQueries({ queryKey: qk.today(petId, date) });
-    }, [queryClient, petId, date]),
+      if (circle?.id) void queryClient.invalidateQueries({ queryKey: qk.today(circle.id, date) });
+    }, [queryClient, circle?.id, date]),
   );
 
   const groups = useMemo(
@@ -134,7 +140,7 @@ function TodayScreen() {
     );
     toast({
       message: `${task.title} completed`,
-      action: { label: 'Undo', onPress: () => undo.mutate({ taskId: task.id }) },
+      action: { label: 'Undo', onPress: () => undo.mutate({ logId: task.log?.id ?? '', taskId: task.id }) },
       duration: 4000, // spec §20
     });
   };
@@ -153,15 +159,16 @@ function TodayScreen() {
     );
     toast({
       message: `${task.title} skipped`,
-      action: { label: 'Undo', onPress: () => undo.mutate({ taskId: task.id }) },
+      action: { label: 'Undo', onPress: () => undo.mutate({ logId: task.log?.id ?? '', taskId: task.id }) },
       duration: 4000,
     });
   };
 
   const handleUndo = (task: TodayTask) => {
     haptics.light();
+    if (!task.log?.id) return;
     undo.mutate(
-      { taskId: task.id },
+      { logId: task.log.id, taskId: task.id },
       { onError: () => toast({ message: `Couldn't undo ${task.title}.` }) },
     );
   };
@@ -188,10 +195,11 @@ function TodayScreen() {
   };
 
   /**
-   * spec §26 — rendered image card: ViewShot captures the off-screen ShareCard,
-   * Share carries it as a url. Web keeps the text card (view-shot blob sharing
-   * is unreliable there); a failed capture (permissions/native) falls back to
-   * text + a toast so sharing never breaks.
+   * spec §26 — rendered image card: ViewShot captures the off-screen ShareCard.
+   * Android's core Share ignores `url`, so expo-sharing hands the PNG file to
+   * the system sheet there (Expo SDK module — Expo Go compatible); iOS keeps
+   * RN Share (url + text). Web keeps the text card; a failed capture falls
+   * back to text + a toast so sharing never breaks.
    */
   const handleShare = async () => {
     if (Platform.OS === 'web') {
@@ -202,13 +210,19 @@ function TodayScreen() {
       const uri = await shareRef.current?.capture?.();
       if (!uri) throw new Error('capture unavailable');
       try {
-        // iOS shares the PNG (+ text); Android's core Share ignores `url`, so
-        // the full text card rides along as the message either way.
-        await Share.share({
-          url: uri,
-          message: textShareMessage(),
-          title: `${petName}'s day`,
-        });
+        if (Platform.OS === 'android' && (await Sharing.isAvailableAsync())) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/png',
+            dialogTitle: `${petName}'s day`,
+          });
+        } else {
+          // iOS shares the PNG (+ text) via the core sheet.
+          await Share.share({
+            url: uri,
+            message: textShareMessage(),
+            title: `${petName}'s day`,
+          });
+        }
       } catch {
         // user dismissed the share sheet — not an error
       } finally {
@@ -234,7 +248,7 @@ function TodayScreen() {
     }
     haptics.light();
     createTask.mutate(
-      { title: template.title, time_of_day: template.time },
+      { petId: petId ?? '', title: template.title, time_of_day: template.time },
       {
         onSuccess: () => toast({ message: `${template.title} added` }),
         onError: () =>
@@ -269,7 +283,7 @@ function TodayScreen() {
     </SafeAreaView>
   );
 
-  const firstLoad = meLoading || (today.isLoading && !!petId);
+  const firstLoad = meLoading || (today.isLoading && !!circle?.id);
   if (firstLoad) {
     return wrapper(
       <ScrollView contentContainerStyle={styles.content}>

@@ -72,7 +72,7 @@ export default function AccountSettingsScreen() {
     if (deleting) return;
     setDeleting(true);
     try {
-      await del('/me'); // server also invalidates the session
+      await del('/account', { body: { confirm: email ?? '' } }); // server also invalidates the session
       await clearToken();
       client.clear();
       router.replace('/welcome');

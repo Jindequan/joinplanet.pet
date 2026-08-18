@@ -124,10 +124,10 @@ export default function MedicationsScreen() {
       await post(`/pets/${petId}/tasks`, {
         title: [followup.name, followup.dose].filter(Boolean).join(' '),
         time_of_day: '08:00',
-        ...(followup.id != null ? { medication_id: Number(followup.id) } : {}),
+        schedule: { v: 1, kind: 'daily' },
       });
       void client.invalidateQueries({
-        queryKey: qk.today(petId, dayjs().format('YYYY-MM-DD')),
+        queryKey: ['circle'],
       });
       haptics.light();
       toast({ message: 'Added to Today' });
@@ -158,7 +158,7 @@ export default function MedicationsScreen() {
     if (!petId || endingId) return;
     setEndingId(med.id);
     try {
-      await patch(`/medications/${med.id}`, { active: false }); // server writes ended_on + "Stopped" event
+      await post(`/medications/${med.id}/stop`); // 服务端写 ended_on + auto 事件
       invalidate();
       setExpandedId((prev) => (prev === med.id ? null : prev));
       toast({ message: `Ended ${med.name}` });

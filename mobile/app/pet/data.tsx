@@ -126,7 +126,7 @@ export default function DataPrivacyScreen() {
     if (!petId || deleting) return;
     setDeleting(true);
     try {
-      await del(`/pets/${petId}`);
+      await del(`/pets/${petId}`, { body: { confirm: petId } });
       client.clear(); // the pet (and its circle) no longer exist — drop all caches
       router.replace('/welcome');
     } catch (err) {

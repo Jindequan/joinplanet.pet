@@ -22,7 +22,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { Camera, Image as ImageIcon, PawPrint } from 'lucide-react-native';
 import { Chip, EmptyState, Field, PrimaryButton, SecondaryButton } from '../src/components/ui';
 import { useToast } from '../src/components/toast';
-import { ApiError, AuthError, patch, post, upload } from '../src/lib/api';
+import { ApiError, AuthError, post } from '../src/lib/api';
 import { queryClient } from '../src/lib/query-client';
 import { qk, useActivePet } from '../src/lib/queries';
 import { colors, radius, spacing, typography } from '../src/theme';
@@ -59,30 +59,13 @@ async function compressPhoto(uri: string, width: number, height: number): Promis
   return result.uri;
 }
 
-/**
- * Attachment responses carry no storage_key (contract F5) — the key is the
- * last path segment of the returned `/…/api/v1/files/{key}` url.
- */
-function attachmentKeyFromUrl(url: string): string | null {
-  const last = url.split('?')[0].split('#')[0].split('/').filter(Boolean).pop();
-  return last ? last : null;
-}
-
-/** Upload the pet avatar (no event binding) and point the pet at it via avatar_key. */
-async function uploadAvatar(petId: string, uri: string): Promise<void> {
-  const form = new FormData();
-  form.append('file', { uri, name: 'avatar.jpg', type: 'image/jpeg' } as unknown as Blob);
-  const res = await upload<{ attachment: { url: string } }>(`/pets/${petId}/attachments`, form);
-  const key = attachmentKeyFromUrl(res.attachment.url);
-  if (!key) throw new ApiError(0, 'Attachment response is missing the file key');
-  await patch(`/pets/${petId}`, { avatar_key: key });
-}
+// V1（纯数据形态）无附件端点：头像上传随 B6（R2）回归。photoUri 仅本地预览。
 
 export default function CreatePetScreen() {
   const params = useLocalSearchParams<{ mode?: string | string[] }>();
   const mode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const addMode = mode === 'add';
-  const { selectPet } = useActivePet();
+  const { selectPet, circle: activeCircle } = useActivePet();
   const [step, setStep] = useState<Step>('name');
   const [name, setName] = useState('');
   const [species, setSpecies] = useState<Species | null>(null);
@@ -136,26 +119,24 @@ export default function CreatePetScreen() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = addMode
-        ? await post<{ pet: { id: string | number } }>('/pets', {
-            name: petName,
-            species: species ?? 'other',
-            breed: '',
-          })
-        : await post<{ pet: { id: string | number } }>('/circles', {
-            pet_name: petName,
-            species: species ?? 'other',
-            breed: '',
-          });
-      const petId = String(res.pet.id);
-      if (photoUri) {
-        try {
-          await uploadAvatar(petId, photoUri);
-        } catch {
-          toast({ message: "Photo couldn't be uploaded." });
-        }
+      // 新契约（v2）：建圈与建宠是两个端点；onboarding 默认家庭名"XX 的家"。
+      let circleId: string;
+      if (addMode) {
+        if (!activeCircle?.id) throw new ApiError(0, 'NO_CIRCLE', 'No circle to add a pet to');
+        circleId = activeCircle.id;
+      } else {
+        const res = await post<{ circle: { id: string }; invite_code: string }>('/circles', {
+          name: `${petName}的家`,
+        });
+        circleId = res.circle.id;
       }
+      const res = await post<{ pet: { id: string | number } }>(`/circles/${circleId}/pets`, {
+        name: petName,
+        species: species ?? 'other',
+      });
+      const petId = String(res.pet.id);
       await queryClient.invalidateQueries({ queryKey: qk.me });
+      await queryClient.invalidateQueries({ queryKey: qk.circles });
       if (addMode) {
         // Switch straight into the new pet — petId-keyed queries refetch on key change.
         selectPet(petId);
@@ -168,8 +149,8 @@ export default function CreatePetScreen() {
         router.replace('/welcome');
         return;
       }
-      if (addMode && err instanceof ApiError && err.status === 403) {
-        // Free-plan pet limit: {"error":"pet limit reached","limit":2}
+      if (err instanceof ApiError && err.code === 'QUOTA_PETS_EXCEEDED') {
+        // 配额：错误携带 usage 载荷（数据驱动，勿写死数字）
         setLimitReached(true);
         return;
       }
@@ -179,7 +160,7 @@ export default function CreatePetScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [addMode, petName, photoUri, selectPet, species, submitting, toast]);
+  }, [addMode, petName, selectPet, species, submitting, toast, activeCircle?.id]);
 
   const goJoin = useCallback(() => router.push('/join'), []);
 

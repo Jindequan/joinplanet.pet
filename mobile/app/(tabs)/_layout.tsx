@@ -91,21 +91,23 @@ function FloatingTabBar({ state, navigation, onPlus }: BottomTabBarProps & { onP
         <View style={styles.bar}>
           {today ? tabPill(today.key, today.name, 'left') : null}
           {timeline ? tabPill(timeline.key, timeline.name, 'left') : null}
-          <View style={styles.fabSlot} />
+          {/* Central floating ＋ — in-flow inside the slot, raised via negative
+              margin. 绝对定位 + alignSelf 在 react-native-web 上不生效（掉到最左
+              压住 Today tab），流内 + 负边才是跨端确定性的。 */}
+          <View style={styles.fabSlot}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Quick record"
+              onPress={() => {
+                haptics.light();
+                onPlus();
+              }}
+              style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.94 }] }]}
+            >
+              <Plus size={26} color={colors.onDark} strokeWidth={2.4} />
+            </Pressable>
+          </View>
           {pet ? tabPill(pet.key, pet.name, 'right') : null}
-
-          {/* Central floating ＋ — Brand500, raised above the bar */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Quick record"
-            onPress={() => {
-              haptics.light();
-              onPlus();
-            }}
-            style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.94 }] }]}
-          >
-            <Plus size={26} color={colors.onDark} strokeWidth={2.4} />
-          </Pressable>
         </View>
       </View>
     </View>
@@ -189,11 +191,9 @@ const styles = StyleSheet.create({
   tabPillRight: { marginLeft: spacing.s4 },
   tabPillActive: { backgroundColor: colors.brand100 },
   tabLabel: { ...typography.micro, color: colors.text },
-  fabSlot: { width: FAB_SIZE + spacing.s16 },
+  fabSlot: { width: FAB_SIZE + spacing.s16, alignItems: 'center', justifyContent: 'center' },
   fab: {
-    position: 'absolute',
-    top: -FAB_PROTRUSION,
-    alignSelf: 'center',
+    marginTop: -FAB_PROTRUSION,
     width: FAB_SIZE,
     height: FAB_SIZE,
     borderRadius: radius.chip,

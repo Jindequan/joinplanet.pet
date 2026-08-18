@@ -27,9 +27,14 @@ export function attachmentUrl(url: string): string {
   return `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-/** In the circle's timezone when given, else device-local (spec §75-76). */
+/**
+ * In the circle's timezone when given, else device-local (spec §75-76).
+ * 必须走 utc()→tz() 两步：dayjs 1.11 的 dayjs.tz(带偏移的ISO串, tz) 会错误地
+ * 保留原壁钟时间（Z 串不换算、+08:00 串反向偏移）——表现为"刚记录的事件
+ * 显示成昨天/UTC 时间"。utc() 先解析绝对时刻，tz() 再换算目标时区。
+ */
 function inZone(iso: string, tz?: string): dayjs.Dayjs {
-  return tz ? dayjs.tz(iso, tz) : dayjs(iso);
+  return tz ? dayjs.utc(iso).tz(tz) : dayjs(iso);
 }
 
 /** "Manual" for manual/app entries; otherwise a capitalized source. */

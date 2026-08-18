@@ -478,6 +478,10 @@ SELECT count(*) FROM pets
 
 归档宠物不占宠物槽。`GET /api/v1/circles/{id}/usage` 返回各项用量（含超限标记，降级宽限用）。
 
+> **限额是运行时数据**（2026-08-18 定稿）：数值存于 `plans` 表（0008 迁移播种），
+> `planet-cli plans set` 修改即生效；上表只是播种时的 canon 数值。
+> `entitlements.PlanForEntitlement` 读表，缺行回退编译期 `DefaultPlans`（fail-safe）。
+
 ### 5.1 锚定模型实现（D2）
 
 ```sql

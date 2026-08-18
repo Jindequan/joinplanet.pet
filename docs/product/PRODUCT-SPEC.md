@@ -2,7 +2,7 @@
 
 - 状态：**v2，2026-08-18 定稿**（本文档是产品唯一事实来源）
 - 取代：PRD.md、MVP.md、APP-DESIGN.md、FINAL-PRODUCT-PLAN.md（已归档至 docs/archive/）
-- 姊妹文档：`BACKEND-DESIGN.md`（后端唯一事实来源）、`API-CONTRACT.md`（接口契约）、`PRODUCT-AI-BLUEPRINT-20260817.md`（AI 层蓝图，仍有效）、`docs/design/*`（UI 规格）
+- 姊妹文档：`BACKEND-DESIGN.md`（后端唯一事实来源）、`API-CONTRACT.md`（接口契约）、`FRONTEND-V1-PLAN.md`（前端实现设计）、`DEV-PROGRESS.md`（进度总览）、`PRODUCT-AI-BLUEPRINT-20260817.md`（AI 层蓝图，仍有效）、`docs/design/*`（UI 规格）
 - 实现仓库：`/Users/devin/code/planet-api`（独立后端，进度见其 ARCHITECTURE.md）
 
 ---
@@ -137,7 +137,7 @@ V1 明确**不做**（写死，防范围蔓延）：
 
 | 阶段 | 内容 | 状态 |
 |---|---|---|
-| V1（本表 §3） | 纯数据形态完整管理，**免费单档** | **后端 100% 完成（2026-08-18 关版）**，待：mobile 对齐联调 |
+| V1（本表 §3） | 纯数据形态完整管理，**免费单档** | **后端 100% 完成（2026-08-18 关版）**；前端按 FRONTEND-V1-PLAN 实施（进度见 DEV-PROGRESS） |
 | V1.1 | 数据导出（JSON + 宠物全历史）、API-CONTRACT 与 mobile 对齐联调 | 计划 |
 | V2 | 图片附件（R2 直传+配额+清理）、guardians/孤儿认领、每日摘要、备份演练 | 计划 |
 | V3+ | AI 层（见 AI 蓝图）、IAP、推送闭环 | 蓝图已定 |

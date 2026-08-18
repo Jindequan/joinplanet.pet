@@ -2,7 +2,7 @@
 
 - 状态：v2，2026-08-18 重写——**与 planet-api 实现逐一对齐**（2026-08-17 版与实现路由分歧，作废；差异要点：verify→verify-code、/circles 建圈不再捆绑建宠、错误契约为结构化 envelope）
 - 事实来源：`PRODUCT-SPEC.md`（产品）、`BACKEND-DESIGN.md`（后端设计）；实现仓库 `/Users/devin/code/planet-api`
-- 标注：✅ 已实现并有集成测试；⬜ B10 待实现（V1 关版条件：家庭治理 + 宠物转移；**V1 无任何付费端点**）
+- 标注：✅ 已实现并有集成测试（**V1 全量实现，2026-08-18 关版**；无任何付费端点）
 
 ## 通用约定
 
@@ -30,7 +30,7 @@
 | `ALREADY_MEMBER` | 409 | 重复加入 |
 | `LAST_OWNER` | 409 | 最后 owner 不可移除/退出 |
 | `AUTO_EVENT_IMMUTABLE` | 409 | 自动事件不可删改 |
-| `FAMILY_NOT_EMPTY` | 409 | ⬜ 删家庭前必须先处置宠物 |
+| `FAMILY_NOT_EMPTY` | 409 | 删家庭前必须先处置宠物 |
 | `SHARE_GONE` | 410 | 分享过期/撤销/不存在 |
 | `PAYLOAD_TOO_LARGE` | 413 | 单文件超限（B6+） |
 | `INTERNAL` | 500 | 兜底（日志必含 request_id） |
@@ -48,7 +48,7 @@ DELETE /api/v1/account      {confirm: <邮箱>}              → 204 注销（�
 
 注：`GET /me` 的 `circles/pets` 内嵌结构已移除——客户端先 `GET /circles` 再 `GET /circles/{id}/pets`。
 
-## Family ✅（治理项 ⬜ B10）
+## Family ✅
 
 ```text
 POST   /api/v1/circles                    {name, timezone?}      → 201 {circle, invite_code}（建圈即 owner；⬜受"拥有家庭数"配额）
@@ -60,14 +60,14 @@ POST   /api/v1/circles/join               {code}                  → {circle}�
 DELETE /api/v1/circles/{id}/members/{userId}                      → 204（owner；触发器保最后 owner）
 POST   /api/v1/circles/{id}/leave                                 → 204（最后 owner → 409 LAST_OWNER）
 GET    /api/v1/circles/{id}/usage                                 → {plan, members, member_max, pets, pet_max}
-POST   /api/v1/circles/{id}/transfer      {to_user_id}            → ⬜ {circle}（所有权移交，owner）
-DELETE /api/v1/circles/{id}                                       → ⬜ 204（清空才能删；否则 409 FAMILY_NOT_EMPTY；30 天恢复窗）
-POST   /api/v1/circles/{id}/restore                              → ⬜ {circle}（恢复窗内，删除发起者）
+POST   /api/v1/circles/{id}/transfer      {to_user_id}            → ✅ {circle}（所有权移交，owner）
+DELETE /api/v1/circles/{id}                                       → ✅ 204（清空才能删；否则 409 FAMILY_NOT_EMPTY；30 天恢复窗）
+POST   /api/v1/circles/{id}/restore                              → ✅ {circle}（恢复窗内，删除发起者）
 ```
 
 （`PUT /subscription/anchor` 换锚端点随 V2 付费落地，V1 不实现。）
 
-## Pet ✅（转移 ⬜ B10）
+## Pet ✅
 
 ```text
 POST   /api/v1/circles/{id}/pets   {name, species, breed?, birth_date?, sex?, neutered?, weight_g?} → 201 {pet}（配额）
@@ -78,10 +78,10 @@ DELETE /api/v1/pets/{id}           {confirm: <pet_id>}                          
 PATCH  /api/v1/pets/{id}/profile   {allergies, conditions, emergency_contacts, med_decision_maker, notes} → {profile}
 POST   /api/v1/pets/{id}/archive                                                            → {pet} 纪念态（只读/免配额/可恢复，owner）
 POST   /api/v1/pets/{id}/unarchive                                                          → {pet}（重新过配额）
-POST   /api/v1/pets/{id}/transfer    {to_circle_id}                                         → ⬜ {transfer}（PENDING，源圈 owner）
-POST   /api/v1/transfers/{id}/accept                                                       → ⬜ 事务迁移+撤分享+记 transfer 事件
-POST   /api/v1/transfers/{id}/decline                                                      → ⬜
-DELETE /api/v1/transfers/{id}                                                              → ⬜ 发起者撤回
+POST   /api/v1/pets/{id}/transfer    {to_circle_id}                                         → ✅ {transfer}（PENDING，源圈 owner）
+POST   /api/v1/transfers/{id}/accept                                                       → ✅ 事务迁移+撤分享+记 transfer 事件
+POST   /api/v1/transfers/{id}/decline                                                      → ✅
+DELETE /api/v1/transfers/{id}                                                              → ✅ 发起者撤回
 ```
 
 ## 用药 ✅

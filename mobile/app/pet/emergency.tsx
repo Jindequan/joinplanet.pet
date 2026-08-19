@@ -191,17 +191,12 @@ export default function EmergencyScreen() {
               />
               <Field
                 label="Phone"
-                placeholder="+65 …"
+                placeholder="+86 138…"
                 value={drafts[slot.key].phone}
                 onChangeText={(v) => setDraft(slot.key, { phone: v })}
                 keyboardType="phone-pad"
               />
-              <Field
-                label="Note"
-                placeholder="Optional"
-                value={drafts[slot.key].note}
-                onChangeText={(v) => setDraft(slot.key, { note: v })}
-              />
+
               {index < SLOTS.length - 1 ? <View style={styles.groupGapBig} /> : null}
             </View>
           ))}

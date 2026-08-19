@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react-native';
+import { Pressable } from 'react-native';
 import { Card, Field, IconButton, PrimaryButton, SecondaryButton, SectionHeader } from '../../src/components/ui';
 import { useToast } from '../../src/components/toast';
 import {
@@ -117,11 +118,12 @@ export default function HealthProfileScreen() {
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void client.invalidateQueries({ queryKey: qk.pet(petId ?? '') });
       toast({ message: 'Saved' });
-      setEditingBasic(false);
-      setEditingHealth(false);
+      // 只关正在编辑的那个区（不能一刀切关两个）
+      if ('allergies' in variables || 'conditions' in variables) setEditingHealth(false);
+      else setEditingBasic(false);
     },
     onError: (err) => toast({ message: err.message }),
   });
@@ -177,15 +179,39 @@ export default function HealthProfileScreen() {
         />
         {editingBasic ? (
           <Card style={styles.editCard}>
-            <Field label="Species" placeholder="e.g. Dog" value={species} onChangeText={setSpecies} />
+            <View style={styles.speciesRow}>
+              {(['dog', 'cat', 'other'] as const).map((sp) => (
+                <Pressable
+                  key={sp}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: species === sp }}
+                  onPress={() => setSpecies(sp)}
+                  style={[styles.speciesChip, species === sp && styles.speciesChipActive]}
+                >
+                  <Text style={[styles.speciesChipText, species === sp && styles.speciesChipTextActive]}>
+                    {sp === 'dog' ? '🐕 Dog' : sp === 'cat' ? '🐱 Cat' : '🐾 Other'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
             <Field label="Breed" placeholder="e.g. Golden Retriever" value={breed} onChangeText={setBreed} />
             <Field
               label="Birthday"
-              placeholder="YYYY-MM-DD"
+              placeholder="2023-04-12"
               value={birthday}
-              onChangeText={setBirthday}
+              onChangeText={(v) => {
+                // 自动插入连字符：输 20230412 → 2023-04-12
+                const digits = v.replace(/\D/g, '').slice(0, 8);
+                let formatted = digits;
+                if (digits.length > 4) formatted = digits.slice(0, 4) + '-' + digits.slice(4);
+                if (digits.length > 6) formatted = formatted.slice(0, 7) + '-' + digits.slice(6);
+                setBirthday(formatted);
+                setBirthdayError(null);
+              }}
               error={birthdayError}
-              hint="YYYY-MM-DD"
+              hint="Tap digits only — hyphens are added automatically"
+              keyboardType="numeric"
+              maxLength={10}
             />
             <View style={styles.buttonRow}>
               <SecondaryButton label="Cancel" onPress={() => setEditingBasic(false)} style={styles.flex} />
@@ -310,4 +336,20 @@ const styles = StyleSheet.create({
   itemText: { ...typography.body, color: colors.text },
   noneRecorded: { ...typography.bodySm, color: colors.textTertiary },
   groupGap: { height: spacing.s16 },
+  speciesRow: { flexDirection: 'row', gap: spacing.s8 },
+  speciesChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.s12,
+    borderRadius: radius.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  speciesChipActive: {
+    borderColor: colors.brand500,
+    backgroundColor: colors.brand100,
+  },
+  speciesChipText: { ...typography.body, color: colors.textSecondary },
+  speciesChipTextActive: { color: colors.brand700, fontWeight: '600' },
 });

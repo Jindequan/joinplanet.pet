@@ -106,7 +106,10 @@ export default function HealthProfileScreen() {
   const savePet = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
       const { allergies: _a, conditions: _c, ...basic } = body;
-      if (Object.keys(basic).length > 0) await patch(`/pets/${petId}`, basic);
+      if (Object.keys(basic).length > 0) {
+        // PATCH /pets/{id} 乐观锁必传 version（缺了 → 400）
+        await patch(`/pets/${petId}`, { ...basic, version: pet?.version ?? 1 });
+      }
       if (body.allergies != null || body.conditions != null) {
         await patch(`/pets/${petId}/profile`, {
           allergies: (body.allergies as string[] | undefined)?.map((name) => ({ name })),

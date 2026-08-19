@@ -286,7 +286,13 @@ export default function EventDetailScreen() {
           </Card>
         ) : (
           <View style={styles.actions}>
-            <SecondaryButton label="Edit record" icon={Pencil} onPress={startEdit} />
+            {event.source?.startsWith('auto:') ? (
+              <Text style={styles.autoEventNote}>
+                System record — editing is locked to protect medication history.
+              </Text>
+            ) : (
+              <SecondaryButton label="Edit record" icon={Pencil} onPress={startEdit} />
+            )}
             <DangerButton
               label="Delete record"
               loading={deleting}
@@ -352,4 +358,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.s12,
   },
   dangerLabel: { ...typography.card, color: colors.onDark, fontWeight: '600' },
+  autoEventNote: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    paddingVertical: spacing.s12,
+  },
 });

@@ -253,9 +253,12 @@ function buildEventBody(input: CreateTimelineEventInput): Record<string, unknown
     case 'photo':
       if (input.title) payload.title = input.title;
       break;
-    case 'weight':
-      if (input.body) payload.weight_g = Math.round(parseFloat(input.body) * 1000);
+    case 'weight': {
+      // NaN 防护：解析失败就不写字段，让服务端 400 语义化拒绝
+      const kg = Number.parseFloat((input.body ?? '').replace(',', '.'));
+      if (Number.isFinite(kg) && kg > 0) payload.weight_g = Math.round(kg * 1000);
       break;
+    }
     default:
       if (input.title) payload.title = input.title;
       if (input.body) payload.text = input.body;

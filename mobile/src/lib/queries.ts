@@ -214,35 +214,38 @@ export function normalizeEvent(ev: {
   const data: Record<string, unknown> = { ...p };
   switch (ev.type) {
     case 'symptom':
-      title = str('title') ?? '症状记录';
+      title = str('title') ?? 'Health record';
       body = str('detail') ?? str('body');
       severity = str('severity');
       break;
     case 'weight': {
       const g = num('weight_g');
-      title = g != null ? `${(g / 1000).toFixed(2)} kg` : '体重记录';
+      title = g != null ? `${(g / 1000).toFixed(2)} kg` : 'Weight';
       body = str('note');
       break;
     }
-    case 'vaccine':
-      title = str('name') ?? '疫苗';
-      body = str('due') ? `下次到期 ${str('due')}` : str('note');
+    case 'vaccine': {
+      title = str('name') ?? 'Vaccine';
+      // 写入端用 next_due（quick-input/pet 页提醒卡一致）；due 为历史兼容
+      const dueDate = str('next_due') ?? str('due');
+      body = dueDate ? `Next due ${dueDate}` : str('note');
       break;
+    }
     case 'vet_visit':
-      title = str('title') ?? '就诊';
+      title = str('title') ?? 'Vet visit';
       body = [str('clinic'), str('summary')].filter(Boolean).join(' · ') || undefined;
       break;
     case 'note':
       body = str('text');
-      title = str('title') ?? '备注';
+      title = str('title') ?? 'Note';
       break;
     case 'medication':
-      title = str('name') ?? '用药';
-      body = str('action') === 'ended' ? '已停药' : '开始用药';
+      title = str('name') ?? 'Medication';
+      body = str('action') === 'ended' ? 'Medication ended' : 'Medication started';
       break;
     case 'transfer':
-      title = '迁入这个家庭';
-      body = '宠物从另一个家庭转移而来';
+      title = 'Joined this family';
+      body = 'Transferred from another family';
       break;
     default:
       title = ev.type; // 未知类型：通用卡（标题=类型名，payload 保留在 data）
@@ -656,25 +659,6 @@ export function useTimeline(petId: string | undefined) {
   });
 }
 
-/** 头插缓存（spec §63 乐观插入）。 */
-export function insertTimelineEvent(
-  client: ReturnType<typeof useQueryClient>,
-  petId: string,
-  event: TimelineEvent,
-): void {
-  client.setQueryData<{ pages: TimelinePage[]; pageParams: unknown[] }>(
-    qk.timeline(petId),
-    (data) => {
-      if (!data || data.pages.length === 0) {
-        return { pages: [{ events: [event], next_cursor: null }], pageParams: [undefined] };
-      }
-      const pages = data.pages.map((p) => ({ ...p, events: [...p.events] }));
-      pages[0].events.unshift(event);
-      return { ...data, pages };
-    },
-  );
-}
-
 export interface CreateEventInput {
   type: TimelineEventType;
   title?: string;
@@ -720,25 +704,6 @@ function buildPayload(input: CreateEventInput): Record<string, unknown> {
   return p;
 }
 
-/** POST /pets/{id}/timeline。 */
-export function useCreateEvent(petId: string | undefined) {
-  const client = useQueryClient();
-  return useMutation<TimelineEvent, ApiError, CreateEventInput>({
-    mutationFn: (input) =>
-      post<{ event: Parameters<typeof normalizeEvent>[0] }>(`/pets/${petId}/timeline`, {
-        type: input.type === 'visit' ? 'vet_visit' : input.type,
-        occurred_at: input.occurred_at ?? new Date().toISOString(),
-        payload: buildPayload(input),
-      }).then((r) => normalizeEvent(r.event)),
-    onSuccess: (event) => {
-      if (petId) {
-        insertTimelineEvent(client, petId, event);
-        void client.invalidateQueries({ queryKey: qk.timeline(petId) });
-      }
-    },
-  });
-}
-
 /** PATCH /timeline-events/{id}（本人或 owner；auto 事件服务端拒绝）。 */
 export function useUpdateEvent(petId: string | undefined) {
   const client = useQueryClient();
@@ -752,17 +717,6 @@ export function useUpdateEvent(petId: string | undefined) {
         occurred_at: input.occurred_at ?? new Date().toISOString(),
         payload: buildPayload(input),
       }).then((r) => normalizeEvent(r.event)),
-    onSettled: () => {
-      if (petId) void client.invalidateQueries({ queryKey: qk.timeline(petId) });
-    },
-  });
-}
-
-/** DELETE /timeline-events/{id}。 */
-export function useDeleteEvent(petId: string | undefined) {
-  const client = useQueryClient();
-  return useMutation<unknown, ApiError, string>({
-    mutationFn: (eventId) => del(`/timeline-events/${eventId}`),
     onSettled: () => {
       if (petId) void client.invalidateQueries({ queryKey: qk.timeline(petId) });
     },

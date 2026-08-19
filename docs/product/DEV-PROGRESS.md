@@ -34,7 +34,9 @@
 | WP3 Today/Timeline/Pet 切换 | 409 采用/补记/归档/停药/体重 payload | ✅ 实跑验证（抓出并修复服务端 done_by_name 丢失） |
 | WP4 家庭治理 + usage + 转移界面 | 移交/删家庭引导/转移收件箱（hooks 已备） | ⬜ |
 | WP5 Shares 对接 + Web 查看器 | kind/ttl UI + landing /s/[token] 页 | ⬜ |
-| WP6 全量联调验收 | 双账号剧本 × 全功能 + 真机 | ⬜ 已知问题清单（2026-08-19 更新）：① ~~web sheet 冻结~~ **已修复**（useSheetModal 按需挂载，5 处面板统一；实测多轮开关后页面可交互）；② UI 全英文（中文产品需拍板文案语言策略）——**待 founder 拍板**；③ ~~照片/文档入口~~ **已隐藏**（flags.ATTACHMENTS_ENABLED=false，B6 翻转即恢复）；④ 动效未系统验证（reanimated/motion token 存在但无逐屏走查）——需真机；⑤ 打磨：web 上 Escape 不关面板、backdrop 点击后 sheet DOM 滑下但残留至下次开关（不阻塞交互，已验证）。时区显示已修复（utc→tz 两步）。 |
+| WP6 全量联调验收 | 双账号剧本 × 全功能 + 真机 | ⬜ 已知问题清单（2026-08-19 更新）：① ~~web sheet 冻结~~ **已修复**（useSheetModal 按需挂载，5 处面板统一；实测多轮开关后页面可交互）；② UI 全英文（中文产品需拍板文案语言策略）——**待 founder 拍板**；③ ~~照片/文档入口~~ **已隐藏**（flags.ATTACHMENTS_ENABLED=false，B6 翻转即恢复）；④ 动效未系统验证（reanimated/motion token 存在但无逐屏走查）——需真机；⑤ 打磨：web 上 Escape 不关面板、backdrop 点击后 sheet DOM 滑下但残留至下次开关（不阻塞交互，已验证）。时区显示已修复（utc→tz 两步）。
+
+**2026-08-19 记录体验重构（flomo 式）**：quick-record.tsx（BottomSheetModal + 类型宫格 + 表单）整体删除；quick-input.tsx 重写为常驻记录卡——多行输入 + 内联类型 chips（Note/Health/Weight/Visit/Vaccine）+ 上下文扩展（Health→severity、Visit/Vaccine→next_due 自动补杠、Weight→实时 kg 预览）+ 内联 Save；全部类型乐观头插（insertEventIntoMatchingFeeds 按过滤器分发），失败恢复草稿，成功保留类型便于连续录入。同轮修复：web 底部 Tab 栏掉出折叠线（absoluteFill 相对内容盒 → position:fixed 锚定视口 + maxWidth 720 居中，实测 420×900 视口内 y=838 可见可点）；vaccine/vet_visit 的 next_due 在 normalizeEvent 读 due 不匹配（写 next_due 读 due → 到期日从不显示）→ 统一 next_due 并兼容旧 due；normalizeEvent 中文回退标题改英文（症状记录→Health record 等）；编辑疫苗/就诊事件丢 next_due（编辑屏只回传 due 旧字段）→ next_due 保留；weight NaN 防护 + 客户端上限对齐服务端 200kg；queries.ts 死代码清除（useCreateEvent/insertTimelineEvent/useDeleteEvent，feed.ts 版本是唯一实现）；**mobile/.env 曾指向旧 lemon 后端 8090**（下次重启会整体打错 API）→ 改为 planet-api 8081。验证：tsc clean；DOM 快照确认渲染；API 全周期（5 类型 POST/GET/PATCH/DELETE + weight 冗余同步）curl 实测通过。 |
 
 实跑环境备忘：`CORS_ORIGINS=http://localhost:8082` 起后端；`EXPO_PUBLIC_API_BASE=http://<IP>:8081 EXPO_PUBLIC_WEB_SHARE_BASE=http://localhost:3000 npx expo start --port 8082`。
 

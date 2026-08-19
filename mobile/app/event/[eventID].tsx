@@ -158,6 +158,9 @@ export default function EventDetailScreen() {
     try {
       const originalData = (event.data ?? {}) as Record<string, unknown>;
       const typePayload: Record<string, unknown> = {};
+      // 契约 v2：next_due 存在 payload 里（pet 页提醒卡读取）；编辑其它字段时必须带回，否则静默丢到期日
+      const dueDate =
+        typeof originalData.next_due === 'string' ? originalData.next_due : undefined;
       switch (event.type) {
         case 'symptom':
           typePayload.title = trimmed;
@@ -170,11 +173,12 @@ export default function EventDetailScreen() {
           break;
         case 'vaccine':
           typePayload.name = trimmed;
-          if (originalData.due) typePayload.due = originalData.due;
+          if (dueDate) typePayload.next_due = dueDate;
           break;
         case 'vet_visit':
           typePayload.title = trimmed;
           if (bodyText.trim()) typePayload.summary = bodyText.trim();
+          if (dueDate) typePayload.next_due = dueDate;
           break;
         case 'note':
           typePayload.text = bodyText.trim() || trimmed;

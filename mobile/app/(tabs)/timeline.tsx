@@ -1,7 +1,8 @@
 /**
- * Timeline — the pet's long-term data asset (spec §27–§34). Focus input +
- * type filters + a day-grouped event stream (large cards vs compact rows,
- * §29) with cursor pagination (§72) and optimistic inserts (§63).
+ * Timeline — the pet's long-term data asset (spec §27–§34). The recorder
+ * card (flomo-style: inline input + type chips, no sheet) + type filters +
+ * a day-grouped event stream (large cards vs compact rows, §29) with cursor
+ * pagination (§72) and optimistic inserts (§63).
  */
 import React, { useMemo, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
@@ -9,14 +10,12 @@ import { FlatList, StyleSheet, Text, View, type ListRenderItemInfo } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { CalendarDays } from 'lucide-react-native';
-import { BottomSheetBackdrop, BottomSheetModal } from '@gorhom/bottom-sheet';
 import { colors, spacing, typography } from '../../src/theme';
 import { EmptyState } from '../../src/components/ui';
 import { haptics } from '../../src/lib/haptics';
 import { useActivePet } from '../../src/lib/queries';
 import {
   TIMELINE_FILTERS,
-  timelineFeedKey,
   useTimelineFeed,
   type TimelineFilter,
   type TimelineFilterKey,
@@ -32,8 +31,6 @@ import {
 } from '../../src/components/timeline/parts';
 import { EventCompactRow, EventLargeCard } from '../../src/components/timeline/event-cards';
 import { QuickInputCard } from '../../src/components/timeline/quick-input';
-import { QuickRecordScrollable } from '../../src/components/quick-record';
-import { useSheetModal } from '../../src/lib/use-sheet';
 
 function TimelineScreen() {
   const { pet, circle } = useActivePet();
@@ -41,7 +38,6 @@ function TimelineScreen() {
   const petId = pet?.id;
   const petName = pet?.name ?? 'your pet';
   const [filter, setFilter] = useState<TimelineFilter>(TIMELINE_FILTERS[0]);
-  const recordSheet = useSheetModal();
 
   const feed = useTimelineFeed(petId, filter.types);
   const events = useMemo(
@@ -49,10 +45,6 @@ function TimelineScreen() {
     [feed.data],
   );
   const rows = useMemo(() => buildTimelineRows(events, tz), [events, tz]);
-
-  // Notes are only visible under "All" — the optimistic key mirrors that.
-  const optimisticKey =
-    petId && filter.key === 'all' ? timelineFeedKey(petId, filter.types) : undefined;
 
   const selectFilter = (key: TimelineFilterKey) => {
     haptics.select();
@@ -91,13 +83,7 @@ function TimelineScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View style={styles.headerBlock}>
-            <QuickInputCard
-              petId={petId}
-              petName={petName}
-              archived={pet?.archived}
-              optimisticKey={optimisticKey}
-              onMoreTypes={recordSheet.present}
-            />
+            <QuickInputCard petId={petId} petName={petName} archived={pet?.archived} />
             <FilterChips value={filter.key} onChange={selectFilter} />
           </View>
         }
@@ -121,23 +107,6 @@ function TimelineScreen() {
           )
         }
       />
-
-      {/* 结构化记录面板（症状/体重/疫苗/就诊）——全局浮窗移除后收敛于此。
-          按需挂载：关闭即从 DOM 卸载，根除 web 上容器残留拦截指针的问题。 */}
-      {recordSheet.mounted && (
-        <BottomSheetModal
-          ref={recordSheet.ref}
-          enableDynamicSizing
-          keyboardBehavior="interactive"
-          keyboardBlurBehavior="restore"
-          onDismiss={recordSheet.onDismiss}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
-          )}
-        >
-          <QuickRecordScrollable onClose={recordSheet.dismiss} />
-        </BottomSheetModal>
-      )}
     </SafeAreaView>
   );
 }

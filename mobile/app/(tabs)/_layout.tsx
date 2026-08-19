@@ -76,12 +76,16 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const pet = state.routes[2];
 
   return (
-    <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, styles.barOverlay]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.barOverlay, Platform.OS === 'web' && styles.barOverlayWeb]}
+    >
       <View
         pointerEvents="box-none"
         style={{
           paddingBottom: insets.bottom + spacing.s8,
           paddingHorizontal: spacing.s16,
+          ...(Platform.OS === 'web' ? styles.barOverlayInnerWeb : null),
         }}
       >
         <View style={styles.bar}>
@@ -135,7 +139,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   /** Web only (react-native-web): cap the whole shell at 720, centered. */
   containerWeb: { alignSelf: 'center', width: '100%', maxWidth: 720 },
-  barOverlay: { justifyContent: 'flex-end' },
+  barOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
+  /**
+   * Web 根修：absoluteFill 相对的是内容盒——web 上 flex 链可被内容撑高，
+   * 底栏掉到折叠线下方（不可点、看不到）。fixed 锚定视口，inner 再用
+   * maxWidth 720 + auto margin 保持与主列对齐。
+   */
+  barOverlayWeb: { position: 'fixed' as never, top: 0, left: 0, right: 0, bottom: 0 },
+  barOverlayInnerWeb: { maxWidth: 720, width: '100%', marginHorizontal: 'auto' },
   bar: {
     height: BAR_HEIGHT,
     flexDirection: 'row',

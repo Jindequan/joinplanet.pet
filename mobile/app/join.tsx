@@ -48,7 +48,7 @@ export default function JoinScreen() {
   }, [code]);
 
   const goBack = useCallback(() => {
-    if (router.canGoBack()) router.back();
+    if (router.canGoBack()) router.canGoBack() ? router.back() : router.replace('/(tabs)');
     else router.replace('/create-pet');
   }, []);
 

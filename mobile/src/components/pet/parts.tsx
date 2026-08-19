@@ -126,7 +126,15 @@ export function PageShell({
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <IconButton icon={ChevronLeft} label="Back" onPress={() => router.back()} />
+        <IconButton
+          icon={ChevronLeft}
+          label="Back"
+          onPress={() => {
+            // URL 直达子页时没有返回栈——回 Tab 首页而不是报 GO_BACK 错
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)');
+          }}
+        />
         <Text style={styles.headerTitle} numberOfLines={1}>
           {title}
         </Text>

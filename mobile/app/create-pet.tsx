@@ -171,7 +171,7 @@ export default function CreatePetScreen() {
           <EmptyState
             title="Free plan covers 2 active pets"
             subtitle="Archived pets never count."
-            action={{ label: 'Go back', onPress: () => router.back() }}
+            action={{ label: 'Go back', onPress: () => router.canGoBack() ? router.back() : router.replace('/(tabs)') }}
           />
         </View>
       </SafeAreaView>

@@ -133,7 +133,7 @@ export default function EventDetailScreen() {
             icon={CalendarDays}
             title="This record isn't available."
             subtitle="It may have been deleted."
-            action={{ label: 'Back', onPress: () => router.back() }}
+            action={{ label: 'Back', onPress: () => router.canGoBack() ? router.back() : router.replace('/(tabs)') }}
           />
         </View>
       </SafeAreaView>
@@ -183,7 +183,7 @@ export default function EventDetailScreen() {
     try {
       await deleteEvent.mutateAsync({ eventId: event.id });
       toast({ message: 'Deleted' });
-      router.back();
+      router.canGoBack() ? router.back() : router.replace('/(tabs)');
     } catch (err) {
       toast({ message: errText(err, "Couldn't delete this record.") });
     } finally {
@@ -208,7 +208,7 @@ export default function EventDetailScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.headerRow}>
-        <IconButton icon={ChevronLeft} label="Back" onPress={() => router.back()} />
+        <IconButton icon={ChevronLeft} label="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} />
         <View style={styles.headerSpacer} />
       </View>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

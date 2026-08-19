@@ -37,14 +37,7 @@ joinplanet.pet/                  本仓库：跨产品文档 + 脚本（三个�
 
 ## 文档
 
-- [产品总纲 PRODUCT-SPEC（canonical）](docs/product/PRODUCT-SPEC.md)
-- [后端设计 BACKEND-DESIGN](docs/product/BACKEND-DESIGN.md)
-- [API 契约 v2](docs/product/API-CONTRACT.md)
-- [开发进度 DEV-PROGRESS](docs/product/DEV-PROGRESS.md)
-- [前端实现方案 FRONTEND-V1-PLAN](docs/product/FRONTEND-V1-PLAN.md)
-- [App 技术与组件选型](docs/product/APP-TECH-STACK.md)
-- [验证定价](docs/research/VALIDATION.md#5-先收款再开发)
-- 其余设计/研究文档见 docs/design、docs/research、docs/commerce
+**唯一入口：[docs/README.md](docs/README.md)**——四个问题四个入口（完整需求 → PRODUCT-SPEC；整体设计 → BACKEND-DESIGN / API-CONTRACT / FRONTEND-V1-PLAN / APP-UI-SPEC；迭代计划 → PRODUCT-SPEC §6；当前状态 → DEV-PROGRESS），外加 research / marketing / commerce 参考夹与 archive 归档。
 
 ## 暂不做
 

@@ -14,3 +14,14 @@
 PRODUCT-AI-BLUEPRINT-20260817（AI 层蓝图）、APP-TECH-STACK（技术选型，后端章节以 BACKEND-DESIGN 为准）、
 DEMO-RUNBOOK（演示环境）。
 历史内容仅供追溯，与本目录文档冲突时一律以在役文档为准。
+
+## 2026-08-19 二次收敛归档
+
+| 归档文件 | 原因 |
+|---|---|
+| ROADMAP.md | 旧路线图 → PRODUCT-SPEC §6 阶段路线（唯一计划源） |
+| DESIGN.md | 早期设计方向 → design/APP-UI-SPEC-V1 |
+| LANDING-PAGE-REWRITE-STRATEGY.md | 自declared被叙事方向取代；商业/定价依据保留于 commerce/ 与 research/ |
+| DEMO-RUNBOOK-legacy-stack.md | 旧栈手册（首版归档） |
+
+归档同时：根目录游离文档归位（需求研究 → research/、Landing 叙事 → marketing/）；在役清单见 ../README.md。

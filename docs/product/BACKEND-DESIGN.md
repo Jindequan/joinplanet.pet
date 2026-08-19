@@ -1,7 +1,7 @@
 # PLANET APP 后端设计（BACKEND-DESIGN）
 
-- 状态：v1（2026-08-18），待创始人评审
-- 上游事实来源：`APP-DESIGN.md`（业务事实模型）、`API-CONTRACT.md`（接口契约）、`APP-TECH-STACK.md`（技术选型）、`mobile/src/lib/api.ts` + `queries.ts`（客户端现状，含 V1.5 扩展）
+- 状态：v2（2026-08-19）——V1 已按此设计实现并关版（2026-08-18）；本文是后端演进（V1.1/V2）的设计基线
+- 上游事实来源：`PRODUCT-SPEC.md`（产品唯一事实来源）、`API-CONTRACT.md`（接口契约）、`APP-TECH-STACK.md`（技术选型）；实现态见 `planet-api/ARCHITECTURE.md`
 - 范围：APP 本体后端（代号 `planet-api`）。**明确排除** landing page 的 `server/lemon-webhook`（营销/支付/线索，独立生命周期，禁止共享数据库与代码）
 - 部署约束：单台 1GB 内存 VPS（与 landing 同机），PostgreSQL，媒体走 Cloudflare R2，邮件走 Resend
 

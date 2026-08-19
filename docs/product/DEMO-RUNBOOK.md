@@ -34,7 +34,7 @@ EXPO_PUBLIC_API_BASE=http://<局域网IP>:8081 npx expo start --port 8082
 # 手机 Expo Go 扫码（exp://<IP>:8082）；Web 调试 http://localhost:8082
 ```
 
-> 注意：数据层对接旧契约的界面在 mobile 切换完成前（FRONTEND-V1-PLAN），部分页面仍指向旧后端——以该计划的联调清单为准。
+> mobile 数据层已切换至 planet-api 契约 v2（2026-08-19，WP1–3 完成）；剩余界面（治理/转移/分享查看器）见 FRONTEND-V1-PLAN 与 DEV-PROGRESS。
 
 ## 3. 快速冒烟（对后端）
 

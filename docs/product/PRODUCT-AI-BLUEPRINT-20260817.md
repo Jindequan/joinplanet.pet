@@ -2,7 +2,7 @@
 
 > 来源：外部架构方案（2026-08-17 原文照存，未删改）。
 > 采纳地位：产品形态、AI 架构、Credits/成本系统、套餐与商业原则的**唯一权威（canonical）**。
-> 已对本仓库既有文档做的对齐：ROADMAP 阶段重映射（V1 Personal / V1.5 Together / V2 Intelligence）、APP-DESIGN §1.5 配额改字节制与免费双宠、每日摘要邮件改为"只在有用时通知"、PRD 增补 Pro/Family 定价。冲突裁决记录见 ROADMAP 头部注记。
+> 已对本仓库既有文档做的对齐：ROADMAP 阶段重映射（V1 Personal / V1.5 Together / V2 Intelligence）、APP-DESIGN §1.5 配额改字节制与免费双宠、每日摘要邮件改为"只在有用时通知"、PRD 增补 Pro/Family 定价。冲突裁决记录见 ROADMAP 头部注记（ROADMAP 已归档至 docs/archive/，裁决结论已吸收进 PRODUCT-SPEC）。
 
 ---
 

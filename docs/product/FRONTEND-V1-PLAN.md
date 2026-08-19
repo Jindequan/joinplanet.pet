@@ -1,8 +1,8 @@
 # 前端 V1 实现设计（FRONTEND-V1-PLAN）
 
-- 状态：v1，2026-08-18（待创始人评审后动工）
-- 输入：API-CONTRACT v2（已与 planet-api 实现对齐）、PRODUCT-SPEC §3（V1 边界冻结）、APP-UI-SPEC-V1/LAYOUTS（UI 层不变）、mobile/ 现状（UI 底子完整，数据层对接旧契约）
-- 目标：**保留现有 UI 骨架，重写数据层，补齐 6 组新流程界面**，把 APP 真正接到 planet-api 上；一切设计为后续迭代（V1.1 导出、V2 附件/付费、V3 AI）留缝
+- 状态：v2，2026-08-19（WP1–3 已实施完毕，本文继续指导 WP4–6；执行状态见 DEV-PROGRESS）
+- 输入：API-CONTRACT v2（已与 planet-api 实现对齐）、PRODUCT-SPEC §3（V1 边界冻结）、APP-UI-SPEC-V1/LAYOUTS（UI 层不变）
+- 目标：保留 UI 骨架，数据层已切换至契约 v2；**剩余：6 组流程界面中的后 3 组（治理/转移/分享查看器）+ 全量验收**；一切设计为后续迭代（V1.1 导出、V2 附件/付费、V3 AI）留缝
 
 ---
 

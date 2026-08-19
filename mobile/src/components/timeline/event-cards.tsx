@@ -84,11 +84,11 @@ export function EventCompactRow({
       accessibilityRole="button"
       accessibilityLabel={compactTitle(event)}
       onPress={onPress}
-      style={({ pressed }) => [styles.compact, pressed && styles.compactPressed]}
+      style={({ pressed }) => [styles.compactCard, pressed && styles.compactPressed]}
     >
       <Text style={styles.compactTime}>{formatTime(event.occurred_at, tz)}</Text>
       <View style={styles.compactText}>
-        <Text style={styles.compactTitle} numberOfLines={1}>
+        <Text style={styles.compactTitle} numberOfLines={2}>
           {compactTitle(event)}
         </Text>
         {event.body ? (
@@ -120,15 +120,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSoft,
   },
   meta: { ...typography.micro, color: colors.textTertiary },
-  compact: {
+  /** 紧凑记录也是卡（2026-08-19 founder 决策：纯文本行像没做完）——与大卡同语言：surface + border。 */
+  compactCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.s12,
-    paddingHorizontal: spacing.s4,
+    paddingHorizontal: spacing.s12,
     paddingVertical: spacing.s12,
     minHeight: touchTarget,
-    borderRadius: radius.input,
-    marginBottom: spacing.s4,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.s8,
   },
   compactPressed: { backgroundColor: colors.surfaceSoft },
   compactTime: {

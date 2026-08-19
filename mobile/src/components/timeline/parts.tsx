@@ -91,9 +91,16 @@ export function eventBadge(event: TimelineEvent): {
   };
 }
 
-/** Large card vs compact row (spec §29): symptom/visit/medication/attached → card. */
+/** Large card vs compact card (spec §29, 2026-08-19 修订：全部有卡): symptom/visit/medication/vaccine/transfer/attached → 大卡；weight/note → 紧凑卡。 */
 export function isLargeEvent(event: TimelineEvent): boolean {
-  if (event.type === 'symptom' || event.type === 'visit' || event.type === 'vet_visit' || event.type === 'medication' || event.type === 'transfer') {
+  if (
+    event.type === 'symptom' ||
+    event.type === 'visit' ||
+    event.type === 'vet_visit' ||
+    event.type === 'medication' ||
+    event.type === 'vaccine' ||
+    event.type === 'transfer'
+  ) {
     return true;
   }
   return (event.attachments ?? []).length > 0;

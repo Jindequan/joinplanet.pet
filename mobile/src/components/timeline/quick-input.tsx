@@ -16,6 +16,7 @@ import { Card, IconButton } from '../ui';
 import { useToast } from '../toast';
 import { haptics } from '../../lib/haptics';
 import { ApiError } from '../../lib/api';
+import { ATTACHMENTS_ENABLED } from '../../lib/flags';
 import { qk, type TimelineEvent } from '../../lib/queries';
 import {
   insertEventIntoFeed,
@@ -199,13 +200,15 @@ export function QuickInputCard({
             color={colors.textSecondary}
           />
         ) : null}
-        <IconButton
-          icon={Camera}
-          label="Add photo"
-          onPress={() => void pickPhoto()}
-          disabled={uploading}
-          color={colors.textSecondary}
-        />
+        {ATTACHMENTS_ENABLED ? (
+          <IconButton
+            icon={Camera}
+            label="Add photo"
+            onPress={() => void pickPhoto()}
+            disabled={uploading}
+            color={colors.textSecondary}
+          />
+        ) : null}
       </View>
       <Text style={styles.hint}>
         {uploading ? 'Uploading…' : 'Save now, add details later'}

@@ -14,6 +14,7 @@ import {
   type QueryKey,
 } from '@tanstack/react-query';
 import { ApiError, del, get, post } from '../../lib/api';
+import { ATTACHMENTS_ENABLED } from '../../lib/flags';
 import {
   normalizeEvent as normalizeEventQ,
   qk,
@@ -35,7 +36,7 @@ export interface TimelineFilter {
 }
 
 /** User-facing filters never expose the raw database enum (spec §30). */
-export const TIMELINE_FILTERS: TimelineFilter[] = [
+const BASE_FILTERS: TimelineFilter[] = [
   { key: 'all', label: 'All', types: [] },
   { key: 'health', label: 'Health', types: ['symptom', 'medication', 'vaccine'] },
   { key: 'symptom', label: 'Symptom', types: ['symptom'] },
@@ -43,6 +44,11 @@ export const TIMELINE_FILTERS: TimelineFilter[] = [
   { key: 'visit', label: 'Visit', types: ['visit'] },
   { key: 'photo', label: 'Photo', types: ['photo'] },
 ];
+
+/** V1 无附件：Photo 筛选随 flag 隐藏（B6 翻转即恢复）。 */
+export const TIMELINE_FILTERS: TimelineFilter[] = BASE_FILTERS.filter(
+  (f) => ATTACHMENTS_ENABLED || f.key !== 'photo',
+);
 
 /**
  * "All" owns the shared base key (qk.timeline) so Pet-page derived readers

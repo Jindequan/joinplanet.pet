@@ -12,6 +12,7 @@
 import React, { useRef } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useSheetModal } from '../lib/use-sheet';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -68,46 +69,46 @@ export function AppHeader() {
   const insets = useSafeAreaInsets();
   const client = useQueryClient();
   const { toast } = useToast();
-  const menuRef = useRef<BottomSheetModal>(null);
-  const switcherRef = useRef<BottomSheetModal>(null);
+  const menuSheet = useSheetModal();
+  const switcherSheet = useSheetModal();
 
   const openMenu = () => {
     haptics.light();
-    menuRef.current?.present();
+    menuSheet.present();
   };
 
   const openSwitcher = () => {
     haptics.light();
-    switcherRef.current?.present();
+    switcherSheet.present();
   };
 
   /** Pick a pet from the switcher — selectPet drives the app-wide re-render. */
   const choosePet = (petId: string) => {
-    switcherRef.current?.close();
+    switcherSheet.dismiss();
     if (petId === pet?.id) return;
     haptics.light();
     selectPet(petId);
   };
 
   const addPet = () => {
-    switcherRef.current?.close();
+    switcherSheet.dismiss();
     router.push('/create-pet?mode=add');
   };
 
   const openSettings = () => {
-    menuRef.current?.close();
+    menuSheet.dismiss();
     router.push('/settings');
   };
 
   /** mailto/https entries open in the system handler (spec §11 menu). */
   const openExternal = (url: string) => {
-    menuRef.current?.close();
+    menuSheet.dismiss();
     Linking.openURL(url).catch(() => toast({ message: "Couldn't open the link" }));
   };
 
   /** Sign out: drop the token, wipe every cached query, return to /welcome. */
   const signOut = async () => {
-    menuRef.current?.close();
+    menuSheet.dismiss();
     await clearToken();
     client.clear();
     router.replace('/welcome');
@@ -144,11 +145,14 @@ export function AppHeader() {
         </View>
       </View>
 
+      {/* 按需挂载：关闭即卸载（web 容器残留拦截指针根修） */}
+      {switcherSheet.mounted && (
       <BottomSheetModal
-        ref={switcherRef}
+        ref={switcherSheet.ref}
         enableDynamicSizing
         backgroundStyle={styles.sheetBackground}
         handleIndicatorStyle={styles.sheetHandle}
+        onDismiss={switcherSheet.onDismiss}
       >
         <View style={styles.menu}>
           <Text style={styles.switcherTitle}>Your pets</Text>
@@ -193,10 +197,13 @@ export function AppHeader() {
           </Pressable>
         </View>
       </BottomSheetModal>
+      )}
 
+      {menuSheet.mounted && (
       <BottomSheetModal
-        ref={menuRef}
+        ref={menuSheet.ref}
         enableDynamicSizing
+        onDismiss={menuSheet.onDismiss}
         backgroundStyle={styles.sheetBackground}
         handleIndicatorStyle={styles.sheetHandle}
       >
@@ -213,6 +220,7 @@ export function AppHeader() {
           <MenuRow icon={LogOut} label="Sign out" destructive onPress={() => void signOut()} />
         </View>
       </BottomSheetModal>
+      )}
     </>
   );
 }

@@ -29,6 +29,7 @@ import { useToast } from './toast';
 import { haptics } from '../lib/haptics';
 import { useActivePet, useCreateEvent } from '../lib/queries';
 import { ApiError } from '../lib/api';
+import { ATTACHMENTS_ENABLED } from '../lib/flags';
 
 type RecordType = 'note' | 'symptom' | 'weight' | 'visit' | 'photo' | 'vaccine' | 'document';
 
@@ -333,7 +334,9 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
   const typeRow = useMemo(
     () => (
       <View style={styles.typeRow}>
-        {TYPE_OPTIONS.map((option) => {
+        {TYPE_OPTIONS
+          .filter((option) => ATTACHMENTS_ENABLED || (option.key !== 'photo' && option.key !== 'document'))
+          .map((option) => {
           const active = type === option.key;
           const Icon = option.icon;
           return (

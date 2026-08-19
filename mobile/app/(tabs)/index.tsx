@@ -28,6 +28,7 @@ import { Archive, ChevronDown, ChevronUp, Dog, Plus } from 'lucide-react-native'
 import { colors, radius, spacing, typography } from '../../src/theme';
 import { Chip, EmptyState, SecondaryButton, SectionHeader, Skeleton } from '../../src/components/ui';
 import { useToast } from '../../src/components/toast';
+import { useSheetModal } from '../../src/lib/use-sheet';
 import { haptics } from '../../src/lib/haptics';
 import {
   qk,
@@ -86,7 +87,7 @@ function TodayScreen() {
   const queryClient = useQueryClient();
 
   const [skippedOpen, setSkippedOpen] = useState(false);
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const taskSheet = useSheetModal();
   const [preset, setPreset] = useState<TaskTemplate | null>(null);
 
   // spec §26 — hidden image card, captured on demand (never disturbs layout).
@@ -237,7 +238,7 @@ function TodayScreen() {
   const openSheet = (template: TaskTemplate | null = null) => {
     haptics.light();
     setPreset(template);
-    sheetRef.current?.present();
+    taskSheet.present();
   };
 
   /** Empty-state chips create instantly; Custom opens the sheet (needs a name). */
@@ -447,23 +448,27 @@ function TodayScreen() {
         />
       </ViewShot>
 
-      <BottomSheetModal
-        ref={sheetRef}
-        enableDynamicSizing
-        backgroundStyle={styles.sheetBackground}
-        handleIndicatorStyle={styles.sheetHandle}
-        keyboardBehavior="interactive"
-        keyboardBlurBehavior="restore"
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
-        )}
-      >
-        <AddTaskSheetScrollable
-          key={preset?.key ?? 'blank'}
-          initialTemplate={preset}
-          onClose={() => sheetRef.current?.close()}
-        />
-      </BottomSheetModal>
+      {/* 按需挂载：关闭即卸载，根除 web 容器残留拦截指针问题 */}
+      {taskSheet.mounted && (
+        <BottomSheetModal
+          ref={taskSheet.ref}
+          enableDynamicSizing
+          backgroundStyle={styles.sheetBackground}
+          handleIndicatorStyle={styles.sheetHandle}
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="restore"
+          onDismiss={taskSheet.onDismiss}
+          backdropComponent={(props) => (
+            <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
+          )}
+        >
+          <AddTaskSheetScrollable
+            key={preset?.key ?? 'blank'}
+            initialTemplate={preset}
+            onClose={taskSheet.dismiss}
+          />
+        </BottomSheetModal>
+      )}
     </>,
   );
 }

@@ -6,6 +6,7 @@
 import React, { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useSheetModal } from '../../src/lib/use-sheet';
 import { useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import {
@@ -45,7 +46,7 @@ export default function MedicationsScreen() {
   const client = useQueryClient();
   const { toast } = useToast();
 
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const medSheet = useSheetModal();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Add-medication sheet state
@@ -81,7 +82,7 @@ export default function MedicationsScreen() {
       return;
     }
     resetForm();
-    sheetRef.current?.present();
+    medSheet.present();
   };
 
   const saveMedication = async () => {
@@ -131,7 +132,7 @@ export default function MedicationsScreen() {
       });
       haptics.light();
       toast({ message: 'Added to Today' });
-      sheetRef.current?.close();
+      medSheet.dismiss();
     } catch (err) {
       toast({ message: err instanceof Error ? err.message : 'Could not add' });
     } finally {
@@ -265,14 +266,19 @@ export default function MedicationsScreen() {
       />
 
       {/* Add medication sheet (spec §46) + follow-up */}
+      {/* 按需挂载：关闭即卸载（web 容器残留拦截指针根修） */}
+      {medSheet.mounted && (
       <BottomSheetModal
-        ref={sheetRef}
+        ref={medSheet.ref}
         enableDynamicSizing
         backgroundStyle={styles.sheetBackground}
         handleIndicatorStyle={styles.sheetHandle}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
-        onDismiss={resetForm}
+        onDismiss={() => {
+          medSheet.onDismiss();
+          resetForm();
+        }}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -295,7 +301,7 @@ export default function MedicationsScreen() {
               />
               <Pressable
                 accessibilityRole="button"
-                onPress={() => sheetRef.current?.close()}
+                onPress={medSheet.dismiss}
                 style={({ pressed }) => [styles.notNow, pressed && { opacity: 0.6 }]}
               >
                 <Text style={styles.notNowText}>Not now</Text>
@@ -333,6 +339,7 @@ export default function MedicationsScreen() {
           )}
         </ScrollView>
       </BottomSheetModal>
+      )}
     </PageShell>
   );
 }

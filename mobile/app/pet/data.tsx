@@ -13,6 +13,7 @@ import { Card, ListRow, PrimaryButton, SectionHeader, Skeleton } from '../../src
 import { useToast } from '../../src/components/toast';
 import { Chevron, PageShell } from '../../src/components/pet/parts';
 import { del, get } from '../../src/lib/api';
+import { EXPORT_ENABLED } from '../../src/lib/flags';
 import { useActivePet, useArchivePet } from '../../src/lib/queries';
 import { colors, radius, spacing, typography, withAlpha } from '../../src/theme';
 
@@ -20,13 +21,13 @@ const MONOSPACE = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
 /** GET /circles/{circleID}/usage response (M1 contract, defined locally —
  *  pet/member counters are unused here for now but part of the payload). */
+/** 契约 v2：GET /circles/{id}/usage → {plan, members, member_max, pets, pet_max} */
 interface CircleUsage {
-  storage_bytes: number;
-  storage_limit_bytes: number;
-  pet_count: number;
-  pet_limit: number;
-  member_count: number;
-  member_limit: number;
+  plan: string;
+  members: number;
+  member_max: number;
+  pets: number;
+  pet_max: number;
 }
 
 /** "23.4 MB" / "50 MB" — one decimal, trailing ".0" trimmed. */
@@ -58,13 +59,9 @@ export default function DataPrivacyScreen() {
     staleTime: 60_000,
   });
   const usage = usageQuery.data;
-  const storageRatio =
-    usage && usage.storage_limit_bytes > 0
-      ? Math.min(1, Math.max(0, usage.storage_bytes / usage.storage_limit_bytes))
-      : 0;
-  const storagePercent = Math.round(storageRatio * 100);
-  const storageLine = usage
-    ? `${formatBytes(usage.storage_bytes)} of ${formatBytes(usage.storage_limit_bytes)} used`
+  // V1 纯数据形态：显示成员/宠物配额；存储条 B6 接附件时恢复
+  const usageLine = usage
+    ? `Plan: ${usage.plan} · Members ${usage.members}/${usage.member_max} · Pets ${usage.pets}/${usage.pet_max}`
     : null;
 
   const [exportJson, setExportJson] = useState<string | null>(null);
@@ -78,6 +75,10 @@ export default function DataPrivacyScreen() {
    * Revisit once a filesystem/share-file package is available.
    */
   const runExport = async () => {
+    if (!EXPORT_ENABLED) {
+      toast({ message: 'Data export arrives in V1.1' });
+      return;
+    }
     if (!petId || exporting) return;
     setExporting(true);
     try {
@@ -204,26 +205,11 @@ export default function DataPrivacyScreen() {
             <Skeleton height={10} width="100%" round />
           </Card>
         </View>
-      ) : storageLine ? (
+      ) : usageLine ? (
         <View>
-          <SectionHeader title="Storage" />
+          <SectionHeader title="Plan usage" />
           <Card style={styles.storageCard}>
-            <Text style={styles.storageLine}>{storageLine}</Text>
-            <View
-              style={styles.storageTrack}
-              accessibilityRole="progressbar"
-              accessibilityLabel={`${storagePercent}% of storage used`}
-            >
-              <View
-                style={[
-                  styles.storageFill,
-                  {
-                    width: `${storagePercent}%`,
-                    backgroundColor: storageRatio >= 0.8 ? colors.warning : colors.brand500,
-                  },
-                ]}
-              />
-            </View>
+            <Text style={styles.storageLine}>{usageLine}</Text>
           </Card>
         </View>
       ) : null}

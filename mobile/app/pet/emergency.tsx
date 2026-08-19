@@ -76,7 +76,8 @@ export default function EmergencyScreen() {
   });
 
   const save = useMutation({
-    mutationFn: (body: Record<string, unknown>) => patch(`/pets/${petId}`, body),
+    // 契约 v2：联系人走 /pets/{id}/profile，数组 + med_decision_maker
+    mutationFn: (body: Record<string, unknown>) => patch(`/pets/${petId}/profile`, body),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: qk.pet(petId ?? '') });
       toast({ message: 'Saved' });
@@ -107,22 +108,22 @@ export default function EmergencyScreen() {
     setDrafts((prev) => ({ ...prev, [slot]: { ...prev[slot], ...patchDraft } }));
   };
 
-  /** Empty name ⇒ null (contact removed); otherwise the object shape per contract. */
+  /** Empty name ⇒ removed.契约 v2：emergency_contacts 是数组，医疗决定人单独。 */
   const buildBody = () => {
-    const build = (d: Draft) =>
+    const build = (d: Draft, relation: string) =>
       d.name.trim()
         ? {
             name: d.name.trim(),
             phone: d.phone.trim() || undefined,
-            note: d.note.trim() || undefined,
+            relation,
           }
         : null;
+    const contacts = [build(drafts.primary, 'primary'), build(drafts.vet, 'vet')].filter(
+      (c) => c !== null,
+    ) as { name: string; phone?: string; relation: string }[];
     return {
-      emergency_contacts: {
-        primary: build(drafts.primary),
-        vet: build(drafts.vet),
-        authorized_decision_maker: build(drafts.adm),
-      },
+      emergency_contacts: contacts,
+      med_decision_maker: build(drafts.adm, 'medical_decision_maker'),
     };
   };
 

@@ -77,7 +77,7 @@ export default function InviteScreen() {
       return;
     }
     try {
-      await post('/circles/join', { invite_code: code });
+      await post('/circles/join', { code });
       await queryClient.invalidateQueries({ queryKey: qk.me });
       router.replace('/(tabs)');
     } catch (err) {

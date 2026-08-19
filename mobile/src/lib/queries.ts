@@ -617,7 +617,13 @@ export function useUndoTask(circleId: string | undefined, date?: string) {
   const client = useQueryClient();
   const day = date ?? dayjs().format('YYYY-MM-DD');
   return useMutation<unknown, ApiError, { logId: string; taskId: string; date?: string }>({
-    mutationFn: (vars) => post(`/task-logs/${vars.logId}/undo`),
+    mutationFn: (vars) => {
+      // 空 id 防御：'' 会拼出 /task-logs//undo（浏览器规范化后 404）——宁可报清晰错误
+      if (!vars.logId) {
+        return Promise.reject(new ApiError(400, 'VALIDATION_FAILED', 'This record has no log to undo yet'));
+      }
+      return post(`/task-logs/${vars.logId}/undo`);
+    },
     onMutate: async (vars) => {
       if (!circleId) return;
       const d = vars.date ?? day;

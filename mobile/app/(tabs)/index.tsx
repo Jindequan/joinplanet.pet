@@ -132,6 +132,16 @@ function TodayScreen() {
       { taskId: task.id },
       {
         // hook rolls the optimistic log back; 409s are adopted as success (spec §21)
+        onSuccess: (result) => {
+          // Undo 必须用服务端刚创建的 log id——点击时的闭包里 task.log 还是空，
+          // 空 id 会拼出 /task-logs//undo → 404（2026-08-19 实测踩坑）
+          const logId = result && 'log' in result && result.log?.id ? result.log.id : '';
+          toast({
+            message: `${task.title} completed`,
+            action: logId ? { label: 'Undo', onPress: () => undo.mutate({ logId, taskId: task.id }) } : undefined,
+            duration: 4000, // spec §20
+          });
+        },
         onError: () =>
           toast({
             message: `Couldn't update ${task.title}.`,
@@ -139,11 +149,6 @@ function TodayScreen() {
           }),
       },
     );
-    toast({
-      message: `${task.title} completed`,
-      action: { label: 'Undo', onPress: () => undo.mutate({ logId: task.log?.id ?? '', taskId: task.id }) },
-      duration: 4000, // spec §20
-    });
   };
 
   const handleSkip = (task: TodayTask) => {

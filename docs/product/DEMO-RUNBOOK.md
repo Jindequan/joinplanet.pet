@@ -50,3 +50,17 @@ curl -H "Authorization: Bearer $TOK" "localhost:8081/api/v1/circles/$CIRCLE/toda
 - 两个 PG 实例：Go 工具链走 Unix socket；psql 默认走 TCP localhost——同名库内容不同。操作后端库用 planet-cli，别用 psql 猜。
 - `planet_dev` 是旧栈库，新栈勿用。
 - planet-cli 必须显式 `--url`（空连接串会被拒绝，不会回退默认库）。
+
+## TestFlight 交付（founder 操作，配置已就绪）
+
+```bash
+cd mobile
+npx eas login                      # founder 的 Expo 账号
+npx eas build --platform ios --profile production
+# 首次会引导：登录 Apple Developer（需付费账号）、注册 bundle id pet.joinplanet.app
+npx eas submit --platform ios      # 构建完成后提交 TestFlight
+```
+
+- eas.json 三档 profile 已配好（development/preview/production）；图标、bundle ID（iOS `pet.joinplanet.app` / Android 同名）齐备。
+- Android 内测可走 `--profile preview`（APK，直接发安装包）。
+- 本地 Web 验证：`npx expo start --port 8082`（.env 指向 planet-api 8081）。

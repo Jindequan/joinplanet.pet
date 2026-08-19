@@ -7,7 +7,7 @@
 
 | 你要找什么 | 去哪 | 说明 |
 |---|---|---|
-| **完整需求**（产品是什么、完全形态、V1 边界） | [product/PRODUCT-SPEC.md](product/PRODUCT-SPEC.md) | 产品唯一事实来源（实体/生命周期/锚定订阅/权限矩阵/V1 冻结） |
+| **完整需求**（产品是什么、完全形态、V1 边界） | [product/PRODUCT-SPEC.md](product/PRODUCT-SPEC.md) | 产品唯一事实来源（v3：主动服务重定调 §1.5–1.7、实体/生命周期/锚定订阅/权限矩阵/V1 冻结/阶段路线） |
 | **整体设计**（怎么建） | [product/BACKEND-DESIGN.md](product/BACKEND-DESIGN.md) · [product/API-CONTRACT.md](product/API-CONTRACT.md) · [product/FRONTEND-V1-PLAN.md](product/FRONTEND-V1-PLAN.md) · [design/APP-UI-SPEC-V1.md](design/APP-UI-SPEC-V1.md) | 后端设计 · 接口契约 v2 · 前端实现设计 · UI 规格（布局见 [design/APP-LAYOUTS.md](design/APP-LAYOUTS.md)） |
 | **迭代计划**（接下来做什么） | [product/PRODUCT-SPEC.md §6](product/PRODUCT-SPEC.md) | 阶段路线唯一事实来源（V1 → V1.1 → V2 → V3+） |
 | **当前状态**（做到哪了、卡在哪） | [product/DEV-PROGRESS.md](product/DEV-PROGRESS.md) | 工作包状态、已知问题、变更日志、环境速查 |

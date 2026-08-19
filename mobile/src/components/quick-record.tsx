@@ -401,16 +401,25 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
       {typeRow}
 
       {type === 'note' ? (
-        <Field
-          label="Note"
-          placeholder="Anything worth remembering?"
-          value={text}
-          onChangeText={setText}
-          autoFocus
-          returnKeyType="done"
-          onSubmitEditing={() => saveTextRecord('note')}
-          editable={!busy}
-        />
+        <View style={styles.formGap}>
+          <Field
+            label="Note"
+            placeholder="Anything worth remembering?"
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={() => saveTextRecord('note')}
+            editable={!busy}
+            multiline
+          />
+          <PrimaryButton
+            label="Save"
+            loading={busy}
+            disabled={!text.trim()}
+            onPress={() => saveTextRecord('note')}
+          />
+        </View>
       ) : null}
 
       {type === 'symptom' ? (
@@ -472,8 +481,6 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
             value={text}
             onChangeText={setText}
             autoFocus
-            returnKeyType="done"
-            onSubmitEditing={() => saveTextRecord('visit')}
             editable={!busy}
           />
           <Field
@@ -486,10 +493,14 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
               if (nextDueError) setNextDueError(null);
             }}
             keyboardType="numbers-and-punctuation"
-            returnKeyType="done"
-            onSubmitEditing={() => saveTextRecord('visit')}
             error={nextDueError}
             editable={!busy}
+          />
+          <PrimaryButton
+            label="Save"
+            loading={busy}
+            disabled={!text.trim()}
+            onPress={() => saveTextRecord('visit')}
           />
         </View>
       ) : null}
@@ -502,8 +513,6 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
             value={text}
             onChangeText={setText}
             autoFocus
-            returnKeyType="done"
-            onSubmitEditing={saveVaccine}
             editable={!busy}
           />
           <Field
@@ -516,10 +525,14 @@ export function QuickRecord({ onClose }: { onClose?: () => void }) {
               if (nextDueError) setNextDueError(null);
             }}
             keyboardType="numbers-and-punctuation"
-            returnKeyType="done"
-            onSubmitEditing={saveVaccine}
             error={nextDueError}
             editable={!busy}
+          />
+          <PrimaryButton
+            label="Save"
+            loading={busy}
+            disabled={!text.trim()}
+            onPress={saveVaccine}
           />
         </View>
       ) : null}

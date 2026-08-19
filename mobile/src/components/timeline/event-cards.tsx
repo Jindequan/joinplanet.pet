@@ -4,7 +4,7 @@
  * note records — 500 records must not become 500 huge cards.
  */
 import React from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { colors, motion, radius, spacing, touchTarget, typography } from '../../theme';
 import { Card, StatusBadge } from '../ui';
@@ -87,9 +87,16 @@ export function EventCompactRow({
       style={({ pressed }) => [styles.compact, pressed && styles.compactPressed]}
     >
       <Text style={styles.compactTime}>{formatTime(event.occurred_at, tz)}</Text>
-      <Text style={styles.compactTitle} numberOfLines={1}>
-        {compactTitle(event)}
-      </Text>
+      <View style={styles.compactText}>
+        <Text style={styles.compactTitle} numberOfLines={1}>
+          {compactTitle(event)}
+        </Text>
+        {event.body ? (
+          <Text style={styles.compactBody} numberOfLines={1}>
+            {event.body}
+          </Text>
+        ) : null}
+      </View>
       {event.by_name ? (
         <Text style={styles.compactBy} numberOfLines={1}>
           {event.by_name}
@@ -129,6 +136,8 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     width: spacing.s32 + spacing.s8,
   },
-  compactTitle: { flex: 1, ...typography.bodySm, color: colors.text },
+  compactText: { flex: 1, gap: 1 },
+  compactTitle: { ...typography.bodySm, color: colors.text },
+  compactBody: { ...typography.micro, color: colors.textTertiary },
   compactBy: { ...typography.caption, color: colors.textTertiary },
 });

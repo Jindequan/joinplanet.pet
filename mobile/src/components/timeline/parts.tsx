@@ -64,15 +64,20 @@ const TYPE_LABELS: Record<string, string> = {
   weight: 'Weight',
   visit: 'Visit',
   photo: 'Photo',
-  vaccine: 'Vaccine', // V1.5 upcoming-due events — never fall back to "Record"
+  vaccine: 'Vaccine',
+  vet_visit: 'Visit',
+  document: 'Document',
+  transfer: 'Transfer',
 };
 
 const TYPE_BADGE_VARIANT: Record<string, StatusBadgeVariant> = {
   symptom: 'symptom', // Health — red dot
   medication: 'medication', // blue dot
   visit: 'neutral',
+  vet_visit: 'neutral',
   photo: 'brand',
-  vaccine: 'medication', // blue dot — preventive care, not an alert
+  vaccine: 'medication',
+  transfer: 'brand',
 };
 
 export function eventBadge(event: TimelineEvent): {
@@ -88,7 +93,7 @@ export function eventBadge(event: TimelineEvent): {
 
 /** Large card vs compact row (spec §29): symptom/visit/medication/attached → card. */
 export function isLargeEvent(event: TimelineEvent): boolean {
-  if (event.type === 'symptom' || event.type === 'visit' || event.type === 'medication') {
+  if (event.type === 'symptom' || event.type === 'visit' || event.type === 'vet_visit' || event.type === 'medication' || event.type === 'transfer') {
     return true;
   }
   return (event.attachments ?? []).length > 0;

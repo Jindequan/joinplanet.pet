@@ -80,8 +80,12 @@ export interface Pet {
   notes: string;
   /** 兼容字段：V1 无附件，恒为空 */
   avatar_key?: string;
-  /** 兼容形状（旧屏用）：紧急联系人三段式，由 profile_raw 推导 */
-  emergency_contacts: { primary?: string; vet?: string; authorized_decision_maker?: string };
+  /** 兼容形状（旧屏用）：紧急联系人三段式，由 profile_raw 推导（对象含 name/phone） */
+  emergency_contacts: {
+    primary?: { name?: string; phone?: string; note?: string } | null;
+    vet?: { name?: string; phone?: string; note?: string } | null;
+    authorized_decision_maker?: { name?: string; phone?: string; note?: string } | null;
+  };
 }
 
 export interface TaskLog {
@@ -278,11 +282,9 @@ function mergePet(pet: PetDTO, profile: ProfileDTO | undefined): Pet {
     notes: profile?.notes ?? '',
     avatar_key: undefined,
     emergency_contacts: {
-      primary: profile?.emergency_contacts?.[0]
-        ? `${profile.emergency_contacts[0].name}${profile.emergency_contacts[0].phone ? ` · ${profile.emergency_contacts[0].phone}` : ''}`
-        : undefined,
-      vet: profile?.emergency_contacts?.find((c) => /vet|医/i.test(c.relation ?? ''))?.name,
-      authorized_decision_maker: profile?.med_decision_maker?.name ?? undefined,
+      primary: profile?.emergency_contacts?.[0] ?? null,
+      vet: profile?.emergency_contacts?.find((c) => /vet|医/i.test(c.relation ?? '')) ?? null,
+      authorized_decision_maker: profile?.med_decision_maker ?? null,
     },
   };
 }

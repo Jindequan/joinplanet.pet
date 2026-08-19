@@ -22,7 +22,7 @@
 | WP3 Today/Timeline/Pet | 409 采用/补记/归档/停药/体重 payload | ✅ 实跑验证（含 2026-08-19 记录体验重构，见日志） |
 | WP4 家庭治理 + usage + 转移 | 邀请、移交、删/离开家庭、usage、转移发起与收件箱 | ✅ 已实施，待双账号验收 |
 | WP5 Shares + Web 查看器 | kind/ttl UI + landing `/s/[token]` 页 + `/invite/[code]` | ✅ 已实施，待真实 API 域名验收 |
-| WP6 全量联调验收 | 双账号剧本 × 全功能 + 真机 + TestFlight | ⬜ **当前主线**（V1.1，见 PRODUCT-SPEC §6） |
+| WP6 全量联调验收 | 双账号剧本 × 全功能 + 真机 + TestFlight | ⬜（API 层 E2E 已 68/68；真机待 TestFlight） |
 
 > **2026-08-19 重定调后的下一步顺序**（计划详见 PRODUCT-SPEC §1.5–§1.7、§6）：
 > ① WP6 收尾验收（双账号+真机+TestFlight）+ 埋点接入 → ② **V2 = 主动服务三件套**（提醒即服务/每日摘要/规则预警 + 通知偏好）→ ③ P1 照护网络（回写+外部角色）。
@@ -40,6 +40,8 @@
 已修复存档：web sheet 冻结（useSheetModal 按需挂载）、web Tab 栏掉出折叠线（position:fixed）、时区显示（utc→tz 两步）、照片/文档入口隐藏（ATTACHMENTS_ENABLED=false，B6 翻转即恢复）。
 
 ## 变更日志（近期）
+
+**2026-08-19（深夜·P0 三件套落地）**：founder 再次纠偏——重定调的三件套是"产品成立的最小集"，不是可延后的 V2。两路并行交付：**异常预警**（体重突变≥10%/症状 14 天反复，纯函数规则，GET /alerts + 今日屏预警卡）；**每日摘要**（时区感知、按宠物 done/pending/skipped/alerts，预览 + 一键发全体现有成员邮件）；**提醒即服务**（任务超 30 分钟未做→提醒全体、2 小时升级措辞；用药/复诊到期走 next_due；Expo 推送 token + 每用户每圈通知偏好开关；调度器 PLANET_SCHEDULER=1 门控、scheduler_runs 防重、DST 测试）。planet-api `724711f`（迁移 0012，测试全绿）、mobile `6981825`（18×5 i18n 键）。实测：真数据触发两条规则、摘要/偏好/发送 curl 全通、带登录态截图确认界面渲染。缺口：med_silence 规则（tasks 无 medication_id 列）、真机推送证书（TestFlight 后）。
 
 **2026-08-19（晚·视觉打磨轮启动）**：founder 判定"看起来还是一开始的"——完全正确：此前的改动全是功能/修复（对眼睛不可见），计划中的视觉打磨轮一直没跑。第一轮（d1228d1）：任务行→独立软卡（阴影+20px 圆角+加大字号）、Hero 问候升 page 级+满圆角进度条、添加任务→品牌虚线幽灵卡、Pet 页渐变 Hero 卡（与今日屏同语言）+入口卡阴影、Timeline 卡片阴影、底栏 68px。**验证方式升级：headless-Chrome 带登录态截图 + 视觉分析迭代循环**（此前只有 DOM 树验证，没"看"过渲染结果——这是教训）。
 

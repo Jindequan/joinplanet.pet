@@ -36,9 +36,10 @@ export function useSheetModal(): SheetModalController {
 
   useEffect(() => {
     if (!mounted) return;
-    // 挂载后下一帧 present，确保容器已在 DOM（react-native-web 需要）
-    const id = requestAnimationFrame(() => ref.current?.present());
-    return () => cancelAnimationFrame(id);
+    // web 上 rAF 在 React commit 后、@gorhom 内部初始化前就可能触发 → present() 静默失败。
+    // 100ms 让 BottomSheetModal 完成挂载+ref 绑定后再弹出。
+    const timer = setTimeout(() => ref.current?.present(), 100);
+    return () => clearTimeout(timer);
   }, [mounted]);
 
   return {

@@ -149,20 +149,46 @@ export default function EventDetailScreen() {
 
   const save = async () => {
     const trimmed = title.trim();
-    if (!trimmed) {
+    if (!trimmed && event.type !== 'note') {
       toast({ message: 'Add a title first' });
       return;
     }
     if (saving) return;
     setSaving(true);
     try {
+      const originalData = (event.data ?? {}) as Record<string, unknown>;
+      const typePayload: Record<string, unknown> = {};
+      switch (event.type) {
+        case 'symptom':
+          typePayload.title = trimmed;
+          if (bodyText.trim()) typePayload.detail = bodyText.trim();
+          if (severity) typePayload.severity = severity;
+          break;
+        case 'weight':
+          typePayload.weight_g = originalData.weight_g;
+          if (bodyText.trim()) typePayload.note = bodyText.trim();
+          break;
+        case 'vaccine':
+          typePayload.name = trimmed;
+          if (originalData.due) typePayload.due = originalData.due;
+          break;
+        case 'vet_visit':
+          typePayload.title = trimmed;
+          if (bodyText.trim()) typePayload.summary = bodyText.trim();
+          break;
+        case 'note':
+          typePayload.text = bodyText.trim() || trimmed;
+          break;
+        default:
+          typePayload.title = trimmed;
+          if (bodyText.trim()) typePayload.text = bodyText.trim();
+      }
       const updated = await updateEvent.mutateAsync({
         eventId: event.id,
         input: {
-          type: event.type,
-          title: trimmed,
-          body: bodyText.trim(),
-          ...(severity ? { severity } : {}),
+          type: event.type === 'visit' ? 'vet_visit' : event.type,
+          occurred_at: event.occurred_at,
+          payload: typePayload,
         },
       });
       setEvent(updated);
@@ -241,34 +267,62 @@ export default function EventDetailScreen() {
 
         {editing ? (
           <Card style={styles.editCard}>
-            <Field
-              label="Title"
-              value={title}
-              onChangeText={setTitle}
-              returnKeyType="done"
-            />
-            <Field
-              label="Details"
-              placeholder="Add details (optional)"
-              value={bodyText}
-              onChangeText={setBodyText}
-              multiline
-            />
-            <View>
-              <Text style={styles.severityLabel}>Severity (optional)</Text>
-              <View style={styles.severityRow}>
-                {SEVERITY_OPTIONS.map((option) => (
-                  <Chip
-                    key={option.value}
-                    label={option.label}
-                    selected={severity === option.value}
-                    onPress={() =>
-                      setSeverity(severity === option.value ? null : option.value)
-                    }
-                  />
-                ))}
+            {event.type === 'note' ? (
+              <Field
+                label="Note"
+                placeholder="Edit your note"
+                value={bodyText}
+                onChangeText={setBodyText}
+                multiline
+                autoFocus
+              />
+            ) : event.type === 'weight' ? (
+              <>
+                <Text style={styles.readOnlyValue}>
+                  Weight: {typeof event.data?.weight_g === "number" ? `${(event.data.weight_g / 1000).toFixed(2)} kg` : '-'}
+                </Text>
+                <Field
+                  label="Note (optional)"
+                  placeholder="Add a note about this weight record"
+                  value={bodyText}
+                  onChangeText={setBodyText}
+                  multiline
+                />
+              </>
+            ) : (
+              <>
+                <Field
+                  label={event.type === 'vaccine' ? 'Vaccine name' : 'Title'}
+                  value={title}
+                  onChangeText={setTitle}
+                  returnKeyType="done"
+                />
+                <Field
+                  label={event.type === 'symptom' ? 'Details' : event.type === 'vet_visit' ? 'Visit summary' : 'Details'}
+                  placeholder="Add details (optional)"
+                  value={bodyText}
+                  onChangeText={setBodyText}
+                  multiline
+                />
+              </>
+            )}
+            {event.type === 'symptom' ? (
+              <View>
+                <Text style={styles.severityLabel}>Severity (optional)</Text>
+                <View style={styles.severityRow}>
+                  {SEVERITY_OPTIONS.map((option) => (
+                    <Chip
+                      key={option.value}
+                      label={option.label}
+                      selected={severity === option.value}
+                      onPress={() =>
+                        setSeverity(severity === option.value ? null : option.value)
+                      }
+                    />
+                  ))}
+                </View>
               </View>
-            </View>
+            ) : null}
             <View style={styles.buttonRow}>
               <SecondaryButton
                 label="Cancel"
@@ -364,4 +418,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.s12,
   },
+  readOnlyValue: { ...typography.body, color: colors.textSecondary, paddingVertical: spacing.s8 },
 });

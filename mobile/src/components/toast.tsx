@@ -143,10 +143,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.s16,
     gap: spacing.s8,
+    zIndex: 9999, // 确保在所有面板/浮层之上
   },
   toast: {
     alignSelf: 'stretch',
     flexDirection: 'row',
+    zIndex: 10000,
     alignItems: 'center',
     gap: spacing.s16,
     backgroundColor: colors.surface,

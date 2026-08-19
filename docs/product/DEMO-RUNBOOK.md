@@ -5,14 +5,14 @@
 ## 0. 前置（一次性）
 
 ```bash
-cd /Users/devin/code/planet-api
+cd /Users/devin/code/joinplanet.pet/planet-api
 make db-ensure && make migrate-up    # postgres:///planet（peer 认证，无需密码）
 ```
 
 ## 1. 起后端（终端 1）
 
 ```bash
-cd /Users/devin/code/planet-api
+cd /Users/devin/code/joinplanet.pet/planet-api
 PLANET_ENV=dev DEV_AUTH_CODES=1 make run     # :8081
 curl localhost:8081/readyz                    # → ready
 ```

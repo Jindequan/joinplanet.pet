@@ -3,7 +3,7 @@
 - 状态：**v2，2026-08-18 定稿**（本文档是产品唯一事实来源）
 - 取代：PRD.md、MVP.md、APP-DESIGN.md、FINAL-PRODUCT-PLAN.md（已归档至 docs/archive/）
 - 姊妹文档：`BACKEND-DESIGN.md`（后端唯一事实来源）、`API-CONTRACT.md`（接口契约）、`FRONTEND-V1-PLAN.md`（前端实现设计）、`DEV-PROGRESS.md`（进度总览）、`PRODUCT-AI-BLUEPRINT-20260817.md`（AI 层蓝图，仍有效）、`docs/design/*`（UI 规格）
-- 实现仓库：`/Users/devin/code/planet-api`（独立后端，进度见其 ARCHITECTURE.md）
+- 实现仓库：`/Users/devin/code/joinplanet.pet/planet-api`（独立后端，进度见其 ARCHITECTURE.md）
 
 ---
 

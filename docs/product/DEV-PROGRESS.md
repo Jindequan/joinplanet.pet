@@ -7,10 +7,10 @@
 
 | 仓库/目录 | 角色 | 状态 |
 |---|---|---|
-| `/Users/devin/code/planet-api`（独立仓库） | APP 本体后端（Go + PostgreSQL） | **V1 100% 完成并关版**（2026-08-18）：9 迁移、14 模块、~50 集成测试全绿、实机验收；详见其 ARCHITECTURE.md |
-| `joinplanet.pet/mobile/` | APP 前端（Expo/RN，iOS+Android） | UI 底子完整（V1.5），但**数据层对接旧契约**——需按 FRONTEND-V1-PLAN 重写 api 层 + 补 6 组新流程界面 |
-| `joinplanet.pet/www.joinplanet.pet/` | Landing（营销站，生产运行中） | 稳定；V1 将新增 `/s/[token]` 匿名分享查看页（前端计划 §3） |
-| `www.joinplanet.pet/server/lemon-webhook/` | Landing 后端（支付/线索，Go） | 与 APP 后端零共享；**APP 不再使用它**（DEMO-RUNBOOK 旧栈部分作废） |
+| `joinplanet.pet/planet-api/`（独立仓库，2026-08-19 移入 workspace） | APP 本体后端（Go + PostgreSQL） | **V1 100% 完成并关版**（2026-08-18）：9 迁移、14 模块、~50 集成测试全绿、实机验收；详见其 ARCHITECTURE.md |
+| `joinplanet.pet/mobile/`（独立仓库，2026-08-19 subtree split 拆出，历史完整） | APP 前端（Expo/RN，iOS+Android+Web） | UI 底子完整（V1.5），但**数据层对接旧契约**——需按 FRONTEND-V1-PLAN 重写 api 层 + 补 6 组新流程界面 |
+| `joinplanet.pet/www.joinplanet.pet/`（独立仓库，2026-08-19 subtree split 拆出，历史完整） | Landing（营销站，生产运行中） | 稳定；V1 将新增 `/s/[token]` 匿名分享查看页（前端计划 §3） |
+| `www.joinplanet.pet/server/lemon-webhook/`（属 landing 仓） | Landing 后端（支付/线索，Go） | 与 APP 后端零共享；**APP 不再使用它**（DEMO-RUNBOOK 旧栈部分作废） |
 
 ## V1 完成度
 
@@ -59,3 +59,5 @@ EXPO_PUBLIC_API_BASE=http://<局域网IP>:8081 npx expo start   # 注意 expo �
 ```
 
 ⚠️ 本机注意：两个 PG 实例（Go/pgx 走 Unix socket，psql 走 TCP localhost，同名库内容不同）；`planet_dev` 是旧栈遗留库（勿动、勿用作新栈）；CLI 必须显式 `--url`（空串会被拒绝）。
+
+> **2026-08-19 仓库重组**：workspace 改为多仓并列——`mobile/`、`www.joinplanet.pet/` 用 `git subtree split` 拆成独立仓库（各自完整历史），`planet-api/` 从 `~/code/planet-api` 移入；本仓只剩 docs + scripts，根 .gitignore 排除三个子仓。根仓远端 `github.com/Jindequan/joinplanet.pet` 现对应 docs 仓，是否推送/建新远端由 founder 决定。

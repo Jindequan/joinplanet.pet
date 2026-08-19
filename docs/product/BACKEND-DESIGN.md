@@ -50,7 +50,7 @@
 
 ### 1.2 模块划分与依赖规则
 
-> **实现仓库（2026-08-18 起）**：独立仓库 `/Users/devin/code/planet-api`（与 joinplanet.pet 平级，零共享）。
+> **实现仓库（2026-08-18 起）**：独立仓库 `/Users/devin/code/joinplanet.pet/planet-api`（与 joinplanet.pet 平级，零共享）。
 > B0–B5 已实现并通过集成测试；当前状态见该仓库 `ARCHITECTURE.md`。
 > 下方布局为设计意图，实际以实现仓库为准（migrations 位于仓库顶层 `migrations/`）。
 

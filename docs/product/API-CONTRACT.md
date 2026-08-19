@@ -1,7 +1,7 @@
 # PLANET API 契约（API-CONTRACT）
 
 - 状态：v2，2026-08-18 重写——**与 planet-api 实现逐一对齐**（2026-08-17 版与实现路由分歧，作废；差异要点：verify→verify-code、/circles 建圈不再捆绑建宠、错误契约为结构化 envelope）
-- 事实来源：`PRODUCT-SPEC.md`（产品）、`BACKEND-DESIGN.md`（后端设计）；实现仓库 `/Users/devin/code/planet-api`
+- 事实来源：`PRODUCT-SPEC.md`（产品）、`BACKEND-DESIGN.md`（后端设计）；实现仓库 `/Users/devin/code/joinplanet.pet/planet-api`
 - 标注：✅ 已实现并有集成测试（**V1 全量实现，2026-08-18 关版**；无任何付费端点）
 
 ## 通用约定

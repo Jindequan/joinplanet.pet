@@ -23,7 +23,7 @@ import * as Sharing from 'expo-sharing';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Archive, ChevronDown, ChevronUp, Dog, Plus } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../src/theme';
 import { Chip, EmptyState, SecondaryButton, SectionHeader, Skeleton } from '../../src/components/ui';
@@ -454,6 +454,9 @@ function TodayScreen() {
         handleIndicatorStyle={styles.sheetHandle}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
+        )}
       >
         <AddTaskSheetScrollable
           key={preset?.key ?? 'blank'}

@@ -9,7 +9,7 @@ import { FlatList, StyleSheet, Text, View, type ListRenderItemInfo } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { CalendarDays } from 'lucide-react-native';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal } from '@gorhom/bottom-sheet';
 import { colors, spacing, typography } from '../../src/theme';
 import { EmptyState } from '../../src/components/ui';
 import { haptics } from '../../src/lib/haptics';
@@ -127,6 +127,11 @@ function TimelineScreen() {
         enableDynamicSizing
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
+        backdropComponent={(props) => (
+          // web 上默认容器在关闭态仍全屏拦截指针（库已知问题）；显式 Backdrop
+          // 负责指针与点击关闭，恢复页面可交互。
+          <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} pressBehavior="close" />
+        )}
       >
         <QuickRecordScrollable onClose={() => recordSheetRef.current?.close()} />
       </BottomSheetModal>

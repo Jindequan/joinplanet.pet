@@ -36,3 +36,8 @@ yarn-debug.log*
 # Go local build artifacts
 planet-lemon-webhook
 .alma-snapshots
+
+# Independent repos living in this workspace (each has its own .git)
+/mobile/
+/www.joinplanet.pet/
+/planet-api/

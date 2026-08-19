@@ -34,7 +34,7 @@
 | WP3 Today/Timeline/Pet 切换 | 409 采用/补记/归档/停药/体重 payload | ✅ 实跑验证（抓出并修复服务端 done_by_name 丢失） |
 | WP4 家庭治理 + usage + 转移界面 | 移交/删家庭引导/转移收件箱（hooks 已备） | ⬜ |
 | WP5 Shares 对接 + Web 查看器 | kind/ttl UI + landing /s/[token] 页 | ⬜ |
-| WP6 全量联调验收 | 双账号剧本 × 全功能 + 真机 | ⬜（已知打磨项：Web 调试环境时间线时区分组显示 UTC；native 设备时区兜底正确） |
+| WP6 全量联调验收 | 双账号剧本 × 全功能 + 真机 | ⬜ 已知问题清单：① **web 关闭 bottom-sheet 后残留全屏 pointer-events 拦截层冻结页面**（干净标签可复现；native 待真机验证不受影响）——修复第 1 优先级；② UI 全英文（中文产品需拍板文案语言策略）；③ V1 无附件但 Timeline 仍展示 Add photo 按钮/Photo 筛选 chip（点了提示 V2）——建议 V1 隐藏；④ 动效未系统验证（reanimated/motion token 存在但无逐屏走查）。时区显示已修复（utc→tz 两步）。 |
 
 实跑环境备忘：`CORS_ORIGINS=http://localhost:8082` 起后端；`EXPO_PUBLIC_API_BASE=http://<IP>:8081 EXPO_PUBLIC_WEB_SHARE_BASE=http://localhost:3000 npx expo start --port 8082`。
 

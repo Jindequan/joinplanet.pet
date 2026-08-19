@@ -80,7 +80,12 @@ const styles = StyleSheet.create({
   offscreen: {
     position: 'absolute',
     top: OFFSCREEN_TOP,
-    left: 0,
+    // Fully offscreen to the LEFT: on web, a left:0 + width:640 absolute box
+    // extends the document's rightward scrollable area (horizontal overflow
+    // shifts layout and breaks hit-testing). Negative offsets create no
+    // scrollable overflow in either direction; native capture is unaffected
+    // (the view subtree is captured regardless of position, same as top).
+    left: -SHARE_CARD_WIDTH,
     width: SHARE_CARD_WIDTH,
   },
   card: {

@@ -689,9 +689,11 @@ export interface CreateEventInput {
 
 /** 屏幕输入 → 各类型 payload（服务端按类型校验）。 */
 function buildPayload(input: CreateEventInput): Record<string, unknown> {
+  // 旧枚举映射：UI 用 'visit'，契约是 'vet_visit'
+  const type = input.type === 'visit' ? 'vet_visit' : input.type;
   if (input.payload) return { ...input.data, ...input.payload };
   const p: Record<string, unknown> = { ...input.data };
-  switch (input.type) {
+  switch (type) {
     case 'symptom':
       if (input.title) p.title = input.title;
       if (input.body) p.detail = input.body;
@@ -724,7 +726,7 @@ export function useCreateEvent(petId: string | undefined) {
   return useMutation<TimelineEvent, ApiError, CreateEventInput>({
     mutationFn: (input) =>
       post<{ event: Parameters<typeof normalizeEvent>[0] }>(`/pets/${petId}/timeline`, {
-        type: input.type,
+        type: input.type === 'visit' ? 'vet_visit' : input.type,
         occurred_at: input.occurred_at ?? new Date().toISOString(),
         payload: buildPayload(input),
       }).then((r) => normalizeEvent(r.event)),

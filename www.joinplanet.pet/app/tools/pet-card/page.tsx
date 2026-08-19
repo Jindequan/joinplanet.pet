@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ToolNav } from "../components/tool-nav";
 import { useMemo, useRef, useState } from "react";
 
 // UTF-8 safe base64 — btoa() crashes on non-Latin1 chars (emoji, accents, CJK).
@@ -290,16 +291,7 @@ export default function PetCardPage() {
 
   return (
     <main>
-      <nav className="nav shell">
-        <Link className="brand" href="/" aria-label="PLANET home">
-          <span className="brand-mark" aria-hidden="true" />
-          PLANET
-        </Link>
-        <div className="nav-links">
-          <Link href="/tools">All tools</Link>
-          <Link href="/#pricing">Pricing</Link>
-        </div>
-      </nav>
+      <ToolNav action="" />
 
       <section className="shell cardtool-hero">
         <p className="kicker"><span className="pulse" /> Pet Card · free</p>

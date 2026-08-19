@@ -333,10 +333,42 @@ func (a *app) handleArchivePet(w http.ResponseWriter, req *http.Request, _, petI
 }
 
 // handleUnarchivePet clears the archive flag so the pet becomes active (and
-// writable) again. Owner only.
-func (a *app) handleUnarchivePet(w http.ResponseWriter, req *http.Request, _, petID int64) {
+// writable) again. Owner only. Re-occupying a pet slot enforces the same plan
+// quota as creation — otherwise archive→create→unarchive would exceed the
+// limit. Idempotent for an already-active pet (no slot change, no 403).
+func (a *app) handleUnarchivePet(w http.ResponseWriter, req *http.Request, userID, petID int64) {
+	ctx := req.Context()
+	var circleID int64
+	var archivedAt *time.Time
+	err := a.pool.QueryRow(ctx,
+		`SELECT circle_id, archived_at FROM pets WHERE id = $1`, petID).
+		Scan(&circleID, &archivedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		jsonResponse(w, http.StatusNotFound, errBody("pet not found"))
+		return
+	}
+	if err != nil {
+		jsonResponse(w, http.StatusInternalServerError, errBody("could not unarchive pet"))
+		return
+	}
+	if archivedAt != nil {
+		limits := a.limitsFor(ctx, userID)
+		var petCount int
+		if err := a.pool.QueryRow(ctx,
+			`SELECT count(*) FROM pets WHERE circle_id = $1 AND archived_at IS NULL`, circleID).
+			Scan(&petCount); err != nil {
+			jsonResponse(w, http.StatusInternalServerError, errBody("could not unarchive pet"))
+			return
+		}
+		if petCount >= limits.Pets {
+			jsonResponse(w, http.StatusForbidden, map[string]any{
+				"error": "pet limit reached", "limit": limits.Pets,
+			})
+			return
+		}
+	}
 	var r petRow
-	err := a.pool.QueryRow(req.Context(),
+	err = a.pool.QueryRow(ctx,
 		`UPDATE pets SET archived_at = NULL WHERE id = $1 RETURNING `+petColumns,
 		petID).Scan(r.dest()...)
 	if errors.Is(err, pgx.ErrNoRows) {

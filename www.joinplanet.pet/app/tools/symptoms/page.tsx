@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ToolNav } from "../components/tool-nav";
 import { useMemo, useState } from "react";
 
 /**
@@ -153,13 +154,7 @@ export default function SymptomPage() {
 
   return (
     <main>
-      <nav className="nav shell">
-        <Link className="brand" href="/" aria-label="PLANET home"><span className="brand-mark" aria-hidden="true" />PLANET</Link>
-        <div className="nav-links">
-          <Link href="/tools">All tools</Link>
-          <Link href="/#pricing">Pricing</Link>
-        </div>
-      </nav>
+      <ToolNav action="" />
 
       {/* Emergency banner — always visible */}
       <div className={`sym-emergency-banner ${active ? "sym-emergency-banner-hidden" : ""}`}>

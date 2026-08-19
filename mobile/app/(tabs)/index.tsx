@@ -151,6 +151,14 @@ function TodayScreen() {
     skip.mutate(
       { taskId: task.id },
       {
+        onSuccess: (result) => {
+          const logId = result && 'log' in result && result.log?.id ? result.log.id : '';
+          toast({
+            message: `${task.title} skipped`,
+            action: logId ? { label: 'Undo', onPress: () => undo.mutate({ logId, taskId: task.id }) } : undefined,
+            duration: 4000,
+          });
+        },
         onError: () =>
           toast({
             message: `Couldn't skip ${task.title}.`,
@@ -158,11 +166,6 @@ function TodayScreen() {
           }),
       },
     );
-    toast({
-      message: `${task.title} skipped`,
-      action: { label: 'Undo', onPress: () => undo.mutate({ logId: task.log?.id ?? '', taskId: task.id }) },
-      duration: 4000,
-    });
   };
 
   const handleUndo = (task: TodayTask) => {

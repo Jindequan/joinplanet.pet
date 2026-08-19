@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ToolNav } from "./components/tool-nav";
 
 /**
  * Free tools hub — the curated entry point to PLANET's three free tools.
@@ -16,17 +17,7 @@ import Link from "next/link";
 export default function ToolsHub() {
   return (
     <main>
-      <nav className="nav shell">
-        <Link className="brand" href="/" aria-label="PLANET home">
-          <span className="brand-mark" aria-hidden="true" />
-          PLANET
-        </Link>
-        <div className="nav-links">
-          <Link href="/#story">The story</Link>
-          <Link href="/#pricing">Pricing</Link>
-          <Link className="nav-cta" href="/#pricing">Join the founding 100</Link>
-        </div>
-      </nav>
+      <ToolNav action="" />
 
       {/* Hero */}
       <section className="shell hub-hero" id="top">

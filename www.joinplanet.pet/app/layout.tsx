@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AnalyticsEvents } from "./components/analytics-events";
 import "./globals.css";
+import "./ui-refresh.css";
 
 export const metadata: Metadata = {
   title: "PLANET — A thousand small acts become a life together.",

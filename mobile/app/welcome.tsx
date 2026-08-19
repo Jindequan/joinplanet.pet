@@ -163,7 +163,7 @@ export default function WelcomeScreen() {
     const pending = await getPendingInvite();
     if (pending) {
       try {
-        await post('/circles/join', { invite_code: pending });
+        await post('/circles/join', { code: pending });
       } catch (err) {
         // Surface the server's semantic message (e.g. 403 "member limit
         // reached") instead of a generic invalid-invite line (spec §64).

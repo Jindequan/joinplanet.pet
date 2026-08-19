@@ -21,6 +21,15 @@ export default function Home() {
           <a href="#making">In the making</a>
           <a className="narrative-nav-invite" href="#quick-demo">Try the demo <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
         </div>
+        <details className="narrative-mobile-menu">
+          <summary aria-label="Open navigation menu"><span aria-hidden="true">☰</span><span className="sr-only">Menu</span></summary>
+          <div className="narrative-mobile-menu-panel">
+            <a href="#story">The idea</a>
+            <a href="#inside">Inside PLANET</a>
+            <a href="#making">In the making</a>
+            <a href="#quick-demo">Try the demo <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
+          </div>
+        </details>
       </nav>
 
       <section className="narrative-hero narrative-shell" id="top">

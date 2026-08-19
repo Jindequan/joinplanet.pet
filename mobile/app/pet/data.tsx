@@ -128,8 +128,10 @@ export default function DataPrivacyScreen() {
     setDeleting(true);
     try {
       await del(`/pets/${petId}`, { body: { confirm: petId } });
-      client.clear(); // the pet (and its circle) no longer exist — drop all caches
-      router.replace('/welcome');
+      // 删宠≠删圈：回到 Tab 首页（不是登录页）
+      client.invalidateQueries({ queryKey: ['circles'] });
+      client.invalidateQueries({ queryKey: ['circle'] });
+      router.replace('/(tabs)');
     } catch (err) {
       toast({ message: err instanceof Error ? err.message : 'Could not delete' });
       setDeleting(false);

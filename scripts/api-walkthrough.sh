@@ -37,6 +37,7 @@ delete() {
 
 EMAIL="walkthrough.$(date +%s)@planet.dev"
 EMAIL_B="walkthrough.b.$(date +%s)@planet.dev"
+DISPLAY_B="${EMAIL_B%@*}"
 
 echo "== F1 认证与会话 =="
 R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL\"}")
@@ -94,6 +95,9 @@ R=$(post "/api/v1/task-logs/$SKIP_LOG/undo" "$TOKEN" '')
 R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN" '{"type":"symptom","occurred_at":"2026-08-22T08:00:00Z","payload":{"text":"Less active after breakfast"}}' "$(key)")
 expect "record timeline symptom" '.event.type == "symptom"' "$R"
 expect "timeline returns the record" '.events | any(.type == "symptom")' "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN_B" '{"type":"note","occurred_at":"2026-08-22T09:00:00Z","payload":{"text":"B checked the morning walk"}}' "$(key)")
+expect "second caregiver can record a note" ".event.recorded_by_name == \"$DISPLAY_B\"" "$R"
+expect "timeline keeps the real recorder name" ".events | any(.recorded_by_name == \"$DISPLAY_B\" and .payload.text == \"B checked the morning walk\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
 expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/circles/$CIRCLE/alerts" "$TOKEN")"
 expect "daily digest returns the Family view" '.date and (.pets | type == "array")' "$(get "/api/v1/circles/$CIRCLE/digest" "$TOKEN")"
 

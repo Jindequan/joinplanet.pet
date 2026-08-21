@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import {
   TextField,
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
+import { useToast } from "../../src/core/providers/toast-provider";
 import {
   useAccessiblePets,
   useCircles,
@@ -24,10 +25,14 @@ import { planetApi, type TimelineEvent } from "../../src/core/api/planet-api";
 import { timelinePayload, timelineSchema } from "../../src/core/forms";
 import { ApiError } from "../../src/core/network/api-client";
 import {
+  BookOpenIcon,
   CalendarDotsIcon,
   CheckCircleIcon,
   DotsThreeIcon,
   PlusIcon,
+  ShieldCheckIcon,
+  StethoscopeIcon,
+  WarningCircleIcon,
 } from "../../src/ui/icons";
 
 type EventType = "note" | "symptom" | "weight" | "vaccine" | "vet_visit";
@@ -52,9 +57,19 @@ function eventText(payload: Record<string, unknown>) {
 }
 
 function eventBucket(event: TimelineEvent): TimelineFilter {
-  if (event.source === "care") return "care";
+  if (event.source === "care" || event.source.startsWith("auto:care") || event.type === "care_task_completed" || event.type === "care_task_undone") return "care";
   if (event.type === "note" || event.type === "symptom") return "notes";
   return "health";
+}
+
+function EventGlyph({ event }: { event: TimelineEvent }) {
+  const { theme } = useTheme();
+  if (event.source !== "user") return <CheckCircleIcon size={18} color={theme.colors.brandStrong} weight="duotone" />;
+  if (event.type === "symptom") return <WarningCircleIcon size={18} color={theme.colors.warning} weight="duotone" />;
+  if (event.type === "vaccine") return <ShieldCheckIcon size={18} color={theme.colors.brandStrong} weight="duotone" />;
+  if (event.type === "vet_visit") return <StethoscopeIcon size={18} color={theme.colors.accentStrong} weight="duotone" />;
+  if (event.type === "note") return <BookOpenIcon size={18} color={theme.colors.brandStrong} weight="duotone" />;
+  return <CalendarDotsIcon size={18} color={theme.colors.lavender} weight="duotone" />;
 }
 
 function eventDayLabel(value: string) {
@@ -65,6 +80,7 @@ function eventDayLabel(value: string) {
 
 export default function TimelineRoute() {
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const params = useLocalSearchParams<{ petId?: string }>();
   const circles = useCircles();
   const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
@@ -74,6 +90,7 @@ export default function TimelineRoute() {
   const [timelinePetId, setTimelinePetId] = useState<string | undefined>(
     selectedPetId,
   );
+  const routePetId = useRef(selectedPetId);
   const activePetId =
     (timelinePetId && accessiblePets.pets.some((candidate) => candidate.id === timelinePetId)
       ? timelinePetId
@@ -100,6 +117,17 @@ export default function TimelineRoute() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [olderEvents, setOlderEvents] = useState<TimelineEvent[]>([]);
   const [hasMore, setHasMore] = useState(true);
+
+  // Journal is a tab route that stays mounted. A deep link from Today must
+  // win over the last locally selected Pet, otherwise an alert can open the
+  // wrong story after the user has browsed another Pet.
+  useEffect(() => {
+    if (!selectedPetId || selectedPetId === routePetId.current) return;
+    routePetId.current = selectedPetId;
+    setTimelinePetId(selectedPetId);
+    setAdding(false);
+    setError("");
+  }, [selectedPetId]);
   const create = useMutation({
     mutationFn: () =>
       planetApi.pets.createEvent(
@@ -119,6 +147,7 @@ export default function TimelineRoute() {
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
       invalidate.alertsAll();
+      showToast({ message: "Record added to the Journal." });
     },
     onError: (err) =>
       setError(
@@ -148,6 +177,7 @@ export default function TimelineRoute() {
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
       invalidate.alertsAll();
+      showToast({ message: "Journal record updated." });
     },
     onError: (err) =>
       setError(
@@ -440,23 +470,14 @@ export default function TimelineRoute() {
             {group.events.map((event) => (
             <Card key={event.id} style={styles.event}>
               <View style={styles.eventTop}>
-                <View
-                  style={[
-                    styles.eventDot,
-                    { backgroundColor: theme.colors.brandSoft },
-                  ]}
-                >
-                  <CheckCircleIcon
-                    size={17}
-                    color={theme.colors.brandStrong}
-                    weight="duotone"
-                  />
+                <View style={[styles.eventDot, { backgroundColor: event.source === "user" && event.type === "symptom" ? theme.colors.accentSurface : event.source === "user" && event.type === "vet_visit" ? theme.colors.lavenderSurface : theme.colors.brandSoft }]}>
+                  <EventGlyph event={event} />
                 </View>
                 <View style={styles.eventMeta}>
                   <AppText variant="label">{eventTitle(event.type)}</AppText>
                   <AppText variant="caption" muted>
                     {new Date(event.occurred_at).toLocaleDateString()} ·{" "}
-                    {event.source === "user" ? "Recorded by you" : "From care"}
+                    {event.source === "user" ? `Recorded by ${event.recorded_by_name || "a caregiver"}` : "From care"}
                   </AppText>
                 </View>
                 {event.source === "user" &&
@@ -490,7 +511,7 @@ export default function TimelineRoute() {
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: expandedEventId === event.id }} onPress={() => setExpandedEventId((current) => current === event.id ? null : event.id)} hitSlop={6}>
                 <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{expandedEventId === event.id ? "Hide details" : "View details"}</AppText>
               </Pressable>
-              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Recorded {new Date(event.occurred_at).toLocaleString()} · {event.source === "user" ? "by a caregiver" : "from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
+              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString()}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${event.recorded_by_name || "a caregiver"}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
               {eventMenuId === event.id ? (
                 <View style={styles.eventActions}>
                   <Button

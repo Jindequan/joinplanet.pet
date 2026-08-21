@@ -17,6 +17,7 @@ import {
   AppText,
   Button,
   Card,
+  DateTimeField,
   PageHeader,
   QueryErrorState,
   Screen,
@@ -24,6 +25,7 @@ import {
   TextField,
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
+import { useToast } from "../../src/core/providers/toast-provider";
 import {
   useAccessiblePets,
   useCircles,
@@ -151,8 +153,34 @@ function profileNames(value: unknown) {
     .join(", ");
 }
 
+function dateKey(value: Date | null) {
+  if (!value) return "";
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
+function parseDateKey(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(`${value}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function timeKey(value: Date | null) {
+  if (!value) return "";
+  return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+}
+
+function parseTimeKey(value?: string | null) {
+  if (!value) return null;
+  const [hours = NaN, minutes = NaN] = value.split(":").map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
 export default function PetRoute() {
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const router = useRouter();
   const params = useLocalSearchParams<{ petId?: string; intent?: string }>();
   const circles = useCircles();
@@ -184,11 +212,13 @@ export default function PetRoute() {
   const [monthlyDay, setMonthlyDay] = useState("1");
   const [everyN, setEveryN] = useState("");
   const [timeOfDay, setTimeOfDay] = useState("");
+  const [timeOfDayValue, setTimeOfDayValue] = useState<Date | null>(null);
   const [medName, setMedName] = useState("");
   const [editName, setEditName] = useState("");
   const [editSpecies, setEditSpecies] = useState<"dog" | "cat" | "other">("dog");
   const [editBreed, setEditBreed] = useState("");
   const [editBirthDate, setEditBirthDate] = useState("");
+  const [editBirthDateValue, setEditBirthDateValue] = useState<Date | null>(null);
   const [editSex, setEditSex] = useState<"" | "male" | "female">("");
   const [editNeutered, setEditNeutered] = useState(false);
   const [editNotes, setEditNotes] = useState("");
@@ -232,6 +262,7 @@ export default function PetRoute() {
     setMonthlyDay("1");
     setEveryN("");
     setTimeOfDay("");
+    setTimeOfDayValue(null);
     setError("");
     setEditingTaskId(null);
     setTaskMenuId(null);
@@ -257,6 +288,7 @@ export default function PetRoute() {
       resetCareForm();
       invalidate.tasks(pet!.id);
       invalidate.todayAll();
+      showToast({ message: "Care plan added to Today.", actionLabel: "Open Today", onAction: () => router.replace("/(tabs)") });
     },
     onError: (err) =>
       setError(
@@ -280,6 +312,7 @@ export default function PetRoute() {
       resetCareForm();
       invalidate.tasks(pet!.id);
       invalidate.todayAll();
+      showToast({ message: "Care plan updated." });
     },
     onError: (err) =>
       setError(
@@ -316,6 +349,7 @@ export default function PetRoute() {
       setForm(null);
       invalidate.medications(pet!.id);
       invalidate.timeline(pet!.id);
+      showToast({ message: "Medication added to the record." });
     },
     onError: (err) =>
       setError(
@@ -345,6 +379,7 @@ export default function PetRoute() {
       resetMedicationForm();
       invalidate.medications(pet!.id);
       invalidate.timeline(pet!.id);
+      showToast({ message: "Medication updated." });
     },
     onError: (err) =>
       setError(err instanceof ApiError ? err.message : "Unable to update this medication."),
@@ -529,6 +564,7 @@ export default function PetRoute() {
     setMonthlyDay(typeof raw.day === "number" ? String(raw.day) : "1");
     setEveryN(typeof raw.every_n === "number" ? String(raw.every_n) : "");
     setTimeOfDay(task.time_of_day ?? "");
+    setTimeOfDayValue(parseTimeKey(task.time_of_day));
     setError("");
     setForm("care");
   }
@@ -750,6 +786,7 @@ export default function PetRoute() {
               setEditSpecies(pet.species);
               setEditBreed(pet.breed ?? "");
               setEditBirthDate(pet.birth_date ?? "");
+              setEditBirthDateValue(parseDateKey(pet.birth_date));
               setEditSex(pet.sex ?? "");
               setEditNeutered(pet.neutered);
               setEditNotes(profile?.notes ?? "");
@@ -834,13 +871,7 @@ export default function PetRoute() {
               onChangeText={setEditBreed}
               placeholder="Golden retriever"
             />
-            <TextField
-              label="Birthday (optional)"
-              value={editBirthDate}
-              onChangeText={(value) => { setEditBirthDate(value); setError(""); }}
-              placeholder="YYYY-MM-DD"
-              hint="Use the date you know; you can leave it blank."
-            />
+            <DateTimeField label="Birthday (optional)" value={editBirthDateValue} onChange={(value) => { setEditBirthDateValue(value); setEditBirthDate(dateKey(value)); setError(""); }} onClear={() => { setEditBirthDateValue(null); setEditBirthDate(""); setError(""); }} placeholder="Choose a date" maximumDate={new Date()} />
             <SegmentedControl
               label="Sex"
               value={editSex}
@@ -1232,14 +1263,7 @@ export default function PetRoute() {
                 placeholder="2"
               />
             ) : null}
-            <TextField
-              label="Time (optional)"
-              value={timeOfDay}
-              onChangeText={setTimeOfDay}
-              placeholder="08:00"
-              keyboardType="numbers-and-punctuation"
-              hint="Use 24-hour time, for example 08:00."
-            />
+            <DateTimeField label="Time (optional)" value={timeOfDayValue} mode="time" onChange={(value) => { setTimeOfDayValue(value); setTimeOfDay(timeKey(value)); setError(""); }} onClear={() => { setTimeOfDayValue(null); setTimeOfDay(""); setError(""); }} placeholder="Choose a time" />
             {error ? (
               <AppText style={{ color: theme.colors.danger }}>{error}</AppText>
             ) : null}

@@ -46,6 +46,7 @@ export type TodayPet = { pet_id: string; pet_name: string; items: TodayItem[] };
 export type Today = { date: string; pets: TodayPet[] };
 export type CareItem = { id: string; pet_id: string; type: 'medication' | 'feeding' | 'health' | 'grooming' | 'exercise' | 'custom'; title: string; description: string; status: 'active' | 'paused' | 'archived'; created_by_user_id?: string; created_at: string; updated_at: string };
 export type CareRule = { id: string; care_item_id: string; frequency: { v: 1; kind: 'daily' | 'weekly' | 'monthly' | 'interval'; days?: number[]; day?: number; every_n?: number }; start_date: string; end_date?: string; time_of_day?: string; timezone: string; created_at: string; updated_at: string };
+export type CareAssignment = { care_item_id: string; user_id: string; user_name: string; role: 'owner' | 'helper'; created_by_user_id?: string; created_at: string };
 export type CareItemCreateResponse = { care_item: CareItem; care_rule: CareRule; task?: Task };
 export type Medication = { id: string; pet_id: string; name: string; dose: string; schedule: string; started_on: string; ended_on?: string; note: string; created_at: string; updated_at: string };
 export type TimelineEvent = { id: string; pet_id: string; type: string; occurred_at: string; recorded_by: string; recorded_by_name?: string; recorded_at: string; edited_at?: string; payload: Record<string, unknown>; payload_version: number; source: string };
@@ -142,6 +143,9 @@ export const planetApi = {
   tasks: {
     update: (taskId: string, body: { title?: string; schedule?: Record<string, unknown>; time_of_day?: string; archived?: boolean }) => apiClient.patch<{ task: Task }>(`/tasks/${id(taskId)}`, body),
     delete: (taskId: string) => apiClient.delete<void>(`/tasks/${id(taskId)}`),
+    assignments: (careItemId: string) => apiClient.get<{ assignments: CareAssignment[] }>(`/care-items/${id(careItemId)}/assignments`),
+    setAssignment: (careItemId: string, userId: string, role: 'helper' = 'helper') => apiClient.put<{ assignment: CareAssignment }>(`/care-items/${id(careItemId)}/assignments/${id(userId)}`, { role }),
+    removeAssignment: (careItemId: string, userId: string) => apiClient.delete<void>(`/care-items/${id(careItemId)}/assignments/${id(userId)}`),
     complete: (taskId: string, body: { status: 'done' | 'skipped'; date?: string; note?: string }) => apiClient.post<{ log: TaskLog }>(`/care-tasks/${id(taskId)}/complete`, body),
     undo: (logId: string) => apiClient.post<void>(`/task-logs/${id(logId)}/undo`),
   },

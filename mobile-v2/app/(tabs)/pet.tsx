@@ -32,6 +32,8 @@ import { useToast } from "../../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../../src/core/hooks/use-idempotency-key";
 import {
   useAccessiblePets,
+  useCareAssignments,
+  useCircle,
   useCircles,
   useInvalidateApi,
   useMedications,
@@ -203,6 +205,7 @@ export default function PetRoute() {
   const pet = detail.data?.pet ?? listedPet;
   const accessRole = detail.data?.pet.access_role ?? listedPet?.access_role;
   const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
+  const sourceFamilyDetail = useCircle(sourceFamily?.id);
   const canManagePet = Boolean(
     pet && me.data?.user.id &&
       (accessRole && accessRole !== "viewer" && accessRole !== "read_only" ||
@@ -230,6 +233,7 @@ export default function PetRoute() {
   const [everyN, setEveryN] = useState("");
   const [timeOfDay, setTimeOfDay] = useState("");
   const [timeOfDayValue, setTimeOfDayValue] = useState<Date | null>(null);
+  const [careHelperSelection, setCareHelperSelection] = useState<string | null>("");
   const [medName, setMedName] = useState("");
   const [editName, setEditName] = useState("");
   const [editSpecies, setEditSpecies] = useState<"dog" | "cat" | "other">("dog");
@@ -284,6 +288,7 @@ export default function PetRoute() {
     setEveryN("");
     setTimeOfDay("");
     setTimeOfDayValue(null);
+    setCareHelperSelection("");
     setError("");
     setEditingTaskId(null);
     setTaskMenuId(null);
@@ -317,9 +322,13 @@ export default function PetRoute() {
   useEffect(() => {
     if (pet?.id) resetTransientState();
   }, [pet?.id]);
+  const taskForEditor = editingTaskId
+    ? tasks.data?.tasks.find((task) => task.id === editingTaskId)
+    : undefined;
+  const careAssignments = useCareAssignments(taskForEditor?.care_item_id);
   const addCare = useMutation({
-    mutationFn: () =>
-      planetApi.pets.createCareItem(
+    mutationFn: async () => {
+      const result = await planetApi.pets.createCareItem(
         pet!.id,
         careItemPayload({
           type: careType,
@@ -332,22 +341,32 @@ export default function PetRoute() {
           time_of_day: timeOfDay,
         }),
         careCreateIntent.current(),
-      ),
-    onSuccess: () => {
+      );
+      if (careHelperSelection) {
+        try {
+          await planetApi.tasks.setAssignment(result.care_item.id, careHelperSelection);
+        } catch {
+          throw new Error("Care plan created, but the helper could not be assigned. Open it again to retry.");
+        }
+      }
+      return result;
+    },
+    onSuccess: (result) => {
       resetCareForm();
       careCreateIntent.reset();
       invalidate.tasks(pet!.id);
+      invalidate.assignments(result.care_item.id);
       invalidate.todayAll();
       showToast({ message: "Care plan added to Today.", actionLabel: "Open Today", onAction: () => router.replace("/(tabs)") });
     },
     onError: (err) =>
       setError(
-        err instanceof ApiError ? err.message : "Unable to add this care plan.",
+        err instanceof ApiError || err instanceof Error ? err.message : "Unable to add this care plan.",
       ),
   });
   const updateTask = useMutation({
-    mutationFn: () =>
-      planetApi.tasks.update(
+    mutationFn: async () => {
+      const result = await planetApi.tasks.update(
         editingTaskId!,
         taskPayload({
           title: careTitle,
@@ -357,16 +376,31 @@ export default function PetRoute() {
           every_n: everyN,
           time_of_day: timeOfDay,
         }),
-      ),
+      );
+      if (taskForEditor?.care_item_id && careHelperSelection !== null) {
+        try {
+          const existingHelper = careAssignments.data?.assignments.find((assignment) => assignment.role === "helper");
+          if (careHelperSelection) {
+            await planetApi.tasks.setAssignment(taskForEditor.care_item_id, careHelperSelection);
+          } else if (existingHelper) {
+            await planetApi.tasks.removeAssignment(taskForEditor.care_item_id, existingHelper.user_id);
+          }
+        } catch {
+          throw new Error("Care plan updated, but the helper change could not be saved. Open it again to retry.");
+        }
+      }
+      return result;
+    },
     onSuccess: () => {
       resetCareForm();
       invalidate.tasks(pet!.id);
+      if (taskForEditor?.care_item_id) invalidate.assignments(taskForEditor.care_item_id);
       invalidate.todayAll();
       showToast({ message: "Care plan updated." });
     },
     onError: (err) =>
       setError(
-        err instanceof ApiError ? err.message : "Unable to update this care plan.",
+        err instanceof ApiError || err instanceof Error ? err.message : "Unable to update this care plan.",
       ),
   });
   const archiveTask = useMutation({
@@ -617,6 +651,17 @@ export default function PetRoute() {
   });
   const taskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => !task.archived_at), [tasks.data?.tasks]);
   const archivedTaskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => Boolean(task.archived_at)), [tasks.data?.tasks]);
+  const careHelperOptions = useMemo(
+    () => [
+      { value: "", label: "Only me" },
+      ...(sourceFamilyDetail.data?.members ?? [])
+        .filter((member) => member.user_id !== me.data?.user.id)
+        .map((member) => ({ value: member.user_id, label: member.display_name || member.email || "Family member" })),
+    ],
+    [me.data?.user.id, sourceFamilyDetail.data?.members],
+  );
+  const existingCareHelper = careAssignments.data?.assignments.find((assignment) => assignment.role === "helper");
+  const selectedCareHelper = careHelperSelection ?? existingCareHelper?.user_id ?? "";
   const isArchived = Boolean(pet?.archived_at);
   const targetFamilies = circles.data?.circles.filter((item) => item.id !== pet?.circle_id) ?? [];
   const linkedFamilyIds = new Set(pet?.family_ids?.length ? pet.family_ids : pet?.circle_id ? [pet.circle_id] : []);
@@ -653,6 +698,7 @@ export default function PetRoute() {
     setEveryN(typeof raw.every_n === "number" ? String(raw.every_n) : "");
     setTimeOfDay(task.time_of_day ?? "");
     setTimeOfDayValue(parseTimeKey(task.time_of_day));
+    setCareHelperSelection(null);
     setError("");
     setForm("care");
   }
@@ -1383,6 +1429,23 @@ export default function PetRoute() {
               />
             ) : null}
             <DateTimeField label="Time (optional)" value={timeOfDayValue} mode="time" onChange={(value) => { setTimeOfDayValue(value); setTimeOfDay(timeKey(value)); setError(""); }} onClear={() => { setTimeOfDayValue(null); setTimeOfDay(""); setError(""); }} placeholder="Choose a time" />
+            <View style={styles.assignmentField}>
+              <AppText variant="label">Who helps with this?</AppText>
+              <AppText variant="caption" muted>
+                You remain the plan owner. A helper can complete the care task without changing the plan.
+              </AppText>
+              <SegmentedControl
+                label="Care responsibility"
+                value={selectedCareHelper}
+                onChange={setCareHelperSelection}
+                options={careHelperOptions}
+              />
+              {careHelperOptions.length === 1 && sourceFamily ? (
+                <AppText variant="caption" muted>
+                  No other Family members are available yet.
+                </AppText>
+              ) : null}
+            </View>
             {error ? (
               <AppText style={{ color: theme.colors.danger }}>{error}</AppText>
             ) : null}
@@ -1674,6 +1737,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   form: { gap: 12 },
+  assignmentField: { gap: 7, paddingTop: 2 },
   formSectionLabel: { gap: 2, paddingTop: 4 },
   actions: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
   careRow: {

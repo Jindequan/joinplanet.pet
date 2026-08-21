@@ -91,6 +91,11 @@ R=$(post "/api/v1/pets/$PET/care-items" "$TOKEN" '{"type":"medication","title":"
 expect "create care plan" '.care_item.id and .care_rule.id and .task.id' "$R"
 TASK=$(jq -r '.task.id' <<<"$R")
 CARE_ITEM=$(jq -r '.care_item.id' <<<"$R")
+R=$(curl -sS -X PUT "$BASE/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"role":"helper"}')
+expect "assign a helper to the care plan" ".assignment.user_id == \"$USER_C\" and .assignment.role == \"helper\"" "$R"
+expect "care assignments list includes the helper" ".assignments | any(.user_id == \"$USER_C\" and .role == \"helper\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
+delete "/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" "$TOKEN"
+expect "remove helper from the care plan" ".assignments | all(.user_id != \"$USER_C\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
 R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$TASK" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":true}')
 expect "archive care plan" ".task.archived_at != null" "$R"
 expect "archived care plan is discoverable when requested" ".tasks | any(.care_item_id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/tasks?include_archived=true" "$TOKEN")"

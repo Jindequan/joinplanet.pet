@@ -25,6 +25,10 @@ import {
   UsersThreeIcon,
 } from "../src/ui/icons";
 
+function deviceTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
 export default function FamilyRoute() {
   const { theme } = useTheme();
   const circles = useCircles();
@@ -45,10 +49,11 @@ export default function FamilyRoute() {
   const [error, setError] = useState("");
   const [editingFamily, setEditingFamily] = useState(false);
   const [familyName, setFamilyName] = useState("");
+  const [familyTimezone, setFamilyTimezone] = useState("");
   const [familyAction, setFamilyAction] = useState<"leave" | "delete" | null>(null);
   const [memberAction, setMemberAction] = useState<string | null>(null);
   const create = useMutation({
-    mutationFn: () => planetApi.circles.create(name.trim()),
+    mutationFn: () => planetApi.circles.create(name.trim(), deviceTimezone()),
     onSuccess: (result) => {
       setName("");
       setMode("none");
@@ -84,7 +89,7 @@ export default function FamilyRoute() {
     },
   });
   const updateFamily = useMutation({
-    mutationFn: () => planetApi.circles.update(circle!.id, { name: familyName.trim() }),
+    mutationFn: () => planetApi.circles.update(circle!.id, { name: familyName.trim(), timezone: familyTimezone.trim() }),
     onSuccess: () => {
       setEditingFamily(false);
       setError("");
@@ -541,6 +546,7 @@ export default function FamilyRoute() {
               editingFamily ? (
                 <View style={styles.form}>
                   <TextField label="Family name" value={familyName} onChangeText={setFamilyName} placeholder="The Milo household" error={error} />
+                  <TextField label="Family timezone" value={familyTimezone} onChangeText={setFamilyTimezone} placeholder="Asia/Shanghai" hint="Use an IANA timezone, for example America/Los_Angeles." />
                   <View style={styles.actions}>
                     <Button label="Cancel" variant="secondary" onPress={() => { setEditingFamily(false); setError(""); }} />
                     <Button label="Save name" loading={updateFamily.isPending} disabled={!familyName.trim()} onPress={() => updateFamily.mutate()} />
@@ -548,7 +554,7 @@ export default function FamilyRoute() {
                 </View>
               ) : (
                 <View style={styles.actions}>
-                  <Button label="Rename Family" variant="secondary" onPress={() => { setFamilyName(circle.name); setEditingFamily(true); setError(""); }} />
+                  <Button label="Edit Family" variant="secondary" onPress={() => { setFamilyName(circle.name); setFamilyTimezone(circle.timezone); setEditingFamily(true); setError(""); }} />
                   <Button label="Delete Family" variant="danger" onPress={() => setFamilyAction("delete")} />
                 </View>
               )

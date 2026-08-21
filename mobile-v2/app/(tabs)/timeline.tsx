@@ -6,6 +6,7 @@ import {
   AppText,
   Button,
   Card,
+  DateTimeField,
   PageHeader,
   QueryErrorState,
   Screen,
@@ -30,6 +31,7 @@ import {
 } from "../../src/ui/icons";
 
 type EventType = "note" | "symptom" | "weight" | "vaccine" | "vet_visit";
+type TimelineFilter = "all" | "notes" | "health" | "care";
 
 function eventTitle(type: string) {
   return type === "vet_visit"
@@ -47,6 +49,18 @@ function eventText(payload: Record<string, unknown>) {
   if (typeof value === "string" && value.trim()) return value;
   if (typeof payload.weight_g === "number") return `${payload.weight_g} g`;
   return "Care record";
+}
+
+function eventBucket(event: TimelineEvent): TimelineFilter {
+  if (event.source === "care") return "care";
+  if (event.type === "note" || event.type === "symptom") return "notes";
+  return "health";
+}
+
+function eventDayLabel(value: string) {
+  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return "Earlier";
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(date);
 }
 
 export default function TimelineRoute() {
@@ -81,7 +95,9 @@ export default function TimelineRoute() {
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [eventMenuId, setEventMenuId] = useState<string | null>(null);
   const [confirmEventId, setConfirmEventId] = useState<string | null>(null);
-  const [editingOccurredAt, setEditingOccurredAt] = useState<string>("");
+  const [occurredAt, setOccurredAt] = useState(new Date());
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("all");
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [olderEvents, setOlderEvents] = useState<TimelineEvent[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const create = useMutation({
@@ -90,7 +106,7 @@ export default function TimelineRoute() {
         pet!.id,
         timelinePayload({
           type: eventType,
-          occurred_at: new Date().toISOString(),
+          occurred_at: occurredAt.toISOString(),
           text,
           weight_g: weight,
         }),
@@ -98,6 +114,7 @@ export default function TimelineRoute() {
     onSuccess: () => {
       setText("");
       setWeight("");
+      setOccurredAt(new Date());
       setAdding(false);
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
@@ -113,10 +130,10 @@ export default function TimelineRoute() {
       planetApi.timeline.update(
         editingEventId!,
         {
-          occurred_at: editingOccurredAt || new Date().toISOString(),
+          occurred_at: occurredAt.toISOString(),
           payload: timelinePayload({
             type: eventType,
-            occurred_at: editingOccurredAt || new Date().toISOString(),
+            occurred_at: occurredAt.toISOString(),
             text,
             weight_g: weight,
           }).payload,
@@ -125,6 +142,7 @@ export default function TimelineRoute() {
     onSuccess: () => {
       setText("");
       setWeight("");
+      setOccurredAt(new Date());
       setEditingEventId(null);
       setAdding(false);
       invalidate.timeline(pet!.id);
@@ -166,13 +184,13 @@ export default function TimelineRoute() {
     setHasMore(true);
   }, [pet?.id, timeline.data?.events]);
   function openEventEditor(event: { id: string; type: string; occurred_at: string; payload: Record<string, unknown> }) {
-    if (event.type !== "note" && event.type !== "symptom" && event.type !== "weight") return;
+    if (event.type !== "note" && event.type !== "symptom" && event.type !== "weight" && event.type !== "vaccine" && event.type !== "vet_visit") return;
     setEditingEventId(event.id);
-    setEditingOccurredAt(event.occurred_at);
+    setOccurredAt(new Date(event.occurred_at));
     setEventMenuId(null);
     setConfirmEventId(null);
     setEventType(event.type);
-    setText(typeof event.payload.text === "string" ? event.payload.text : "");
+    setText(typeof event.payload.text === "string" ? event.payload.text : eventText(event.payload));
     setWeight(typeof event.payload.weight_g === "number" ? String(event.payload.weight_g) : "");
     setError("");
     setAdding(true);
@@ -180,7 +198,7 @@ export default function TimelineRoute() {
   function submit() {
     const parsed = timelineSchema.safeParse({
       type: eventType,
-      occurred_at: new Date().toISOString(),
+      occurred_at: occurredAt.toISOString(),
       text,
       weight_g: eventType === "weight" ? weight : "",
     });
@@ -237,11 +255,20 @@ export default function TimelineRoute() {
       </Screen>
     );
   const events = [...(timeline.data?.events ?? []), ...olderEvents];
+  const visibleEvents = timelineFilter === "all" ? events : events.filter((event) => eventBucket(event) === timelineFilter);
+  const groupedEvents = visibleEvents.reduce<Array<{ label: string; events: TimelineEvent[] }>>((groups, event) => {
+    const label = eventDayLabel(event.occurred_at);
+    const current = groups[groups.length - 1];
+    if (current?.label === label) current.events.push(event);
+    else groups.push({ label, events: [event] });
+    return groups;
+  }, []);
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <PageHeader
         eyebrow={`${pet.name.toUpperCase()} / HISTORY`}
         title="The story"
+        showBack={false}
       />
       {accessiblePets.pets.length > 1 ? (
         <View style={styles.petPicker}>
@@ -320,10 +347,22 @@ export default function TimelineRoute() {
             setEditingEventId(null);
             setText("");
             setWeight("");
+            setOccurredAt(new Date());
           }
           setAdding((value) => !value);
           setError("");
         }}
+      />
+      <SegmentedControl
+        label="Filter care history"
+        value={timelineFilter}
+        onChange={setTimelineFilter}
+        options={[
+          { value: "all", label: "Everything" },
+          { value: "notes", label: "Notes" },
+          { value: "health", label: "Health" },
+          { value: "care", label: "Care" },
+        ]}
       />
       {adding ? (
         <Card style={styles.form}>
@@ -340,6 +379,7 @@ export default function TimelineRoute() {
               { value: "vaccine", label: "Vaccine" },
             ]}
           />
+          <DateTimeField label="When did it happen?" value={occurredAt} onChange={setOccurredAt} />
           <TextField
             label={eventType === "weight" ? "Context (optional)" : eventType === "vaccine" ? "Vaccine name" : eventType === "vet_visit" ? "Visit summary" : "A detail worth keeping"}
             value={text}
@@ -375,27 +415,29 @@ export default function TimelineRoute() {
         <View>
             <AppText variant="title">Recent records</AppText>
           <AppText variant="caption" muted>
-            {events.length
-              ? `${events.length} records`
-              : "The first chapter is waiting"}
+            {visibleEvents.length
+              ? `${visibleEvents.length} ${timelineFilter === "all" ? "records" : "matching records"}`
+              : timelineFilter === "all" ? "The first chapter is waiting" : "Nothing matches this filter"}
           </AppText>
         </View>
       </View>
-      {events.length === 0 ? (
+      {visibleEvents.length === 0 ? (
         <Card style={styles.empty}>
           <CheckCircleIcon
             size={27}
             color={theme.colors.brandStrong}
             weight="duotone"
           />
-          <AppText variant="heading">Nothing recorded yet</AppText>
+          <AppText variant="heading">{timelineFilter === "all" ? "Nothing recorded yet" : "No matching records"}</AppText>
           <AppText muted>
-            Start with the small thing you noticed today. It may matter later.
+            {timelineFilter === "all" ? "Start with the small thing you noticed today. It may matter later." : "Try another filter or record a new moment."}
           </AppText>
         </Card>
       ) : (
         <View style={styles.events}>
-          {events.map((event) => (
+          {groupedEvents.map((group) => <View key={group.label} style={styles.eventGroup}>
+            <View style={styles.eventDay}><AppText variant="caption" muted>{group.label.toUpperCase()}</AppText><View style={styles.eventRule} /></View>
+            {group.events.map((event) => (
             <Card key={event.id} style={styles.event}>
               <View style={styles.eventTop}>
                 <View
@@ -420,7 +462,9 @@ export default function TimelineRoute() {
                 {event.source === "user" &&
                 (event.type === "note" ||
                   event.type === "symptom" ||
-                  event.type === "weight") ? (
+                  event.type === "weight" ||
+                  event.type === "vaccine" ||
+                  event.type === "vet_visit") ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Actions for ${eventTitle(event.type)}`}
@@ -443,6 +487,10 @@ export default function TimelineRoute() {
                 ) : null}
               </View>
               <AppText muted>{eventText(event.payload)}</AppText>
+              <Pressable accessibilityRole="button" accessibilityState={{ expanded: expandedEventId === event.id }} onPress={() => setExpandedEventId((current) => current === event.id ? null : event.id)} hitSlop={6}>
+                <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{expandedEventId === event.id ? "Hide details" : "View details"}</AppText>
+              </Pressable>
+              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Recorded {new Date(event.occurred_at).toLocaleString()} · {event.source === "user" ? "by a caregiver" : "from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
               {eventMenuId === event.id ? (
                 <View style={styles.eventActions}>
                   <Button
@@ -487,7 +535,8 @@ export default function TimelineRoute() {
                 </View>
               ) : null}
             </Card>
-          ))}
+            ))}
+          </View>)}
           {((timeline.data?.events.length ?? 0) === 100 || olderEvents.length > 0) && hasMore ? (
             <Button label="Load older records" variant="secondary" loading={loadOlder.isPending} onPress={() => { setError(""); loadOlder.mutate(); }} />
           ) : null}
@@ -528,7 +577,11 @@ const styles = StyleSheet.create({
   form: { gap: 13 },
   sectionHeader: { marginTop: 7 },
   events: { gap: 10 },
+  eventGroup: { gap: 9 },
+  eventDay: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 3, paddingTop: 4 },
+  eventRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: "#E3DED2" },
   event: { gap: 11 },
+  eventDetails: { borderRadius: 12, padding: 10, gap: 3 },
   eventTop: { flexDirection: "row", alignItems: "center", gap: 10 },
   eventDot: {
     width: 36,

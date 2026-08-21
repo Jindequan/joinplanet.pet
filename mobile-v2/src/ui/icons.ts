@@ -3,6 +3,7 @@
 export { ArrowRightIcon } from 'phosphor-react-native/src/icons/ArrowRight';
 export { ArrowUpRightIcon } from 'phosphor-react-native/src/icons/ArrowUpRight';
 export { BellSimpleIcon } from 'phosphor-react-native/src/icons/BellSimple';
+export { BookOpenIcon } from 'phosphor-react-native/src/icons/BookOpen';
 export { CalendarBlankIcon } from 'phosphor-react-native/src/icons/CalendarBlank';
 export { CalendarDotsIcon } from 'phosphor-react-native/src/icons/CalendarDots';
 export { CatIcon } from 'phosphor-react-native/src/icons/Cat';

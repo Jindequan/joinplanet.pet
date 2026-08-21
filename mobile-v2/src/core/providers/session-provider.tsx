@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { clearSessionToken, readSessionToken, writeSessionToken } from '../storage/secure-storage';
 import { planetApi } from '../api/planet-api';
+import { setUnauthorizedHandler } from '../network/api-client';
 import { queryClient } from '../query/query-client';
 
 type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -17,6 +18,16 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({ children }: React.PropsWithChildren) {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void clearSessionToken();
+      queryClient.clear();
+      setToken(null);
+      setStatus('unauthenticated');
+    });
+    return () => setUnauthorizedHandler();
+  }, []);
 
   useEffect(() => {
     let mounted = true;

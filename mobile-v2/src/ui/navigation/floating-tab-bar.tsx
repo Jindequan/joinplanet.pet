@@ -5,9 +5,9 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../core/providers/theme-provider';
 import { AppText } from '../components/app-text';
-import { CalendarBlankIcon, PawPrintIcon, UserCircleIcon, UsersThreeIcon } from '../icons';
+import { BookOpenIcon, CalendarBlankIcon, PawPrintIcon, UserCircleIcon, UsersThreeIcon } from '../icons';
 
-const iconMap = { index: CalendarBlankIcon, pets: PawPrintIcon, family: UsersThreeIcon, more: UserCircleIcon } as const;
+const iconMap = { index: CalendarBlankIcon, pets: PawPrintIcon, timeline: BookOpenIcon, family: UsersThreeIcon, more: UserCircleIcon } as const;
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { theme } = useTheme();
@@ -19,8 +19,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <BlurView intensity={78} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
         <View style={[styles.tint, { backgroundColor: dark ? 'rgba(15,23,42,0.76)' : 'rgba(255,255,255,0.78)' }]} />
         <View style={styles.row}>
-          {state.routes.map((route, index) => {
-            const focused = state.index === index;
+          {state.routes.filter((route) => (descriptors[route.key]?.options as { href?: string | null } | undefined)?.href !== null).map((route) => {
+            const focused = state.routes[state.index]?.key === route.key;
             const options = descriptors[route.key]?.options;
             const Icon = iconMap[route.name as keyof typeof iconMap] ?? UserCircleIcon;
             const onPress = () => {

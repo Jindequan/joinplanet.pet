@@ -1,6 +1,12 @@
 import { appConfig } from '../config';
 import { readSessionToken } from '../storage/secure-storage';
 
+let unauthorizedHandler: (() => void) | undefined;
+
+export function setUnauthorizedHandler(handler?: () => void) {
+  unauthorizedHandler = handler;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -45,6 +51,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     const payload = await parseResponse(response);
 
     if (!response.ok) {
+      if (response.status === 401) unauthorizedHandler?.();
       const body = payload as { error?: { code?: string; message?: string }; message?: string } | null;
       throw new ApiError(
         body?.error?.message ?? body?.message ?? `Request failed (${response.status})`,

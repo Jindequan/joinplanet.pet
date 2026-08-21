@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Share as NativeShare, StyleSheet, Switch, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
@@ -153,7 +153,7 @@ function profileNames(value: unknown) {
 export default function PetRoute() {
   const { theme } = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ petId?: string }>();
+  const params = useLocalSearchParams<{ petId?: string; intent?: string }>();
   const circles = useCircles();
   const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
   const accessiblePets = useAccessiblePets(circleIds);
@@ -219,6 +219,7 @@ export default function PetRoute() {
   const [familyShareTargetId, setFamilyShareTargetId] = useState<string | null>(null);
   const [familyShareError, setFamilyShareError] = useState("");
   const [unshareFamilyId, setUnshareFamilyId] = useState<string | null>(null);
+  const [intentHandled, setIntentHandled] = useState(false);
 
   const resetCareForm = () => {
     setCareType("custom");
@@ -503,6 +504,14 @@ export default function PetRoute() {
   const linkedFamilyIds = new Set(pet?.family_ids?.length ? pet.family_ids : pet?.circle_id ? [pet.circle_id] : []);
   const linkedFamilies = circles.data?.circles.filter((item) => linkedFamilyIds.has(item.id)) ?? [];
   const availableFamilyShares = circles.data?.circles.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
+
+  useEffect(() => {
+    if (!intentHandled && params.intent === "care" && pet && !isArchived) {
+      setForm("care");
+      setError("");
+      setIntentHandled(true);
+    }
+  }, [intentHandled, isArchived, params.intent, pet]);
 
   function openTaskEditor(task: Task) {
     const raw = task.schedule;

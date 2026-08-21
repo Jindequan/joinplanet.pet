@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { AppText, Card, LoadingState, QueryErrorState, Screen, SectionRow, StaleDataNotice } from '../../src/ui/components';
 import { useTheme } from '../../src/core/providers/theme-provider';
 import { WorkspaceBar } from '../../src/ui/navigation/workspace-bar';
+import { readViewPreference } from '../../src/core/storage/view-preference';
 import { useAccessiblePets, useCircles, useMe } from '../../src/core/query/hooks';
 import { GearSixIcon, HeartIcon, PawPrintIcon, ShieldCheckIcon, UserCircleIcon, UsersThreeIcon } from '../../src/ui/icons';
 
@@ -12,7 +13,15 @@ export default function YouRoute() {
   const { theme } = useTheme();
   const me = useMe();
   const circles = useCircles();
-  const circle = circles.data?.circles[0];
+  const [preferredFamilyId, setPreferredFamilyId] = React.useState<string>();
+  React.useEffect(() => {
+    const userId = me.data?.user.id;
+    if (!userId) return;
+    void readViewPreference(userId).then((preference) => {
+      if (preference?.kind === 'family') setPreferredFamilyId(preference.familyId);
+    });
+  }, [me.data?.user.id]);
+  const circle = circles.data?.circles.find((item) => item.id === preferredFamilyId) ?? circles.data?.circles[0];
   const accessiblePets = useAccessiblePets(circles.data?.circles.map((item) => item.id) ?? []);
   const retrySpace = () => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); };
   const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData);

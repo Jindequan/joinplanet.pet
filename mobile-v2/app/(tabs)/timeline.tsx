@@ -99,12 +99,13 @@ export default function TimelineRoute() {
   const { theme } = useTheme();
   const { showToast } = useToast();
   const me = useMe();
-  const params = useLocalSearchParams<{ petId?: string }>();
+  const params = useLocalSearchParams<{ petId?: string; choosePet?: string }>();
   const circles = useCircles();
   const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
   const accessiblePets = useAccessiblePets(circleIds);
   const selectedPetId =
     typeof params.petId === "string" ? params.petId : undefined;
+  const choosePet = params.choosePet === "1";
   const [timelinePetId, setTimelinePetId] = useState<string | undefined>(
     selectedPetId,
   );
@@ -116,7 +117,7 @@ export default function TimelineRoute() {
     (selectedPetId && accessiblePets.pets.some((candidate) => candidate.id === selectedPetId)
       ? selectedPetId
       : undefined) ??
-    accessiblePets.pets[0]?.id;
+    choosePet ? undefined : accessiblePets.pets[0]?.id;
   const pet =
     accessiblePets.pets.find((candidate) => candidate.id === activePetId) ??
     accessiblePets.pets[0];
@@ -303,6 +304,10 @@ export default function TimelineRoute() {
           <AppText muted>
             Your Pet's notes, visits and patterns will live here.
           </AppText>
+          <View style={styles.emptyActions}>
+            <Button label="Choose a Pet" onPress={() => router.push("/(tabs)/pets")} />
+            <Button label="Open Family" variant="secondary" onPress={() => router.push("/(tabs)/family")} />
+          </View>
         </Card>
       </Screen>
     );
@@ -321,7 +326,7 @@ export default function TimelineRoute() {
   const linkedFamilyIds = new Set(pet.family_ids?.length ? pet.family_ids : [pet.circle_id]);
   const hasOwnerAccess = pet.current_owner_user_id === me.data?.user.id || Boolean(circles.data?.circles.some((circle) => linkedFamilyIds.has(circle.id) && circle.role === "owner"));
   const knownFamilyRoles = circles.data?.circles.filter((circle) => linkedFamilyIds.has(circle.id)).map((circle) => circle.role).filter(Boolean) ?? [];
-  const canRecord = pet.current_owner_user_id === me.data?.user.id || knownFamilyRoles.some((role) => role !== "viewer" && role !== "read_only");
+  const canRecord = (pet.access_role && pet.access_role !== "viewer" && pet.access_role !== "read_only") || pet.current_owner_user_id === me.data?.user.id || knownFamilyRoles.some((role) => role !== "viewer" && role !== "read_only");
   const canEditEvent = (event: TimelineEvent) => event.source === "user" && (event.recorded_by === me.data?.user.id || hasOwnerAccess);
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -601,4 +606,5 @@ const styles = StyleSheet.create({
   eventActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, paddingTop: 4 },
   confirmBox: { borderRadius: 16, padding: 14, gap: 8, marginTop: 2 },
   empty: { gap: 9, alignItems: "flex-start" },
+  emptyActions: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginTop: 4 },
 });

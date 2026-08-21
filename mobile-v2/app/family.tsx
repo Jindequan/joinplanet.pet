@@ -7,13 +7,16 @@ import { useMutation } from "@tanstack/react-query";
 import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, StaleDataNotice, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
 import { WorkspaceBar } from "../src/ui/navigation/workspace-bar";
+import { readViewPreference } from "../src/core/storage/view-preference";
 import { useToast } from "../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../src/core/hooks/use-idempotency-key";
 import {
   useCircle,
   useCirclePets,
   useCircles,
+  useDeletedCircles,
   useInvalidateApi,
+  useMe,
   useTransfers,
 } from "../src/core/query/hooks";
 import { planetApi, type Transfer } from "../src/core/api/planet-api";
@@ -37,9 +40,12 @@ function deviceTimezone() {
 export default function FamilyRoute() {
   const { theme } = useTheme();
   const { showToast } = useToast();
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; familyId?: string }>();
+  const me = useMe();
   const circles = useCircles();
+  const deletedCircles = useDeletedCircles();
   const [activeCircleId, setActiveCircleId] = useState<string>();
+  const [preferredFamilyId, setPreferredFamilyId] = useState<string>();
   const [familySection, setFamilySection] = useState<FamilySection>("overview");
   const createIntent = useIdempotencyKey();
   const circle =
@@ -66,6 +72,17 @@ export default function FamilyRoute() {
   React.useEffect(() => {
     if (params.mode === "join" || params.mode === "create") setMode(params.mode);
   }, [params.mode]);
+  React.useEffect(() => {
+    const userId = me.data?.user.id;
+    if (!userId) return;
+    void readViewPreference(userId).then((preference) => {
+      if (preference?.kind === "family") setPreferredFamilyId(preference.familyId);
+    });
+  }, [me.data?.user.id]);
+  React.useEffect(() => {
+    const requestedId = params.familyId ?? preferredFamilyId;
+    if (requestedId && circles.data?.circles.some((item) => item.id === requestedId)) setActiveCircleId(requestedId);
+  }, [circles.data?.circles, params.familyId, preferredFamilyId]);
   const create = useMutation({
     mutationFn: () => planetApi.circles.create(name.trim(), deviceTimezone(), createIntent.current()),
     onSuccess: (result) => {
@@ -114,6 +131,7 @@ export default function FamilyRoute() {
       setError("");
       invalidate.circles();
       invalidate.circle(circle!.id);
+      invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to update this Family."),
   });
@@ -122,6 +140,7 @@ export default function FamilyRoute() {
     onSuccess: () => {
       setMemberAction(null);
       invalidate.circle(circle!.id);
+      invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to remove this member."),
   });
@@ -132,6 +151,7 @@ export default function FamilyRoute() {
       setOwnershipTarget(null);
       invalidate.circles();
       invalidate.circle(circle!.id);
+      invalidate.todayAll();
       showToast({ message: "Family ownership transferred." });
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to transfer ownership."),
@@ -144,6 +164,7 @@ export default function FamilyRoute() {
         invalidate.transfers(circle.id);
         invalidate.circles();
         invalidate.petsAll();
+        invalidate.todayAll();
       }
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to update this Pet handoff."),
@@ -159,18 +180,31 @@ export default function FamilyRoute() {
       setFamilyAction(null);
       setActiveCircleId(undefined);
       invalidate.circles();
+      invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to leave this Family."),
   });
   const deleteFamily = useMutation({
-    mutationFn: () => planetApi.circles.delete(circle!.id),
+    mutationFn: () => planetApi.circles.delete(circle!.id, deleteFamilyConfirm.trim()),
     onSuccess: () => {
       setDeleteFamilyConfirm("");
       setFamilyAction(null);
       setActiveCircleId(undefined);
       invalidate.circles();
+      invalidate.deletedCircles();
+      invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to delete this Family."),
+  });
+  const restoreFamily = useMutation({
+    mutationFn: (circleId: string) => planetApi.circles.restore(circleId),
+    onSuccess: (result) => {
+      setActiveCircleId(result.circle.id);
+      invalidate.circles();
+      invalidate.deletedCircles();
+      showToast({ message: "Family restored." });
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to restore this Family."),
   });
   async function copyInvite() {
     if (!invite) return;
@@ -352,7 +386,7 @@ export default function FamilyRoute() {
                 <AppText variant="heading">Pets in this Family</AppText>
                 <AppText variant="caption" muted>Every Pet this group can care for.</AppText>
               </View>
-              <Button label="All Pets" variant="ghost" onPress={() => router.push("/(tabs)/pets")} />
+              <Button label="View all" accessibilityLabel="View all Pets in this Family" variant="ghost" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { familyId: circle.id } })} />
             </View>
             {pets.data?.pets.length ? pets.data.pets.slice(0, 4).map((familyPet) => (
               <Pressable key={familyPet.id} accessibilityRole="button" accessibilityLabel={`Open ${familyPet.name}`} onPress={() => router.push({ pathname: "/(tabs)/pet", params: { petId: familyPet.id } })} style={({ pressed }) => [styles.petRow, { borderColor: theme.colors.border }, pressed && { opacity: theme.motion.pressOpacity }]}>
@@ -361,7 +395,7 @@ export default function FamilyRoute() {
                 <CaretRightIcon size={18} color={theme.colors.textSubtle} weight="bold" />
               </Pressable>
             )) : <View style={styles.petEmpty}><PawPrintIcon size={19} color={theme.colors.brandStrong} weight="duotone" /><AppText variant="caption" muted>No Pets in this Family yet.</AppText><Button label="Add a Pet" variant="secondary" onPress={() => router.push("/(tabs)/pets")} /></View>}
-            {pets.data?.pets.length && pets.data.pets.length > 4 ? <AppText variant="caption" muted style={styles.morePets}>Showing 4 of {pets.data.pets.length} Pets · open All Pets to see the rest.</AppText> : null}
+            {pets.data?.pets.length && pets.data.pets.length > 4 ? <AppText variant="caption" muted style={styles.morePets}>Showing 4 of {pets.data.pets.length} Pets in this Family.</AppText> : null}
           </Card> : null}
           {familySection === "overview" ? <Card style={styles.inviteCard}>
             <View style={styles.inviteHeader}>
@@ -716,6 +750,7 @@ export default function FamilyRoute() {
           />
         </Card>
       ) : null}
+      {deletedCircles.data?.circles.length ? <Card style={styles.deletedCard}><View style={styles.sectionHeader}><View style={styles.rowCopy}><AppText variant="heading">Recently deleted</AppText><AppText variant="caption" muted>Restore within 30 days. Deleted Families still reserve your Family quota.</AppText></View></View>{deletedCircles.data.circles.map((deleted) => <View key={deleted.id} style={[styles.deletedRow, { borderColor: theme.colors.border }]}><View style={styles.rowCopy}><AppText variant="label">{deleted.name}</AppText><AppText variant="caption" muted>Deleted {new Date(deleted.deleted_at).toLocaleDateString()}</AppText></View><Button label="Restore" variant="secondary" loading={restoreFamily.isPending && restoreFamily.variables === deleted.id} disabled={restoreFamily.isPending} onPress={() => restoreFamily.mutate(deleted.id)} /></View>)}</Card> : null}
       <AppText variant="caption" muted style={styles.footnote}>
         Access is always granted through the Pet and Family relationship you
         choose.
@@ -862,6 +897,8 @@ const styles = StyleSheet.create({
   },
   form: { gap: 14 },
   managementCard: { gap: 13 },
+  deletedCard: { gap: 12 },
+  deletedRow: { minHeight: 60, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, flexDirection: "row", alignItems: "center", gap: 10 },
   confirmBox: { borderRadius: 16, padding: 14, gap: 8 },
   formHeader: {
     flexDirection: "row",

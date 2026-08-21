@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, StaleDataNotice, ViewFilterBar, type ViewFilter } from '../../src/ui/components';
 import { useTheme } from '../../src/core/providers/theme-provider';
@@ -71,7 +71,14 @@ function CareMoment({ item, petName, date, canAct }: { item: TodayItem; petName:
       else await planetApi.tasks.complete(item.task.id, { status: action === 'skip' ? 'skipped' : 'done', date });
     },
     onSuccess: (_result, action) => { void Haptics.impactAsync(action === 'skip' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light); invalidate.todayAll(); invalidate.timeline(item.task.pet_id); showToast({ message: action === 'done' ? 'Care moment marked complete.' : action === 'skip' ? 'Care moment skipped for today.' : 'Care moment reopened.' }); },
-    onError: (error) => showToast({ message: error instanceof ApiError ? error.message : 'That care moment could not be updated.' }),
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === 'TASK_LOG_EXISTS') {
+        invalidate.todayAll();
+        showToast({ message: 'This care moment was already recorded. Today has been refreshed.' });
+        return;
+      }
+      showToast({ message: error instanceof ApiError ? error.message : 'That care moment could not be updated.' });
+    },
   });
   return <View style={[styles.moment, { backgroundColor: done || skipped ? theme.colors.surfaceRaised : theme.colors.surface, borderColor: done ? theme.colors.brandSoft : theme.colors.border }]}>
     <Pressable accessibilityRole="button" accessibilityLabel={item.log ? `Undo ${skipped ? 'skip' : 'completion'} of ${item.task.title}` : `Complete ${item.task.title}`} accessibilityState={{ disabled: !canAct }} disabled={mutation.isPending || !canAct} onPress={() => mutation.mutate(item.log ? 'undo' : 'done')} style={({ pressed }) => [styles.momentMain, pressed && { opacity: theme.motion.pressOpacity }, !canAct && { opacity: 0.72 }]}>
@@ -85,6 +92,7 @@ function CareMoment({ item, petName, date, canAct }: { item: TodayItem; petName:
 
 export default function TodayRoute() {
   const { theme } = useTheme();
+  const params = useLocalSearchParams<{ petId?: string }>();
   const me = useMe();
   const circles = useCircles();
   const families = circles.data?.circles ?? [];
@@ -105,6 +113,11 @@ export default function TodayRoute() {
     });
     return () => { active = false; };
   }, [me.data?.user.id]);
+  useEffect(() => {
+    const routePetId = typeof params.petId === 'string' ? params.petId : undefined;
+    if (!routePetId || !viewPreferenceLoaded) return;
+    if (accessiblePets.pets.some((pet) => pet.id === routePetId)) setFilter({ kind: 'pet', petId: routePetId });
+  }, [accessiblePets.pets, params.petId, viewPreferenceLoaded]);
   const effectiveFilter = useMemo(() => {
     if (filter.kind === 'family' && !familyIds.includes(filter.familyId)) return { kind: 'all' } satisfies ViewFilter;
     if (filter.kind === 'pet' && !accessiblePets.pets.some((pet) => pet.id === filter.petId)) return { kind: 'all' } satisfies ViewFilter;
@@ -176,7 +189,7 @@ export default function TodayRoute() {
     {visibleAlerts.length ? <View style={styles.alerts}><AppText variant="caption" muted style={styles.alertLabel}>NEEDS A CLOSER LOOK</AppText>{visibleAlerts.slice(0, 3).map((alert) => <AlertCard key={alert.id} title={alert.title} body={alert.body} petName={alert.pet_name} severity={alert.severity} onPress={() => router.push({ pathname: '/(tabs)/timeline', params: { petId: alert.pet_id } })} />)}</View> : alertsQuery.isError ? <View style={styles.alertRetry}><AppText variant="caption" muted>We could not check for care alerts.</AppText><Button label="Retry" variant="ghost" onPress={() => void alertsQuery.refetch()} /></View> : null}
     {items.length > 0 ? <><View style={[styles.progressCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><View style={styles.progressHeader}><View style={styles.progressCopy}><AppText variant="caption" style={{ color: theme.colors.accentStrong }}>TODAY'S CARE</AppText><AppText variant="title">{completed} of {items.length} done</AppText></View><AppText variant="title" style={{ color: theme.colors.brandStrong }}>{Math.round((completed / items.length) * 100)}%</AppText></View><View style={[styles.progressTrack, { backgroundColor: theme.colors.surfaceRaised }]}><View style={[styles.progressFill, { backgroundColor: theme.colors.brandStrong, width: `${Math.round((completed / items.length) * 100)}%` }]} /></View><AppText variant="caption" muted>{completed === items.length ? 'Everything important is cared for.' : skipped ? `${skipped} skipped · ${items.length - completed - skipped} still open` : 'Small actions add up to a cared-for life.'}</AppText></View><View style={styles.sectionHeading}><View><AppText variant="title">What needs you</AppText><AppText variant="caption" muted>{items.length - completed - skipped} still to care for</AppText></View><ClockIcon size={22} color={theme.colors.textSubtle} weight="duotone" /></View></> : null}
     {items.length === 0 ? <Card style={styles.emptyCard}><View style={[styles.emptyIcon, { backgroundColor: theme.colors.surfaceRaised }]}><PawPrintIcon size={24} color={theme.colors.brandStrong} weight="duotone" /></View><AppText variant="heading">{dayOffset === 0 ? 'Give today a first care moment' : 'No care moments on this day'}</AppText><AppText muted>{dayOffset === 0 ? 'Choose a simple routine and it will appear here whenever it is due.' : 'Nothing was scheduled or recorded for this day.'}</AppText>{dayOffset === 0 && canAddCare ? <Button label={accessiblePets.pets.length === 1 ? 'Add first care plan' : 'Choose a Pet'} variant="secondary" onPress={openCareSetup} /> : dayOffset === 0 ? <AppText variant="caption" muted>Care plans are managed by a Pet owner or caregiver.</AppText> : null}</Card> : <View style={styles.moments}>{groupedItems.map((group) => <View key={group.label} style={styles.momentGroup}><View style={styles.groupHeader}><AppText variant="caption" muted>{group.label.toUpperCase()}</AppText><AppText variant="caption" muted>{group.items.length} {group.items.length === 1 ? 'moment' : 'moments'}</AppText></View><View style={styles.groupItems}>{group.items.map(({ item, petName, date, canAct }) => <CareMoment key={item.task.id} item={item} petName={petName} date={date} canAct={canAct} />)}</View></View>)}</View>}
-    <Pressable accessibilityRole="button" accessibilityLabel="Open pet timeline" onPress={() => router.push('/(tabs)/timeline')} style={({ pressed }) => [styles.historyLink, pressed && { opacity: theme.motion.pressOpacity }]}><AppText variant="label" style={{ color: theme.colors.brandStrong }}>See the care history</AppText><CaretRightIcon size={18} color={theme.colors.brandStrong} weight="bold" /></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open care Journal" onPress={() => { const historyPetId = effectiveFilter.kind === 'pet' ? effectiveFilter.petId : items.length === 1 ? items[0]?.item.task.pet_id : undefined; router.push({ pathname: '/(tabs)/timeline', params: historyPetId ? { petId: historyPetId } : { choosePet: '1' } }); }} style={({ pressed }) => [styles.historyLink, pressed && { opacity: theme.motion.pressOpacity }]}><AppText variant="label" style={{ color: theme.colors.brandStrong }}>{effectiveFilter.kind === 'pet' || items.length === 1 ? 'Open care Journal' : 'Choose a Pet for Journal'}</AppText><CaretRightIcon size={18} color={theme.colors.brandStrong} weight="bold" /></Pressable>
   </Screen>;
 }
 

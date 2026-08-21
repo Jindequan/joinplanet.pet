@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -38,7 +38,7 @@ function PetCard({ pet, intent, today }: { pet: Pet; intent?: string; today?: Pe
 
 export default function PetsRoute() {
   const { theme } = useTheme();
-  const params = useLocalSearchParams<{ intent?: string }>();
+  const params = useLocalSearchParams<{ intent?: string; familyId?: string }>();
   const circles = useCircles();
   const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
   const accessiblePets = useAccessiblePets(circleIds);
@@ -47,6 +47,9 @@ export default function PetsRoute() {
     .map((pet) => pet.id);
   const today = useTodayForCircles(circleIds, '', directPetIds);
   const [activeCircleId, setActiveCircleId] = useState<string>();
+  useEffect(() => {
+    if (typeof params.familyId === 'string' && circleIds.includes(params.familyId)) setActiveCircleId(params.familyId);
+  }, [circleIds, params.familyId]);
   const createIntent = useIdempotencyKey();
   const circle = circles.data?.circles.find((item) => item.id === activeCircleId) ?? circles.data?.circles[0] ?? { id: '', name: 'your care space', timezone: '', created_at: '', role: 'viewer' as const };
   const canCreatePet = Boolean(circle && circle.role !== 'viewer' && circle.role !== 'read_only');
@@ -75,7 +78,10 @@ export default function PetsRoute() {
   const hasStaleData = Boolean((circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (today.isError && today.hasData));
   if (circles.isLoading || accessiblePets.isLoading) return <Screen><LoadingState label="Loading your Pets" /></Screen>;
   if (blockingError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Pets are taking a moment" body="We could not load the Pet records you can access." onRetry={retryPets} /></Screen>;
-  const list = accessiblePets.pets;
+  const list = useMemo(() => {
+    if (typeof params.familyId !== 'string') return accessiblePets.pets;
+    return accessiblePets.pets.filter((pet) => (pet.family_ids ?? [pet.circle_id]).includes(params.familyId!));
+  }, [accessiblePets.pets, params.familyId]);
   const todayByPet = new Map(
     today.data.pets.map((pet) => {
       const completed = pet.items.filter((item) => item.log?.status === 'done' || item.log?.status === 'completed').length;

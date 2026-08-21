@@ -3,6 +3,7 @@ export const queryKeys = {
   me: ['me'] as const,
   meUsage: ['me', 'usage'] as const,
   circles: ['circles'] as const,
+  deletedCircles: ['circles', 'deleted'] as const,
   circle: (circleId: string) => ['circle', circleId] as const,
   pets: (circleId: string) => ['pets', circleId] as const,
   accessiblePets: ['pets', 'accessible'] as const,

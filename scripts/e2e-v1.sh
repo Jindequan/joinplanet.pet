@@ -142,6 +142,7 @@ expect "1.1b A has no circles yet" 200 'd["circles"] == []'
 req POST /api/v1/circles "$A_TOK" "{\"name\":\"Family A $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
 expect "1.2a A creates circle" 201 'd["circle"]["role"] == "owner" and len(d["invite_code"]) >= 6'
 CIRCLE_A=$(jget 'd["circle"]["id"]')
+CIRCLE_A_NAME="Family A $UNIQ"
 
 req POST "/api/v1/circles/$CIRCLE_A/pets" "$A_TOK" '{"name":"Mochi","species":"cat"}'
 expect "1.3a A creates pet Mochi" 201 'd["pet"]["name"] == "Mochi" and d["pet"]["species"] == "cat"'
@@ -274,6 +275,7 @@ echo "== Scenario 7: pet transfer A-circle -> B-circle =="
 req POST /api/v1/circles "$B_TOK" "{\"name\":\"Family B $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
 expect "7.1a B creates own circle" 201 'd["circle"]["role"] == "owner"'
 CIRCLE_B=$(jget 'd["circle"]["id"]')
+CIRCLE_B_NAME="Family B Renamed $UNIQ"
 
 req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_circle_id\":\"$CIRCLE_B\"}"
 expect "7.2a A (source owner) initiates transfer" 201 'd["transfer"]["status"] == "PENDING" and d["transfer"]["to_circle"] == "'"$CIRCLE_B"'"'
@@ -318,16 +320,16 @@ expect "8.3c B transfers circle ownership to A" 200 'any(m["user_id"] == "'"$A_I
 req DELETE "/api/v1/pets/$PET_ID/families/$CIRCLE_A" "$B_TOK"
 expect "8.3d B removes the old Family visibility" 204
 
-req DELETE "/api/v1/circles/$CIRCLE_A" "$A_TOK"
+req DELETE "/api/v1/circles/$CIRCLE_A" "$A_TOK" "{\"confirm\":\"$CIRCLE_A_NAME\"}"
 expect "8.3e A deletes the now-empty old Family" 204
 
-req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK"
+req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
 expect "8.4a delete circle with pet present -> 409 FAMILY_NOT_EMPTY" 409 'd["error"]["code"] == "FAMILY_NOT_EMPTY"'
 
 req DELETE "/api/v1/pets/$PET_ID" "$B_TOK" "{\"confirm\":\"$PET_ID\"}"
 expect "8.5a current Pet owner deletes pet (confirm=pet id) -> 204" 204
 
-req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK"
+req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
 expect "8.6a A deletes now-empty circle -> 204" 204
 
 req POST "/api/v1/circles/$CIRCLE_B/restore" "$A_TOK"

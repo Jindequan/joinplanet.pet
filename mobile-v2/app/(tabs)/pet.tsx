@@ -208,13 +208,11 @@ export default function PetRoute() {
   const visibleFamily = pet
     ? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
     : undefined;
-  const accessRole = detail.data?.pet.access_role ?? listedPet?.access_role;
   const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
   const sourceFamilyDetail = useCircle(sourceFamily?.id);
   const canManagePet = Boolean(
     pet && me.data?.user.id &&
-      (accessRole && accessRole !== "viewer" && accessRole !== "read_only" ||
-        pet.current_owner_user_id === me.data.user.id ||
+      (pet.current_owner_user_id === me.data.user.id ||
         (!pet.current_owner_user_id && sourceFamily?.role === "owner")),
   );
   const medications = useMedications(pet?.id);
@@ -363,7 +361,7 @@ export default function PetRoute() {
       invalidate.tasks(pet!.id);
       invalidate.assignments(result.care_item.id);
       invalidate.todayAll();
-      showToast({ message: "Care plan added to Today.", actionLabel: "Open Today", onAction: () => router.replace("/(tabs)") });
+      showToast({ message: "Care plan added to Today.", actionLabel: "Open Today", onAction: () => router.replace({ pathname: "/(tabs)", params: { petId: pet!.id } }) });
     },
     onError: (err) =>
       setError(
@@ -879,7 +877,7 @@ export default function PetRoute() {
           <AppText variant="heading">{todaySummaryTitle}</AppText>
           <AppText variant="caption" muted>{todaySummaryCaption}</AppText>
         </View>
-        <Button label="Open Today" variant="ghost" onPress={() => router.replace("/(tabs)")} />
+        <Button label="Open Today" variant="ghost" onPress={() => router.replace({ pathname: "/(tabs)", params: { petId: pet.id } })} />
       </View>
       <View style={styles.quickActions}>
         <Button

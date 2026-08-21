@@ -13,6 +13,7 @@ export type User = {
 
 export type Entitlement = { key: string; source: string; expires_at?: string | null };
 export type Circle = { id: string; name: string; timezone: string; role?: Role; created_at: string };
+export type DeletedCircle = { id: string; name: string; deleted_at: string };
 export type Member = { user_id: string; email?: string; display_name: string; role: Role; joined_at: string };
 export type Pet = {
   id: string;
@@ -80,6 +81,7 @@ export const planetApi = {
   },
   circles: {
     list: () => apiClient.get<{ circles: Circle[] }>('/circles'),
+    deleted: () => apiClient.get<{ circles: DeletedCircle[] }>('/circles/deleted'),
     detail: (circleId: string) => apiClient.get<CircleDetailResponse>(`/circles/${id(circleId)}`),
     create: (name: string, timezone?: string, requestKey = createIdempotencyKey()) => apiClient.post<{ circle: Circle; invite_code: string }>('/circles', { name, timezone }, { headers: { 'Idempotency-Key': requestKey } }),
     update: (circleId: string, body: { name?: string; timezone?: string }) => apiClient.patch<{ circle: Circle }>(`/circles/${id(circleId)}`, body),
@@ -89,7 +91,7 @@ export const planetApi = {
     leave: (circleId: string) => apiClient.post<void>(`/circles/${id(circleId)}/leave`),
     usage: (circleId: string) => apiClient.get<Usage>(`/circles/${id(circleId)}/usage`),
     transfer: (circleId: string, to_user_id: string) => apiClient.post<CircleDetailResponse>(`/circles/${id(circleId)}/transfer`, { to_user_id }),
-    delete: (circleId: string) => apiClient.delete<void>(`/circles/${id(circleId)}`),
+    delete: (circleId: string, confirm: string) => request<void>(`/circles/${id(circleId)}`, { method: 'DELETE', body: { confirm } }),
     restore: (circleId: string) => apiClient.post<{ circle: Circle }>(`/circles/${id(circleId)}/restore`),
     invitePreview: (code: string) => apiClient.get<{ circle: Circle }>(`/invite/${id(code)}`),
     pets: (circleId: string) => apiClient.get<{ pets: Pet[] }>(`/circles/${id(circleId)}/pets`),

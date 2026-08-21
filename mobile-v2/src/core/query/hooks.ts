@@ -10,6 +10,10 @@ export function useCircles(enabled = true) {
   return useQuery({ queryKey: queryKeys.circles, queryFn: planetApi.circles.list, enabled });
 }
 
+export function useDeletedCircles(enabled = true) {
+  return useQuery({ queryKey: queryKeys.deletedCircles, queryFn: planetApi.circles.deleted, enabled });
+}
+
 export function useCircle(circleId?: string) {
   return useQuery({ queryKey: queryKeys.circle(circleId ?? ''), queryFn: () => planetApi.circles.detail(circleId as string), enabled: Boolean(circleId) });
 }
@@ -162,6 +166,7 @@ export function useInvalidateApi() {
   return {
     me: () => client.invalidateQueries({ queryKey: queryKeys.me }),
     circles: () => client.invalidateQueries({ queryKey: queryKeys.circles }),
+    deletedCircles: () => client.invalidateQueries({ queryKey: queryKeys.deletedCircles }),
     circle: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.circle(circleId) }),
     pets: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.pets(circleId) }),
     petsAll: () => client.invalidateQueries({ queryKey: ['pets'] }),

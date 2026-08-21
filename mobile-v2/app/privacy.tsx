@@ -31,6 +31,10 @@ export default function PrivacyRoute() {
         </View>
         <Button label="Choose a Pet to export" variant="secondary" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { intent: "export" } })} />
       </Card>
+      <Card style={styles.card}>
+        <View style={styles.copy}><AppText variant="heading">Account deletion</AppText><AppText muted>Delete your account from Profile. PLANET asks you to confirm your email and blocks deletion while you still own an active Pet.</AppText></View>
+        <Button label="Open Profile" variant="secondary" onPress={() => router.push("/account")} />
+      </Card>
       <AppText variant="caption" muted style={styles.note}>Sharing is an action you choose. Family membership is separate from a public share link.</AppText>
     </Screen>
   );

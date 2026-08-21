@@ -5,7 +5,8 @@ import { AppText, Button, Card, LoadingState, PageHeader, Screen } from '../src/
 import { useSession } from '../src/core/providers/session-provider';
 import { useTheme } from '../src/core/providers/theme-provider';
 import { WorkspaceBar } from '../src/ui/navigation/workspace-bar';
-import { useCircles, useInvalidateApi, useNotificationPrefs } from '../src/core/query/hooks';
+import { readViewPreference } from '../src/core/storage/view-preference';
+import { useCircles, useInvalidateApi, useMe, useNotificationPrefs } from '../src/core/query/hooks';
 import { planetApi } from '../src/core/api/planet-api';
 import { useMutation } from '@tanstack/react-query';
 import { BellSimpleIcon, MoonStarsIcon, ShieldCheckIcon, SignOutIcon } from '../src/ui/icons';
@@ -19,10 +20,19 @@ export default function SettingsRoute() {
   const { theme } = useTheme();
   const { signOut } = useSession();
   const circles = useCircles();
+  const me = useMe();
   const [activeCircleId, setActiveCircleId] = React.useState<string>();
+  const [preferredFamilyId, setPreferredFamilyId] = React.useState<string>();
   const [draft, setDraft] = React.useState<{ reminders: boolean; digest: boolean; alerts: boolean }>();
   const [saveMessage, setSaveMessage] = React.useState('');
-  const circleId = circles.data?.circles.find((circle) => circle.id === activeCircleId)?.id ?? circles.data?.circles[0]?.id;
+  React.useEffect(() => {
+    const userId = me.data?.user.id;
+    if (!userId) return;
+    void readViewPreference(userId).then((preference) => {
+      if (preference?.kind === 'family') setPreferredFamilyId(preference.familyId);
+    });
+  }, [me.data?.user.id]);
+  const circleId = circles.data?.circles.find((circle) => circle.id === activeCircleId)?.id ?? circles.data?.circles.find((circle) => circle.id === preferredFamilyId)?.id ?? circles.data?.circles[0]?.id;
   const prefs = useNotificationPrefs(circleId);
   const invalidate = useInvalidateApi();
   React.useEffect(() => { if (prefs.data?.prefs) setDraft(prefs.data.prefs); }, [prefs.data?.prefs]);

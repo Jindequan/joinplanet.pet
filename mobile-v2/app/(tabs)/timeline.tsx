@@ -317,7 +317,7 @@ export default function TimelineRoute() {
   const linkedFamilyIds = new Set(pet.family_ids?.length ? pet.family_ids : [pet.circle_id]);
   const hasOwnerAccess = pet.current_owner_user_id === me.data?.user.id || Boolean(circles.data?.circles.some((circle) => linkedFamilyIds.has(circle.id) && circle.role === "owner"));
   const knownFamilyRoles = circles.data?.circles.filter((circle) => linkedFamilyIds.has(circle.id)).map((circle) => circle.role).filter(Boolean) ?? [];
-  const canRecord = knownFamilyRoles.length === 0 || knownFamilyRoles.some((role) => role !== "viewer" && role !== "read_only");
+  const canRecord = pet.current_owner_user_id === me.data?.user.id || knownFamilyRoles.some((role) => role !== "viewer" && role !== "read_only");
   const canEditEvent = (event: TimelineEvent) => event.source === "user" && (event.recorded_by === me.data?.user.id || hasOwnerAccess);
   return (
     <Screen scroll contentContainerStyle={styles.content}>

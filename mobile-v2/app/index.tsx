@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { router } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
+import { LoadingState } from '../src/ui/components';
 import { useSession } from '../src/core/providers/session-provider';
 import { useTheme } from '../src/core/providers/theme-provider';
 
@@ -11,5 +12,5 @@ export default function IndexRoute() {
     if (status === 'authenticated') router.replace('/(tabs)');
     if (status === 'unauthenticated') router.replace('/(auth)/welcome');
   }, [status]);
-  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}><ActivityIndicator color={theme.colors.brand} /></View>;
+  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background, padding: theme.spacing.page }}><LoadingState label="Opening PLANET" /></View>;
 }

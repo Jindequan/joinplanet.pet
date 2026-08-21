@@ -111,10 +111,11 @@ export default function TodayRoute() {
   const visibleAlerts = useMemo(() => effectiveFilter.kind === 'pet' ? alertsQuery.alerts.filter((alert) => alert.pet_id === effectiveFilter.petId) : alertsQuery.alerts, [alertsQuery.alerts, effectiveFilter]);
   const canActOnPet = (petId: string) => {
     const accessiblePet = accessiblePets.pets.find((candidate) => candidate.id === petId);
-    if (!accessiblePet || accessiblePet.current_owner_user_id === me.data?.user.id) return true;
+    if (!accessiblePet) return false;
+    if (accessiblePet.current_owner_user_id === me.data?.user.id) return true;
     const linkedFamilyIds = accessiblePet.family_ids?.length ? accessiblePet.family_ids : [accessiblePet.circle_id];
     const roles = families.filter((family) => linkedFamilyIds.includes(family.id)).map((family) => family.role).filter(Boolean);
-    return roles.length === 0 || roles.some((role) => role !== 'viewer' && role !== 'read_only');
+    return roles.some((role) => role !== 'viewer' && role !== 'read_only');
   };
   const items = pets.flatMap((pet) => pet.items.map((item) => ({ item, petName: pet.pet_name, date: dateKey(dayOffset, item.task.timezone || displayTimezone), canAct: canActOnPet(pet.pet_id) })));
   const completed = items.filter(({ item }) => item.log?.status === 'done' || item.log?.status === 'completed').length;

@@ -47,6 +47,7 @@ CODE=$(jq -r '.dev_code' <<<"$R")
 R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL\",\"code\":\"$CODE\",\"device\":\"api-walkthrough\"}")
 expect "verify-code returns session" '.token | strings | length > 20' "$R"
 TOKEN=$(jq -r '.token' <<<"$R")
+USER_A=$(jq -r '.user.id' <<<"$R")
 expect "authenticated /me returns the same email" ".user.email == \"$EMAIL\"" "$(get /api/v1/me "$TOKEN")"
 
 echo "== F2 Family、成员、Pet =="
@@ -94,8 +95,15 @@ CARE_ITEM=$(jq -r '.care_item.id' <<<"$R")
 R=$(curl -sS -X PUT "$BASE/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"role":"helper"}')
 expect "assign a helper to the care plan" ".assignment.user_id == \"$USER_C\" and .assignment.role == \"helper\"" "$R"
 expect "care assignments list includes the helper" ".assignments | any(.user_id == \"$USER_C\" and .role == \"helper\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -X PUT "$BASE/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN_B" -d '{"role":"helper"}')
+expect "non-owner cannot change care assignments" '.error.code == "ROLE_FORBIDDEN"' "$R"
 delete "/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" "$TOKEN"
 expect "remove helper from the care plan" ".assignments | all(.user_id != \"$USER_C\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -w $'\n%{http_code}' -X DELETE "$BASE/api/v1/care-items/$CARE_ITEM/assignments/$USER_A" -H "Authorization: Bearer $TOKEN")
+OWNER_DELETE_STATUS="${R##*$'\n'}"
+OWNER_DELETE_BODY="${R%$'\n'*}"
+[ "$OWNER_DELETE_STATUS" = "409" ] && expect "care plan cannot lose its owner" '.error.code == "CARE_ASSIGNMENT_OWNER_REQUIRED"' "$OWNER_DELETE_BODY" || fail "care plan cannot lose its owner"
+expect "care plan owner assignment remains intact" ".assignments | any(.user_id == \"$USER_A\" and .role == \"owner\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
 R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$TASK" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":true}')
 expect "archive care plan" ".task.archived_at != null" "$R"
 expect "archived care plan is discoverable when requested" ".tasks | any(.care_item_id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/tasks?include_archived=true" "$TOKEN")"

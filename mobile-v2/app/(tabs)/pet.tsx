@@ -346,22 +346,24 @@ export default function PetRoute() {
         }),
         careCreateIntent.current(),
       );
+      let helperAssigned = true;
       if (careHelperSelection) {
         try {
           await planetApi.tasks.setAssignment(result.care_item.id, careHelperSelection);
         } catch {
-          throw new Error("Care plan created, but the helper could not be assigned. Open it again to retry.");
+          helperAssigned = false;
         }
       }
-      return result;
+      return { result, helperAssigned };
     },
-    onSuccess: (result) => {
+    onSuccess: ({ result, helperAssigned }) => {
       resetCareForm();
       careCreateIntent.reset();
+      setError(helperAssigned ? "" : "Care plan created, but the helper assignment did not save. You can retry it from Care.");
       invalidate.tasks(pet!.id);
       invalidate.assignments(result.care_item.id);
       invalidate.todayAll();
-      showToast({ message: "Care plan added to Today.", actionLabel: "Open Today", onAction: () => router.replace({ pathname: "/(tabs)", params: { petId: pet!.id } }) });
+      showToast({ message: helperAssigned ? "Care plan added to Today." : "Care plan added; helper assignment needs attention.", actionLabel: "Open Today", onAction: () => router.replace({ pathname: "/(tabs)", params: { petId: pet!.id } }) });
     },
     onError: (err) =>
       setError(

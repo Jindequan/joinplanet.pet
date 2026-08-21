@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "PLANET",
+    "slug": "planet-mobile-v2",
+    "version": "2.0.0",
+    "scheme": "planet",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "pet.joinplanet.app"
+    },
+    "android": {
+      "package": "pet.joinplanet.app",
+      "predictiveBackGestureEnabled": true
+    }
+  }
+}

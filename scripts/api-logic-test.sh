@@ -79,7 +79,7 @@ R=$(request POST "/api/v1/pets/$PET2/unarchive" "$TA")
 check "unarchive succeeds after freeing slot" '.pet.archived_at == null' "$R"
 
 echo "== 事件、用药与分享 =="
-R=$(request POST "/api/v1/pets/$PET1/timeline" "$TA" '{"type":"vaccine","occurred_at":"2026-08-22T08:00:00Z","payload":{"name":"Rabies vaccine","next_due":"2027-08-01"}}' "logic-event-$TS-1")
+R=$(request POST "/api/v1/pets/$PET1/timeline" "$TA" '{"type":"vaccine","occurred_at":"2026-08-21T08:00:00Z","payload":{"name":"Rabies vaccine","next_due":"2027-08-01"}}' "logic-event-$TS-1")
 check "timeline validates and records vaccine" '.event.type == "vaccine"' "$R"
 R=$(request POST "/api/v1/pets/$PET1/medications" "$TA" '{"name":"TestMed","dose":"5mg","schedule":"daily"}' "logic-med-$TS-1")
 MED=$(jq -r '.medication.id' <<<"$R")

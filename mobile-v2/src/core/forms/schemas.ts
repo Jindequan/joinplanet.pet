@@ -56,6 +56,13 @@ export const taskSchema = z.object({
   if (value.schedule_kind === 'monthly' && (!value.monthly_day || Number(value.monthly_day) < 1 || Number(value.monthly_day) > 31)) {
     context.addIssue({ code: 'custom', path: ['monthly_day'], message: 'Choose a day from 1 to 31.' });
   }
+  if (value.weekly_days.length !== new Set(value.weekly_days).size) {
+    context.addIssue({ code: 'custom', path: ['weekly_days'], message: 'Choose each weekday only once.' });
+  }
+  if (value.time_of_day) {
+    const [hours = NaN, minutes = NaN] = value.time_of_day.split(':').map(Number);
+    if (hours > 23 || minutes > 59) context.addIssue({ code: 'custom', path: ['time_of_day'], message: 'Use a real time.' });
+  }
 });
 
 export const careItemSchema = z.object({
@@ -71,6 +78,11 @@ export const careItemSchema = z.object({
   if (value.schedule_kind === 'weekly' && value.weekly_days.length === 0) context.addIssue({ code: 'custom', path: ['weekly_days'], message: 'Choose at least one day.' });
   if (value.schedule_kind === 'monthly' && (!value.monthly_day || Number(value.monthly_day) < 1 || Number(value.monthly_day) > 31)) context.addIssue({ code: 'custom', path: ['monthly_day'], message: 'Choose a day from 1 to 31.' });
   if (value.schedule_kind === 'interval' && (!Number.isInteger(Number(value.every_n)) || Number(value.every_n) < 1 || Number(value.every_n) > 365)) context.addIssue({ code: 'custom', path: ['every_n'], message: 'Choose 1–365 days.' });
+  if (value.weekly_days.length !== new Set(value.weekly_days).size) context.addIssue({ code: 'custom', path: ['weekly_days'], message: 'Choose each weekday only once.' });
+  if (value.time_of_day) {
+    const [hours = NaN, minutes = NaN] = value.time_of_day.split(':').map(Number);
+    if (hours > 23 || minutes > 59) context.addIssue({ code: 'custom', path: ['time_of_day'], message: 'Use a real time.' });
+  }
 });
 
 export const medicationSchema = z.object({
@@ -174,6 +186,8 @@ export function petPayload(form: PetForm) {
 export function timelinePayload(form: TimelineForm) {
   const payload = form.type === 'weight'
     ? { weight_g: Number(form.weight_g), text: form.text }
+    : form.type === 'symptom'
+      ? { title: form.text, text: form.text }
     : form.type === 'vaccine'
       ? { name: form.text, text: form.text }
       : form.type === 'vet_visit'

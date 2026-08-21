@@ -29,7 +29,7 @@ export default function PrivacyRoute() {
           <View style={[styles.icon, { backgroundColor: theme.colors.brandSoft }]}><ExportIcon size={21} color={theme.colors.brandStrong} weight="duotone" /></View>
           <View style={styles.copy}><AppText variant="heading">Your data is portable</AppText><AppText muted>Export a Pet record before making a permanent change. Account deletion asks for an explicit confirmation and never silently deletes another person’s history.</AppText></View>
         </View>
-        <Button label="Open Profile & data controls" variant="secondary" onPress={() => router.push("/account")} />
+        <Button label="Choose a Pet to export" variant="secondary" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { intent: "export" } })} />
       </Card>
       <AppText variant="caption" muted style={styles.note}>Sharing is an action you choose. Family membership is separate from a public share link.</AppText>
     </Screen>

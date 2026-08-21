@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { router } from 'expo-router';
 import { AppText, Button, Card, LoadingState, PageHeader, Screen } from '../src/ui/components';
 import { useSession } from '../src/core/providers/session-provider';
 import { useTheme } from '../src/core/providers/theme-provider';
@@ -27,6 +28,7 @@ export default function SettingsRoute() {
   const updatePrefs = useMutation({ mutationFn: (body: { reminders?: boolean; digest?: boolean; alerts?: boolean }) => planetApi.circles.updateNotificationPrefs(circleId!, body), onSuccess: () => { if (circleId) invalidate.notificationPrefs(circleId); setSaveMessage('Saved'); }, onError: () => setSaveMessage('We could not save that preference. Try again.') });
   if (circles.isLoading || (circleId && prefs.isLoading)) return <Screen><LoadingState label="Loading your settings" /></Screen>;
   if (circles.isError || prefs.isError) return <Screen contentContainerStyle={styles.center}><AppText variant="title">Settings are unavailable</AppText><AppText muted>We could not load your notification preferences.</AppText><Button label="Try again" onPress={() => { void circles.refetch(); void prefs.refetch(); }} /></Screen>;
+  if (!circleId) return <Screen scroll contentContainerStyle={styles.content}><PageHeader eyebrow="YOU / SETTINGS" title="Make it yours." /><Card style={styles.emptyCard}><View style={[styles.heroIcon, { backgroundColor: theme.colors.accentSurface }]}><ShieldCheckIcon size={24} color={theme.colors.brandStrong} weight="duotone" /></View><AppText variant="heading">Create or join a Family first</AppText><AppText muted>Notification preferences belong to a Family. Once you have a shared care space, you can choose exactly how PLANET reaches you.</AppText><Button label="Open Family" onPress={() => router.push('/(tabs)/family')} /></Card><Button label="Sign out" variant="ghost" icon={<SignOutIcon size={18} color={theme.colors.danger} weight="regular" />} onPress={() => void signOut()} /></Screen>;
   const current = draft ?? prefs.data?.prefs ?? { reminders: true, digest: true, alerts: true };
   function changePreference(key: keyof typeof current, value: boolean) {
     const previous = current;
@@ -53,4 +55,5 @@ const styles = StyleSheet.create({
   preferenceCopy: { flex: 1, gap: 2 },
   privacy: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   privacyCopy: { flex: 1, gap: 3 },
+  emptyCard: { gap: 12, alignItems: 'flex-start' },
 });

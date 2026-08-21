@@ -92,10 +92,10 @@ expect "skip Today task" '.log.status == "skipped"' "$R"
 SKIP_LOG=$(jq -r '.log.id' <<<"$R")
 R=$(post "/api/v1/task-logs/$SKIP_LOG/undo" "$TOKEN" '')
 [ -z "$R" ] && ok "undo skipped task" || expect "undo skipped task" 'true' "$R"
-R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN" '{"type":"symptom","occurred_at":"2026-08-22T08:00:00Z","payload":{"text":"Less active after breakfast"}}' "$(key)")
+R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN" '{"type":"symptom","occurred_at":"2026-08-21T08:00:00Z","payload":{"text":"Less active after breakfast"}}' "$(key)")
 expect "record timeline symptom" '.event.type == "symptom"' "$R"
 expect "timeline returns the record" '.events | any(.type == "symptom")' "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
-R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN_B" '{"type":"note","occurred_at":"2026-08-22T09:00:00Z","payload":{"text":"B checked the morning walk"}}' "$(key)")
+R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN_B" '{"type":"note","occurred_at":"2026-08-21T09:00:00Z","payload":{"text":"B checked the morning walk"}}' "$(key)")
 expect "second caregiver can record a note" ".event.recorded_by_name == \"$DISPLAY_B\"" "$R"
 expect "timeline keeps the real recorder name" ".events | any(.recorded_by_name == \"$DISPLAY_B\" and .payload.text == \"B checked the morning walk\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
 expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/circles/$CIRCLE/alerts" "$TOKEN")"

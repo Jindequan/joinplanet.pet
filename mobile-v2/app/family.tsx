@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
-import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, TextField } from "../src/ui/components";
+import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, StaleDataNotice, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
 import { useToast } from "../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../src/core/hooks/use-idempotency-key";
@@ -194,23 +194,28 @@ export default function FamilyRoute() {
     if (mode === "create") create.mutate();
     else join.mutate();
   }
+  const retryFamily = () => {
+    void circles.refetch();
+    if (circle) {
+      void detail.refetch();
+      void pets.refetch();
+      void incomingTransfers.refetch();
+      void outgoingTransfers.refetch();
+    }
+  };
+  const blockingError = (circles.isError && !circles.data) || (!circle && detail.isError);
+  const hasStaleData = Boolean((circles.isError && circles.data) || (detail.isError && circle) || pets.isError);
   if (circles.isLoading || (circle && detail.isLoading))
     return (
       <Screen><LoadingState label="Loading your Family" /></Screen>
     );
-  if (circles.isError || detail.isError || pets.isError)
+  if (blockingError)
     return (
       <Screen contentContainerStyle={styles.center}>
         <QueryErrorState
           title="Your Family is unavailable"
           body="We could not load the people and Pets in this care circle."
-          onRetry={() => {
-            void circles.refetch();
-            if (circle) {
-              void detail.refetch();
-              void pets.refetch();
-            }
-          }}
+          onRetry={retryFamily}
         />
       </Screen>
     );
@@ -220,6 +225,7 @@ export default function FamilyRoute() {
   const pendingOutgoing: Transfer[] = outgoingTransfers.data?.transfers.filter((item) => item.status === "PENDING") ?? [];
   return (
     <Screen scroll contentContainerStyle={styles.content}>
+      {hasStaleData ? <StaleDataNotice onRetry={retryFamily} retrying={detail.isFetching || pets.isFetching} message="Some Family details are from the last saved view. Reconnect to refresh them." /> : null}
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <AppText variant="caption" muted>

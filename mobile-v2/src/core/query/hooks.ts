@@ -31,6 +31,7 @@ export function useAccessiblePets(circleIds: string[]) {
     pets: [...petsById.values()],
     isLoading: queries.some((query) => query.isLoading),
     isError: queries.some((query) => query.isError),
+    hasData: queries.some((query) => query.data !== undefined),
     refetch: () => Promise.all(queries.map((query) => query.refetch())),
   };
 }
@@ -69,6 +70,7 @@ export function useTodayForCircles(circleIds: string[], date: string | Record<st
     data: { date: typeof date === 'string' && date ? date : 'Today', pets: [...petsById.values()] },
     isLoading: queries.some((query) => query.isLoading),
     isError: queries.some((query) => query.isError),
+    hasData: queries.some((query) => query.data !== undefined),
     refetch: () => Promise.all(queries.map((query) => query.refetch())),
   };
 }
@@ -107,6 +109,7 @@ export function useAlertsForCircles(circleIds: string[]) {
     alerts,
     isLoading: queries.some((query) => query.isLoading),
     isError: queries.some((query) => query.isError),
+    hasData: queries.some((query) => query.data !== undefined),
     refetch: () => Promise.all(queries.map((query) => query.refetch())),
   };
 }

@@ -24,6 +24,7 @@ import {
   QueryErrorState,
   Screen,
   SegmentedControl,
+  StaleDataNotice,
   TextField,
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
@@ -286,6 +287,32 @@ export default function PetRoute() {
     setConfirmTaskId(null);
     setForm(null);
   };
+  const resetTransientState = () => {
+    resetCareForm();
+    setPetSection("overview");
+    setError("");
+    setEditingMedicationId(null);
+    setMedicationAction(null);
+    setLifecycleAction(null);
+    setDeleteConfirmName("");
+    setShareError("");
+    setCreatedShare(null);
+    setCopiedShare(false);
+    setRevokeShareId(null);
+    setTransferOpen(false);
+    setTransferTargetId(null);
+    setTransferError("");
+    setTransferNotice("");
+    setExportError("");
+    setFamilyShareOpen(false);
+    setFamilyShareTargetId(null);
+    setFamilyShareError("");
+    setUnshareFamilyId(null);
+    handledIntentKey.current = null;
+  };
+  useEffect(() => {
+    if (pet?.id) resetTransientState();
+  }, [pet?.id]);
   const addCare = useMutation({
     mutationFn: () =>
       planetApi.pets.createCareItem(
@@ -453,9 +480,17 @@ export default function PetRoute() {
       invalidate.petsAll();
     },
     onError: (err) =>
-      setError(
-        err instanceof ApiError ? err.message : "Unable to save the Pet details.",
-      ),
+      {
+        // The API currently exposes the core Pet and profile as two guarded
+        // writes. Refresh both projections after a partial failure so a
+        // retry uses the server's new optimistic-lock version instead of
+        // replaying a stale version and trapping the user in a 409 loop.
+        invalidate.pet(pet!.id);
+        invalidate.petsAll();
+        setError(
+          err instanceof ApiError ? err.message : "Unable to save the Pet details.",
+        );
+      },
   });
   const archivePet = useMutation({
     mutationFn: () => planetApi.pets.archive(pet!.id),
@@ -507,7 +542,11 @@ export default function PetRoute() {
     mutationFn: () => planetApi.pets.export(pet!.id),
     onSuccess: async (result) => {
       setExportError("");
-      await NativeShare.share({ title: `${pet!.name} · PLANET export`, message: JSON.stringify(result, null, 2) });
+      try {
+        await NativeShare.share({ title: `${pet!.name} · PLANET export`, message: JSON.stringify(result, null, 2) });
+      } catch {
+        setExportError("The export is ready, but the share sheet could not open. Try again from this Pet's Manage section.");
+      }
     },
     onError: (err) => setExportError(err instanceof ApiError ? err.message : "Unable to export this Pet record."),
   });
@@ -519,6 +558,7 @@ export default function PetRoute() {
       setFamilyShareError("");
       invalidate.pet(pet!.id);
       invalidate.petsAll();
+      invalidate.todayAll();
     },
     onError: (err) => setFamilyShareError(err instanceof ApiError ? err.message : "Unable to share this Pet with that Family."),
   });
@@ -529,6 +569,7 @@ export default function PetRoute() {
       setFamilyShareError("");
       invalidate.pet(pet!.id);
       invalidate.petsAll();
+      invalidate.todayAll();
     },
     onError: (err) => setFamilyShareError(err instanceof ApiError ? err.message : "Unable to remove this Family's access."),
   });
@@ -571,6 +612,10 @@ export default function PetRoute() {
     if (handledIntentKey.current !== intentKey && params.intent === "care" && pet && !isArchived) {
       setPetSection("care");
       setForm("care");
+      setError("");
+      handledIntentKey.current = intentKey;
+    } else if (handledIntentKey.current !== intentKey && params.intent === "export" && pet) {
+      setPetSection("manage");
       setError("");
       handledIntentKey.current = intentKey;
     }
@@ -674,6 +719,18 @@ export default function PetRoute() {
     editProfile.mutate();
   }
 
+  const retryPet = () => {
+    void circles.refetch();
+    void accessiblePets.refetch();
+    void me.refetch();
+    if (pet) {
+      void detail.refetch();
+      void medications.refetch();
+      void tasks.refetch();
+    }
+  };
+  const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData) || (!pet && detail.isError);
+  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (detail.isError && pet) || medications.isError || tasks.isError);
   if (
     circles.isLoading ||
     me.isLoading ||
@@ -683,21 +740,13 @@ export default function PetRoute() {
     return (
       <Screen><LoadingState label="Loading this Pet’s world" /></Screen>
     );
-  if (me.isError || circles.isError || accessiblePets.isError || detail.isError || medications.isError || tasks.isError)
+  if (blockingError)
     return (
       <Screen contentContainerStyle={styles.center}>
         <QueryErrorState
           title="This Pet is unavailable"
           body="We could not load the care record and routines right now."
-          onRetry={() => {
-            void circles.refetch();
-            void accessiblePets.refetch();
-            if (pet) {
-              void detail.refetch();
-              void medications.refetch();
-              void tasks.refetch();
-            }
-          }}
+          onRetry={retryPet}
         />
       </Screen>
     );
@@ -718,6 +767,7 @@ export default function PetRoute() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <PageHeader eyebrow="YOUR PET / CARE" title={pet.name} />
+      {hasStaleData ? <StaleDataNotice onRetry={retryPet} retrying={detail.isFetching || medications.isFetching || tasks.isFetching} message="Some care details are from the last saved view. Reconnect to refresh them." /> : null}
       {accessiblePets.pets.length > 1 ? <View style={styles.petSwitcher}><AppText variant="caption" muted>SWITCH PET</AppText><PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") router.replace({ pathname: "/(tabs)/pet", params: { petId: next.petId } }); else router.replace("/(tabs)/pets"); }} /></View> : null}
       <LinearGradient
         colors={[theme.colors.accentSurface, theme.colors.brandSoft]}
@@ -1067,7 +1117,7 @@ export default function PetRoute() {
                 variant="secondary"
                 onPress={() => void Clipboard.setStringAsync(createdShare.url).then(() => setCopiedShare(true)).catch(() => setShareError("We could not copy the link. Press and hold it instead."))}
               />
-              <Button label="Share" variant="primary" onPress={() => void NativeShare.share({ message: createdShare.url })} />
+              <Button label="Share" variant="primary" onPress={() => void NativeShare.share({ message: createdShare.url }).catch(() => setShareError("We could not open the share sheet. Press and hold the link to copy it instead."))} />
               <Button label="Create another" variant="ghost" onPress={() => { setCreatedShare(null); setCopiedShare(false); setShareError(""); }} />
             </View>
             <AppText variant="caption" muted>Only someone with this link can open it. Do not post it publicly.</AppText>

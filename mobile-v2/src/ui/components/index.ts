@@ -7,6 +7,7 @@ export * from './view-filter-bar';
 export * from './page-header';
 export * from './pet-filter-selector';
 export * from './query-error-state';
+export * from './stale-data-notice';
 export * from './loading-state';
 export * from './rating';
 export * from './screen';

@@ -13,6 +13,7 @@ import {
   QueryErrorState,
   Screen,
   SegmentedControl,
+  StaleDataNotice,
   TextField,
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
@@ -88,7 +89,7 @@ function EventGlyph({ event }: { event: TimelineEvent }) {
 }
 
 function eventDayLabel(value: string) {
-  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Earlier";
   return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(date);
 }
@@ -209,6 +210,7 @@ export default function TimelineRoute() {
       setConfirmEventId(null);
       setEventMenuId(null);
       invalidate.timeline(pet!.id);
+      invalidate.pet(pet!.id);
       invalidate.alertsAll();
       showToast({ message: "Journal record removed." });
     },
@@ -233,7 +235,7 @@ export default function TimelineRoute() {
   useEffect(() => {
     setOlderEvents([]);
     setHasMore(true);
-  }, [pet?.id, timeline.data?.events]);
+  }, [pet?.id]);
   function openEventEditor(event: { id: string; type: string; occurred_at: string; payload: Record<string, unknown> }) {
     if (event.type !== "note" && event.type !== "symptom" && event.type !== "weight" && event.type !== "vaccine" && event.type !== "vet_visit") return;
     setEditingEventId(event.id);
@@ -264,6 +266,9 @@ export default function TimelineRoute() {
     }
     create.mutate();
   }
+  const retryTimeline = () => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); if (pet) void timeline.refetch(); };
+  const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData) || (timeline.isError && !timeline.data);
+  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (timeline.isError && timeline.data));
   if (
     me.isLoading ||
     circles.isLoading ||
@@ -273,18 +278,13 @@ export default function TimelineRoute() {
     return (
       <Screen><LoadingState label="Loading the journal" /></Screen>
     );
-  if (me.isError || circles.isError || accessiblePets.isError || timeline.isError)
+  if (blockingError)
     return (
       <Screen contentContainerStyle={styles.center}>
         <QueryErrorState
           title="The story is unavailable"
           body="We could not load this Pet's timeline right now."
-          onRetry={() => {
-            void me.refetch();
-            void circles.refetch();
-            void accessiblePets.refetch();
-            if (pet) void timeline.refetch();
-          }}
+          onRetry={retryTimeline}
         />
       </Screen>
     );
@@ -305,7 +305,10 @@ export default function TimelineRoute() {
         </Card>
       </Screen>
     );
-  const events = [...(timeline.data?.events ?? []), ...olderEvents];
+  const events = [...(timeline.data?.events ?? []), ...olderEvents].sort((left, right) => {
+    const occurred = new Date(right.occurred_at).getTime() - new Date(left.occurred_at).getTime();
+    return occurred || right.id.localeCompare(left.id);
+  });
   const visibleEvents = timelineFilter === "all" ? events : events.filter((event) => eventBucket(event) === timelineFilter);
   const groupedEvents = visibleEvents.reduce<Array<{ label: string; events: TimelineEvent[] }>>((groups, event) => {
     const label = eventDayLabel(event.occurred_at);
@@ -334,6 +337,7 @@ export default function TimelineRoute() {
           <PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") { setTimelinePetId(next.petId); setAdding(false); setError(""); } else router.push("/(tabs)/pets"); }} />
         </View>
       ) : null}
+      {hasStaleData ? <StaleDataNotice onRetry={retryTimeline} retrying={timeline.isFetching || accessiblePets.isLoading} /> : null}
       <View style={styles.intro}>
         <View
           style={[
@@ -397,7 +401,7 @@ export default function TimelineRoute() {
               { value: "vaccine", label: "Vaccine" },
             ]}
           />
-          <DateTimeField label="When did it happen?" value={occurredAt} onChange={setOccurredAt} />
+          <DateTimeField label="When did it happen?" value={occurredAt} onChange={setOccurredAt} maximumDate={new Date()} />
           <TextField
             label={eventType === "weight" ? "Details (optional)" : eventType === "vaccine" ? "Vaccine name" : eventType === "vet_visit" ? "Visit summary" : "A detail worth keeping"}
             value={text}

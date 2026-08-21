@@ -38,7 +38,7 @@ export type Profile = {
   med_decision_maker?: unknown;
   notes: string;
 };
-export type Task = { id: string; circle_id: string; pet_id: string; title: string; schedule: Record<string, unknown>; time_of_day?: string; timezone: string; archived_at?: string | null; created_at: string };
+export type Task = { id: string; circle_id: string; pet_id: string; care_item_id?: string; care_rule_id?: string; type?: string; title: string; description?: string; schedule: Record<string, unknown>; time_of_day?: string; timezone: string; due_at?: string; due_date?: string; status?: 'pending' | 'completed' | 'skipped' | 'missed'; assigned_to_user_id?: string; completed_by_user_id?: string; completed_at?: string; archived_at?: string | null; created_at: string };
 export type TaskLog = { id: string; task_id: string; log_date: string; status: 'done' | 'completed' | 'skipped'; done_by: string; done_at: string; note: string; done_by_name?: string };
 export type TodayItem = { task: Task; log: TaskLog | null };
 export type TodayPet = { pet_id: string; pet_name: string; items: TodayItem[] };

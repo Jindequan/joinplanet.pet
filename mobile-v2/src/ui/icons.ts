@@ -34,3 +34,4 @@ export { StarIcon } from 'phosphor-react-native/src/icons/Star';
 export { StethoscopeIcon } from 'phosphor-react-native/src/icons/Stethoscope';
 export { UserCircleIcon } from 'phosphor-react-native/src/icons/UserCircle';
 export { UsersThreeIcon } from 'phosphor-react-native/src/icons/UsersThree';
+export { WarningCircleIcon } from 'phosphor-react-native/src/icons/WarningCircle';

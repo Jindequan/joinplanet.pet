@@ -50,7 +50,7 @@ export type Medication = { id: string; pet_id: string; name: string; dose: strin
 export type TimelineEvent = { id: string; pet_id: string; type: string; occurred_at: string; recorded_by: string; recorded_at: string; edited_at?: string; payload: Record<string, unknown>; payload_version: number; source: string };
 export type Share = { id: string; pet_id: string; kind: 'care_card' | 'summary'; expires_at: string; revoked_at?: string | null; view_count: number; last_viewed_at?: string | null; created_at: string };
 export type Transfer = { id: string; pet_id: string; pet_name: string; from_circle: string; to_circle: string; status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'; created_by?: string; decided_by?: string; created_at: string; decided_at?: string };
-export type Alert = { [key: string]: unknown };
+export type Alert = { id: string; kind: string; pet_id: string; pet_name: string; title: string; body: string; severity: 'watch' | 'warn'; occurred_at: string; data?: Record<string, unknown> };
 export type NotificationPrefs = { reminders: boolean; digest: boolean; alerts: boolean };
 export type Usage = { plan: string; members: number; member_max: number; pets: number; pet_max: number; resources?: Record<string, { used: number; limit: number }> };
 

@@ -93,6 +93,8 @@ R=$(post "/api/v1/task-logs/$SKIP_LOG/undo" "$TOKEN" '')
 R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN" '{"type":"symptom","occurred_at":"2026-08-22T08:00:00Z","payload":{"text":"Less active after breakfast"}}' "$(key)")
 expect "record timeline symptom" '.event.type == "symptom"' "$R"
 expect "timeline returns the record" '.events | any(.type == "symptom")' "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/circles/$CIRCLE/alerts" "$TOKEN")"
+expect "daily digest returns the Family view" '.date and (.pets | type == "array")' "$(get "/api/v1/circles/$CIRCLE/digest" "$TOKEN")"
 
 echo "== F4 分享、撤销、导出 =="
 R=$(post "/api/v1/pets/$PET/shares" "$TOKEN" '{"kind":"care_card","ttl_hours":24}' "$(key)")

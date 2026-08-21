@@ -159,10 +159,11 @@ export default function PetRoute() {
   const accessiblePets = useAccessiblePets(circleIds);
   const selectedPetId =
     typeof params.petId === "string" ? params.petId : undefined;
-  const pet =
+  const listedPet =
     accessiblePets.pets.find((candidate) => candidate.id === selectedPetId) ??
     accessiblePets.pets[0];
-  const detail = usePet(pet?.id);
+  const detail = usePet(listedPet?.id);
+  const pet = detail.data?.pet ?? listedPet;
   const medications = useMedications(pet?.id);
   const tasks = useTasks(pet?.id);
   const shares = usePetShares(pet?.id);

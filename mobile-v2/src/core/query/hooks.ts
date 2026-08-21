@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { planetApi, type TodayPet } from '../api/planet-api';
+import { planetApi, type Alert, type TodayPet } from '../api/planet-api';
 import { queryKeys } from './keys';
 
 export function useMe(enabled = true) {
@@ -90,6 +90,24 @@ export function useTransfers(circleId?: string, direction: 'incoming' | 'outgoin
   return useQuery({ queryKey: queryKeys.transfers(circleId ?? '', direction), queryFn: () => planetApi.transfers.list(circleId as string, direction), enabled: Boolean(circleId) });
 }
 
+export function useAlertsForCircles(circleIds: string[]) {
+  const queries = useQueries({
+    queries: circleIds.map((circleId) => ({
+      queryKey: queryKeys.alerts(circleId),
+      queryFn: () => planetApi.circles.alerts(circleId),
+    })),
+  });
+  const alerts: Alert[] = [];
+  queries.forEach((query) => { if (query.data?.alerts) alerts.push(...query.data.alerts); });
+  alerts.sort((left, right) => new Date(right.occurred_at).getTime() - new Date(left.occurred_at).getTime());
+  return {
+    alerts,
+    isLoading: queries.some((query) => query.isLoading),
+    isError: queries.some((query) => query.isError),
+    refetch: () => Promise.all(queries.map((query) => query.refetch())),
+  };
+}
+
 export function useCircleUsage(circleId?: string) {
   return useQuery({ queryKey: queryKeys.usage(circleId ?? ''), queryFn: () => planetApi.circles.usage(circleId as string), enabled: Boolean(circleId) });
 }
@@ -122,6 +140,8 @@ export function useInvalidateApi() {
     tasks: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.tasks(petId) }),
     shares: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.shares(petId) }),
     transfers: (circleId: string) => client.invalidateQueries({ queryKey: ['transfers', circleId] }),
+    alerts: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.alerts(circleId) }),
+    alertsAll: () => client.invalidateQueries({ queryKey: ['alerts'] }),
     notificationPrefs: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.notificationPrefs(circleId) }),
   };
 }

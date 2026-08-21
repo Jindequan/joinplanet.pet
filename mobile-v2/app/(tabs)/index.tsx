@@ -1,15 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { AppText, Button, Card, PetFilterSelector, QueryErrorState, Screen, type ViewFilter } from '../../src/ui/components';
 import { useTheme } from '../../src/core/providers/theme-provider';
-import { useAccessiblePets, useCircles, useInvalidateApi, useMe, useTodayForCircles } from '../../src/core/query/hooks';
+import { useAccessiblePets, useAlertsForCircles, useCircles, useInvalidateApi, useMe, useTodayForCircles } from '../../src/core/query/hooks';
 import { planetApi, type TodayItem } from '../../src/core/api/planet-api';
 import { ApiError } from '../../src/core/network/api-client';
 import { useToast } from '../../src/core/providers/toast-provider';
-import { BellSimpleIcon, CaretRightIcon, CheckIcon, ClockIcon, PawPrintIcon, PlusIcon, SparkleIcon } from '../../src/ui/icons';
+import { BellSimpleIcon, CaretRightIcon, CheckIcon, ClockIcon, PawPrintIcon, PlusIcon, SparkleIcon, WarningCircleIcon } from '../../src/ui/icons';
 
 function dayGreeting() {
   const hour = new Date().getHours();
@@ -46,6 +47,12 @@ function timeLabel(value?: string) {
   return `${hour}:${String(minutes || 0).padStart(2, '0')} ${suffix}`;
 }
 
+function AlertCard({ title, body, petName, severity, onPress }: { title: string; body: string; petName: string; severity: 'watch' | 'warn'; onPress: () => void }) {
+  const { theme } = useTheme();
+  const color = severity === 'warn' ? theme.colors.danger : theme.colors.warning;
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Open alert: ${title}`} onPress={onPress} style={({ pressed }) => [styles.alertCard, { backgroundColor: theme.colors.surface, borderColor: color }, pressed && { opacity: theme.motion.pressOpacity }]}><View style={[styles.alertIcon, { backgroundColor: severity === 'warn' ? theme.colors.accentSurface : theme.colors.surfaceRaised }]}><WarningCircleIcon size={19} color={color} weight="duotone" /></View><View style={styles.alertCopy}><AppText variant="label">{title}</AppText><AppText variant="caption" muted>{petName} · {body}</AppText></View><CaretRightIcon size={17} color={theme.colors.textSubtle} weight="bold" /></Pressable>;
+}
+
 function CareMoment({ item, petName, date }: { item: TodayItem; petName: string; date: string }) {
   const { theme } = useTheme();
   const { showToast } = useToast();
@@ -57,7 +64,7 @@ function CareMoment({ item, petName, date }: { item: TodayItem; petName: string;
       if (action === 'undo') await planetApi.tasks.undo(item.log!.id);
       else await planetApi.tasks.complete(item.task.id, { status: action === 'skip' ? 'skipped' : 'done', date });
     },
-    onSuccess: () => { invalidate.todayAll(); invalidate.timeline(item.task.pet_id); },
+    onSuccess: (_result, action) => { void Haptics.impactAsync(action === 'skip' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light); invalidate.todayAll(); invalidate.timeline(item.task.pet_id); },
     onError: (error) => showToast({ message: error instanceof ApiError ? error.message : 'That care moment could not be updated.' }),
   });
   return <View style={[styles.moment, { backgroundColor: done || skipped ? theme.colors.surfaceRaised : theme.colors.surface, borderColor: done ? theme.colors.brandSoft : theme.colors.border }]}>
@@ -89,7 +96,9 @@ export default function TodayRoute() {
   const historicalDate = dayOffset === 0 ? '' : dateKey(dayOffset, displayTimezone);
   const visibleDate = dateKey(dayOffset, displayTimezone);
   const today = useTodayForCircles(activeFamilyId ? [activeFamilyId] : familyIds, historicalDate);
+  const alertsQuery = useAlertsForCircles(dayOffset === 0 ? (activeFamilyId ? [activeFamilyId] : familyIds) : []);
   const pets = useMemo(() => effectiveFilter.kind === 'pet' ? today.data.pets.filter((pet) => pet.pet_id === effectiveFilter.petId) : today.data.pets, [effectiveFilter, today.data.pets]);
+  const visibleAlerts = useMemo(() => effectiveFilter.kind === 'pet' ? alertsQuery.alerts.filter((alert) => alert.pet_id === effectiveFilter.petId) : alertsQuery.alerts, [alertsQuery.alerts, effectiveFilter]);
   const items = pets.flatMap((pet) => pet.items.map((item) => ({ item, petName: pet.pet_name })));
   const completed = items.filter(({ item }) => Boolean(item.log)).length;
   const firstName = me.data?.user.display_name?.split(' ')[0] || 'there';
@@ -103,6 +112,7 @@ export default function TodayRoute() {
     <View style={styles.header}><View style={styles.headerCopy}><AppText variant="caption" muted>{dateLabel(visibleDate).toUpperCase()}</AppText><AppText variant="display">{dayOffset === 0 ? `${dayGreeting()}, ${firstName}.` : `Care on ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(`${visibleDate}T12:00:00`))}.`}</AppText><AppText muted>{completed === items.length && items.length > 0 ? 'Everything important is cared for.' : dayOffset === 0 ? 'Here is what deserves your attention today.' : 'Review or complete a recent care moment.'}</AppText></View><Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => router.push('/settings')} style={[styles.iconButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><BellSimpleIcon size={21} color={theme.colors.brandStrong} weight="regular" /></Pressable></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}><View style={styles.dayRow}>{[0, -1, -2, -3, -4, -5, -6].map((offset) => { const value = dateKey(offset, displayTimezone); const selected = offset === dayOffset; return <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setDayOffset(offset)} style={[styles.dayChip, { borderColor: selected ? theme.colors.brandStrong : theme.colors.border, backgroundColor: selected ? theme.colors.brandStrong : theme.colors.surface }]}><AppText variant="caption" style={{ color: selected ? theme.colors.onBrand : theme.colors.textMuted }}>{shortDateLabel(value, offset)}</AppText></Pressable>; })}</View></ScrollView>
     <View style={styles.filterRow}><PetFilterSelector value={effectiveFilter} families={families} pets={accessiblePets.pets} onChange={setFilter} /><Pressable accessibilityRole="button" accessibilityLabel="Add care" onPress={() => router.push('/(tabs)/pets')} style={({ pressed }) => [styles.addButton, { backgroundColor: theme.colors.brandStrong }, pressed && { opacity: theme.motion.pressOpacity }]}><PlusIcon size={17} color={theme.colors.onBrand} weight="bold" /><AppText variant="label" style={{ color: theme.colors.onBrand }}>Add care</AppText></Pressable></View>
+    {visibleAlerts.length ? <View style={styles.alerts}><AppText variant="caption" muted style={styles.alertLabel}>NEEDS A CLOSER LOOK</AppText>{visibleAlerts.slice(0, 3).map((alert) => <AlertCard key={alert.id} title={alert.title} body={alert.body} petName={alert.pet_name} severity={alert.severity} onPress={() => router.push({ pathname: '/(tabs)/timeline', params: { petId: alert.pet_id } })} />)}</View> : alertsQuery.isError ? <View style={styles.alertRetry}><AppText variant="caption" muted>We could not check for care alerts.</AppText><Button label="Retry" variant="ghost" onPress={() => void alertsQuery.refetch()} /></View> : null}
     <LinearGradient colors={[theme.colors.accentSurface, theme.colors.brandSoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.progressCard}><View style={styles.progressCopy}><AppText variant="caption" style={{ color: theme.colors.accentStrong }}>TODAY'S CARE</AppText><AppText variant="title">{completed} of {items.length} moments done</AppText><AppText muted>{items.length === 0 ? 'Add a routine from a Pet to build your day.' : completed === items.length ? 'A clear day is a good day.' : 'Small actions add up to a cared-for life.'}</AppText></View><View style={[styles.progressRing, { borderColor: theme.colors.surface }]}><AppText variant="title" style={{ color: theme.colors.brandStrong }}>{items.length ? Math.round((completed / items.length) * 100) : 0}%</AppText></View></LinearGradient>
     <View style={styles.sectionHeading}><View><AppText variant="title">What needs you</AppText><AppText variant="caption" muted>{items.length ? `${items.length - completed} still to care for` : 'Your day is open'}</AppText></View><ClockIcon size={22} color={theme.colors.textSubtle} weight="duotone" /></View>
     {items.length === 0 ? <Card style={styles.emptyCard}><View style={[styles.emptyIcon, { backgroundColor: theme.colors.surfaceRaised }]}><PawPrintIcon size={24} color={theme.colors.brandStrong} weight="duotone" /></View><AppText variant="heading">No care moments on this day</AppText><AppText muted>{dayOffset === 0 ? 'Add the first care plan for one of your Pets and it will appear here every day.' : 'Nothing was scheduled or recorded for this day.'}</AppText>{dayOffset === 0 ? <Button label="Open Pets" variant="secondary" onPress={() => router.push('/(tabs)/pets')} /> : null}</Card> : <View style={styles.moments}>{items.map(({ item, petName }) => <CareMoment key={item.task.id} item={item} petName={petName} date={historicalDate} />)}</View>}
@@ -119,6 +129,12 @@ const styles = StyleSheet.create({
   avatar: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   iconButton: { width: 46, height: 46, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   filterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  alerts: { gap: 8 },
+  alertLabel: { letterSpacing: 1.1, marginLeft: 3 },
+  alertCard: { minHeight: 68, padding: 11, borderWidth: 1, borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  alertIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  alertCopy: { flex: 1, gap: 2 },
+  alertRetry: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   dayStrip: { paddingRight: 8 },
   dayRow: { flexDirection: 'row', gap: 8 },
   dayChip: { minHeight: 38, borderRadius: 13, borderWidth: 1, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center' },

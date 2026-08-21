@@ -101,6 +101,7 @@ export default function TimelineRoute() {
       setAdding(false);
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
+      invalidate.alertsAll();
     },
     onError: (err) =>
       setError(
@@ -128,6 +129,7 @@ export default function TimelineRoute() {
       setAdding(false);
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
+      invalidate.alertsAll();
     },
     onError: (err) =>
       setError(
@@ -140,6 +142,7 @@ export default function TimelineRoute() {
       setConfirmEventId(null);
       setEventMenuId(null);
       invalidate.timeline(pet!.id);
+      invalidate.alertsAll();
     },
     onError: (err) =>
       setError(

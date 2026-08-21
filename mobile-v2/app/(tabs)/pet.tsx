@@ -212,6 +212,10 @@ export default function PetRoute() {
   const [transferError, setTransferError] = useState("");
   const [transferNotice, setTransferNotice] = useState("");
   const [exportError, setExportError] = useState("");
+  const [familyShareOpen, setFamilyShareOpen] = useState(false);
+  const [familyShareTargetId, setFamilyShareTargetId] = useState<string | null>(null);
+  const [familyShareError, setFamilyShareError] = useState("");
+  const [unshareFamilyId, setUnshareFamilyId] = useState<string | null>(null);
 
   const resetCareForm = () => {
     setCareType("custom");
@@ -398,6 +402,27 @@ export default function PetRoute() {
     },
     onError: (err) => setExportError(err instanceof ApiError ? err.message : "Unable to export this Pet record."),
   });
+  const sharePetFamily = useMutation({
+    mutationFn: () => planetApi.pets.shareFamily(pet!.id, familyShareTargetId!),
+    onSuccess: () => {
+      setFamilyShareOpen(false);
+      setFamilyShareTargetId(null);
+      setFamilyShareError("");
+      invalidate.pet(pet!.id);
+      invalidate.petsAll();
+    },
+    onError: (err) => setFamilyShareError(err instanceof ApiError ? err.message : "Unable to share this Pet with that Family."),
+  });
+  const unsharePetFamily = useMutation({
+    mutationFn: () => planetApi.pets.unshareFamily(pet!.id, unshareFamilyId!),
+    onSuccess: () => {
+      setUnshareFamilyId(null);
+      setFamilyShareError("");
+      invalidate.pet(pet!.id);
+      invalidate.petsAll();
+    },
+    onError: (err) => setFamilyShareError(err instanceof ApiError ? err.message : "Unable to remove this Family's access."),
+  });
   const createShare = useMutation({
     mutationFn: () => {
       const parsed = shareSchema.safeParse({ kind: shareKind, ttl_hours: shareTtl, days: shareDays });
@@ -425,6 +450,9 @@ export default function PetRoute() {
   const isArchived = Boolean(pet?.archived_at);
   const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
   const targetFamilies = circles.data?.circles.filter((item) => item.id !== pet?.circle_id) ?? [];
+  const linkedFamilyIds = new Set(pet?.family_ids?.length ? pet.family_ids : pet?.circle_id ? [pet.circle_id] : []);
+  const linkedFamilies = circles.data?.circles.filter((item) => linkedFamilyIds.has(item.id)) ?? [];
+  const availableFamilyShares = circles.data?.circles.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
 
   function openTaskEditor(task: Task) {
     const raw = task.schedule;
@@ -785,6 +813,51 @@ export default function PetRoute() {
               />
             </View>
           </View>
+        ) : null}
+      </Card>
+      <Card style={styles.card}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.rowCopy}>
+            <AppText variant="heading">Family access</AppText>
+            <AppText variant="caption" muted>Choose which of your Families can see this Pet.</AppText>
+          </View>
+          <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{linkedFamilies.length} connected</AppText>
+        </View>
+        {linkedFamilies.map((family) => (
+          <View key={family.id} style={[styles.accessRow, { borderColor: theme.colors.border }]}>
+            <View style={styles.rowCopy}>
+              <AppText variant="label">{family.name}</AppText>
+              <AppText variant="caption" muted>{family.id === pet.circle_id ? "Primary Family" : "Shared Family"}</AppText>
+            </View>
+            {family.id !== pet.circle_id && sourceFamily?.role === "owner" ? (
+              unshareFamilyId === family.id ? (
+                <View style={styles.actions}>
+                  <Button label="Keep" variant="secondary" onPress={() => setUnshareFamilyId(null)} />
+                  <Button label="Remove" variant="danger" loading={unsharePetFamily.isPending} onPress={() => unsharePetFamily.mutate()} />
+                </View>
+              ) : <Button label="Remove" variant="ghost" onPress={() => { setUnshareFamilyId(family.id); setFamilyShareError(""); }} />
+            ) : null}
+          </View>
+        ))}
+        {familyShareError ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{familyShareError}</AppText> : null}
+        {familyShareOpen ? (
+          <View style={styles.transferForm}>
+            <AppText variant="label">Add another Family</AppText>
+            {availableFamilyShares.length ? (
+              <SegmentedControl
+                label="Family to share with"
+                value={familyShareTargetId ?? availableFamilyShares[0]?.id ?? ""}
+                onChange={(value) => { setFamilyShareTargetId(value); setFamilyShareError(""); }}
+                options={availableFamilyShares.map((family) => ({ value: family.id, label: family.name }))}
+              />
+            ) : <AppText variant="caption" muted>Every Family you belong to already has access.</AppText>}
+            <View style={styles.actions}>
+              <Button label="Cancel" variant="secondary" onPress={() => { setFamilyShareOpen(false); setFamilyShareTargetId(null); setFamilyShareError(""); }} />
+              <Button label="Share Pet" loading={sharePetFamily.isPending} disabled={!availableFamilyShares.length || isArchived} onPress={() => { setFamilyShareError(""); sharePetFamily.mutate(); }} />
+            </View>
+          </View>
+        ) : sourceFamily?.role === "owner" ? (
+          <Button label="Share with another Family" variant="secondary" disabled={isArchived || !availableFamilyShares.length} onPress={() => { setFamilyShareOpen(true); setFamilyShareTargetId(availableFamilyShares[0]?.id ?? null); setFamilyShareError(""); }} />
         ) : null}
       </Card>
       <Card style={styles.card}>
@@ -1269,6 +1342,7 @@ const styles = StyleSheet.create({
   shareInlineError: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   activeShares: { gap: 8, paddingTop: 4 },
   shareRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  accessRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 9 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

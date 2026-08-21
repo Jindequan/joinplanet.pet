@@ -7,7 +7,6 @@ BASE="${BASE:-http://127.0.0.1:8081}"
 JSON='Content-Type: application/json'
 PASS=0
 FAIL=0
-KEY_SEQ=0
 
 ok() { PASS=$((PASS + 1)); echo "  ✓ $1"; }
 fail() { FAIL=$((FAIL + 1)); echo "  ✗ $1"; exit 1; }
@@ -15,7 +14,7 @@ expect() {
   local label="$1" expression="$2" payload="$3"
   if jq -e "$expression" >/dev/null <<<"$payload"; then ok "$label"; else echo "$payload"; fail "$label"; fi
 }
-key() { KEY_SEQ=$((KEY_SEQ + 1)); printf 'walkthrough-%s-%s' "$(date +%s)" "$KEY_SEQ"; }
+key() { printf 'walkthrough-%s-%s' "$(date +%s%N)" "$RANDOM"; }
 post() {
   local path="$1" token="$2" body="$3" idempotency="${4:-}"
   local args=(-sS -X POST "$BASE$path" -H "$JSON" -d "$body")
@@ -63,6 +62,17 @@ TOKEN_B=$(jq -r '.token' <<<"$R")
 R=$(post /api/v1/circles/join "$TOKEN_B" "{\"code\":\"$INVITE\"}")
 expect "second user joins Family" ".circle.id == \"$CIRCLE\"" "$R"
 expect "second user sees the shared Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/circles/$CIRCLE/pets" "$TOKEN_B")"
+R=$(post /api/v1/circles "$TOKEN_B" '{"name":"Second Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
+expect "create second Family for Pet sharing" '.circle.id and .invite_code' "$R"
+CIRCLE_2=$(jq -r '.circle.id' <<<"$R")
+INVITE_2=$(jq -r '.invite_code' <<<"$R")
+R=$(post /api/v1/circles/join "$TOKEN" "{\"code\":\"$INVITE_2\"}")
+expect "Pet owner joins the second Family" ".circle.id == \"$CIRCLE_2\"" "$R"
+R=$(post "/api/v1/pets/$PET/families" "$TOKEN" "{\"family_id\":\"$CIRCLE_2\"}")
+expect "share Pet with another Family" ".family_id == \"$CIRCLE_2\"" "$R"
+expect "shared Family sees the Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/circles/$CIRCLE_2/pets" "$TOKEN_B")"
+delete "/api/v1/pets/$PET/families/$CIRCLE_2" "$TOKEN"
+expect "remove shared Family access" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/circles/$CIRCLE_2/pets" "$TOKEN_B")"
 
 echo "== F3 Care plan、Today、历史 =="
 R=$(post "/api/v1/pets/$PET/care-items" "$TOKEN" '{"type":"medication","title":"Heart medicine","description":"With food","rule":{"type":"daily","time":"08:00"}}' "$(key)")

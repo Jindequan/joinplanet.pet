@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { AppText, Button, Card, DateTimeField, QueryErrorState, Screen, SegmentedControl, TextField } from '../src/ui/components';
 import { useTheme } from '../src/core/providers/theme-provider';
+import { useIdempotencyKey } from '../src/core/hooks/use-idempotency-key';
 import { useAccessiblePets, useCircles, useInvalidateApi } from '../src/core/query/hooks';
 import { planetApi, type Pet } from '../src/core/api/planet-api';
 import { ApiError } from '../src/core/network/api-client';
@@ -38,6 +39,7 @@ export default function PetsRoute() {
   const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
   const accessiblePets = useAccessiblePets(circleIds);
   const [activeCircleId, setActiveCircleId] = useState<string>();
+  const createIntent = useIdempotencyKey();
   const circle = circles.data?.circles.find((item) => item.id === activeCircleId) ?? circles.data?.circles[0];
   const invalidate = useInvalidateApi();
   const [adding, setAdding] = useState(false);
@@ -50,8 +52,8 @@ export default function PetsRoute() {
   const [weightG, setWeightG] = useState('');
   const [error, setError] = useState('');
   const create = useMutation({
-    mutationFn: () => planetApi.pets.create(circle!.id, petPayload({ name, species, breed, birth_date: dateKey(birthDate), sex, neutered, weight_g: weightG })),
-    onSuccess: (result) => { setName(''); setBreed(''); setBirthDate(null); setSex(''); setNeutered(false); setWeightG(''); setSpecies('dog'); setAdding(false); invalidate.pets(circle!.id); invalidate.circles(); router.push({ pathname: '/(tabs)/pet', params: { petId: result.pet.id, intent: 'care' } }); },
+    mutationFn: () => planetApi.pets.create(circle!.id, petPayload({ name, species, breed, birth_date: dateKey(birthDate), sex, neutered, weight_g: weightG }), createIntent.current()),
+    onSuccess: (result) => { createIntent.reset(); setName(''); setBreed(''); setBirthDate(null); setSex(''); setNeutered(false); setWeightG(''); setSpecies('dog'); setAdding(false); invalidate.pets(circle!.id); invalidate.circles(); router.push({ pathname: '/(tabs)/pet', params: { petId: result.pet.id, intent: 'care' } }); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Unable to add this Pet.'),
   });
   function submitPet() {

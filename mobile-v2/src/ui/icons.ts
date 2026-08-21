@@ -17,6 +17,7 @@ export { ClockCounterClockwiseIcon } from 'phosphor-react-native/src/icons/Clock
 export { DotsThreeIcon } from 'phosphor-react-native/src/icons/DotsThree';
 export { DogIcon } from 'phosphor-react-native/src/icons/Dog';
 export { EnvelopeSimpleIcon } from 'phosphor-react-native/src/icons/EnvelopeSimple';
+export { ExportIcon } from 'phosphor-react-native/src/icons/Export';
 export { GearSixIcon } from 'phosphor-react-native/src/icons/GearSix';
 export { GlobeHemisphereWestIcon } from 'phosphor-react-native/src/icons/GlobeHemisphereWest';
 export { HouseIcon } from 'phosphor-react-native/src/icons/House';

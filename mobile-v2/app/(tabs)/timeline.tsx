@@ -16,6 +16,7 @@ import {
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
 import { useToast } from "../../src/core/providers/toast-provider";
+import { useIdempotencyKey } from "../../src/core/hooks/use-idempotency-key";
 import {
   useAccessiblePets,
   useCircles,
@@ -131,6 +132,7 @@ export default function TimelineRoute() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [olderEvents, setOlderEvents] = useState<TimelineEvent[]>([]);
   const [hasMore, setHasMore] = useState(true);
+  const createIntent = useIdempotencyKey();
 
   // Journal is a tab route that stays mounted. A deep link from Today must
   // win over the last locally selected Pet, otherwise an alert can open the
@@ -152,12 +154,14 @@ export default function TimelineRoute() {
           text,
           weight_g: weight,
         }),
+        createIntent.current(),
       ),
     onSuccess: () => {
       setText("");
       setWeight("");
       setOccurredAt(new Date());
       setAdding(false);
+      createIntent.reset();
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
       invalidate.alertsAll();

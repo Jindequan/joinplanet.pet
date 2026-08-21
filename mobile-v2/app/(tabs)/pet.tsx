@@ -27,6 +27,7 @@ import {
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
 import { useToast } from "../../src/core/providers/toast-provider";
+import { useIdempotencyKey } from "../../src/core/hooks/use-idempotency-key";
 import {
   useAccessiblePets,
   useCircles,
@@ -264,6 +265,9 @@ export default function PetRoute() {
   const [familyShareError, setFamilyShareError] = useState("");
   const [unshareFamilyId, setUnshareFamilyId] = useState<string | null>(null);
   const handledIntentKey = useRef<string | null>(null);
+  const careCreateIntent = useIdempotencyKey();
+  const medicationCreateIntent = useIdempotencyKey();
+  const shareCreateIntent = useIdempotencyKey();
 
   const resetCareForm = () => {
     setCareType("custom");
@@ -295,9 +299,11 @@ export default function PetRoute() {
           every_n: everyN,
           time_of_day: timeOfDay,
         }),
+        careCreateIntent.current(),
       ),
     onSuccess: () => {
       resetCareForm();
+      careCreateIntent.reset();
       invalidate.tasks(pet!.id);
       invalidate.todayAll();
       showToast({ message: "Care plan added to Today.", actionLabel: "Open Today", onAction: () => router.replace("/(tabs)") });
@@ -351,7 +357,7 @@ export default function PetRoute() {
         dose: medDose.trim(),
         schedule: medSchedule.trim(),
         note: medNote.trim(),
-      }),
+      }, medicationCreateIntent.current()),
     onSuccess: () => {
       setMedName("");
       setMedDose("");
@@ -359,6 +365,7 @@ export default function PetRoute() {
       setMedNote("");
       setError("");
       setForm(null);
+      medicationCreateIntent.reset();
       invalidate.medications(pet!.id);
       invalidate.timeline(pet!.id);
       showToast({ message: "Medication added to the record." });
@@ -528,13 +535,14 @@ export default function PetRoute() {
     mutationFn: () => {
       const parsed = shareSchema.safeParse({ kind: shareKind, ttl_hours: shareTtl, days: shareDays });
       if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check the sharing options.");
-      return planetApi.pets.createShare(pet!.id, sharePayload(parsed.data));
+      return planetApi.pets.createShare(pet!.id, sharePayload(parsed.data), shareCreateIntent.current());
     },
     onSuccess: (result) => {
       setCreatedShare({ share: result.share, url: `${appConfig.publicWebBaseUrl}/s/${result.token}` });
       setCopiedShare(false);
       setShareError("");
       invalidate.shares(pet!.id);
+      shareCreateIntent.reset();
     },
     onError: (err) => setShareError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Unable to create the share link."),
   });

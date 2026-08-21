@@ -62,7 +62,7 @@ export type ExportResponse = Record<string, unknown> & { pet: Pet; profile: Prof
 export type ShareViewResponse = { kind: Share['kind']; expires_at: string; created_at: string; data: Record<string, unknown> };
 
 const id = encodeURIComponent;
-const idempotencyKey = () => `mobile-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+export const createIdempotencyKey = () => `mobile-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export const planetApi = {
   auth: {
@@ -79,7 +79,7 @@ export const planetApi = {
   circles: {
     list: () => apiClient.get<{ circles: Circle[] }>('/circles'),
     detail: (circleId: string) => apiClient.get<CircleDetailResponse>(`/circles/${id(circleId)}`),
-    create: (name: string, timezone?: string) => apiClient.post<{ circle: Circle; invite_code: string }>('/circles', { name, timezone }, { headers: { 'Idempotency-Key': idempotencyKey() } }),
+    create: (name: string, timezone?: string, requestKey = createIdempotencyKey()) => apiClient.post<{ circle: Circle; invite_code: string }>('/circles', { name, timezone }, { headers: { 'Idempotency-Key': requestKey } }),
     update: (circleId: string, body: { name?: string; timezone?: string }) => apiClient.patch<{ circle: Circle }>(`/circles/${id(circleId)}`, body),
     refreshInvite: (circleId: string) => apiClient.post<{ invite_code: string }>(`/circles/${id(circleId)}/invite/refresh`),
     join: (code: string) => apiClient.post<{ circle: Circle }>('/circles/join', { code }),
@@ -99,7 +99,7 @@ export const planetApi = {
     updateNotificationPrefs: (circleId: string, body: Partial<NotificationPrefs>) => apiClient.put<{ prefs: NotificationPrefs }>(`/circles/${id(circleId)}/notification-prefs`, body),
   },
   pets: {
-    create: (circleId: string, body: { name: string; species: Pet['species']; breed?: string; birth_date?: string; sex?: Pet['sex']; neutered?: boolean; weight_g?: number }) => apiClient.post<{ pet: Pet }>(`/circles/${id(circleId)}/pets`, body, { headers: { 'Idempotency-Key': idempotencyKey() } }),
+    create: (circleId: string, body: { name: string; species: Pet['species']; breed?: string; birth_date?: string; sex?: Pet['sex']; neutered?: boolean; weight_g?: number }, requestKey = createIdempotencyKey()) => apiClient.post<{ pet: Pet }>(`/circles/${id(circleId)}/pets`, body, { headers: { 'Idempotency-Key': requestKey } }),
     list: (circleId: string) => planetApi.circles.pets(circleId),
     get: (petId: string) => apiClient.get<PetResponse>(`/pets/${id(petId)}`),
     export: (petId: string) => apiClient.get<ExportResponse>(`/pets/${id(petId)}/export`),
@@ -114,10 +114,10 @@ export const planetApi = {
     grantAccess: (petId: string, body: { user_id: string; role: Role; expires_at?: string }) => apiClient.post<{ grant: Record<string, unknown> }>(`/pets/${id(petId)}/access-grants`, body),
     revokeAccess: (petId: string, grantId: string) => apiClient.delete<void>(`/pets/${id(petId)}/access-grants/${id(grantId)}`),
     medications: (petId: string) => apiClient.get<{ medications: Medication[] }>(`/pets/${id(petId)}/medications`),
-    createMedication: (petId: string, body: { name: string; dose?: string; schedule?: string; note?: string }) => apiClient.post<{ medication: Medication }>(`/pets/${id(petId)}/medications`, body, { headers: { 'Idempotency-Key': idempotencyKey() } }),
+    createMedication: (petId: string, body: { name: string; dose?: string; schedule?: string; note?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ medication: Medication }>(`/pets/${id(petId)}/medications`, body, { headers: { 'Idempotency-Key': requestKey } }),
     tasks: (petId: string) => apiClient.get<{ tasks: Task[] }>(`/pets/${id(petId)}/tasks`),
-    createCareItem: (petId: string, body: { type: CareItem['type']; title: string; description?: string; rule: { type: 'daily' | 'weekly' | 'monthly' | 'interval'; interval?: number; days?: number[]; day?: number; time?: string; start_date?: string; end_date?: string } }) => apiClient.post<CareItemCreateResponse>(`/pets/${id(petId)}/care-items`, body, { headers: { 'Idempotency-Key': idempotencyKey() } }),
-    createTask: (petId: string, body: { title: string; schedule: Record<string, unknown>; time_of_day?: string }) => apiClient.post<{ task: Task }>(`/pets/${id(petId)}/tasks`, body, { headers: { 'Idempotency-Key': idempotencyKey() } }),
+    createCareItem: (petId: string, body: { type: CareItem['type']; title: string; description?: string; rule: { type: 'daily' | 'weekly' | 'monthly' | 'interval'; interval?: number; days?: number[]; day?: number; time?: string; start_date?: string; end_date?: string } }, requestKey = createIdempotencyKey()) => apiClient.post<CareItemCreateResponse>(`/pets/${id(petId)}/care-items`, body, { headers: { 'Idempotency-Key': requestKey } }),
+    createTask: (petId: string, body: { title: string; schedule: Record<string, unknown>; time_of_day?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ task: Task }>(`/pets/${id(petId)}/tasks`, body, { headers: { 'Idempotency-Key': requestKey } }),
     timeline: (petId: string, params?: { before?: string; before_id?: string; limit?: number }) => {
       const query = new URLSearchParams();
       if (params?.before) query.set('before', params.before);
@@ -126,9 +126,9 @@ export const planetApi = {
       const suffix = query.toString() ? `?${query.toString()}` : '';
       return apiClient.get<{ events: TimelineEvent[] }>(`/pets/${id(petId)}/timeline${suffix}`);
     },
-    createEvent: (petId: string, body: { type: string; occurred_at: string; payload: Record<string, unknown> }) => apiClient.post<{ event: TimelineEvent }>(`/pets/${id(petId)}/timeline`, body, { headers: { 'Idempotency-Key': idempotencyKey() } }),
+    createEvent: (petId: string, body: { type: string; occurred_at: string; payload: Record<string, unknown> }, requestKey = createIdempotencyKey()) => apiClient.post<{ event: TimelineEvent }>(`/pets/${id(petId)}/timeline`, body, { headers: { 'Idempotency-Key': requestKey } }),
     shares: (petId: string) => apiClient.get<{ shares: Share[] }>(`/pets/${id(petId)}/shares`),
-    createShare: (petId: string, body: { kind: Share['kind']; ttl_hours: 24 | 72 | 168; options?: Record<string, unknown> }) => apiClient.post<{ share: Share; token: string }>(`/pets/${id(petId)}/shares`, body, { headers: { 'Idempotency-Key': idempotencyKey() } }),
+    createShare: (petId: string, body: { kind: Share['kind']; ttl_hours: 24 | 72 | 168; options?: Record<string, unknown> }, requestKey = createIdempotencyKey()) => apiClient.post<{ share: Share; token: string }>(`/pets/${id(petId)}/shares`, body, { headers: { 'Idempotency-Key': requestKey } }),
     transfer: (petId: string, to_circle_id: string) => apiClient.post<{ transfer: Transfer }>(`/pets/${id(petId)}/transfer`, { to_circle_id }),
   },
   medications: {

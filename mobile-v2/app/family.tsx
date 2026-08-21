@@ -4,9 +4,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
-import { AppText, Button, Card, QueryErrorState, Screen, TextField } from "../src/ui/components";
+import { AppText, Button, Card, QueryErrorState, Screen, SegmentedControl, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
 import { useToast } from "../src/core/providers/toast-provider";
+import { useIdempotencyKey } from "../src/core/hooks/use-idempotency-key";
 import {
   useCircle,
   useCirclePets,
@@ -26,6 +27,8 @@ import {
   UsersThreeIcon,
 } from "../src/ui/icons";
 
+type FamilySection = "overview" | "people" | "manage";
+
 function deviceTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
@@ -36,6 +39,8 @@ export default function FamilyRoute() {
   const params = useLocalSearchParams<{ mode?: string }>();
   const circles = useCircles();
   const [activeCircleId, setActiveCircleId] = useState<string>();
+  const [familySection, setFamilySection] = useState<FamilySection>("overview");
+  const createIntent = useIdempotencyKey();
   const circle =
     circles.data?.circles.find((item) => item.id === activeCircleId) ??
     circles.data?.circles[0];
@@ -61,8 +66,9 @@ export default function FamilyRoute() {
     if (params.mode === "join" || params.mode === "create") setMode(params.mode);
   }, [params.mode]);
   const create = useMutation({
-    mutationFn: () => planetApi.circles.create(name.trim(), deviceTimezone()),
+    mutationFn: () => planetApi.circles.create(name.trim(), deviceTimezone(), createIntent.current()),
     onSuccess: (result) => {
+      createIntent.reset();
       setName("");
       setMode("none");
       setInvite(result.invite_code);
@@ -324,7 +330,17 @@ export default function FamilyRoute() {
               </View>
             </View>
           </LinearGradient>
-          <Card style={styles.petCard}>
+          <SegmentedControl
+            label="Family workspace"
+            value={familySection}
+            onChange={setFamilySection}
+            options={[
+              { value: "overview", label: "Overview" },
+              { value: "people", label: "People" },
+              { value: "manage", label: "Settings" },
+            ]}
+          />
+          {familySection === "overview" ? <Card style={styles.petCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.rowCopy}>
                 <AppText variant="heading">Pets in this Family</AppText>
@@ -340,8 +356,8 @@ export default function FamilyRoute() {
               </Pressable>
             )) : <View style={styles.petEmpty}><PawPrintIcon size={19} color={theme.colors.brandStrong} weight="duotone" /><AppText variant="caption" muted>No Pets in this Family yet.</AppText><Button label="Add a Pet" variant="secondary" onPress={() => router.push("/(tabs)/pets")} /></View>}
             {pets.data?.pets.length && pets.data.pets.length > 4 ? <AppText variant="caption" muted style={styles.morePets}>Showing 4 of {pets.data.pets.length} Pets · open All Pets to see the rest.</AppText> : null}
-          </Card>
-          <Card style={styles.inviteCard}>
+          </Card> : null}
+          {familySection === "overview" ? <Card style={styles.inviteCard}>
             <View style={styles.inviteHeader}>
               <View>
                 <AppText variant="heading">Bring someone in</AppText>
@@ -398,8 +414,8 @@ export default function FamilyRoute() {
                 onPress={() => refresh.mutate()}
               />
             ) : <AppText variant="caption" muted>Only the Family owner can create or refresh the invite code.</AppText>}
-          </Card>
-          {circle.role === "owner" ? (
+          </Card> : null}
+          {circle.role === "owner" && familySection === "overview" ? (
             <Card style={styles.transferCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.rowCopy}>
@@ -444,6 +460,7 @@ export default function FamilyRoute() {
               )}
             </Card>
           ) : null}
+          {familySection === "people" ? <>
           <View style={styles.sectionHeader}>
             <View>
               <AppText variant="title">The people</AppText>
@@ -544,7 +561,8 @@ export default function FamilyRoute() {
               </View>
             ))}
           </Card>
-          <View style={styles.actions}>
+          </> : null}
+          {familySection === "manage" ? <View style={styles.actions}>
             {circle.role === "owner" ? <Button
               label="Refresh invite"
               variant="secondary"
@@ -559,8 +577,8 @@ export default function FamilyRoute() {
                 setError("");
               }}
             />
-          </View>
-          <Card style={styles.managementCard}>
+          </View> : null}
+          {familySection === "manage" ? <Card style={styles.managementCard}>
             <View style={styles.sectionHeader}>
               <View>
                 <AppText variant="heading">Family settings</AppText>
@@ -598,7 +616,7 @@ export default function FamilyRoute() {
                 </View>
               </View>
             ) : null}
-          </Card>
+          </Card> : null}
         </>
       ) : (
         <Card style={styles.emptyCard}>

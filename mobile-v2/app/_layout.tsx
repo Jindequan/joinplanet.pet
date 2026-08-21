@@ -21,7 +21,7 @@ function RootNavigator() {
     if (status === 'loading') return;
     const rootSegment = segments[0];
     const inAuth = rootSegment === '(auth)';
-    const inProtectedApp = rootSegment === '(tabs)' || rootSegment === 'account' || rootSegment === 'settings' || rootSegment === 'family' || rootSegment === 'pets';
+    const inProtectedApp = rootSegment === '(tabs)' || rootSegment === 'account' || rootSegment === 'settings' || rootSegment === 'privacy' || rootSegment === 'family' || rootSegment === 'pets';
     if (status === 'authenticated' && inAuth) router.replace('/(tabs)');
     if (status === 'unauthenticated' && inProtectedApp) router.replace('/(auth)/welcome');
   }, [segments, status]);

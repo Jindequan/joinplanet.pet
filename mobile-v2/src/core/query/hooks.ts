@@ -104,6 +104,7 @@ export function useInvalidateApi() {
     circles: () => client.invalidateQueries({ queryKey: queryKeys.circles }),
     circle: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.circle(circleId) }),
     pets: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.pets(circleId) }),
+    petsAll: () => client.invalidateQueries({ queryKey: ['pets'] }),
     pet: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.pet(petId) }),
     today: (circleId: string) => client.invalidateQueries({ queryKey: ['today', circleId] }),
     todayAll: () => client.invalidateQueries({ queryKey: ['today'] }),

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Clipboard from "expo-clipboard";
 import { useMutation } from "@tanstack/react-query";
 import { AppText, Button, Card, Screen, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
@@ -35,6 +36,7 @@ export default function FamilyRoute() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [invite, setInvite] = useState("");
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const create = useMutation({
     mutationFn: () => planetApi.circles.create(name.trim()),
@@ -67,8 +69,20 @@ export default function FamilyRoute() {
   });
   const refresh = useMutation({
     mutationFn: () => planetApi.circles.refreshInvite(circle!.id),
-    onSuccess: (result) => setInvite(result.invite_code),
+    onSuccess: (result) => {
+      setInvite(result.invite_code);
+      setCopied(false);
+    },
   });
+  async function copyInvite() {
+    if (!invite) return;
+    try {
+      await Clipboard.setStringAsync(invite);
+      setCopied(true);
+    } catch {
+      setError("We could not copy the invite code. Press and hold it instead.");
+    }
+  }
   function submitForm() {
     const parsed =
       mode === "create"
@@ -240,9 +254,14 @@ export default function FamilyRoute() {
                     {invite}
                   </AppText>
                   <AppText variant="caption" muted>
-                    Press and hold the code to copy it.
+                    Share this code with someone you trust.
                   </AppText>
                 </View>
+                <Button
+                  label={copied ? "Copied" : "Copy code"}
+                  variant="secondary"
+                  onPress={() => void copyInvite()}
+                />
               </View>
             ) : (
               <Button

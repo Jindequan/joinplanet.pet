@@ -14,7 +14,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const insets = useSafeAreaInsets();
   const dark = theme.colors.background === theme.colors.inverseSurface;
   return (
-    <View style={[styles.host, { bottom: Math.max(insets.bottom, 12), pointerEvents: 'box-none' }]}>
+    <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) }]}>
       <View style={[styles.glass, theme.shadow.floating, { borderColor: theme.colors.border, borderRadius: theme.radius.sheet }]}>
         <BlurView intensity={78} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
         <View style={[styles.tint, { backgroundColor: dark ? 'rgba(15,23,42,0.76)' : 'rgba(255,255,255,0.78)' }]} />

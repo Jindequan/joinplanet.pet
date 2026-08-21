@@ -97,7 +97,7 @@ function FilterOption({ icon, label, detail, selected, onPress }: { icon: React.
 }
 
 const styles = StyleSheet.create({
-  trigger: { minHeight: 42, maxWidth: 190, paddingHorizontal: 13, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  trigger: { minHeight: 42, maxWidth: 160, flexShrink: 1, paddingHorizontal: 11, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7 },
   triggerLabel: { flexShrink: 1 },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(40,52,58,0.42)' },

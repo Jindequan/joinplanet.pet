@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { AppText, Button, Card, QueryErrorState, Screen, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
+import { useToast } from "../src/core/providers/toast-provider";
 import {
   useCircle,
   useCirclePets,
@@ -31,6 +32,8 @@ function deviceTimezone() {
 
 export default function FamilyRoute() {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const circles = useCircles();
   const [activeCircleId, setActiveCircleId] = useState<string>();
   const circle =
@@ -41,7 +44,7 @@ export default function FamilyRoute() {
   const incomingTransfers = useTransfers(circle?.role === "owner" ? circle.id : undefined, "incoming");
   const outgoingTransfers = useTransfers(circle?.role === "owner" ? circle.id : undefined, "outgoing");
   const invalidate = useInvalidateApi();
-  const [mode, setMode] = useState<"none" | "create" | "join">("none");
+  const [mode, setMode] = useState<"none" | "create" | "join">(params.mode === "join" ? "join" : params.mode === "create" ? "create" : "none");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [invite, setInvite] = useState("");
@@ -52,6 +55,10 @@ export default function FamilyRoute() {
   const [familyTimezone, setFamilyTimezone] = useState("");
   const [familyAction, setFamilyAction] = useState<"leave" | "delete" | null>(null);
   const [memberAction, setMemberAction] = useState<string | null>(null);
+  const [ownershipTarget, setOwnershipTarget] = useState<string | null>(null);
+  React.useEffect(() => {
+    if (params.mode === "join" || params.mode === "create") setMode(params.mode);
+  }, [params.mode]);
   const create = useMutation({
     mutationFn: () => planetApi.circles.create(name.trim(), deviceTimezone()),
     onSuccess: (result) => {
@@ -60,6 +67,7 @@ export default function FamilyRoute() {
       setInvite(result.invite_code);
       setActiveCircleId(result.circle.id);
       invalidate.circles();
+      showToast({ message: "Family created. Now add a Pet to begin care." });
     },
     onError: (err) =>
       setError(
@@ -73,6 +81,7 @@ export default function FamilyRoute() {
       setMode("none");
       setActiveCircleId(result.circle.id);
       invalidate.circles();
+      showToast({ message: "You joined the Family." });
     },
     onError: (err) =>
       setError(
@@ -86,7 +95,9 @@ export default function FamilyRoute() {
     onSuccess: (result) => {
       setInvite(result.invite_code);
       setCopied(false);
+      showToast({ message: "Invite code refreshed." });
     },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to refresh the invite code."),
   });
   const updateFamily = useMutation({
     mutationFn: () => planetApi.circles.update(circle!.id, { name: familyName.trim(), timezone: familyTimezone.trim() }),
@@ -110,8 +121,10 @@ export default function FamilyRoute() {
     mutationFn: (userId: string) => planetApi.circles.transfer(circle!.id, userId),
     onSuccess: () => {
       setError("");
+      setOwnershipTarget(null);
       invalidate.circles();
       invalidate.circle(circle!.id);
+      showToast({ message: "Family ownership transferred." });
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to transfer ownership."),
   });
@@ -155,6 +168,7 @@ export default function FamilyRoute() {
     try {
       await Clipboard.setStringAsync(invite);
       setCopied(true);
+      showToast({ message: "Invite code copied." });
     } catch {
       setError("We could not copy the invite code. Press and hold it instead.");
     }
@@ -502,16 +516,26 @@ export default function FamilyRoute() {
                   </View>
                 ) : circle.role === "owner" ? (
                   <View style={styles.memberActions}>
-                    <Button label="Make owner" variant="ghost" onPress={() => transferOwnership.mutate(member.user_id)} disabled={transferOwnership.isPending} />
+                    <Button label="Make owner" variant="ghost" onPress={() => { setOwnershipTarget(member.user_id); setMemberAction(null); setError(""); }} disabled={transferOwnership.isPending} />
                     <Button label="Remove" variant="danger" onPress={() => setMemberAction(member.user_id)} disabled={removeMember.isPending} />
                   </View>
                 ) : null}
                 {memberAction === member.user_id ? (
-                  <View style={[styles.confirmBox, { backgroundColor: theme.colors.accentSurface }]}>
+                  <View style={[styles.confirmBox, styles.memberConfirmBox, { backgroundColor: theme.colors.accentSurface }]}>
                     <AppText variant="caption">Remove {member.display_name || "this member"} from the Family?</AppText>
                     <View style={styles.actions}>
                       <Button label="Keep" variant="secondary" onPress={() => setMemberAction(null)} />
                       <Button label="Remove member" variant="danger" loading={removeMember.isPending} onPress={() => removeMember.mutate()} />
+                    </View>
+                  </View>
+                ) : null}
+                {ownershipTarget === member.user_id ? (
+                  <View style={[styles.confirmBox, styles.memberConfirmBox, { backgroundColor: theme.colors.brandSoft }]}>
+                    <AppText variant="label">Transfer Family ownership?</AppText>
+                    <AppText variant="caption" muted>{member.display_name || member.email || "This caregiver"} will become the owner. You will remain in the Family as a caregiver and lose owner-only controls.</AppText>
+                    <View style={styles.actions}>
+                      <Button label="Keep ownership" variant="secondary" onPress={() => setOwnershipTarget(null)} />
+                      <Button label="Transfer ownership" loading={transferOwnership.isPending} onPress={() => transferOwnership.mutate(member.user_id)} />
                     </View>
                   </View>
                 ) : null}
@@ -773,6 +797,7 @@ const styles = StyleSheet.create({
   member: {
     minHeight: 72,
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: 11,
   },
@@ -783,7 +808,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  memberCopy: { flex: 1, gap: 2 },
+  memberCopy: { flex: 1, minWidth: 120, gap: 2 },
+  memberConfirmBox: { width: "100%" },
   ownerPill: {
     minHeight: 27,
     paddingHorizontal: 8,

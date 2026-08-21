@@ -19,6 +19,7 @@ import {
   Card,
   DateTimeField,
   PageHeader,
+  PetFilterSelector,
   QueryErrorState,
   Screen,
   SegmentedControl,
@@ -31,6 +32,7 @@ import {
   useCircles,
   useInvalidateApi,
   useMedications,
+  useMe,
   usePet,
   usePetShares,
   useTasks,
@@ -90,7 +92,7 @@ function scheduleLabel(task: Task) {
   return "Daily";
 }
 
-function CareRow({ task, onActions }: { task: Task; onActions: () => void }) {
+function CareRow({ task, onActions }: { task: Task; onActions?: () => void }) {
   const { theme } = useTheme();
   return (
     <View style={styles.careRow}>
@@ -110,15 +112,17 @@ function CareRow({ task, onActions }: { task: Task; onActions: () => void }) {
           {task.time_of_day ? ` · ${task.time_of_day}` : ""}
         </AppText>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Actions for ${task.title}`}
-        onPress={onActions}
-        hitSlop={8}
-        style={styles.rowMenu}
-      >
-        <DotsThreeIcon size={22} color={theme.colors.textSubtle} weight="bold" />
-      </Pressable>
+      {onActions ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Actions for ${task.title}`}
+          onPress={onActions}
+          hitSlop={8}
+          style={styles.rowMenu}
+        >
+          <DotsThreeIcon size={22} color={theme.colors.textSubtle} weight="bold" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -183,6 +187,7 @@ export default function PetRoute() {
   const { showToast } = useToast();
   const router = useRouter();
   const params = useLocalSearchParams<{ petId?: string; intent?: string }>();
+  const me = useMe();
   const circles = useCircles();
   const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
   const accessiblePets = useAccessiblePets(circleIds);
@@ -193,9 +198,15 @@ export default function PetRoute() {
     accessiblePets.pets[0];
   const detail = usePet(listedPet?.id);
   const pet = detail.data?.pet ?? listedPet;
+  const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
+  const canManagePet = Boolean(
+    pet && me.data?.user.id &&
+      (pet.current_owner_user_id === me.data.user.id ||
+        (!pet.current_owner_user_id && sourceFamily?.role === "owner")),
+  );
   const medications = useMedications(pet?.id);
   const tasks = useTasks(pet?.id);
-  const shares = usePetShares(pet?.id);
+  const shares = usePetShares(pet?.id, canManagePet);
   const invalidate = useInvalidateApi();
 
   const [form, setForm] = useState<"care" | "medication" | "profile" | null>(null);
@@ -536,11 +547,13 @@ export default function PetRoute() {
   });
   const taskList = useMemo(() => tasks.data?.tasks ?? [], [tasks.data?.tasks]);
   const isArchived = Boolean(pet?.archived_at);
-  const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
   const targetFamilies = circles.data?.circles.filter((item) => item.id !== pet?.circle_id) ?? [];
   const linkedFamilyIds = new Set(pet?.family_ids?.length ? pet.family_ids : pet?.circle_id ? [pet.circle_id] : []);
   const linkedFamilies = circles.data?.circles.filter((item) => linkedFamilyIds.has(item.id)) ?? [];
   const availableFamilyShares = circles.data?.circles.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
+  const knownFamilyRoles = linkedFamilies.map((family) => family.role).filter(Boolean);
+  const isReadOnlyMember = knownFamilyRoles.length > 0 && knownFamilyRoles.every((role) => role === "viewer" || role === "read_only");
+  const canEditPet = Boolean(pet && !isArchived && !isReadOnlyMember);
 
   useEffect(() => {
     const intentKey = `${selectedPetId ?? pet?.id ?? ""}:${params.intent ?? ""}`;
@@ -652,6 +665,7 @@ export default function PetRoute() {
 
   if (
     circles.isLoading ||
+    me.isLoading ||
     accessiblePets.isLoading ||
     (pet && detail.isLoading)
   )
@@ -660,7 +674,7 @@ export default function PetRoute() {
         <ActivityIndicator color={theme.colors.brand} />
       </Screen>
     );
-  if (circles.isError || accessiblePets.isError || detail.isError || medications.isError || tasks.isError)
+  if (me.isError || circles.isError || accessiblePets.isError || detail.isError || medications.isError || tasks.isError)
     return (
       <Screen contentContainerStyle={styles.center}>
         <QueryErrorState
@@ -695,6 +709,7 @@ export default function PetRoute() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <PageHeader eyebrow="YOUR PET / CARE" title={pet.name} />
+      {accessiblePets.pets.length > 1 ? <View style={styles.petSwitcher}><AppText variant="caption" muted>SWITCH PET</AppText><PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") router.replace({ pathname: "/(tabs)/pet", params: { petId: next.petId } }); else router.replace("/(tabs)/pets"); }} /></View> : null}
       <LinearGradient
         colors={[theme.colors.accentSurface, theme.colors.brandSoft]}
         start={{ x: 0, y: 0 }}
@@ -722,9 +737,9 @@ export default function PetRoute() {
       </LinearGradient>
       <View style={styles.quickActions}>
         <Button
-          label="Add care"
-          variant="secondary"
-          disabled={isArchived}
+            label="Add care"
+            variant="secondary"
+          disabled={isArchived || !canManagePet}
           icon={
             <PlusIcon
               size={17}
@@ -780,7 +795,7 @@ export default function PetRoute() {
           <Button
             label="Edit details"
             variant="ghost"
-            disabled={isArchived}
+            disabled={isArchived || !canEditPet}
             onPress={() => {
               setEditName(pet.name);
               setEditSpecies(pet.species);
@@ -965,7 +980,7 @@ export default function PetRoute() {
               <AppText variant="label">{family.name}</AppText>
               <AppText variant="caption" muted>{family.id === pet.circle_id ? "Primary Family" : "Shared Family"}</AppText>
             </View>
-            {family.id !== pet.circle_id && sourceFamily?.role === "owner" ? (
+            {family.id !== pet.circle_id && canManagePet ? (
               unshareFamilyId === family.id ? (
                 <View style={styles.actions}>
                   <Button label="Keep" variant="secondary" onPress={() => setUnshareFamilyId(null)} />
@@ -992,7 +1007,7 @@ export default function PetRoute() {
               <Button label="Share Pet" loading={sharePetFamily.isPending} disabled={!availableFamilyShares.length || isArchived} onPress={() => { setFamilyShareError(""); sharePetFamily.mutate(); }} />
             </View>
           </View>
-        ) : sourceFamily?.role === "owner" ? (
+        ) : canManagePet ? (
           <Button label="Share with another Family" variant="secondary" disabled={isArchived || !availableFamilyShares.length} onPress={() => { setFamilyShareOpen(true); setFamilyShareTargetId(availableFamilyShares[0]?.id ?? null); setFamilyShareError(""); }} />
         ) : null}
       </Card>
@@ -1010,6 +1025,7 @@ export default function PetRoute() {
             </AppText>
           </View>
         </View>
+        {canManagePet ? <>
         <SegmentedControl
           label="What to share"
           value={shareKind}
@@ -1083,6 +1099,11 @@ export default function PetRoute() {
             ))}
           </View>
         ) : null}
+        </> : (
+          <AppText variant="caption" muted>
+            Only the current Pet owner can create or revoke external handoff links. Ask them to share a care card with you.
+          </AppText>
+        )}
       </Card>
       </> : null}
       {petSection === "care" ? <>
@@ -1095,7 +1116,7 @@ export default function PetRoute() {
               {taskList.length === 1 ? "item" : "items"}
             </AppText>
           </View>
-          <Button
+          {canManagePet ? <Button
             label="Add care"
             variant="secondary"
             disabled={isArchived}
@@ -1112,7 +1133,7 @@ export default function PetRoute() {
               setForm("care");
               setError("");
             }}
-          />
+          /> : <AppText variant="caption" muted>Owner-managed</AppText>}
         </View>
         {taskList.length === 0 ? (
           <AppText muted>
@@ -1123,11 +1144,11 @@ export default function PetRoute() {
             <View key={task.id}>
               <CareRow
                 task={task}
-                onActions={() => {
+                onActions={canManagePet ? () => {
                   setTaskMenuId((current) => (current === task.id ? null : task.id));
                   setConfirmTaskId(null);
                   setError("");
-                }}
+                } : undefined}
               />
               {taskMenuId === task.id ? (
                 <View style={styles.taskActions}>
@@ -1170,7 +1191,7 @@ export default function PetRoute() {
             </View>
           ))
         )}
-        {form === "care" ? (
+        {form === "care" && canManagePet ? (
           <View style={styles.form}>
             <SegmentedControl
               label="Care type"
@@ -1294,7 +1315,7 @@ export default function PetRoute() {
           <Button
             label="Add"
             variant="secondary"
-            disabled={isArchived}
+            disabled={isArchived || !canEditPet}
             onPress={() => {
               setPetSection("care");
               setEditingMedicationId(null);
@@ -1321,16 +1342,16 @@ export default function PetRoute() {
               ) : null}
               {med.note ? <AppText variant="caption" muted>{med.note}</AppText> : null}
             </View>
-            {!isArchived ? (
+            {!isArchived && canEditPet ? (
               <View style={styles.medicationActions}>
-                <Pressable
+                {canManagePet ? <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Edit ${med.name}`}
                   onPress={() => openMedicationEditor(med)}
                   hitSlop={6}
                 >
                   <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>Edit</AppText>
-                </Pressable>
+                </Pressable> : null}
                 {!med.ended_on ? (
                   <Pressable
                     accessibilityRole="button"
@@ -1376,7 +1397,7 @@ export default function PetRoute() {
             </View>
           );
         })() : null}
-        {form === "medication" ? (
+        {form === "medication" && canEditPet ? (
           <View style={styles.form}>
             <TextField
               label="Medication name"
@@ -1443,7 +1464,7 @@ export default function PetRoute() {
         {error ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
         {exportError ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{exportError}</AppText> : null}
         {transferNotice ? <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{transferNotice}</AppText> : null}
-        {sourceFamily?.role === "owner" && !isArchived ? (
+        {canManagePet && !isArchived ? (
           transferOpen ? (
             <View style={styles.transferForm}>
               <AppText variant="label">Move {pet.name} to another Family</AppText>
@@ -1466,7 +1487,7 @@ export default function PetRoute() {
             <Button label="Move to another Family" variant="secondary" onPress={() => { setTransferOpen(true); setTransferTargetId(targetFamilies[0]?.id ?? null); setTransferNotice(""); setTransferError(""); }} />
           )
         ) : null}
-        {lifecycleAction ? (
+        {canManagePet && lifecycleAction ? (
           <View style={[styles.confirmBox, { backgroundColor: lifecycleAction === "delete" ? theme.colors.surfaceRaised : theme.colors.accentSurface }]}>
             <AppText variant="label">{lifecycleAction === "archive" ? `Archive ${pet.name}?` : lifecycleAction === "restore" ? `Restore ${pet.name}?` : `Delete ${pet.name} permanently?`}</AppText>
             <AppText variant="caption" muted>
@@ -1482,12 +1503,16 @@ export default function PetRoute() {
               />
             </View>
           </View>
-          ) : (
+          ) : canManagePet ? (
             <View style={styles.actions}>
               <Button label="Export record" variant="secondary" loading={exportPet.isPending} onPress={() => { setExportError(""); exportPet.mutate(); }} />
               {isArchived ? <Button label="Restore Pet" variant="secondary" onPress={() => setLifecycleAction("restore")} /> : <Button label="Archive Pet" variant="secondary" onPress={() => setLifecycleAction("archive")} />}
             <Button label="Delete Pet" variant="danger" onPress={() => setLifecycleAction("delete")} />
           </View>
+        ) : (
+          <AppText variant="caption" muted>
+            Pet lifecycle controls are limited to the current Pet owner. You can still care for this record within your access level.
+          </AppText>
         )}
       </Card> : null}
     </Screen>
@@ -1503,6 +1528,7 @@ const styles = StyleSheet.create({
     paddingBottom: 140,
     gap: 14,
   },
+  petSwitcher: { gap: 7 },
   hero: {
     minHeight: 158,
     borderRadius: 24,

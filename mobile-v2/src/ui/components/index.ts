@@ -3,6 +3,7 @@ export * from './button';
 export * from './card';
 export * from './date-time-field';
 export * from './optimized-list';
+export * from './orbit-context-bar';
 export * from './page-header';
 export * from './pet-filter-selector';
 export * from './query-error-state';

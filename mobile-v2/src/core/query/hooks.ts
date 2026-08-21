@@ -82,8 +82,8 @@ export function useTasks(petId?: string) {
   return useQuery({ queryKey: queryKeys.tasks(petId ?? ''), queryFn: () => planetApi.pets.tasks(petId as string), enabled: Boolean(petId) });
 }
 
-export function usePetShares(petId?: string) {
-  return useQuery({ queryKey: queryKeys.shares(petId ?? ''), queryFn: () => planetApi.pets.shares(petId as string), enabled: Boolean(petId) });
+export function usePetShares(petId?: string, enabled = true) {
+  return useQuery({ queryKey: queryKeys.shares(petId ?? ''), queryFn: () => planetApi.pets.shares(petId as string), enabled: Boolean(petId) && enabled });
 }
 
 export function useTransfers(circleId?: string, direction: 'incoming' | 'outgoing' = 'incoming') {

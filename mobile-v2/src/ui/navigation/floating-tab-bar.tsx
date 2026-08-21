@@ -28,7 +28,12 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
               if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
             };
             const onLongPress = () => navigation.emit({ type: 'tabLongPress', target: route.key });
-            return <Pressable key={route.key} accessibilityRole="tab" accessibilityState={{ selected: focused }} accessibilityLabel={options?.tabBarAccessibilityLabel ?? options?.title} onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [styles.item, pressed && { opacity: theme.motion.pressOpacity }]}>{focused ? <View style={styles.selected}><Icon color={theme.colors.brandStrong} size={22} weight="duotone" /><AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{options?.title}</AppText></View> : <Icon color={theme.colors.textSubtle} size={22} weight="regular" />}</Pressable>;
+            return <Pressable key={route.key} accessibilityRole="tab" accessibilityState={{ selected: focused }} accessibilityLabel={options?.tabBarAccessibilityLabel ?? options?.title} onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [styles.item, pressed && { opacity: theme.motion.pressOpacity }]}>
+              <View style={[styles.itemInner, focused && { backgroundColor: theme.colors.brandSoft }]}>
+                <Icon color={focused ? theme.colors.brandStrong : theme.colors.textSubtle} size={20} weight={focused ? 'duotone' : 'regular'} />
+                <AppText variant="caption" style={{ color: focused ? theme.colors.brandStrong : theme.colors.textSubtle }}>{options?.title}</AppText>
+              </View>
+            </Pressable>;
           })}
         </View>
       </View>
@@ -47,8 +52,8 @@ const styles = StyleSheet.create({
   },
   tint: { ...StyleSheet.absoluteFillObject },
   row: { flex: 1, flexDirection: 'row' },
-  item: { flex: 1, height: 76, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  item: { flex: 1, height: 76, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   pressed: {},
-  selected: { height: 56, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  itemInner: { minWidth: 66, minHeight: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 8 },
   indicator: { width: 18, height: 3, borderRadius: 2 },
 });

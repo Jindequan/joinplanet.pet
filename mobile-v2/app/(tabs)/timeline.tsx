@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import {
   AppText,
@@ -8,6 +8,7 @@ import {
   Card,
   DateTimeField,
   PageHeader,
+  PetFilterSelector,
   QueryErrorState,
   Screen,
   SegmentedControl,
@@ -39,9 +40,20 @@ type EventType = "note" | "symptom" | "weight" | "vaccine" | "vet_visit";
 type TimelineFilter = "all" | "notes" | "health" | "care";
 
 function eventTitle(type: string) {
-  return type === "vet_visit"
-    ? "Vet visit"
-    : type.charAt(0).toUpperCase() + type.slice(1);
+  const labels: Record<string, string> = {
+    note: "Note",
+    symptom: "Symptom",
+    weight: "Weight",
+    vaccine: "Vaccine",
+    vet_visit: "Vet visit",
+    care_task_completed: "Care completed",
+    care_task_undone: "Care completion undone",
+    medication: "Medication update",
+    transfer: "Pet handoff",
+  };
+  if (labels[type]) return labels[type];
+  const readable = type.replace(/[_-]+/g, " ").trim();
+  return readable ? readable.charAt(0).toUpperCase() + readable.slice(1) : "Care record";
 }
 
 function eventText(payload: Record<string, unknown>) {
@@ -191,11 +203,13 @@ export default function TimelineRoute() {
       setEventMenuId(null);
       invalidate.timeline(pet!.id);
       invalidate.alertsAll();
+      showToast({ message: "Journal record removed." });
     },
-    onError: (err) =>
-      setError(
-        err instanceof ApiError ? err.message : "Unable to remove this record.",
-      ),
+    onError: (err) => {
+      const message = err instanceof ApiError ? err.message : "Unable to remove this record.";
+      setError(message);
+      showToast({ message });
+    },
   });
   const loadOlder = useMutation({
     mutationFn: () => {
@@ -207,7 +221,7 @@ export default function TimelineRoute() {
       setOlderEvents((current) => [...current, ...result.events]);
       if (result.events.length < 100) setHasMore(false);
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to load older records."),
+    onError: (err) => { const message = err instanceof ApiError ? err.message : "Unable to load older records."; setError(message); showToast({ message }); },
   });
   useEffect(() => {
     setOlderEvents([]);
@@ -305,45 +319,7 @@ export default function TimelineRoute() {
           <AppText variant="caption" muted>
             VIEWING THE STORY OF
           </AppText>
-          <View style={styles.petOptions}>
-            {accessiblePets.pets.map((candidate) => {
-              const selected = candidate.id === pet.id;
-              return (
-                <Pressable
-                  key={candidate.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => {
-                    setTimelinePetId(candidate.id);
-                    setAdding(false);
-                    setError("");
-                  }}
-                  style={[
-                    styles.petOption,
-                    {
-                      borderColor: selected
-                        ? theme.colors.brandStrong
-                        : theme.colors.border,
-                      backgroundColor: selected
-                        ? theme.colors.brandSoft
-                        : theme.colors.surface,
-                    },
-                  ]}
-                >
-                  <AppText
-                    variant="label"
-                    style={{
-                      color: selected
-                        ? theme.colors.brandStrong
-                        : theme.colors.textMuted,
-                    }}
-                  >
-                    {candidate.name}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
+          <PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") { setTimelinePetId(next.petId); setAdding(false); setError(""); } else router.push("/(tabs)/pets"); }} />
         </View>
       ) : null}
       <View style={styles.intro}>
@@ -586,15 +562,6 @@ const styles = StyleSheet.create({
   },
   introCopy: { flex: 1, gap: 3 },
   petPicker: { gap: 8 },
-  petOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  petOption: {
-    minHeight: 38,
-    borderRadius: 13,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   form: { gap: 13 },
   sectionHeader: { marginTop: 7 },
   events: { gap: 10 },
@@ -613,7 +580,7 @@ const styles = StyleSheet.create({
   },
   eventMeta: { flex: 1, gap: 2 },
   eventMenu: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  eventActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, paddingTop: 4 },
+  eventActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, paddingTop: 4 },
   confirmBox: { borderRadius: 16, padding: 14, gap: 8, marginTop: 2 },
   empty: { gap: 9, alignItems: "flex-start" },
 });

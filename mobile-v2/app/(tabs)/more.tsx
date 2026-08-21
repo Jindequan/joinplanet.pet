@@ -1,8 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { AppText, Card, QueryErrorState, Screen, SectionRow } from '../../src/ui/components';
+import { AppText, Card, LoadingState, QueryErrorState, Screen, SectionRow } from '../../src/ui/components';
 import { useTheme } from '../../src/core/providers/theme-provider';
 import { useAccessiblePets, useCircles, useMe } from '../../src/core/query/hooks';
 import { GearSixIcon, HeartIcon, PawPrintIcon, ShieldCheckIcon, UserCircleIcon, UsersThreeIcon } from '../../src/ui/icons';
@@ -13,7 +13,7 @@ export default function YouRoute() {
   const circles = useCircles();
   const circle = circles.data?.circles[0];
   const accessiblePets = useAccessiblePets(circles.data?.circles.map((item) => item.id) ?? []);
-  if (me.isLoading || circles.isLoading || accessiblePets.isLoading) return <Screen><ActivityIndicator color={theme.colors.brand} /></Screen>;
+  if (me.isLoading || circles.isLoading || accessiblePets.isLoading) return <Screen><LoadingState label="Loading your space" /></Screen>;
   if (me.isError || circles.isError || accessiblePets.isError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Your space is unavailable" body="We could not load your account and care relationships." onRetry={() => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); }} /></Screen>;
   const user = me.data?.user;
   const name = user?.display_name || 'Your space';

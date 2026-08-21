@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Share as NativeShare, StyleSheet, Switch, View } from "react-native";
+import { Pressable, Share as NativeShare, StyleSheet, Switch, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -18,6 +18,7 @@ import {
   Button,
   Card,
   DateTimeField,
+  LoadingState,
   PageHeader,
   PetFilterSelector,
   QueryErrorState,
@@ -680,9 +681,7 @@ export default function PetRoute() {
     (pet && detail.isLoading)
   )
     return (
-      <Screen>
-        <ActivityIndicator color={theme.colors.brand} />
-      </Screen>
+      <Screen><LoadingState label="Loading this Pet’s world" /></Screen>
     );
   if (me.isError || circles.isError || accessiblePets.isError || detail.isError || medications.isError || tasks.isError)
     return (

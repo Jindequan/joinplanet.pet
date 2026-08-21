@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   DateTimeField,
+  LoadingState,
   PageHeader,
   PetFilterSelector,
   QueryErrorState,
@@ -270,9 +271,7 @@ export default function TimelineRoute() {
     (pet && timeline.isLoading)
   )
     return (
-      <Screen>
-        <ActivityIndicator color={theme.colors.brand} />
-      </Screen>
+      <Screen><LoadingState label="Loading the journal" /></Screen>
     );
   if (me.isError || circles.isError || accessiblePets.isError || timeline.isError)
     return (

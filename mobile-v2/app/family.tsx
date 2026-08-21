@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
-import { AppText, Button, Card, QueryErrorState, Screen, SegmentedControl, TextField } from "../src/ui/components";
+import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
 import { useToast } from "../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../src/core/hooks/use-idempotency-key";
@@ -196,9 +196,7 @@ export default function FamilyRoute() {
   }
   if (circles.isLoading || (circle && detail.isLoading))
     return (
-      <Screen>
-        <ActivityIndicator color={theme.colors.brand} />
-      </Screen>
+      <Screen><LoadingState label="Loading your Family" /></Screen>
     );
   if (circles.isError || detail.isError || pets.isError)
     return (

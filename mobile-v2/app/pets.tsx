@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { AppText, Button, Card, DateTimeField, QueryErrorState, Screen, SegmentedControl, TextField } from '../src/ui/components';
+import { AppText, Button, Card, DateTimeField, LoadingState, QueryErrorState, Screen, SegmentedControl, TextField } from '../src/ui/components';
 import { useTheme } from '../src/core/providers/theme-provider';
 import { useIdempotencyKey } from '../src/core/hooks/use-idempotency-key';
 import { useAccessiblePets, useCircles, useInvalidateApi } from '../src/core/query/hooks';
@@ -61,7 +61,7 @@ export default function PetsRoute() {
     if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? 'Please check the Pet details.'); return; }
     setError(''); create.mutate();
   }
-  if (circles.isLoading || accessiblePets.isLoading) return <Screen><ActivityIndicator color={theme.colors.brand} /></Screen>;
+  if (circles.isLoading || accessiblePets.isLoading) return <Screen><LoadingState label="Loading your Pets" /></Screen>;
   if (circles.isError || accessiblePets.isError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Pets are taking a moment" body="We could not load the Pet records you can access." onRetry={() => { void circles.refetch(); void accessiblePets.refetch(); }} /></Screen>;
   if (!circle) return <Screen scroll contentContainerStyle={styles.content}><AppText variant="caption" muted>YOUR ORBIT / PETS</AppText><AppText variant="display">Start with a Pet.</AppText><Card style={styles.emptyCard}><View style={[styles.emptyIcon, { backgroundColor: theme.colors.accentSurface }]}><PawPrintIcon size={27} color={theme.colors.accentStrong} weight="duotone" /></View><AppText variant="heading">Your care world is waiting</AppText><AppText muted>Create a Family first so the right people can share the right care.</AppText><Button label="Open Family" onPress={() => router.push('/(tabs)/family')} /></Card></Screen>;
   const list = accessiblePets.pets;

@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { AppText, Button, Card, OrbitContextBar, QueryErrorState, Screen, type ViewFilter } from '../../src/ui/components';
+import { AppText, Button, Card, LoadingState, OrbitContextBar, QueryErrorState, Screen, type ViewFilter } from '../../src/ui/components';
 import { useTheme } from '../../src/core/providers/theme-provider';
 import { useAccessiblePets, useAlertsForCircles, useCircles, useInvalidateApi, useMe, useTodayForCircles } from '../../src/core/query/hooks';
 import { planetApi, type TodayItem } from '../../src/core/api/planet-api';
@@ -131,7 +131,7 @@ export default function TodayRoute() {
     router.push({ pathname: '/(tabs)/pets', params: { intent: 'care' } });
   };
 
-  if (circles.isLoading || accessiblePets.isLoading || today.isLoading || me.isLoading) return <Screen><ActivityIndicator color={theme.colors.brand} /></Screen>;
+  if (circles.isLoading || accessiblePets.isLoading || today.isLoading || me.isLoading) return <Screen><LoadingState label="Loading today’s care" /></Screen>;
   if (circles.isError || today.isError || accessiblePets.isError || me.isError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Today is waiting" body="We could not reach your care plan right now." onRetry={() => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); void today.refetch(); }} /></Screen>;
 
   if (families.length === 0) return <Screen scroll contentContainerStyle={styles.content}><View style={styles.welcomeTop}><View><AppText variant="caption" muted>PLANET / TODAY</AppText><AppText variant="display">Build your care space.</AppText></View><View style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}><SparkleIcon size={21} color={theme.colors.brandStrong} weight="duotone" /></View></View><LinearGradient colors={[theme.colors.brandStrong, theme.colors.brand]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyHero}><PawPrintIcon size={30} color={theme.colors.onBrand} weight="duotone" /><AppText variant="title" style={{ color: theme.colors.onBrand }}>Start with the people and Pet you care about.</AppText><AppText style={{ color: 'rgba(255,255,255,0.82)' }}>Create a Family or join one with an invite. Today will become useful as soon as there is a shared care space.</AppText></LinearGradient><Card style={styles.setupCard}><AppText variant="heading">Choose your starting point</AppText><AppText muted>Family is the shared relationship around the Pets you look after.</AppText><View style={styles.setupActions}><Button label="Create a Family" onPress={() => router.push({ pathname: '/(tabs)/family', params: { mode: 'create' } })} /><Button label="Join with an invite" variant="secondary" onPress={() => router.push({ pathname: '/(tabs)/family', params: { mode: 'join' } })} /></View></Card></Screen>;

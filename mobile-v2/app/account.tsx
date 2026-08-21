@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { EnvelopeSimpleIcon, GlobeHemisphereWestIcon, UserCircleIcon } from '../src/ui/icons';
-import { AppText, Button, Card, PageHeader, QueryErrorState, Screen, SectionRow, TextField } from '../src/ui/components';
+import { AppText, Button, Card, LoadingState, PageHeader, QueryErrorState, Screen, SectionRow, TextField } from '../src/ui/components';
 import { useTheme } from '../src/core/providers/theme-provider';
 import { useSession } from '../src/core/providers/session-provider';
 import { useInvalidateApi, useMe, useMeUsage } from '../src/core/query/hooks';
@@ -34,7 +34,7 @@ export default function AccountRoute() {
     setMessage('');
     deleteAccount.mutate();
   }
-  if (me.isLoading) return <Screen><ActivityIndicator color={theme.colors.brand} /></Screen>;
+  if (me.isLoading) return <Screen><LoadingState label="Loading your profile" /></Screen>;
   if (me.isError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Your profile is unavailable" body="We could not load your account details right now." onRetry={() => { void me.refetch(); void usage.refetch(); }} /></Screen>;
   const user = me.data?.user;
   if (!user) return <Screen><AppText variant="title">Profile unavailable</AppText><Button label="Try again" onPress={() => me.refetch()} /></Screen>;

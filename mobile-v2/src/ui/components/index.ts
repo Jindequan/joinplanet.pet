@@ -7,6 +7,7 @@ export * from './orbit-context-bar';
 export * from './page-header';
 export * from './pet-filter-selector';
 export * from './query-error-state';
+export * from './loading-state';
 export * from './rating';
 export * from './screen';
 export * from './section-row';

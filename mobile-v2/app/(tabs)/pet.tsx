@@ -904,6 +904,19 @@ export default function PetRoute() {
           </View>
         ) : null}
       </Card>
+      <Card style={styles.glanceCard}>
+        <View style={styles.cardHeading}>
+          <View style={styles.rowCopy}>
+            <AppText variant="heading">Care at a glance</AppText>
+            <AppText variant="caption" muted>Keep the everyday close without opening every record.</AppText>
+          </View>
+          <Button label="Open Care" variant="ghost" onPress={() => setPetSection("care")} />
+        </View>
+        <View style={styles.glanceStats}>
+          <View style={styles.glanceStat}><AppText variant="title" style={{ color: theme.colors.brandStrong }}>{taskList.length}</AppText><AppText variant="caption" muted>ongoing plans</AppText></View>
+          <View style={styles.glanceStat}><AppText variant="title" style={{ color: theme.colors.accentStrong }}>{medications.data?.medications.filter((item) => !item.ended_on).length ?? 0}</AppText><AppText variant="caption" muted>active medications</AppText></View>
+        </View>
+      </Card>
       </> : null}
       {petSection === "share" ? <>
       <Card style={styles.card}>
@@ -1483,6 +1496,9 @@ const styles = StyleSheet.create({
   },
   quickActions: { flexDirection: "row", alignItems: "center", gap: 9 },
   card: { gap: 11 },
+  glanceCard: { gap: 12 },
+  glanceStats: { flexDirection: "row", gap: 28, paddingTop: 2 },
+  glanceStat: { gap: 1 },
   cardHeading: {
     flexDirection: "row",
     alignItems: "center",

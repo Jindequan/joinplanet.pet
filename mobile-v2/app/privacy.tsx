@@ -41,7 +41,7 @@ export default function PrivacyRoute() {
 }
 
 const styles = StyleSheet.create({
-  content: { maxWidth: 680, alignSelf: "center", width: "100%", paddingBottom: 140, gap: 16 },
+  content: { maxWidth: 680, alignSelf: "center", width: "100%", paddingBottom: 192, gap: 16 },
   hero: { gap: 10, padding: 20 },
   heroIcon: { width: 48, height: 48, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   card: { gap: 14 },

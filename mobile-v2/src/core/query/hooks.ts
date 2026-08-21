@@ -175,7 +175,10 @@ export function useInvalidateApi() {
     todayAll: () => client.invalidateQueries({ queryKey: ['today'] }),
     timeline: (petId: string) => client.invalidateQueries({ queryKey: ['timeline', petId] }),
     medications: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.medications(petId) }),
-    tasks: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.tasks(petId) }),
+    // Pet surfaces request both the active-only and include-archived task lists.
+    // Invalidate their shared prefix so a care-plan mutation cannot leave the
+    // Pet header stale while Today has already refreshed.
+    tasks: (petId: string) => client.invalidateQueries({ queryKey: ['tasks', petId] }),
     assignments: (careItemId: string) => client.invalidateQueries({ queryKey: queryKeys.assignments(careItemId) }),
     shares: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.shares(petId) }),
     transfers: (circleId: string) => client.invalidateQueries({ queryKey: ['transfers', circleId] }),

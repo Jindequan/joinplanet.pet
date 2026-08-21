@@ -363,6 +363,9 @@ export default function PetRoute() {
       invalidate.tasks(pet!.id);
       invalidate.assignments(result.care_item.id);
       invalidate.todayAll();
+      // The intent is a one-shot deep link from first-Pet setup. Remove it
+      // after the plan is saved so a refresh does not reopen an empty form.
+      router.replace({ pathname: "/(tabs)/pet", params: { petId: pet!.id } });
       showToast({ message: helperAssigned ? "Care plan added to Today." : "Care plan added; helper assignment needs attention.", actionLabel: "Open Today", onAction: () => router.replace({ pathname: "/(tabs)", params: { petId: pet!.id } }) });
     },
     onError: (err) =>
@@ -1711,7 +1714,7 @@ const styles = StyleSheet.create({
     maxWidth: 720,
     alignSelf: "center",
     width: "100%",
-    paddingBottom: 140,
+    paddingBottom: 192,
     gap: 14,
   },
   petSwitcher: { gap: 7 },

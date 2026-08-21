@@ -13,13 +13,17 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const dark = theme.colors.background === theme.colors.inverseSurface;
+  // Family and Pet are workspace routes, not top-level destinations. Expo
+  // still includes them in the tab navigator state, so filter by the product
+  // navigation contract instead of relying on href metadata from descriptors.
+  const topLevelRoutes = new Set(['index', 'pets', 'timeline', 'more']);
   return (
     <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) }]}>
       <View style={[styles.glass, theme.shadow.floating, { borderColor: theme.colors.border, borderRadius: theme.radius.sheet }]}>
         <BlurView intensity={78} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
         <View style={[styles.tint, { backgroundColor: dark ? theme.colors.glassDark : theme.colors.glassLight }]} />
         <View style={styles.row}>
-          {state.routes.filter((route) => (descriptors[route.key]?.options as { href?: string | null } | undefined)?.href !== null).map((route) => {
+          {state.routes.filter((route) => topLevelRoutes.has(route.name)).map((route) => {
             const focused = state.routes[state.index]?.key === route.key;
             const options = descriptors[route.key]?.options;
             const Icon = iconMap[route.name as keyof typeof iconMap] ?? UserCircleIcon;

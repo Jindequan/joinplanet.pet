@@ -330,12 +330,12 @@ export default function TimelineRoute() {
   const canEditEvent = (event: TimelineEvent) => event.source === "user" && (event.recorded_by === me.data?.user.id || hasOwnerAccess);
   return (
     <Screen scroll contentContainerStyle={styles.content}>
+      <WorkspaceBar familyName={circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))?.name} petName={pet.name} onPressWorkspace={() => router.push('/(tabs)/family')} />
       <PageHeader
         eyebrow={`${pet.name.toUpperCase()} / HISTORY`}
         title="Journal"
         showBack={false}
       />
-      <WorkspaceBar familyName={circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))?.name} petName={pet.name} onPressWorkspace={() => router.push('/(tabs)/family')} />
       {accessiblePets.pets.length > 1 ? (
         <View style={styles.petPicker}>
           <AppText variant="caption" muted>
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     maxWidth: 680,
     alignSelf: "center",
     width: "100%",
-    paddingBottom: 140,
+    paddingBottom: 192,
     gap: 16,
   },
   intro: { flexDirection: "row", alignItems: "center", gap: 12 },

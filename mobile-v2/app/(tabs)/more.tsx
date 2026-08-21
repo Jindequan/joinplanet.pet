@@ -35,7 +35,7 @@ export default function YouRoute() {
 
 const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'stretch' },
-  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 140, gap: 16 },
+  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 192, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   headerCopy: { flex: 1, gap: 5 },
   avatar: { width: 48, height: 48, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

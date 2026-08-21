@@ -194,7 +194,7 @@ export default function TodayRoute() {
 }
 
 const styles = StyleSheet.create({
-  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 140, gap: 18 },
+  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 192, gap: 18 },
   center: { justifyContent: 'center', alignItems: 'stretch' },
   welcomeTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 },

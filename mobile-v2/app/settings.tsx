@@ -51,7 +51,7 @@ export default function SettingsRoute() {
 }
 
 const styles = StyleSheet.create({
-  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 140, gap: 16 },
+  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 192, gap: 16 },
   center: { justifyContent: 'center', alignItems: 'stretch' },
   intro: { maxWidth: 550, lineHeight: 23 },
   hero: { flexDirection: 'row', alignItems: 'center', gap: 12 },

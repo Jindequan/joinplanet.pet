@@ -94,7 +94,7 @@ export default function PetsRoute() {
 }
 
 const styles = StyleSheet.create({
-  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 140, gap: 18 },
+  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 192, gap: 18 },
   center: { justifyContent: 'center', alignItems: 'stretch' },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   headerCopy: { flex: 1, gap: 5 },

@@ -129,10 +129,10 @@ function CareRow({ task, onActions }: { task: Task; onActions?: () => void }) {
   );
 }
 
-function PetGlyph({ species }: { species: "dog" | "cat" | "other" }) {
+function PetGlyph({ species, color }: { species: "dog" | "cat" | "other"; color: string }) {
   if (species === "cat")
-    return <CatIcon size={46} color="#B86843" weight="duotone" />;
-  return <DogIcon size={46} color="#B86843" weight="duotone" />;
+    return <CatIcon size={46} color={color} weight="duotone" />;
+  return <DogIcon size={46} color={color} weight="duotone" />;
 }
 
 function shareKindLabel(kind: Share["kind"]) {
@@ -728,7 +728,7 @@ export default function PetRoute() {
         <View
           style={[styles.petMark, { backgroundColor: theme.colors.surface }]}
         >
-          <PetGlyph species={pet.species} />
+          <PetGlyph species={pet.species} color={theme.colors.accentStrong} />
         </View>
         <View style={styles.heroCopy}>
           <AppText

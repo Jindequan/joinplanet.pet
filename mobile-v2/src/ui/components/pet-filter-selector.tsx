@@ -59,7 +59,7 @@ export function PetFilterSelector({ value, families, pets, onChange, disabled = 
     </Pressable>
     <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
       <View style={styles.modalRoot}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close view filter" style={styles.backdrop} onPress={() => setOpen(false)} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Close view filter" style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]} onPress={() => setOpen(false)} />
         <View style={[styles.sheet, { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.sheet, borderTopRightRadius: theme.radius.sheet, paddingHorizontal: theme.spacing.page, paddingBottom: Math.max(insets.bottom, theme.spacing.lg) }]}>
           <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
           <View style={styles.sheetHeader}>
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   trigger: { minHeight: 42, maxWidth: 160, flexShrink: 1, paddingHorizontal: 11, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 7 },
   triggerLabel: { flexShrink: 1 },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(40,52,58,0.42)' },
+  backdrop: { ...StyleSheet.absoluteFillObject },
   sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 10, gap: 18 },
   handle: { width: 38, height: 4, borderRadius: 4, alignSelf: 'center' },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

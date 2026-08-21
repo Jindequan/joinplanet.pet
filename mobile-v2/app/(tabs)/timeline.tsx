@@ -399,7 +399,7 @@ export default function TimelineRoute() {
           />
           <DateTimeField label="When did it happen?" value={occurredAt} onChange={setOccurredAt} />
           <TextField
-            label={eventType === "weight" ? "Context (optional)" : eventType === "vaccine" ? "Vaccine name" : eventType === "vet_visit" ? "Visit summary" : "A detail worth keeping"}
+            label={eventType === "weight" ? "Details (optional)" : eventType === "vaccine" ? "Vaccine name" : eventType === "vet_visit" ? "Visit summary" : "A detail worth keeping"}
             value={text}
             onChangeText={(value) => {
               setText(value);
@@ -454,7 +454,7 @@ export default function TimelineRoute() {
       ) : (
         <View style={styles.events}>
           {groupedEvents.map((group) => <View key={group.label} style={styles.eventGroup}>
-            <View style={styles.eventDay}><AppText variant="caption" muted>{group.label.toUpperCase()}</AppText><View style={styles.eventRule} /></View>
+            <View style={styles.eventDay}><AppText variant="caption" muted>{group.label.toUpperCase()}</AppText><View style={[styles.eventRule, { backgroundColor: theme.colors.border }]} /></View>
             {group.events.map((event) => (
             <Card key={event.id} style={styles.event}>
               <View style={styles.eventTop}>
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   events: { gap: 10 },
   eventGroup: { gap: 9 },
   eventDay: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 3, paddingTop: 4 },
-  eventRule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: "#E3DED2" },
+  eventRule: { flex: 1, height: StyleSheet.hairlineWidth },
   event: { gap: 11 },
   eventDetails: { borderRadius: 12, padding: 10, gap: 3 },
   eventTop: { flexDirection: "row", alignItems: "center", gap: 10 },

@@ -17,7 +17,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
     <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) }]}>
       <View style={[styles.glass, theme.shadow.floating, { borderColor: theme.colors.border, borderRadius: theme.radius.sheet }]}>
         <BlurView intensity={78} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-        <View style={[styles.tint, { backgroundColor: dark ? 'rgba(15,23,42,0.76)' : 'rgba(255,255,255,0.78)' }]} />
+        <View style={[styles.tint, { backgroundColor: dark ? theme.colors.glassDark : theme.colors.glassLight }]} />
         <View style={styles.row}>
           {state.routes.filter((route) => (descriptors[route.key]?.options as { href?: string | null } | undefined)?.href !== null).map((route) => {
             const focused = state.routes[state.index]?.key === route.key;

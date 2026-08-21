@@ -14,7 +14,7 @@ export function LoadingState({ label = "Loading your care space" }: { label?: st
       </View>
       <View style={[styles.hero, { backgroundColor: theme.colors.brandSoft }]}>
         <View style={[styles.heroIcon, { backgroundColor: theme.colors.surface }]} />
-        <View style={styles.heroCopy}><View style={[styles.heroLine, { backgroundColor: "rgba(255,255,255,0.66)" }]} /><View style={[styles.heroLineShort, { backgroundColor: "rgba(255,255,255,0.48)" }]} /></View>
+        <View style={styles.heroCopy}><View style={[styles.heroLine, { backgroundColor: theme.colors.skeletonStrong }]} /><View style={[styles.heroLineShort, { backgroundColor: theme.colors.skeletonMuted }]} /></View>
       </View>
       <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><View style={[styles.cardIcon, { backgroundColor: theme.colors.surfaceRaised }]} /><View style={styles.cardCopy}><View style={[styles.cardLine, { backgroundColor: theme.colors.surfaceRaised }]} /><View style={[styles.cardLineShort, { backgroundColor: theme.colors.surfaceRaised }]} /></View></View>
       <View style={styles.status}><ActivityIndicator size="small" color={theme.colors.brandStrong} /><AppText variant="caption" muted>{label}</AppText></View>

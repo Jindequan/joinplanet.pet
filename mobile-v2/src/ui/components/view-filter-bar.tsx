@@ -5,7 +5,7 @@ import { useTheme } from '../../core/providers/theme-provider';
 import { AppText } from './app-text';
 import { PetFilterSelector, type ViewFilter, type ViewFilterFamily, type ViewFilterPet } from './pet-filter-selector';
 
-export function OrbitContextBar({ value, families, pets, onChange }: { value: ViewFilter; families: ViewFilterFamily[]; pets: ViewFilterPet[]; onChange: (value: ViewFilter) => void }) {
+export function ViewFilterBar({ value, families, pets, onChange }: { value: ViewFilter; families: ViewFilterFamily[]; pets: ViewFilterPet[]; onChange: (value: ViewFilter) => void }) {
   const { theme } = useTheme();
   const currentLabel = useMemo(() => {
     if (value.kind === 'family') return families.find((family) => family.id === value.familyId)?.name ?? 'Family';

@@ -299,20 +299,20 @@ export default function FamilyRoute() {
             <View style={styles.heroCopy}>
               <AppText
                 variant="caption"
-                style={{ color: "rgba(255,255,255,0.72)" }}
+                style={{ color: theme.colors.onBrandMuted }}
               >
                 CARE CIRCLE
               </AppText>
               <AppText variant="title" style={{ color: theme.colors.onBrand }}>
                 {circle.name}
               </AppText>
-              <AppText style={{ color: "rgba(255,255,255,0.82)" }}>
+              <AppText style={{ color: theme.colors.onBrandSoft }}>
                 {members.length} {members.length === 1 ? "person" : "people"} ·{" "}
                 {petCount} {petCount === 1 ? "Pet" : "Pets"}
               </AppText>
             </View>
             <View
-              style={[styles.orbit, { borderColor: "rgba(255,255,255,0.32)" }]}
+              style={[styles.orbit, { borderColor: theme.colors.onBrandLine }]}
             >
               <View
                 style={[

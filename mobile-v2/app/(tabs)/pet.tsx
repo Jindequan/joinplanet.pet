@@ -50,6 +50,7 @@ import { ApiError } from "../../src/core/network/api-client";
 type CareType =
   "medication" | "feeding" | "health" | "grooming" | "exercise" | "custom";
 type ScheduleKind = "daily" | "weekly" | "monthly" | "interval";
+type PetSection = "overview" | "care" | "share" | "manage";
 
 const careTypeOptions: readonly { value: CareType; label: string }[] = [
   { value: "medication", label: "Medication" },
@@ -170,6 +171,7 @@ export default function PetRoute() {
   const invalidate = useInvalidateApi();
 
   const [form, setForm] = useState<"care" | "medication" | "profile" | null>(null);
+  const [petSection, setPetSection] = useState<PetSection>("overview");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskMenuId, setTaskMenuId] = useState<string | null>(null);
   const [confirmTaskId, setConfirmTaskId] = useState<string | null>(null);
@@ -507,6 +509,7 @@ export default function PetRoute() {
 
   useEffect(() => {
     if (!intentHandled && params.intent === "care" && pet && !isArchived) {
+      setPetSection("care");
       setForm("care");
       setError("");
       setIntentHandled(true);
@@ -693,6 +696,7 @@ export default function PetRoute() {
             />
           }
           onPress={() => {
+            setPetSection("care");
             setEditingTaskId(null);
             setForm("care");
             setError("");
@@ -716,6 +720,18 @@ export default function PetRoute() {
           }
         />
       </View>
+      <SegmentedControl
+        label="Pet workspace"
+        value={petSection}
+        onChange={setPetSection}
+        options={[
+          { value: "overview", label: "Overview" },
+          { value: "care", label: "Care" },
+          { value: "share", label: "Share" },
+          { value: "manage", label: "Manage" },
+        ]}
+      />
+      {petSection === "overview" ? <>
       <Card style={styles.card}>
         <View style={styles.cardHeading}>
           <View>
@@ -888,6 +904,8 @@ export default function PetRoute() {
           </View>
         ) : null}
       </Card>
+      </> : null}
+      {petSection === "share" ? <>
       <Card style={styles.card}>
         <View style={styles.sectionHeader}>
           <View style={styles.rowCopy}>
@@ -933,6 +951,8 @@ export default function PetRoute() {
           <Button label="Share with another Family" variant="secondary" disabled={isArchived || !availableFamilyShares.length} onPress={() => { setFamilyShareOpen(true); setFamilyShareTargetId(availableFamilyShares[0]?.id ?? null); setFamilyShareError(""); }} />
         ) : null}
       </Card>
+      </> : null}
+      {petSection === "share" ? <>
       <Card style={styles.card}>
         <View style={styles.shareHeader}>
           <View style={[styles.shareIcon, { backgroundColor: theme.colors.brandSoft }]}>
@@ -1019,6 +1039,8 @@ export default function PetRoute() {
           </View>
         ) : null}
       </Card>
+      </> : null}
+      {petSection === "care" ? <>
       <Card style={styles.card}>
         <View style={styles.sectionHeader}>
           <View>
@@ -1040,6 +1062,7 @@ export default function PetRoute() {
               />
             }
             onPress={() => {
+              setPetSection("care");
               setEditingTaskId(null);
               setForm("care");
               setError("");
@@ -1235,6 +1258,7 @@ export default function PetRoute() {
             variant="secondary"
             disabled={isArchived}
             onPress={() => {
+              setPetSection("care");
               setEditingMedicationId(null);
               setMedName("");
               setMedDose("");
@@ -1367,7 +1391,8 @@ export default function PetRoute() {
           </View>
         ) : null}
       </Card>
-      <Card style={styles.lifecycleCard}>
+      </> : null}
+      {petSection === "manage" ? <Card style={styles.lifecycleCard}>
         <View style={styles.sectionHeader}>
           <View style={styles.rowCopy}>
             <AppText variant="heading">Pet records</AppText>
@@ -1426,7 +1451,7 @@ export default function PetRoute() {
             <Button label="Delete Pet" variant="danger" onPress={() => setLifecycleAction("delete")} />
           </View>
         )}
-      </Card>
+      </Card> : null}
     </Screen>
   );
 }

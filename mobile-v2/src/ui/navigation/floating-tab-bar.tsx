@@ -29,7 +29,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
             };
             const onLongPress = () => navigation.emit({ type: 'tabLongPress', target: route.key });
             return <Pressable key={route.key} accessibilityRole="tab" accessibilityState={{ selected: focused }} accessibilityLabel={options?.tabBarAccessibilityLabel ?? options?.title} onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [styles.item, pressed && { opacity: theme.motion.pressOpacity }]}>
-              <View style={[styles.itemInner, focused && { backgroundColor: theme.colors.brandSoft }]}>
+              <View style={[styles.itemInner, { backgroundColor: focused ? theme.colors.brandSoft : 'transparent' }]}>
                 <Icon color={focused ? theme.colors.brandStrong : theme.colors.textSubtle} size={20} weight={focused ? 'duotone' : 'regular'} />
                 <AppText variant="caption" style={{ color: focused ? theme.colors.brandStrong : theme.colors.textSubtle }}>{options?.title}</AppText>
               </View>
@@ -46,14 +46,13 @@ const styles = StyleSheet.create({
   glass: {
     width: '100%',
     maxWidth: 430,
-    height: 76,
+    height: 68,
     overflow: 'hidden',
     borderWidth: 1,
   },
   tint: { ...StyleSheet.absoluteFillObject },
   row: { flex: 1, flexDirection: 'row' },
-  item: { flex: 1, height: 76, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  item: { flex: 1, height: 68, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   pressed: {},
-  itemInner: { minWidth: 66, minHeight: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 8 },
-  indicator: { width: 18, height: 3, borderRadius: 2 },
+  itemInner: { minWidth: 64, minHeight: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 9 },
 });

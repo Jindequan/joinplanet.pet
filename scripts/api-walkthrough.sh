@@ -37,6 +37,7 @@ delete() {
 
 EMAIL="walkthrough.$(date +%s)@planet.dev"
 EMAIL_B="walkthrough.b.$(date +%s)@planet.dev"
+EMAIL_C="walkthrough.c.$(date +%s)@planet.dev"
 DISPLAY_B="${EMAIL_B%@*}"
 
 echo "== F1 认证与会话 =="
@@ -58,6 +59,14 @@ R=$(post "/api/v1/circles/$CIRCLE/pets" "$TOKEN" '{"name":"Milo","species":"dog"
 expect "create Pet" '.pet.id and .pet.name == "Milo"' "$R"
 PET=$(jq -r '.pet.id' <<<"$R")
 expect "canonical accessible Pet list includes the owner Pet" ".pets | any(.id == \"$PET\")" "$(get /api/v1/pets "$TOKEN")"
+R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_C\"}")
+CODE_C=$(jq -r '.dev_code' <<<"$R")
+R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_C\",\"code\":\"$CODE_C\"}")
+TOKEN_C=$(jq -r '.token' <<<"$R")
+USER_C=$(jq -r '.user.id' <<<"$(get /api/v1/me "$TOKEN_C")")
+R=$(post "/api/v1/pets/$PET/access-grants" "$TOKEN" "{\"user_id\":\"$USER_C\",\"role\":\"editor\"}")
+GRANT=$(jq -r '.grant.id' <<<"$R")
+expect "directly granted user sees the Pet" ".pets | any(.id == \"$PET\" and .access_role == \"editor\")" "$(get /api/v1/pets "$TOKEN_C")"
 R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_B\"}")
 CODE_B=$(jq -r '.dev_code' <<<"$R")
 R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_B\",\"code\":\"$CODE_B\"}")
@@ -90,6 +99,7 @@ expect "restore care plan" ".task.archived_at == null" "$R"
 TODAY=$(get "/api/v1/circles/$CIRCLE/today" "$TOKEN")
 expect "Today contains the care task" ".pets[].items[] | select(.task.care_item_id == \"$CARE_ITEM\")" "$TODAY"
 TASK=$(jq -r '.pets[].items[] | select(.task.care_item_id == "'"$CARE_ITEM"'") | .task.id' <<<"$TODAY")
+expect "directly granted user sees Pet Today" ".pets[].items[] | select(.task.care_item_id == \"$CARE_ITEM\")" "$(get "/api/v1/today?pet_id=$PET" "$TOKEN_C")"
 R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"done"}')
 expect "complete Today task" '.log.status == "completed" or .log.status == "done"' "$R"
 LOG=$(jq -r '.log.id' <<<"$R")
@@ -134,6 +144,8 @@ delete "/api/v1/shares/$SHARE_ID" "$TOKEN"
 R=$(curl -sS "$BASE/api/v1/shares/$SHARE")
 expect "revoked share returns SHARE_GONE" '.error.code == "SHARE_GONE"' "$R"
 expect "Pet export includes timeline" '.timeline' "$(get "/api/v1/pets/$PET/export" "$TOKEN")"
+delete "/api/v1/pets/$PET/access-grants/$GRANT" "$TOKEN"
+expect "revoking direct access removes the Pet" ".pets | all(.id != \"$PET\")" "$(get /api/v1/pets "$TOKEN_C")"
 
 echo "== F5 删除保护 =="
 delete "/api/v1/pets/$PET" "$TOKEN" "{\"confirm\":\"$PET\"}"

@@ -99,9 +99,11 @@ export const planetApi = {
     updateNotificationPrefs: (circleId: string, body: Partial<NotificationPrefs>) => apiClient.put<{ prefs: NotificationPrefs }>(`/circles/${id(circleId)}/notification-prefs`, body),
   },
   pets: {
+    listAccessible: () => apiClient.get<{ pets: Pet[] }>('/pets'),
     create: (circleId: string, body: { name: string; species: Pet['species']; breed?: string; birth_date?: string; sex?: Pet['sex']; neutered?: boolean; weight_g?: number }, requestKey = createIdempotencyKey()) => apiClient.post<{ pet: Pet }>(`/circles/${id(circleId)}/pets`, body, { headers: { 'Idempotency-Key': requestKey } }),
     list: (circleId: string) => planetApi.circles.pets(circleId),
     get: (petId: string) => apiClient.get<PetResponse>(`/pets/${id(petId)}`),
+    today: (petId: string, date?: string) => apiClient.get<Today>(`/today?pet_id=${id(petId)}${date ? `&date=${encodeURIComponent(date)}` : ''}`),
     export: (petId: string) => apiClient.get<ExportResponse>(`/pets/${id(petId)}/export`),
     update: (petId: string, body: Record<string, unknown>) => apiClient.patch<{ pet: Pet }>(`/pets/${id(petId)}`, body),
     delete: (petId: string) => request<void>(`/pets/${id(petId)}`, { method: 'DELETE', body: { confirm: petId } }),
@@ -115,7 +117,7 @@ export const planetApi = {
     revokeAccess: (petId: string, grantId: string) => apiClient.delete<void>(`/pets/${id(petId)}/access-grants/${id(grantId)}`),
     medications: (petId: string) => apiClient.get<{ medications: Medication[] }>(`/pets/${id(petId)}/medications`),
     createMedication: (petId: string, body: { name: string; dose?: string; schedule?: string; note?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ medication: Medication }>(`/pets/${id(petId)}/medications`, body, { headers: { 'Idempotency-Key': requestKey } }),
-    tasks: (petId: string) => apiClient.get<{ tasks: Task[] }>(`/pets/${id(petId)}/tasks`),
+    tasks: (petId: string, includeArchived = false) => apiClient.get<{ tasks: Task[] }>(`/pets/${id(petId)}/tasks${includeArchived ? '?include_archived=true' : ''}`),
     createCareItem: (petId: string, body: { type: CareItem['type']; title: string; description?: string; rule: { type: 'daily' | 'weekly' | 'monthly' | 'interval'; interval?: number; days?: number[]; day?: number; time?: string; start_date?: string; end_date?: string } }, requestKey = createIdempotencyKey()) => apiClient.post<CareItemCreateResponse>(`/pets/${id(petId)}/care-items`, body, { headers: { 'Idempotency-Key': requestKey } }),
     createTask: (petId: string, body: { title: string; schedule: Record<string, unknown>; time_of_day?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ task: Task }>(`/pets/${id(petId)}/tasks`, body, { headers: { 'Idempotency-Key': requestKey } }),
     timeline: (petId: string, params?: { before?: string; before_id?: string; limit?: number }) => {

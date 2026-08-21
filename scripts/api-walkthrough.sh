@@ -57,6 +57,7 @@ expect "Family keeps its IANA timezone" '.circle.timezone == "Asia/Shanghai"' "$
 R=$(post "/api/v1/circles/$CIRCLE/pets" "$TOKEN" '{"name":"Milo","species":"dog","breed":"Golden Retriever"}' "$(key)")
 expect "create Pet" '.pet.id and .pet.name == "Milo"' "$R"
 PET=$(jq -r '.pet.id' <<<"$R")
+expect "canonical accessible Pet list includes the owner Pet" ".pets | any(.id == \"$PET\")" "$(get /api/v1/pets "$TOKEN")"
 R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_B\"}")
 CODE_B=$(jq -r '.dev_code' <<<"$R")
 R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_B\",\"code\":\"$CODE_B\"}")
@@ -80,8 +81,15 @@ echo "== F3 Care plan、Today、历史 =="
 R=$(post "/api/v1/pets/$PET/care-items" "$TOKEN" '{"type":"medication","title":"Heart medicine","description":"With food","rule":{"type":"daily","time":"08:00"}}' "$(key)")
 expect "create care plan" '.care_item.id and .care_rule.id and .task.id' "$R"
 TASK=$(jq -r '.task.id' <<<"$R")
+CARE_ITEM=$(jq -r '.care_item.id' <<<"$R")
+R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$TASK" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":true}')
+expect "archive care plan" ".task.archived_at != null" "$R"
+expect "archived care plan is discoverable when requested" ".tasks | any(.care_item_id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/tasks?include_archived=true" "$TOKEN")"
+R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$CARE_ITEM" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":false}')
+expect "restore care plan" ".task.archived_at == null" "$R"
 TODAY=$(get "/api/v1/circles/$CIRCLE/today" "$TOKEN")
-expect "Today contains the care task" ".pets[].items[] | select(.task.id == \"$TASK\")" "$TODAY"
+expect "Today contains the care task" ".pets[].items[] | select(.task.care_item_id == \"$CARE_ITEM\")" "$TODAY"
+TASK=$(jq -r '.pets[].items[] | select(.task.care_item_id == "'"$CARE_ITEM"'") | .task.id' <<<"$TODAY")
 R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"done"}')
 expect "complete Today task" '.log.status == "completed" or .log.status == "done"' "$R"
 LOG=$(jq -r '.log.id' <<<"$R")

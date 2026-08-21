@@ -208,7 +208,7 @@ export default function PetRoute() {
         (!pet.current_owner_user_id && sourceFamily?.role === "owner")),
   );
   const medications = useMedications(pet?.id);
-  const tasks = useTasks(pet?.id);
+  const tasks = useTasks(pet?.id, true);
   const shares = usePetShares(pet?.id, canManagePet);
   const invalidate = useInvalidateApi();
 
@@ -217,6 +217,7 @@ export default function PetRoute() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskMenuId, setTaskMenuId] = useState<string | null>(null);
   const [confirmTaskId, setConfirmTaskId] = useState<string | null>(null);
+  const [restoreTaskId, setRestoreTaskId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [careType, setCareType] = useState<CareType>("custom");
   const [careTitle, setCareTitle] = useState("");
@@ -285,6 +286,7 @@ export default function PetRoute() {
     setEditingTaskId(null);
     setTaskMenuId(null);
     setConfirmTaskId(null);
+    setRestoreTaskId(null);
     setForm(null);
   };
   const resetTransientState = () => {
@@ -376,6 +378,20 @@ export default function PetRoute() {
     onError: (err) =>
       setError(
         err instanceof ApiError ? err.message : "Unable to archive this care plan.",
+      ),
+  });
+  const restoreTask = useMutation({
+    mutationFn: (taskId: string) => planetApi.tasks.update(taskId, { archived: false }),
+    onSuccess: () => {
+      setRestoreTaskId(null);
+      setTaskMenuId(null);
+      invalidate.tasks(pet!.id);
+      invalidate.todayAll();
+      showToast({ message: "Care plan restored." });
+    },
+    onError: (err) =>
+      setError(
+        err instanceof ApiError ? err.message : "Unable to restore this care plan.",
       ),
   });
   const addMedication = useMutation({
@@ -597,7 +613,8 @@ export default function PetRoute() {
     },
     onError: (err) => setShareError(err instanceof ApiError ? err.message : "Unable to revoke this link."),
   });
-  const taskList = useMemo(() => tasks.data?.tasks ?? [], [tasks.data?.tasks]);
+  const taskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => !task.archived_at), [tasks.data?.tasks]);
+  const archivedTaskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => Boolean(task.archived_at)), [tasks.data?.tasks]);
   const isArchived = Boolean(pet?.archived_at);
   const targetFamilies = circles.data?.circles.filter((item) => item.id !== pet?.circle_id) ?? [];
   const linkedFamilyIds = new Set(pet?.family_ids?.length ? pet.family_ids : pet?.circle_id ? [pet.circle_id] : []);
@@ -1250,6 +1267,26 @@ export default function PetRoute() {
             </View>
           ))
         )}
+        {archivedTaskList.length > 0 ? (
+          <View style={styles.archivedSection}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <AppText variant="label">Past care plans</AppText>
+                <AppText variant="caption" muted>Archived plans stay here with their history.</AppText>
+              </View>
+              <AppText variant="caption" muted>{archivedTaskList.length}</AppText>
+            </View>
+            {archivedTaskList.map((task) => (
+              <View key={task.id} style={[styles.archivedRow, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceRaised }]}>
+                <View style={styles.archivedCopy}>
+                  <AppText variant="label" style={{ color: theme.colors.textMuted }}>{task.title}</AppText>
+                  <AppText variant="caption" muted>Archived · history preserved</AppText>
+                </View>
+                {canManagePet ? <Button label="Restore" variant="secondary" loading={restoreTask.isPending && restoreTaskId === task.id} disabled={restoreTask.isPending} onPress={() => { setError(""); setRestoreTaskId(task.id); restoreTask.mutate(task.id); }} /> : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
         {form === "care" && canManagePet ? (
           <View style={styles.form}>
             <SegmentedControl
@@ -1655,6 +1692,9 @@ const styles = StyleSheet.create({
   rowMenu: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   taskActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, paddingBottom: 10 },
   confirmBox: { borderRadius: 16, padding: 14, gap: 8, marginBottom: 10 },
+  archivedSection: { gap: 9, marginTop: 8 },
+  archivedRow: { minHeight: 66, borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: "row", alignItems: "center", gap: 10 },
+  archivedCopy: { flex: 1, gap: 3 },
   medicationRow: { gap: 8, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center" },
   medicationCopy: { flex: 1, gap: 2 },
   medicationActions: { flexDirection: "row", alignItems: "center", gap: 10 },

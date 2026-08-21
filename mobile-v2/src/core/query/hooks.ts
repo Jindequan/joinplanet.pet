@@ -19,6 +19,7 @@ export function useCirclePets(circleId?: string) {
 }
 
 export function useAccessiblePets(circleIds: string[]) {
+  const accessible = useQuery({ queryKey: queryKeys.accessiblePets, queryFn: planetApi.pets.listAccessible });
   const queries = useQueries({
     queries: circleIds.map((circleId) => ({
       queryKey: queryKeys.pets(circleId),
@@ -26,13 +27,14 @@ export function useAccessiblePets(circleIds: string[]) {
     })),
   });
   const petsById = new Map<string, NonNullable<(typeof queries)[number]['data']>['pets'][number]>();
+  accessible.data?.pets.forEach((pet) => petsById.set(pet.id, pet));
   queries.forEach((query) => query.data?.pets.forEach((pet) => petsById.set(pet.id, pet)));
   return {
     pets: [...petsById.values()],
-    isLoading: queries.some((query) => query.isLoading),
-    isError: queries.some((query) => query.isError),
-    hasData: queries.some((query) => query.data !== undefined),
-    refetch: () => Promise.all(queries.map((query) => query.refetch())),
+    isLoading: accessible.isLoading || queries.some((query) => query.isLoading),
+    isError: accessible.isError || queries.some((query) => query.isError),
+    hasData: accessible.data !== undefined || queries.some((query) => query.data !== undefined),
+    refetch: () => Promise.all([accessible.refetch(), ...queries.map((query) => query.refetch())]),
   };
 }
 
@@ -44,7 +46,7 @@ export function useToday(circleId?: string, date = '') {
   return useQuery({ queryKey: queryKeys.today(circleId ?? '', date), queryFn: () => planetApi.circles.today(circleId as string, date || undefined), enabled: Boolean(circleId) });
 }
 
-export function useTodayForCircles(circleIds: string[], date: string | Record<string, string> = '') {
+export function useTodayForCircles(circleIds: string[], date: string | Record<string, string> = '', directPetIds: string[] = [], directDate = '') {
   const queries = useQueries({
     queries: circleIds.map((circleId) => {
       const circleDate = typeof date === 'string' ? date : date[circleId] ?? '';
@@ -53,6 +55,12 @@ export function useTodayForCircles(circleIds: string[], date: string | Record<st
       queryFn: () => planetApi.circles.today(circleId, circleDate || undefined),
       };
     }),
+  });
+  const directQueries = useQueries({
+    queries: directPetIds.map((petId) => ({
+      queryKey: ['today', 'pet', petId, directDate],
+      queryFn: () => planetApi.pets.today(petId, directDate || undefined),
+    })),
   });
   const petsById = new Map<string, { pet_id: string; pet_name: string; items: TodayPet['items'] }>();
   queries.forEach((query) => {
@@ -66,12 +74,23 @@ export function useTodayForCircles(circleIds: string[], date: string | Record<st
       current.items.push(...pet.items.filter((item) => !taskIds.has(item.task.id)));
     });
   });
+  directQueries.forEach((query) => {
+    query.data?.pets.forEach((pet) => {
+      const current = petsById.get(pet.pet_id);
+      if (!current) {
+        petsById.set(pet.pet_id, { pet_id: pet.pet_id, pet_name: pet.pet_name, items: [...pet.items] });
+        return;
+      }
+      const taskIds = new Set(current.items.map((item) => item.task.id));
+      current.items.push(...pet.items.filter((item) => !taskIds.has(item.task.id)));
+    });
+  });
   return {
     data: { date: typeof date === 'string' && date ? date : 'Today', pets: [...petsById.values()] },
-    isLoading: queries.some((query) => query.isLoading),
-    isError: queries.some((query) => query.isError),
-    hasData: queries.some((query) => query.data !== undefined),
-    refetch: () => Promise.all(queries.map((query) => query.refetch())),
+    isLoading: queries.some((query) => query.isLoading) || directQueries.some((query) => query.isLoading),
+    isError: queries.some((query) => query.isError) || directQueries.some((query) => query.isError),
+    hasData: queries.some((query) => query.data !== undefined) || directQueries.some((query) => query.data !== undefined),
+    refetch: () => Promise.all([...queries.map((query) => query.refetch()), ...directQueries.map((query) => query.refetch())]),
   };
 }
 
@@ -83,8 +102,8 @@ export function useMedications(petId?: string) {
   return useQuery({ queryKey: queryKeys.medications(petId ?? ''), queryFn: () => planetApi.pets.medications(petId as string), enabled: Boolean(petId) });
 }
 
-export function useTasks(petId?: string) {
-  return useQuery({ queryKey: queryKeys.tasks(petId ?? ''), queryFn: () => planetApi.pets.tasks(petId as string), enabled: Boolean(petId) });
+export function useTasks(petId?: string, includeArchived = false) {
+  return useQuery({ queryKey: queryKeys.tasks(petId ?? '', includeArchived), queryFn: () => planetApi.pets.tasks(petId as string, includeArchived), enabled: Boolean(petId) });
 }
 
 export function usePetShares(petId?: string, enabled = true) {

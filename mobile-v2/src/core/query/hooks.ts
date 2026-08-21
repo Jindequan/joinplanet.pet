@@ -43,12 +43,15 @@ export function useToday(circleId?: string, date = '') {
   return useQuery({ queryKey: queryKeys.today(circleId ?? '', date), queryFn: () => planetApi.circles.today(circleId as string, date || undefined), enabled: Boolean(circleId) });
 }
 
-export function useTodayForCircles(circleIds: string[], date = '') {
+export function useTodayForCircles(circleIds: string[], date: string | Record<string, string> = '') {
   const queries = useQueries({
-    queries: circleIds.map((circleId) => ({
-      queryKey: queryKeys.today(circleId, date),
-      queryFn: () => planetApi.circles.today(circleId, date || undefined),
-    })),
+    queries: circleIds.map((circleId) => {
+      const circleDate = typeof date === 'string' ? date : date[circleId] ?? '';
+      return {
+      queryKey: queryKeys.today(circleId, circleDate),
+      queryFn: () => planetApi.circles.today(circleId, circleDate || undefined),
+      };
+    }),
   });
   const petsById = new Map<string, { pet_id: string; pet_name: string; items: TodayPet['items'] }>();
   queries.forEach((query) => {
@@ -63,7 +66,7 @@ export function useTodayForCircles(circleIds: string[], date = '') {
     });
   });
   return {
-    data: { date: date || 'Today', pets: [...petsById.values()] },
+    data: { date: typeof date === 'string' && date ? date : 'Today', pets: [...petsById.values()] },
     isLoading: queries.some((query) => query.isLoading),
     isError: queries.some((query) => query.isError),
     refetch: () => Promise.all(queries.map((query) => query.refetch())),

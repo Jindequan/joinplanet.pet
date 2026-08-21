@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, StaleDataNotice, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
+import { WorkspaceBar } from "../src/ui/navigation/workspace-bar";
 import { useToast } from "../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../src/core/hooks/use-idempotency-key";
 import {
@@ -226,14 +227,15 @@ export default function FamilyRoute() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       {hasStaleData ? <StaleDataNotice onRetry={retryFamily} retrying={detail.isFetching || pets.isFetching} message="Some Family details are from the last saved view. Reconnect to refresh them." /> : null}
+      <WorkspaceBar familyName={circle?.name ?? "No Family selected"} />
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <AppText variant="caption" muted>
-            YOUR ORBIT / FAMILY
+            FAMILY WORKSPACE
           </AppText>
-          <AppText variant="display">Care together.</AppText>
+          <AppText variant="display">Family</AppText>
           <AppText muted>
-            One shared view for the people who show up for them.
+            Manage the people, Pets and permissions in this shared care space.
           </AppText>
         </View>
         <View

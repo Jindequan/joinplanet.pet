@@ -11,12 +11,8 @@ import { planetApi, type TodayItem } from '../../src/core/api/planet-api';
 import { ApiError } from '../../src/core/network/api-client';
 import { useToast } from '../../src/core/providers/toast-provider';
 import { readViewPreference, writeViewPreference } from '../../src/core/storage/view-preference';
+import { WorkspaceBar } from '../../src/ui/navigation/workspace-bar';
 import { CaretRightIcon, CheckIcon, ClockIcon, PawPrintIcon, PlusIcon, SparkleIcon, WarningCircleIcon } from '../../src/ui/icons';
-
-function dayGreeting(timeZone?: string) {
-  const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hour12: false }).format(new Date()));
-  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-}
 
 function dateKey(offset = 0, timeZone?: string) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -147,6 +143,12 @@ export default function TodayRoute() {
     .map((label) => ({ label, items: items.filter(({ item }) => carePeriod(item.task.time_of_day) === label) }))
     .filter((group) => group.items.length > 0);
   const firstName = me.data?.user.display_name?.split(' ')[0] || 'there';
+  const workspaceFamilyName = effectiveFilter.kind === 'family'
+    ? families.find((family) => family.id === effectiveFilter.familyId)?.name
+    : families.length === 1 ? families[0]?.name : undefined;
+  const workspacePetName = effectiveFilter.kind === 'pet'
+    ? accessiblePets.pets.find((pet) => pet.id === effectiveFilter.petId)?.name
+    : undefined;
   const openCareSetup = () => {
     if (accessiblePets.pets.length === 1) {
       router.push({ pathname: '/(tabs)/pet', params: { petId: accessiblePets.pets[0]?.id, intent: 'care' } });
@@ -166,7 +168,8 @@ export default function TodayRoute() {
   if (accessiblePets.pets.length === 0) return <Screen scroll contentContainerStyle={styles.content}><View style={styles.welcomeTop}><View><AppText variant="caption" muted>PLANET / TODAY</AppText><AppText variant="display">Your space is ready.</AppText></View><View style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}><CheckIcon size={21} color={theme.colors.brandStrong} weight="bold" /></View></View><LinearGradient colors={[theme.colors.accentSurface, theme.colors.brandSoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.readyHero}><AppText variant="caption" style={{ color: theme.colors.accentStrong }}>FIRST CARE SETUP</AppText><AppText variant="title">Add the Pet who makes this place matter.</AppText><AppText muted>{families[0]?.name ?? 'Your Family'} is ready. One Pet and one care plan will turn this empty day into something useful.</AppText></LinearGradient><Card style={styles.setupCard}><AppText variant="heading">A clear beginning</AppText><View style={styles.setupSteps}><View style={styles.setupStep}><View style={[styles.stepMark, { backgroundColor: theme.colors.brand }]}><CheckIcon size={15} color={theme.colors.onBrand} weight="bold" /></View><View style={styles.stepCopy}><AppText variant="label">Family created</AppText><AppText variant="caption" muted>{families[0]?.name ?? 'Your Family'} · shared care space</AppText></View></View><View style={styles.setupStep}><View style={[styles.stepMark, { backgroundColor: theme.colors.accentSurface }]}><PawPrintIcon size={16} color={theme.colors.accentStrong} weight="duotone" /></View><View style={styles.stepCopy}><AppText variant="label">Add your first Pet</AppText><AppText variant="caption" muted>Their profile and routines live together.</AppText></View></View></View><Button label="Add a Pet" onPress={() => router.push('/(tabs)/pets')} /><Button label="Invite someone to help" variant="secondary" onPress={() => router.push('/(tabs)/family')} /></Card></Screen>;
 
   return <Screen scroll contentContainerStyle={styles.content}>
-    <View style={styles.header}><View style={styles.headerCopy}><AppText variant="caption" muted>{dateLabel(visibleDate).toUpperCase()}</AppText><AppText variant="display">{dayOffset === 0 ? `${dayGreeting(displayTimezone)}, ${firstName}.` : `Care on ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(`${visibleDate}T12:00:00`))}.`}</AppText><AppText muted>{completed === items.length && items.length > 0 ? 'Everything important is cared for.' : dayOffset === 0 ? 'Here is what deserves your attention today.' : 'Review or complete a recent care moment.'}</AppText></View></View>
+    <WorkspaceBar familyName={workspaceFamilyName} petName={workspacePetName} />
+    <View style={styles.header}><View style={styles.headerCopy}><AppText variant="caption" muted>{dateLabel(visibleDate).toUpperCase()}</AppText><AppText variant="display">Today</AppText><AppText muted>{completed === items.length && items.length > 0 ? 'Everything important is cared for.' : dayOffset === 0 ? `Here is what needs attention, ${firstName}.` : 'Review or complete a recent care moment.'}</AppText></View></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}><View style={styles.dayRow}>{[0, -1, -2, -3, -4, -5, -6].map((offset) => { const value = dateKey(offset, displayTimezone); const selected = offset === dayOffset; return <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setDayOffset(offset)} style={[styles.dayChip, { borderColor: selected ? theme.colors.brandStrong : theme.colors.border, backgroundColor: selected ? theme.colors.brandStrong : theme.colors.surface }]}><AppText variant="caption" style={{ color: selected ? theme.colors.onBrand : theme.colors.textMuted }}>{shortDateLabel(value, offset)}</AppText></Pressable>; })}</View></ScrollView>
     <View style={styles.filterRow}><View style={styles.filterGrow}><ViewFilterBar value={effectiveFilter} families={families} pets={accessiblePets.pets} onChange={setFilter} /></View>{canAddCare ? <Pressable accessibilityRole="button" accessibilityLabel={accessiblePets.pets.length === 1 ? 'Add care' : 'Choose a Pet for care'} onPress={openCareSetup} style={({ pressed }) => [styles.addButton, { backgroundColor: theme.colors.brandStrong }, pressed && { opacity: theme.motion.pressOpacity }]}><PlusIcon size={17} color={theme.colors.onBrand} weight="bold" /><AppText variant="label" style={{ color: theme.colors.onBrand }}>Add</AppText></Pressable> : null}</View>
     {hasStaleData ? <StaleDataNotice onRetry={retryToday} retrying={circles.isFetching || accessiblePets.isLoading || today.isLoading || me.isFetching} /> : null}

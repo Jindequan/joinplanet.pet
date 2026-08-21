@@ -28,6 +28,7 @@ import {
   TextField,
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
+import { WorkspaceBar } from "../../src/ui/navigation/workspace-bar";
 import { useToast } from "../../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../../src/core/hooks/use-idempotency-key";
 import {
@@ -204,6 +205,9 @@ export default function PetRoute() {
     accessiblePets.pets[0];
   const detail = usePet(listedPet?.id);
   const pet = detail.data?.pet ?? listedPet;
+  const visibleFamily = pet
+    ? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
+    : undefined;
   const accessRole = detail.data?.pet.access_role ?? listedPet?.access_role;
   const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
   const sourceFamilyDetail = useCircle(sourceFamily?.id);
@@ -840,7 +844,8 @@ export default function PetRoute() {
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
-      <PageHeader eyebrow="YOUR PET / CARE" title={pet.name} />
+      <WorkspaceBar familyName={visibleFamily?.name} petName={pet.name} onPressWorkspace={() => router.push("/(tabs)/family")} />
+      <PageHeader eyebrow="PET RECORD" title={pet.name} />
       {hasStaleData ? <StaleDataNotice onRetry={retryPet} retrying={detail.isFetching || medications.isFetching || tasks.isFetching} message="Some care details are from the last saved view. Reconnect to refresh them." /> : null}
       {accessiblePets.pets.length > 1 ? <View style={styles.petSwitcher}><AppText variant="caption" muted>SWITCH PET</AppText><PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") router.replace({ pathname: "/(tabs)/pet", params: { petId: next.petId } }); else router.replace("/(tabs)/pets"); }} /></View> : null}
       <LinearGradient
@@ -861,7 +866,7 @@ export default function PetRoute() {
           >
             {pet.archived_at ? "MEMORY MODE" : "ACTIVE CARE"}
           </AppText>
-          <AppText variant="title">{pet.name}'s care world</AppText>
+          <AppText variant="title">{pet.name}</AppText>
           <AppText muted>
             {pet.breed || pet.species} · {taskList.length} ongoing{" "}
             {taskList.length === 1 ? "routine" : "routines"}

@@ -17,6 +17,7 @@ import {
   TextField,
 } from "../../src/ui/components";
 import { useTheme } from "../../src/core/providers/theme-provider";
+import { WorkspaceBar } from "../../src/ui/navigation/workspace-bar";
 import { useToast } from "../../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../../src/core/hooks/use-idempotency-key";
 import {
@@ -291,7 +292,7 @@ export default function TimelineRoute() {
   if (!pet)
     return (
       <Screen scroll contentContainerStyle={styles.content}>
-        <PageHeader eyebrow="PET / HISTORY" title="The story" />
+        <PageHeader eyebrow="JOURNAL" title="Journal" />
         <Card style={styles.empty}>
           <CalendarDotsIcon
             size={27}
@@ -326,9 +327,10 @@ export default function TimelineRoute() {
     <Screen scroll contentContainerStyle={styles.content}>
       <PageHeader
         eyebrow={`${pet.name.toUpperCase()} / HISTORY`}
-        title="The story"
+        title="Journal"
         showBack={false}
       />
+      <WorkspaceBar familyName={circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))?.name} petName={pet.name} onPressWorkspace={() => router.push('/(tabs)/family')} />
       {accessiblePets.pets.length > 1 ? (
         <View style={styles.petPicker}>
           <AppText variant="caption" muted>
@@ -352,7 +354,7 @@ export default function TimelineRoute() {
           />
         </View>
         <View style={styles.introCopy}>
-          <AppText variant="heading">A living record of {pet.name}</AppText>
+          <AppText variant="heading">{pet.name}'s care history</AppText>
           <AppText muted>
             Keep the details that help you notice, remember and care.
           </AppText>

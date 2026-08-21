@@ -33,7 +33,7 @@ import {
   usePetShares,
   useTasks,
 } from "../../src/core/query/hooks";
-import { planetApi, type Share, type Task } from "../../src/core/api/planet-api";
+import { planetApi, type Medication, type Share, type Task } from "../../src/core/api/planet-api";
 import { appConfig } from "../../src/core/config";
 import {
   careItemPayload,
@@ -200,6 +200,8 @@ export default function PetRoute() {
   const [medDose, setMedDose] = useState("");
   const [medSchedule, setMedSchedule] = useState("");
   const [medNote, setMedNote] = useState("");
+  const [editingMedicationId, setEditingMedicationId] = useState<string | null>(null);
+  const [medicationAction, setMedicationAction] = useState<{ id: string; kind: "stop" | "delete" } | null>(null);
   const [lifecycleAction, setLifecycleAction] = useState<"archive" | "restore" | "delete" | null>(null);
   const [shareKind, setShareKind] = useState<"care_card" | "summary">("care_card");
   const [shareTtl, setShareTtl] = useState<"24" | "72" | "168">("72");
@@ -318,6 +320,53 @@ export default function PetRoute() {
           ? err.message
           : "Unable to add this medication.",
       ),
+  });
+  const resetMedicationForm = () => {
+    setMedName("");
+    setMedDose("");
+    setMedSchedule("");
+    setMedNote("");
+    setEditingMedicationId(null);
+    setForm(null);
+    setError("");
+  };
+  const updateMedication = useMutation({
+    mutationFn: () =>
+      planetApi.medications.update(editingMedicationId!, {
+        name: medName.trim(),
+        dose: medDose.trim(),
+        schedule: medSchedule.trim(),
+        note: medNote.trim(),
+      }),
+    onSuccess: () => {
+      resetMedicationForm();
+      invalidate.medications(pet!.id);
+      invalidate.timeline(pet!.id);
+    },
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Unable to update this medication."),
+  });
+  const stopMedication = useMutation({
+    mutationFn: () => planetApi.medications.stop(medicationAction!.id),
+    onSuccess: () => {
+      setMedicationAction(null);
+      setError("");
+      invalidate.medications(pet!.id);
+      invalidate.timeline(pet!.id);
+    },
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Unable to stop this medication."),
+  });
+  const deleteMedication = useMutation({
+    mutationFn: () => planetApi.medications.delete(medicationAction!.id),
+    onSuccess: () => {
+      setMedicationAction(null);
+      setError("");
+      invalidate.medications(pet!.id);
+      invalidate.timeline(pet!.id);
+    },
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : "Unable to remove this medication."),
   });
   const editProfile = useMutation({
     mutationFn: async () => {
@@ -518,7 +567,21 @@ export default function PetRoute() {
       return;
     }
     setError("");
-    addMedication.mutate();
+    if (editingMedicationId) {
+      updateMedication.mutate();
+    } else {
+      addMedication.mutate();
+    }
+  }
+  function openMedicationEditor(medication: Medication) {
+    setEditingMedicationId(medication.id);
+    setMedName(medication.name);
+    setMedDose(medication.dose ?? "");
+    setMedSchedule(medication.schedule ?? "");
+    setMedNote(medication.note ?? "");
+    setMedicationAction(null);
+    setError("");
+    setForm("medication");
   }
   function submitProfile() {
       const parsed = petSchema.safeParse({
@@ -1163,24 +1226,85 @@ export default function PetRoute() {
             variant="secondary"
             disabled={isArchived}
             onPress={() => {
+              setEditingMedicationId(null);
+              setMedName("");
+              setMedDose("");
+              setMedSchedule("");
+              setMedNote("");
               setForm("medication");
               setError("");
             }}
           />
         </View>
-        {medications.data?.medications.slice(0, 3).map((med) => (
+        {medications.data?.medications.map((med) => (
           <View key={med.id} style={styles.medicationRow}>
-            <AppText variant="label">
-              {med.name}
-              {med.ended_on ? " · stopped" : ""}
-            </AppText>
-            {med.dose || med.schedule ? (
-              <AppText variant="caption" muted>
-                {[med.dose, med.schedule].filter(Boolean).join(" · ")}
+            <View style={styles.medicationCopy}>
+              <AppText variant="label">
+                {med.name}
+                {med.ended_on ? " · stopped" : ""}
               </AppText>
+              {med.dose || med.schedule ? (
+                <AppText variant="caption" muted>
+                  {[med.dose, med.schedule].filter(Boolean).join(" · ")}
+                </AppText>
+              ) : null}
+              {med.note ? <AppText variant="caption" muted>{med.note}</AppText> : null}
+            </View>
+            {!isArchived ? (
+              <View style={styles.medicationActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit ${med.name}`}
+                  onPress={() => openMedicationEditor(med)}
+                  hitSlop={6}
+                >
+                  <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>Edit</AppText>
+                </Pressable>
+                {!med.ended_on ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Stop ${med.name}`}
+                    onPress={() => { setMedicationAction({ id: med.id, kind: "stop" }); setError(""); }}
+                    hitSlop={6}
+                  >
+                    <AppText variant="caption" style={{ color: theme.colors.textMuted }}>Stop</AppText>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${med.name}`}
+                  onPress={() => { setMedicationAction({ id: med.id, kind: "delete" }); setError(""); }}
+                  hitSlop={6}
+                >
+                  <AppText variant="caption" style={{ color: theme.colors.danger }}>Delete</AppText>
+                </Pressable>
+              </View>
             ) : null}
           </View>
         ))}
+        {medicationAction ? (() => {
+          const selectedMedication = medications.data?.medications.find((item) => item.id === medicationAction.id);
+          if (!selectedMedication) return null;
+          const deleting = medicationAction.kind === "delete";
+          return (
+            <View style={[styles.confirmBox, { backgroundColor: deleting ? theme.colors.surfaceRaised : theme.colors.accentSurface }]}>
+              <AppText variant="label">{deleting ? `Delete ${selectedMedication.name}?` : `Stop ${selectedMedication.name}?`}</AppText>
+              <AppText variant="caption" muted>
+                {deleting ? "This removes the medication entry from the Pet record." : "Stopping keeps the medication and its history, but records that it is no longer active."}
+              </AppText>
+              {error ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
+              <View style={styles.actions}>
+                <Button label="Cancel" variant="secondary" onPress={() => { setMedicationAction(null); setError(""); }} />
+                <Button
+                  label={deleting ? "Delete medication" : "Stop medication"}
+                  variant={deleting ? "danger" : "primary"}
+                  loading={stopMedication.isPending || deleteMedication.isPending}
+                  onPress={() => deleting ? deleteMedication.mutate() : stopMedication.mutate()}
+                />
+              </View>
+            </View>
+          );
+        })() : null}
         {form === "medication" ? (
           <View style={styles.form}>
             <TextField
@@ -1222,14 +1346,11 @@ export default function PetRoute() {
               <Button
                 label="Cancel"
                 variant="secondary"
-                onPress={() => {
-                  setForm(null);
-                  setError("");
-                }}
+                onPress={resetMedicationForm}
               />
               <Button
-                label="Save medication"
-                loading={addMedication.isPending}
+                label={editingMedicationId ? "Save changes" : "Save medication"}
+                loading={addMedication.isPending || updateMedication.isPending}
                 disabled={!medName.trim()}
                 onPress={submitMedication}
               />
@@ -1371,7 +1492,9 @@ const styles = StyleSheet.create({
   rowMenu: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   taskActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, paddingBottom: 10 },
   confirmBox: { borderRadius: 16, padding: 14, gap: 8, marginBottom: 10 },
-  medicationRow: { gap: 2, paddingVertical: 4 },
+  medicationRow: { gap: 8, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center" },
+  medicationCopy: { flex: 1, gap: 2 },
+  medicationActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   lifecycleCard: { gap: 12 },
   transferForm: { gap: 9, paddingTop: 2 },
   toggleRow: { minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },

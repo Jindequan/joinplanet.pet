@@ -54,6 +54,7 @@ export default function FamilyRoute() {
   const [familyName, setFamilyName] = useState("");
   const [familyTimezone, setFamilyTimezone] = useState("");
   const [familyAction, setFamilyAction] = useState<"leave" | "delete" | null>(null);
+  const [deleteFamilyConfirm, setDeleteFamilyConfirm] = useState("");
   const [memberAction, setMemberAction] = useState<string | null>(null);
   const [ownershipTarget, setOwnershipTarget] = useState<string | null>(null);
   React.useEffect(() => {
@@ -157,6 +158,7 @@ export default function FamilyRoute() {
   const deleteFamily = useMutation({
     mutationFn: () => planetApi.circles.delete(circle!.id),
     onSuccess: () => {
+      setDeleteFamilyConfirm("");
       setFamilyAction(null);
       setActiveCircleId(undefined);
       invalidate.circles();
@@ -360,7 +362,7 @@ export default function FamilyRoute() {
                 />
               </View>
             </View>
-            {invite ? (
+            {circle.role === "owner" ? invite ? (
               <View
                 style={[
                   styles.codeBox,
@@ -395,7 +397,7 @@ export default function FamilyRoute() {
                 loading={refresh.isPending}
                 onPress={() => refresh.mutate()}
               />
-            )}
+            ) : <AppText variant="caption" muted>Only the Family owner can create or refresh the invite code.</AppText>}
           </Card>
           {circle.role === "owner" ? (
             <Card style={styles.transferCard}>
@@ -543,12 +545,12 @@ export default function FamilyRoute() {
             ))}
           </Card>
           <View style={styles.actions}>
-            <Button
+            {circle.role === "owner" ? <Button
               label="Refresh invite"
               variant="secondary"
               loading={refresh.isPending}
               onPress={() => refresh.mutate()}
-            />
+            /> : null}
             <Button
               label="Join another Family"
               variant="ghost"
@@ -579,7 +581,7 @@ export default function FamilyRoute() {
               ) : (
                 <View style={styles.actions}>
                   <Button label="Edit Family" variant="secondary" onPress={() => { setFamilyName(circle.name); setFamilyTimezone(circle.timezone); setEditingFamily(true); setError(""); }} />
-                  <Button label="Delete Family" variant="danger" onPress={() => setFamilyAction("delete")} />
+                  <Button label="Delete Family" variant="danger" onPress={() => { setDeleteFamilyConfirm(""); setFamilyAction("delete"); }} />
                 </View>
               )
             ) : (
@@ -589,9 +591,10 @@ export default function FamilyRoute() {
               <View style={[styles.confirmBox, { backgroundColor: theme.colors.surfaceRaised }]}>
                 <AppText variant="label">{familyAction === "delete" ? "Delete this Family?" : "Leave this Family?"}</AppText>
                 <AppText variant="caption" muted>{familyAction === "delete" ? "Pets must be transferred or deleted first. Shared history is not silently removed." : "You will lose access to the Pets shared in this Family."}</AppText>
+                {familyAction === "delete" ? <TextField label={`Type ${circle.name} to confirm`} value={deleteFamilyConfirm} onChangeText={(value) => { setDeleteFamilyConfirm(value); setError(""); }} placeholder={circle.name} autoCapitalize="none" autoCorrect={false} /> : null}
                 <View style={styles.actions}>
-                  <Button label="Cancel" variant="secondary" onPress={() => setFamilyAction(null)} />
-                  <Button label={familyAction === "delete" ? "Delete Family" : "Leave Family"} variant="danger" loading={leaveFamily.isPending || deleteFamily.isPending} onPress={() => familyAction === "delete" ? deleteFamily.mutate() : leaveFamily.mutate()} />
+                  <Button label="Cancel" variant="secondary" onPress={() => { setFamilyAction(null); setDeleteFamilyConfirm(""); }} />
+                  <Button label={familyAction === "delete" ? "Delete Family" : "Leave Family"} variant="danger" loading={leaveFamily.isPending || deleteFamily.isPending} disabled={familyAction === "delete" && deleteFamilyConfirm.trim() !== circle.name} onPress={() => familyAction === "delete" ? deleteFamily.mutate() : leaveFamily.mutate()} />
                 </View>
               </View>
             ) : null}

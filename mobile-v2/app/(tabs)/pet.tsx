@@ -246,6 +246,7 @@ export default function PetRoute() {
   const [editingMedicationId, setEditingMedicationId] = useState<string | null>(null);
   const [medicationAction, setMedicationAction] = useState<{ id: string; kind: "stop" | "delete" } | null>(null);
   const [lifecycleAction, setLifecycleAction] = useState<"archive" | "restore" | "delete" | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [shareKind, setShareKind] = useState<"care_card" | "summary">("care_card");
   const [shareTtl, setShareTtl] = useState<"24" | "72" | "168">("72");
   const [shareDays, setShareDays] = useState("90");
@@ -474,6 +475,7 @@ export default function PetRoute() {
   const deletePet = useMutation({
     mutationFn: () => planetApi.pets.delete(pet!.id),
     onSuccess: () => {
+      setDeleteConfirmName("");
       invalidate.petsAll();
       invalidate.circles();
       router.replace("/(tabs)/pets");
@@ -1493,12 +1495,14 @@ export default function PetRoute() {
             <AppText variant="caption" muted>
               {lifecycleAction === "archive" ? "Future care moments and reminders stop. The profile and history remain available." : lifecycleAction === "restore" ? "Active care can be scheduled again after restoring this Pet." : "This removes the Pet and its care history. Export anything you need first."}
             </AppText>
+            {lifecycleAction === "delete" ? <TextField label={`Type ${pet.name} to confirm`} value={deleteConfirmName} onChangeText={(value) => { setDeleteConfirmName(value); setError(""); }} placeholder={pet.name} autoCapitalize="none" autoCorrect={false} /> : null}
             <View style={styles.actions}>
-              <Button label="Cancel" variant="secondary" onPress={() => setLifecycleAction(null)} />
+              <Button label="Cancel" variant="secondary" onPress={() => { setLifecycleAction(null); setDeleteConfirmName(""); }} />
               <Button
                 label={lifecycleAction === "archive" ? "Archive Pet" : lifecycleAction === "restore" ? "Restore Pet" : "Delete permanently"}
                 variant={lifecycleAction === "delete" ? "danger" : "primary"}
                 loading={archivePet.isPending || restorePet.isPending || deletePet.isPending}
+                disabled={lifecycleAction === "delete" && deleteConfirmName.trim() !== pet.name}
                 onPress={() => lifecycleAction === "archive" ? archivePet.mutate() : lifecycleAction === "restore" ? restorePet.mutate() : deletePet.mutate()}
               />
             </View>
@@ -1507,7 +1511,7 @@ export default function PetRoute() {
             <View style={styles.actions}>
               <Button label="Export record" variant="secondary" loading={exportPet.isPending} onPress={() => { setExportError(""); exportPet.mutate(); }} />
               {isArchived ? <Button label="Restore Pet" variant="secondary" onPress={() => setLifecycleAction("restore")} /> : <Button label="Archive Pet" variant="secondary" onPress={() => setLifecycleAction("archive")} />}
-            <Button label="Delete Pet" variant="danger" onPress={() => setLifecycleAction("delete")} />
+            <Button label="Delete Pet" variant="danger" onPress={() => { setDeleteConfirmName(""); setLifecycleAction("delete"); }} />
           </View>
         ) : (
           <AppText variant="caption" muted>

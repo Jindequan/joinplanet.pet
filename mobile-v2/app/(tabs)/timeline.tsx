@@ -20,6 +20,7 @@ import {
   useAccessiblePets,
   useCircles,
   useInvalidateApi,
+  useMe,
   useTimeline,
 } from "../../src/core/query/hooks";
 import { planetApi, type TimelineEvent } from "../../src/core/api/planet-api";
@@ -93,6 +94,7 @@ function eventDayLabel(value: string) {
 export default function TimelineRoute() {
   const { theme } = useTheme();
   const { showToast } = useToast();
+  const me = useMe();
   const params = useLocalSearchParams<{ petId?: string }>();
   const circles = useCircles();
   const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
@@ -258,6 +260,7 @@ export default function TimelineRoute() {
     create.mutate();
   }
   if (
+    me.isLoading ||
     circles.isLoading ||
     accessiblePets.isLoading ||
     (pet && timeline.isLoading)
@@ -267,13 +270,14 @@ export default function TimelineRoute() {
         <ActivityIndicator color={theme.colors.brand} />
       </Screen>
     );
-  if (circles.isError || accessiblePets.isError || timeline.isError)
+  if (me.isError || circles.isError || accessiblePets.isError || timeline.isError)
     return (
       <Screen contentContainerStyle={styles.center}>
         <QueryErrorState
           title="The story is unavailable"
           body="We could not load this Pet's timeline right now."
           onRetry={() => {
+            void me.refetch();
             void circles.refetch();
             void accessiblePets.refetch();
             if (pet) void timeline.refetch();
@@ -307,6 +311,11 @@ export default function TimelineRoute() {
     else groups.push({ label, events: [event] });
     return groups;
   }, []);
+  const linkedFamilyIds = new Set(pet.family_ids?.length ? pet.family_ids : [pet.circle_id]);
+  const hasOwnerAccess = pet.current_owner_user_id === me.data?.user.id || Boolean(circles.data?.circles.some((circle) => linkedFamilyIds.has(circle.id) && circle.role === "owner"));
+  const knownFamilyRoles = circles.data?.circles.filter((circle) => linkedFamilyIds.has(circle.id)).map((circle) => circle.role).filter(Boolean) ?? [];
+  const canRecord = knownFamilyRoles.length === 0 || knownFamilyRoles.some((role) => role !== "viewer" && role !== "read_only");
+  const canEditEvent = (event: TimelineEvent) => event.source === "user" && (event.recorded_by === me.data?.user.id || hasOwnerAccess);
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <PageHeader
@@ -342,7 +351,7 @@ export default function TimelineRoute() {
           </AppText>
         </View>
       </View>
-      <Button
+      {canRecord ? <Button
         label={adding ? "Close record form" : "Record something"}
         variant="secondary"
         icon={
@@ -358,7 +367,7 @@ export default function TimelineRoute() {
           setAdding((value) => !value);
           setError("");
         }}
-      />
+      /> : <AppText variant="caption" muted>This Pet is view-only for you. A caregiver or owner can add to the story.</AppText>}
       <SegmentedControl
         label="Filter care history"
         value={timelineFilter}
@@ -370,7 +379,7 @@ export default function TimelineRoute() {
           { value: "care", label: "Care" },
         ]}
       />
-      {adding ? (
+      {adding && canRecord ? (
         <Card style={styles.form}>
           <AppText variant="title">Add to the story</AppText>
           <SegmentedControl
@@ -456,7 +465,7 @@ export default function TimelineRoute() {
                     {event.source === "user" ? `Recorded by ${event.recorded_by_name || "a caregiver"}` : "From care"}
                   </AppText>
                 </View>
-                {event.source === "user" &&
+                {canEditEvent(event) &&
                 (event.type === "note" ||
                   event.type === "symptom" ||
                   event.type === "weight" ||

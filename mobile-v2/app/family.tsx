@@ -674,8 +674,7 @@ export default function FamilyRoute() {
           </View>
           <AppText variant="title">Start your care circle.</AppText>
           <AppText muted>
-            Family is the shared relationship around Pets—not another layer you
-            have to manage.
+            Keep the people, Pets and shared care in one calm place.
           </AppText>
           <View style={styles.actions}>
             <Button

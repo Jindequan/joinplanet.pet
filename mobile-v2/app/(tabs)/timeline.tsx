@@ -387,7 +387,7 @@ export default function TimelineRoute() {
         value={timelineFilter}
         onChange={setTimelineFilter}
         options={[
-          { value: "all", label: "Everything" },
+          { value: "all", label: "All" },
           { value: "notes", label: "Notes" },
           { value: "health", label: "Health" },
           { value: "care", label: "Care" },

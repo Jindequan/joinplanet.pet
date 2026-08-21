@@ -240,7 +240,7 @@ export default function FamilyRoute() {
   };
   const blockingError = (circles.isError && !circles.data) || (!circle && detail.isError);
   const hasStaleData = Boolean((circles.isError && circles.data) || (detail.isError && circle) || pets.isError);
-  if (circles.isLoading || (circle && detail.isLoading))
+  if (circles.isLoading || (circle && (detail.isLoading || pets.isLoading || (circle.role === "owner" && (incomingTransfers.isLoading || outgoingTransfers.isLoading)))))
     return (
       <Screen><LoadingState label="Loading your Family" /></Screen>
     );

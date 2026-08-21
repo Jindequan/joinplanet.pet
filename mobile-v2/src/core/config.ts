@@ -9,7 +9,7 @@ function runtimeApiBaseUrl() {
   if (host && host !== 'localhost' && host !== '127.0.0.1' && host !== '::1') {
     return `http://${host}:8081/api/v1`;
   }
-  return 'http://127.0.0.1:8081/api/v1';
+  return __DEV__ ? 'http://127.0.0.1:8081/api/v1' : 'https://api.joinplanet.pet/api/v1';
 }
 
 export const appConfig = {

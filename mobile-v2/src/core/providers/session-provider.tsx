@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { clearSessionToken, readSessionToken, writeSessionToken } from '../storage/secure-storage';
 import { planetApi } from '../api/planet-api';
 import { setUnauthorizedHandler } from '../network/api-client';
+import { ApiError } from '../network/api-client';
 import { queryClient } from '../query/query-client';
 
 type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -44,10 +45,18 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
         if (!mounted) return;
         setToken(savedToken);
         setStatus('authenticated');
-      }).catch(async () => {
+      }).catch(async (error) => {
         if (!mounted) return;
-        await clearSessionToken();
-        setStatus('unauthenticated');
+        if (error instanceof ApiError && error.status === 401) {
+          await clearSessionToken();
+          setToken(null);
+          setStatus('unauthenticated');
+          return;
+        }
+        // A timeout, offline device, or 5xx does not invalidate a session.
+        // Keep the token and let protected screens show their retry state.
+        setToken(savedToken);
+        setStatus('authenticated');
       });
     });
     return () => { mounted = false; };

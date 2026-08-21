@@ -805,7 +805,7 @@ export default function PetRoute() {
     circles.isLoading ||
     me.isLoading ||
     accessiblePets.isLoading ||
-    (pet && detail.isLoading)
+    (pet && (detail.isLoading || medications.isLoading || tasks.isLoading || today.isLoading))
   )
     return (
       <Screen><LoadingState label="Loading this Pet’s world" /></Screen>

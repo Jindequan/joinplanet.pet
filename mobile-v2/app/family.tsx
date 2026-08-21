@@ -10,8 +10,9 @@ import {
   useCirclePets,
   useCircles,
   useInvalidateApi,
+  useTransfers,
 } from "../src/core/query/hooks";
-import { planetApi } from "../src/core/api/planet-api";
+import { planetApi, type Transfer } from "../src/core/api/planet-api";
 import { ApiError } from "../src/core/network/api-client";
 import { familySchema, joinFamilySchema } from "../src/core/forms";
 import {
@@ -31,6 +32,8 @@ export default function FamilyRoute() {
     circles.data?.circles[0];
   const detail = useCircle(circle?.id);
   const pets = useCirclePets(circle?.id);
+  const incomingTransfers = useTransfers(circle?.role === "owner" ? circle.id : undefined, "incoming");
+  const outgoingTransfers = useTransfers(circle?.role === "owner" ? circle.id : undefined, "outgoing");
   const invalidate = useInvalidateApi();
   const [mode, setMode] = useState<"none" | "create" | "join">("none");
   const [name, setName] = useState("");
@@ -105,6 +108,23 @@ export default function FamilyRoute() {
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to transfer ownership."),
   });
+  const decidePetTransfer = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "accept" | "decline" }) => action === "accept" ? planetApi.transfers.accept(id) : planetApi.transfers.decline(id),
+    onSuccess: () => {
+      setError("");
+      if (circle) {
+        invalidate.transfers(circle.id);
+        invalidate.circles();
+        invalidate.petsAll();
+      }
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to update this Pet handoff."),
+  });
+  const cancelPetTransfer = useMutation({
+    mutationFn: (id: string) => planetApi.transfers.cancel(id),
+    onSuccess: () => circle && invalidate.transfers(circle.id),
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to cancel this Pet handoff."),
+  });
   const leaveFamily = useMutation({
     mutationFn: () => planetApi.circles.leave(circle!.id),
     onSuccess: () => {
@@ -169,6 +189,8 @@ export default function FamilyRoute() {
     );
   const members = detail.data?.members ?? [];
   const petCount = pets.data?.pets.length ?? 0;
+  const pendingIncoming: Transfer[] = incomingTransfers.data?.transfers.filter((item) => item.status === "PENDING") ?? [];
+  const pendingOutgoing: Transfer[] = outgoingTransfers.data?.transfers.filter((item) => item.status === "PENDING") ?? [];
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -337,6 +359,51 @@ export default function FamilyRoute() {
               />
             )}
           </Card>
+          {circle.role === "owner" ? (
+            <Card style={styles.transferCard}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.rowCopy}>
+                  <AppText variant="heading">Pet handoffs</AppText>
+                  <AppText variant="caption" muted>
+                    Moving a Pet needs both Family owners to agree. Nothing changes while it is pending.
+                  </AppText>
+                </View>
+                {pendingIncoming.length + pendingOutgoing.length ? <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{pendingIncoming.length + pendingOutgoing.length} pending</AppText> : null}
+              </View>
+              {incomingTransfers.isError || outgoingTransfers.isError ? (
+                <View style={styles.actions}>
+                  <AppText variant="caption" muted>Handoffs could not be loaded.</AppText>
+                  <Button label="Retry" variant="ghost" onPress={() => { void incomingTransfers.refetch(); void outgoingTransfers.refetch(); }} />
+                </View>
+              ) : pendingIncoming.length === 0 && pendingOutgoing.length === 0 ? (
+                <AppText variant="caption" muted>No Pet handoffs need your attention.</AppText>
+              ) : (
+                <View style={styles.transferList}>
+                  {pendingIncoming.map((item) => (
+                    <View key={item.id} style={[styles.transferRow, { borderColor: theme.colors.border }]}>
+                      <View style={styles.rowCopy}>
+                        <AppText variant="label">{item.pet_name}</AppText>
+                        <AppText variant="caption" muted>Incoming from {item.from_circle}</AppText>
+                      </View>
+                      <View style={styles.actions}>
+                        <Button label="Decline" variant="ghost" disabled={decidePetTransfer.isPending} onPress={() => decidePetTransfer.mutate({ id: item.id, action: "decline" })} />
+                        <Button label="Accept" variant="secondary" loading={decidePetTransfer.isPending} onPress={() => decidePetTransfer.mutate({ id: item.id, action: "accept" })} />
+                      </View>
+                    </View>
+                  ))}
+                  {pendingOutgoing.map((item) => (
+                    <View key={item.id} style={[styles.transferRow, { borderColor: theme.colors.border }]}>
+                      <View style={styles.rowCopy}>
+                        <AppText variant="label">{item.pet_name}</AppText>
+                        <AppText variant="caption" muted>Waiting for {item.to_circle}</AppText>
+                      </View>
+                      <Button label="Cancel" variant="ghost" loading={cancelPetTransfer.isPending} onPress={() => cancelPetTransfer.mutate(item.id)} />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Card>
+          ) : null}
           <View style={styles.sectionHeader}>
             <View>
               <AppText variant="title">The people</AppText>
@@ -639,6 +706,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   inviteCard: { gap: 14 },
+  transferCard: { gap: 12 },
+  transferList: { gap: 8 },
+  transferRow: { flexDirection: "row", alignItems: "center", gap: 10, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
+  rowCopy: { flex: 1, gap: 2 },
   inviteHeader: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretDownIcon, CheckCircleIcon, DogIcon, PawPrintIcon, UsersThreeIcon } from '../icons';
 import { useTheme } from '../../core/providers/theme-provider';
@@ -72,7 +72,7 @@ export function PetFilterSelector({ value, families, pets, onChange, disabled = 
             </Pressable>
           </View>
 
-          <View style={styles.options}>
+          <ScrollView style={styles.optionsScroll} contentContainerStyle={styles.options} showsVerticalScrollIndicator={false}>
             <FilterOption icon={<PawPrintIcon size={20} color={theme.colors.brandStrong} weight="duotone" />} label="All Pets" detail="Everything you can access" selected={sameFilter(value, { kind: 'all' })} onPress={() => select({ kind: 'all' })} />
 
             {families.length > 0 ? <AppText variant="caption" muted style={styles.sectionLabel}>FAMILIES</AppText> : null}
@@ -80,7 +80,7 @@ export function PetFilterSelector({ value, families, pets, onChange, disabled = 
 
             {pets.length > 0 ? <AppText variant="caption" muted style={styles.sectionLabel}>PETS</AppText> : null}
             {pets.map((pet) => <FilterOption key={pet.id} icon={<DogIcon size={20} color={theme.colors.lavender} weight="duotone" />} label={pet.name} detail={pet.species ? `${pet.species} · personal view` : 'Personal view'} selected={sameFilter(value, { kind: 'pet', petId: pet.id })} onPress={() => select({ kind: 'pet', petId: pet.id })} />)}
-          </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -106,6 +106,7 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   titleCopy: { gap: 2 },
   closeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
+  optionsScroll: { maxHeight: 440 },
   options: { gap: 8 },
   sectionLabel: { marginTop: 10, marginLeft: 4 },
   option: { minHeight: 64, borderWidth: 1, borderRadius: 17, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 11 },

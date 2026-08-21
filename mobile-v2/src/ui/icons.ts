@@ -26,6 +26,7 @@ export { PawPrintIcon } from 'phosphor-react-native/src/icons/PawPrint';
 export { PlanetIcon } from 'phosphor-react-native/src/icons/Planet';
 export { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
 export { ShieldCheckIcon } from 'phosphor-react-native/src/icons/ShieldCheck';
+export { ShareNetworkIcon } from 'phosphor-react-native/src/icons/ShareNetwork';
 export { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
 export { SlidersHorizontalIcon } from 'phosphor-react-native/src/icons/SlidersHorizontal';
 export { SparkleIcon } from 'phosphor-react-native/src/icons/Sparkle';

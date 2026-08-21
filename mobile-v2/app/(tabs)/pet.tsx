@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, Share as NativeShare, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -10,6 +11,7 @@ import {
   DogIcon,
   PawPrintIcon,
   PlusIcon,
+  ShareNetworkIcon,
 } from "../../src/ui/icons";
 import {
   AppText,
@@ -28,14 +30,18 @@ import {
   useInvalidateApi,
   useMedications,
   usePet,
+  usePetShares,
   useTasks,
 } from "../../src/core/query/hooks";
-import { planetApi, type Task } from "../../src/core/api/planet-api";
+import { planetApi, type Share, type Task } from "../../src/core/api/planet-api";
+import { appConfig } from "../../src/core/config";
 import {
   careItemPayload,
   careItemSchema,
   medicationSchema,
   petSchema,
+  sharePayload,
+  shareSchema,
   taskPayload,
   taskSchema,
 } from "../../src/core/forms";
@@ -120,6 +126,16 @@ function PetGlyph({ species }: { species: "dog" | "cat" | "other" }) {
   return <DogIcon size={46} color="#B86843" weight="duotone" />;
 }
 
+function shareKindLabel(kind: Share["kind"]) {
+  return kind === "care_card" ? "Care card" : "Health summary";
+}
+
+function shareExpiryLabel(expiresAt: string) {
+  const date = new Date(expiresAt);
+  if (Number.isNaN(date.getTime())) return "Expiry unavailable";
+  return `Expires ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+}
+
 export default function PetRoute() {
   const { theme } = useTheme();
   const router = useRouter();
@@ -135,6 +151,7 @@ export default function PetRoute() {
   const detail = usePet(pet?.id);
   const medications = useMedications(pet?.id);
   const tasks = useTasks(pet?.id);
+  const shares = usePetShares(pet?.id);
   const invalidate = useInvalidateApi();
 
   const [form, setForm] = useState<"care" | "medication" | "profile" | null>(null);
@@ -159,6 +176,17 @@ export default function PetRoute() {
   const [medSchedule, setMedSchedule] = useState("");
   const [medNote, setMedNote] = useState("");
   const [lifecycleAction, setLifecycleAction] = useState<"archive" | "restore" | "delete" | null>(null);
+  const [shareKind, setShareKind] = useState<"care_card" | "summary">("care_card");
+  const [shareTtl, setShareTtl] = useState<"24" | "72" | "168">("72");
+  const [shareDays, setShareDays] = useState("90");
+  const [shareError, setShareError] = useState("");
+  const [createdShare, setCreatedShare] = useState<{ share: Share; url: string } | null>(null);
+  const [revokeShareId, setRevokeShareId] = useState<string | null>(null);
+  const [copiedShare, setCopiedShare] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
+  const [transferError, setTransferError] = useState("");
+  const [transferNotice, setTransferNotice] = useState("");
 
   const resetCareForm = () => {
     setCareType("custom");
@@ -316,8 +344,46 @@ export default function PetRoute() {
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to delete this Pet."),
   });
+  const transferPet = useMutation({
+    mutationFn: () => planetApi.pets.transfer(pet!.id, transferTargetId!),
+    onSuccess: () => {
+      setTransferOpen(false);
+      setTransferTargetId(null);
+      setTransferError("");
+      setTransferNotice("The handoff request is waiting for the other Family owner.");
+      invalidate.circles();
+      invalidate.petsAll();
+      if (pet?.circle_id) invalidate.transfers(pet.circle_id);
+    },
+    onError: (err) => setTransferError(err instanceof ApiError ? err.message : "Unable to start this Pet handoff."),
+  });
+  const createShare = useMutation({
+    mutationFn: () => {
+      const parsed = shareSchema.safeParse({ kind: shareKind, ttl_hours: shareTtl, days: shareDays });
+      if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check the sharing options.");
+      return planetApi.pets.createShare(pet!.id, sharePayload(parsed.data));
+    },
+    onSuccess: (result) => {
+      setCreatedShare({ share: result.share, url: `${appConfig.publicWebBaseUrl}/s/${result.token}` });
+      setCopiedShare(false);
+      setShareError("");
+      invalidate.shares(pet!.id);
+    },
+    onError: (err) => setShareError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Unable to create the share link."),
+  });
+  const revokeShare = useMutation({
+    mutationFn: () => planetApi.shares.revoke(revokeShareId!),
+    onSuccess: () => {
+      setRevokeShareId(null);
+      setShareError("");
+      invalidate.shares(pet!.id);
+    },
+    onError: (err) => setShareError(err instanceof ApiError ? err.message : "Unable to revoke this link."),
+  });
   const taskList = useMemo(() => tasks.data?.tasks ?? [], [tasks.data?.tasks]);
   const isArchived = Boolean(pet?.archived_at);
+  const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
+  const targetFamilies = circles.data?.circles.filter((item) => item.id !== pet?.circle_id) ?? [];
 
   function openTaskEditor(task: Task) {
     const raw = task.schedule;
@@ -610,6 +676,92 @@ export default function PetRoute() {
                 onPress={submitProfile}
               />
             </View>
+          </View>
+        ) : null}
+      </Card>
+      <Card style={styles.card}>
+        <View style={styles.shareHeader}>
+          <View style={[styles.shareIcon, { backgroundColor: theme.colors.brandSoft }]}>
+            <ShareNetworkIcon size={21} color={theme.colors.brandStrong} weight="duotone" />
+          </View>
+          <View style={styles.rowCopy}>
+            <AppText variant="heading">Share a care handoff</AppText>
+            <AppText variant="caption" muted>
+              Give a sitter or vet the right view. Every link expires and can be revoked.
+            </AppText>
+          </View>
+        </View>
+        <SegmentedControl
+          label="What to share"
+          value={shareKind}
+          onChange={setShareKind}
+          options={[{ value: "care_card", label: "Care card" }, { value: "summary", label: "Health summary" }]}
+        />
+        <SegmentedControl
+          label="Link lifetime"
+          value={shareTtl}
+          onChange={setShareTtl}
+          options={[{ value: "24", label: "24 hours" }, { value: "72", label: "3 days" }, { value: "168", label: "7 days" }]}
+        />
+        {shareKind === "summary" ? (
+          <TextField
+            label="Include the last (days)"
+            value={shareDays}
+            onChangeText={(value) => { setShareDays(value.replace(/\D/g, "").slice(0, 3)); setShareError(""); }}
+            keyboardType="number-pad"
+            hint="Profile, medications, and timeline events."
+          />
+        ) : null}
+        {shareError ? <AppText style={{ color: theme.colors.danger }}>{shareError}</AppText> : null}
+        {createdShare ? (
+          <View style={[styles.shareResult, { backgroundColor: theme.colors.accentSurface, borderColor: theme.colors.border }]}>
+            <AppText variant="label">{shareKindLabel(createdShare.share.kind)} ready</AppText>
+            <AppText selectable variant="caption" muted>{createdShare.url}</AppText>
+            <View style={styles.actions}>
+              <Button
+                label={copiedShare ? "Copied" : "Copy link"}
+                variant="secondary"
+                onPress={() => void Clipboard.setStringAsync(createdShare.url).then(() => setCopiedShare(true)).catch(() => setShareError("We could not copy the link. Press and hold it instead."))}
+              />
+              <Button label="Share" variant="primary" onPress={() => void NativeShare.share({ message: createdShare.url })} />
+              <Button label="Create another" variant="ghost" onPress={() => { setCreatedShare(null); setCopiedShare(false); setShareError(""); }} />
+            </View>
+            <AppText variant="caption" muted>Only someone with this link can open it. Do not post it publicly.</AppText>
+          </View>
+        ) : (
+          <Button
+            label="Create secure link"
+            variant="secondary"
+            disabled={isArchived}
+            loading={createShare.isPending}
+            onPress={() => { setShareError(""); createShare.mutate(); }}
+            icon={<ShareNetworkIcon size={17} color={theme.colors.brandStrong} weight="bold" />}
+          />
+        )}
+        {shares.isError ? (
+          <View style={styles.shareInlineError}>
+            <AppText variant="caption" muted>Existing links could not be loaded.</AppText>
+            <Button label="Retry" variant="ghost" onPress={() => void shares.refetch()} />
+          </View>
+        ) : shares.data?.shares.filter((item) => !item.revoked_at).length ? (
+          <View style={styles.activeShares}>
+            <AppText variant="caption" muted>ACTIVE LINKS</AppText>
+            {shares.data.shares.filter((item) => !item.revoked_at).map((item) => (
+              <View key={item.id} style={[styles.shareRow, { borderColor: theme.colors.border }]}>
+                <View style={styles.rowCopy}>
+                  <AppText variant="label">{shareKindLabel(item.kind)}</AppText>
+                  <AppText variant="caption" muted>{shareExpiryLabel(item.expires_at)} · {item.view_count} {item.view_count === 1 ? "view" : "views"}</AppText>
+                </View>
+                {revokeShareId === item.id ? (
+                  <View style={styles.actions}>
+                    <Button label="Keep" variant="secondary" onPress={() => setRevokeShareId(null)} />
+                    <Button label="Revoke" variant="danger" loading={revokeShare.isPending} onPress={() => revokeShare.mutate()} />
+                  </View>
+                ) : (
+                  <Button label="Revoke" variant="ghost" onPress={() => { setRevokeShareId(item.id); setShareError(""); }} />
+                )}
+              </View>
+            ))}
           </View>
         ) : null}
       </Card>
@@ -914,6 +1066,30 @@ export default function PetRoute() {
           {isArchived ? <AppText variant="caption" style={{ color: theme.colors.textMuted }}>MEMORY MODE</AppText> : null}
         </View>
         {error ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
+        {transferNotice ? <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{transferNotice}</AppText> : null}
+        {sourceFamily?.role === "owner" && !isArchived ? (
+          transferOpen ? (
+            <View style={styles.transferForm}>
+              <AppText variant="label">Move {pet.name} to another Family</AppText>
+              <AppText variant="caption" muted>The other Family owner must accept. Until then, this Pet and all access remain unchanged.</AppText>
+              {targetFamilies.length ? (
+                <SegmentedControl
+                  label="Destination Family"
+                  value={transferTargetId ?? targetFamilies[0]?.id ?? ""}
+                  onChange={(value) => { setTransferTargetId(value); setTransferError(""); }}
+                  options={targetFamilies.map((item) => ({ value: item.id, label: item.name }))}
+                />
+              ) : <AppText variant="caption" muted>Create or join another Family first.</AppText>}
+              {transferError ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{transferError}</AppText> : null}
+              <View style={styles.actions}>
+                <Button label="Keep here" variant="secondary" onPress={() => { setTransferOpen(false); setTransferTargetId(null); setTransferError(""); }} />
+                <Button label="Send handoff request" loading={transferPet.isPending} disabled={!targetFamilies.length} onPress={() => { setTransferError(""); transferPet.mutate(); }} />
+              </View>
+            </View>
+          ) : (
+            <Button label="Move to another Family" variant="secondary" onPress={() => { setTransferOpen(true); setTransferTargetId(targetFamilies[0]?.id ?? null); setTransferNotice(""); setTransferError(""); }} />
+          )
+        ) : null}
         {lifecycleAction ? (
           <View style={[styles.confirmBox, { backgroundColor: lifecycleAction === "delete" ? theme.colors.surfaceRaised : theme.colors.accentSurface }]}>
             <AppText variant="label">{lifecycleAction === "archive" ? `Archive ${pet.name}?` : lifecycleAction === "restore" ? `Restore ${pet.name}?` : `Delete ${pet.name} permanently?`}</AppText>
@@ -975,6 +1151,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   profileStats: { flexDirection: "row", gap: 30, paddingTop: 4 },
+  shareHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  shareIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  shareResult: { borderWidth: 1, borderRadius: 16, padding: 13, gap: 8 },
+  shareInlineError: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  activeShares: { gap: 8, paddingTop: 4 },
+  shareRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1003,6 +1185,7 @@ const styles = StyleSheet.create({
   confirmBox: { borderRadius: 16, padding: 14, gap: 8, marginBottom: 10 },
   medicationRow: { gap: 2, paddingVertical: 4 },
   lifecycleCard: { gap: 12 },
+  transferForm: { gap: 9, paddingTop: 2 },
   dayRow: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
   dayButton: {
     width: 36,

@@ -82,6 +82,14 @@ export function useTasks(petId?: string) {
   return useQuery({ queryKey: queryKeys.tasks(petId ?? ''), queryFn: () => planetApi.pets.tasks(petId as string), enabled: Boolean(petId) });
 }
 
+export function usePetShares(petId?: string) {
+  return useQuery({ queryKey: queryKeys.shares(petId ?? ''), queryFn: () => planetApi.pets.shares(petId as string), enabled: Boolean(petId) });
+}
+
+export function useTransfers(circleId?: string, direction: 'incoming' | 'outgoing' = 'incoming') {
+  return useQuery({ queryKey: queryKeys.transfers(circleId ?? '', direction), queryFn: () => planetApi.transfers.list(circleId as string, direction), enabled: Boolean(circleId) });
+}
+
 export function useCircleUsage(circleId?: string) {
   return useQuery({ queryKey: queryKeys.usage(circleId ?? ''), queryFn: () => planetApi.circles.usage(circleId as string), enabled: Boolean(circleId) });
 }
@@ -112,6 +120,8 @@ export function useInvalidateApi() {
     timeline: (petId: string) => client.invalidateQueries({ queryKey: ['timeline', petId] }),
     medications: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.medications(petId) }),
     tasks: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.tasks(petId) }),
+    shares: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.shares(petId) }),
+    transfers: (circleId: string) => client.invalidateQueries({ queryKey: ['transfers', circleId] }),
     notificationPrefs: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.notificationPrefs(circleId) }),
   };
 }

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { AppText, Button, Card, QueryErrorState, Screen, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
@@ -17,6 +18,7 @@ import { ApiError } from "../src/core/network/api-client";
 import { familySchema, joinFamilySchema } from "../src/core/forms";
 import {
   CheckIcon,
+  CaretRightIcon,
   PawPrintIcon,
   PlusIcon,
   UserCircleIcon,
@@ -301,6 +303,23 @@ export default function FamilyRoute() {
               </View>
             </View>
           </LinearGradient>
+          <Card style={styles.petCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.rowCopy}>
+                <AppText variant="heading">Pets in this Family</AppText>
+                <AppText variant="caption" muted>Every Pet this group can care for.</AppText>
+              </View>
+              <Button label="All Pets" variant="ghost" onPress={() => router.push("/(tabs)/pets")} />
+            </View>
+            {pets.data?.pets.length ? pets.data.pets.slice(0, 4).map((familyPet) => (
+              <Pressable key={familyPet.id} accessibilityRole="button" accessibilityLabel={`Open ${familyPet.name}`} onPress={() => router.push({ pathname: "/(tabs)/pet", params: { petId: familyPet.id } })} style={({ pressed }) => [styles.petRow, { borderColor: theme.colors.border }, pressed && { opacity: theme.motion.pressOpacity }]}>
+                <View style={[styles.petMarkSmall, { backgroundColor: theme.colors.accentSurface }]}><PawPrintIcon size={18} color={theme.colors.accentStrong} weight="duotone" /></View>
+                <View style={styles.rowCopy}><AppText variant="label">{familyPet.name}</AppText><AppText variant="caption" muted>{familyPet.breed || familyPet.species} · {familyPet.archived_at ? "Memory mode" : "Active care"}</AppText></View>
+                <CaretRightIcon size={18} color={theme.colors.textSubtle} weight="bold" />
+              </Pressable>
+            )) : <View style={styles.petEmpty}><PawPrintIcon size={19} color={theme.colors.brandStrong} weight="duotone" /><AppText variant="caption" muted>No Pets in this Family yet.</AppText><Button label="Add a Pet" variant="secondary" onPress={() => router.push("/(tabs)/pets")} /></View>}
+            {pets.data?.pets.length && pets.data.pets.length > 4 ? <AppText variant="caption" muted style={styles.morePets}>Showing 4 of {pets.data.pets.length} Pets · open All Pets to see the rest.</AppText> : null}
+          </Card>
           <Card style={styles.inviteCard}>
             <View style={styles.inviteHeader}>
               <View>
@@ -706,6 +725,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   inviteCard: { gap: 14 },
+  petCard: { gap: 8 },
+  petRow: { minHeight: 60, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
+  petMarkSmall: { width: 38, height: 38, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  petEmpty: { alignItems: "flex-start", gap: 9, paddingTop: 8 },
+  morePets: { paddingTop: 4 },
   transferCard: { gap: 12 },
   transferList: { gap: 8 },
   transferRow: { flexDirection: "row", alignItems: "center", gap: 10, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },

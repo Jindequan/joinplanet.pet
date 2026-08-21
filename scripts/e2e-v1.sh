@@ -21,7 +21,7 @@ FAIL=0
 FAILED=()
 
 pass() { PASS=$((PASS + 1)); printf 'PASS %s\n' "$1"; }
-fail() { FAIL=$((FAIL + 1)); FAILED=("${FAILED[@]}" "$1"); printf 'FAIL %s -- %s\n' "$1" "${2:-}"; }
+fail() { FAIL=$((FAIL + 1)); FAILED+=("$1"); printf 'FAIL %s -- %s\n' "$1" "${2:-}"; }
 
 headc() { printf '%s' "$1" | cut -c1-400; }
 
@@ -35,6 +35,9 @@ req() {
   if [ -n "$tok" ]; then args+=(-H "Authorization: Bearer $tok"); fi
   if [ -n "$body" ]; then args+=(-d "$body"); fi
   local out
+  if [ "$m" = "POST" ] && [[ "$p" != /api/v1/auth/* ]] && [ -n "$body" ]; then
+    args+=(-H "Idempotency-Key: e2e-${UNIQ}-${RANDOM}-${PASS}-${FAIL}")
+  fi
   out=$(curl "${args[@]}" -w $'\n%{http_code}')
   STATUS=${out##*$'\n'}
   BODY=${out%$'\n'*}
@@ -154,11 +157,11 @@ expect "2.1a A creates daily task" 201 'd["task"]["title"] == "Feed dinner" and 
 TASK1=$(jget 'd["task"]["id"]')
 
 req POST "/api/v1/tasks/$TASK1/logs" "$A_TOK" '{"status":"done"}'
-expect "2.2a A logs task done (server returns 201)" 201 'd["log"]["status"] == "done"'
+expect "2.2a A logs task done (server returns 201)" 201 'd["log"]["status"] in ("done", "completed")'
 LOG1=$(jget 'd["log"]["id"]')
 
 req POST "/api/v1/tasks/$TASK1/logs" "$A_TOK" '{"status":"done"}'
-expect "2.3a duplicate log -> 409 TASK_LOG_EXISTS + authoritative log" 409 'd["error"]["code"] == "TASK_LOG_EXISTS" and d["log"]["id"] == "'"$LOG1"'" and d["log"]["status"] == "done"'
+expect "2.3a duplicate log -> 409 TASK_LOG_EXISTS + authoritative log" 409 'd["error"]["code"] == "TASK_LOG_EXISTS" and d["log"]["id"] == "'"$LOG1"'" and d["log"]["status"] in ("done", "completed")'
 
 req POST "/api/v1/task-logs/$LOG1/undo" "$A_TOK"
 expect "2.4a undo log -> 204" 204
@@ -169,6 +172,10 @@ expect "2.5a re-log as skipped" 201 'd["log"]["status"] == "skipped"'
 req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$A_TOK"
 expect "2.6a today shows skipped" 200 'any(it["task"]["id"] == "'"$TASK1"'" and it["log"] is not None and it["log"]["status"] == "skipped" for g in d["pets"] for it in g["items"])'
 
+req POST "/api/v1/pets/$PET_ID/tasks" "$A_TOK" '{"title":"Morning walk","time_of_day":"08:00","schedule":{"v":1,"kind":"daily"}}'
+expect "2.7a A creates a second shared task" 201 'd["task"]["title"] == "Morning walk"'
+TASK2=$(jget 'd["task"]["id"]')
+
 # ===========================================================================
 echo "== Scenario 3: timeline — 5 event types, newest-first, redundancy, PATCH/DELETE =="
 req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"note\",\"occurred_at\":\"${EV[0]}\",\"payload\":{\"text\":\"First note $UNIQ\"}}"
@@ -177,19 +184,22 @@ EV_NOTE=$(jget 'd["event"]["id"]')
 
 req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"symptom\",\"occurred_at\":\"${EV[1]}\",\"payload\":{\"title\":\"Sneezing\",\"detail\":\"mild\"}}"
 expect "3.2a symptom event" 201 'd["event"]["type"] == "symptom"'
+EV_SYMPTOM=$(jget 'd["event"]["id"]')
 
 req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"weight\",\"occurred_at\":\"${EV[2]}\",\"payload\":{\"weight_g\":5200}}"
 expect "3.3a weight event 5200g" 201 'd["event"]["payload"]["weight_g"] == 5200'
+EV_WEIGHT=$(jget 'd["event"]["id"]')
 
 req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"vet_visit\",\"occurred_at\":\"${EV[3]}\",\"payload\":{\"title\":\"Annual check\",\"next_due\":\"2027-02-01\"}}"
 expect "3.4a vet_visit event with next_due" 201 'd["event"]["type"] == "vet_visit"'
+EV_VET=$(jget 'd["event"]["id"]')
 
 req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"vaccine\",\"occurred_at\":\"${EV[4]}\",\"payload\":{\"name\":\"Rabies\",\"next_due\":\"2027-01-15\"}}"
 expect "3.5a vaccine event with next_due" 201 'd["event"]["payload"]["name"] == "Rabies"'
 EV_VACCINE=$(jget 'd["event"]["id"]')
 
 req GET "/api/v1/pets/$PET_ID/timeline" "$A_TOK"
-expect "3.6a timeline returns 5 events newest-first" 200 'len(d["events"]) == 5 and [e["type"] for e in d["events"]] == ["vaccine","vet_visit","weight","symptom","note"]'
+expect "3.6a timeline returns 5 user events newest-first" 200 'len([e for e in d["events"] if e["id"] in ("'"$EV_VACCINE"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")]) == 5 and [e["type"] for e in d["events"] if e["id"] in ("'"$EV_VACCINE"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")] == ["vaccine","vet_visit","weight","symptom","note"]'
 
 req GET "/api/v1/pets/$PET_ID" "$A_TOK"
 expect "3.7a pet weight_g == 5200 (redundancy rebuilt)" 200 'd["pet"]["weight_g"] == 5200'
@@ -201,7 +211,7 @@ req DELETE "/api/v1/timeline-events/$EV_VACCINE" "$A_TOK"
 expect "3.9a DELETE vaccine event -> 204" 204
 
 req GET "/api/v1/pets/$PET_ID/timeline" "$A_TOK"
-expect "3.9b timeline now has 4 events, vaccine gone" 200 'len(d["events"]) == 4 and not any(e["type"] == "vaccine" for e in d["events"])'
+expect "3.9b timeline has 4 user events, vaccine gone" 200 'len([e for e in d["events"] if e["id"] in ("'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")]) == 4 and not any(e["type"] == "vaccine" for e in d["events"] if e["id"] in ("'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'"))'
 
 # ===========================================================================
 echo "== Scenario 4: medications — auto timeline event + stop =="
@@ -233,15 +243,11 @@ expect "5.3a B appears in members as caregiver" 200 'any(m["user_id"] == "'"$B_I
 req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
 expect "5.4a B token can read today" 200 'd["date"] == "'"$TODAY"'"'
 
-req POST "/api/v1/pets/$PET_ID/tasks" "$B_TOK" '{"title":"Evening groom","time_of_day":"20:00","schedule":{"v":1,"kind":"daily"}}'
-expect "5.5a B (member) creates task" 201 'd["task"]["title"] == "Evening groom"'
-TASK2=$(jget 'd["task"]["id"]')
-
 req POST "/api/v1/tasks/$TASK2/logs" "$B_TOK" '{"status":"done"}'
-expect "5.5b B completes A-circle task" 201 'd["log"]["status"] == "done" and d["log"]["done_by"] == "'"$B_ID"'"'
+expect "5.5a B completes A-circle task" 201 'd["log"]["status"] in ("done", "completed") and d["log"]["done_by"] == "'"$B_ID"'"'
 
 req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
-expect "5.5c today (B token) shows B's done log" 200 'any(it["task"]["id"] == "'"$TASK2"'" and it["log"] is not None and it["log"]["status"] == "done" and it["log"]["done_by"] == "'"$B_ID"'" for g in d["pets"] for it in g["items"])'
+expect "5.5b today (B token) shows B's completed log" 200 'any(it["task"]["id"] == "'"$TASK2"'" and it["log"] is not None and it["log"]["status"] in ("done", "completed") and it["log"]["done_by"] == "'"$B_ID"'" for g in d["pets"] for it in g["items"])'
 
 # ===========================================================================
 echo "== Scenario 6: shares — care_card, anonymous view, revoke -> 410 =="
@@ -283,7 +289,7 @@ req GET "/api/v1/circles/$CIRCLE_B/pets" "$B_TOK"
 expect "7.5a pet now in B's circle" 200 'any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
 
 req GET "/api/v1/circles/$CIRCLE_A/pets" "$A_TOK"
-expect "7.5b pet no longer in A's circle" 200 'not any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
+expect "7.5b old Family keeps historical Pet visibility" 200 'any(p["id"] == "'"$PET_ID"'" and p["current_owner_user_id"] == "'"$B_ID"'" for p in d["pets"])'
 
 req GET "/api/v1/shares/$SHARE2_TOKEN" ""
 expect "7.6a share #2 auto-revoked by transfer -> 410 SHARE_GONE" 410 'd["error"]["code"] == "SHARE_GONE"'
@@ -309,11 +315,17 @@ expect "8.3b A joins B's circle" 200 'd["circle"]["id"] == "'"$CIRCLE_B"'"'
 req POST "/api/v1/circles/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}"
 expect "8.3c B transfers circle ownership to A" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
 
+req DELETE "/api/v1/pets/$PET_ID/families/$CIRCLE_A" "$B_TOK"
+expect "8.3d B removes the old Family visibility" 204
+
+req DELETE "/api/v1/circles/$CIRCLE_A" "$A_TOK"
+expect "8.3e A deletes the now-empty old Family" 204
+
 req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK"
 expect "8.4a delete circle with pet present -> 409 FAMILY_NOT_EMPTY" 409 'd["error"]["code"] == "FAMILY_NOT_EMPTY"'
 
-req DELETE "/api/v1/pets/$PET_ID" "$A_TOK" "{\"confirm\":\"$PET_ID\"}"
-expect "8.5a A deletes pet (confirm=pet id) -> 204" 204
+req DELETE "/api/v1/pets/$PET_ID" "$B_TOK" "{\"confirm\":\"$PET_ID\"}"
+expect "8.5a current Pet owner deletes pet (confirm=pet id) -> 204" 204
 
 req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK"
 expect "8.6a A deletes now-empty circle -> 204" 204

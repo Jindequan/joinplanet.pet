@@ -9,12 +9,12 @@ export default function PrivacyRoute() {
   const { theme } = useTheme();
   return (
     <Screen scroll contentContainerStyle={styles.content}>
-      <PageHeader eyebrow="YOUR PLANET / PRIVACY" title="Keep their story close" />
+      <PageHeader eyebrow="YOU / PRIVACY & DATA" title="Privacy & data" />
       <Card style={[styles.hero, { backgroundColor: theme.colors.brandSoft }]}>
         <View style={[styles.heroIcon, { backgroundColor: theme.colors.surface }]}>
           <LockKeyIcon size={25} color={theme.colors.brandStrong} weight="duotone" />
         </View>
-        <AppText variant="title">Private by default.</AppText>
+        <AppText variant="title">Your data stays private.</AppText>
         <AppText muted>PLANET keeps your Pet records inside the people and Families you choose. Nothing is public unless you create a temporary share.</AppText>
       </Card>
       <Card style={styles.card}>

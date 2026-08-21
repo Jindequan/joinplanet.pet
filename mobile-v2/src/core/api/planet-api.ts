@@ -30,6 +30,7 @@ export type Pet = {
   created_at: string;
   updated_at: string;
   current_owner_user_id?: string;
+  access_role?: Role;
 };
 export type Profile = {
   allergies: unknown[];

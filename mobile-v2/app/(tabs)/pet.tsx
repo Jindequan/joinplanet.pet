@@ -201,10 +201,12 @@ export default function PetRoute() {
     accessiblePets.pets[0];
   const detail = usePet(listedPet?.id);
   const pet = detail.data?.pet ?? listedPet;
+  const accessRole = detail.data?.pet.access_role ?? listedPet?.access_role;
   const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
   const canManagePet = Boolean(
     pet && me.data?.user.id &&
-      (pet.current_owner_user_id === me.data.user.id ||
+      (accessRole && accessRole !== "viewer" && accessRole !== "read_only" ||
+        pet.current_owner_user_id === me.data.user.id ||
         (!pet.current_owner_user_id && sourceFamily?.role === "owner")),
   );
   const medications = useMedications(pet?.id);

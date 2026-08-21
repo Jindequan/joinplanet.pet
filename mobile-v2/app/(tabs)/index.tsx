@@ -113,6 +113,7 @@ export default function TodayRoute() {
   const canActOnPet = (petId: string) => {
     const accessiblePet = accessiblePets.pets.find((candidate) => candidate.id === petId);
     if (!accessiblePet) return false;
+    if (accessiblePet.access_role) return accessiblePet.access_role !== 'viewer' && accessiblePet.access_role !== 'read_only';
     if (accessiblePet.current_owner_user_id === me.data?.user.id) return true;
     const linkedFamilyIds = accessiblePet.family_ids?.length ? accessiblePet.family_ids : [accessiblePet.circle_id];
     const roles = families.filter((family) => linkedFamilyIds.includes(family.id)).map((family) => family.role).filter(Boolean);

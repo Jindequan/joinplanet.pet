@@ -27,8 +27,8 @@ export function useAccessiblePets(circleIds: string[]) {
     })),
   });
   const petsById = new Map<string, NonNullable<(typeof queries)[number]['data']>['pets'][number]>();
-  accessible.data?.pets.forEach((pet) => petsById.set(pet.id, pet));
   queries.forEach((query) => query.data?.pets.forEach((pet) => petsById.set(pet.id, pet)));
+  accessible.data?.pets.forEach((pet) => petsById.set(pet.id, pet));
   return {
     pets: [...petsById.values()],
     isLoading: accessible.isLoading || queries.some((query) => query.isLoading),

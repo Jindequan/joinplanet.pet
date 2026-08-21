@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { ArrowRightIcon, CheckCircleIcon, LockKeyIcon, SparkleIcon } from '../../src/ui/icons';
@@ -20,8 +20,15 @@ export default function SignInRoute() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
+  const [resendSeconds, setResendSeconds] = useState(0);
   const requestingRef = useRef(false);
   const verifyingRef = useRef(false);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return undefined;
+    const timer = setInterval(() => setResendSeconds((current) => Math.max(0, current - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [resendSeconds]);
 
   function authErrorMessage(errorValue: unknown, fallback: string) {
     if (errorValue instanceof ApiError) {
@@ -47,6 +54,7 @@ export default function SignInRoute() {
     try {
       const result = await planetApi.auth.requestCode(parsed.data.email);
       setSent(true);
+      setResendSeconds(60);
       if (result.dev_code) { setCode(result.dev_code); setHint(`Development code: ${result.dev_code} · valid for 10 minutes`); }
       else setHint('Check your inbox for the six-digit code.');
     } catch (err) { setError(authErrorMessage(err, 'Unable to send a code.')); }
@@ -72,6 +80,6 @@ export default function SignInRoute() {
     finally { verifyingRef.current = false; setLoading(false); }
   }
 
-  return <Screen scroll contentContainerStyle={styles.content}><AppText variant="caption" muted>PLANET / SIGN IN</AppText><AppText variant="display">Come back to your orbit.</AppText><AppText muted>Use your email to receive a secure sign-in code. No password to remember.</AppText><Card style={styles.form}><TextField label="Email" value={email} onChangeText={(value) => { setEmail(value); if (sent) { setSent(false); setCode(''); setHint(''); } setError(''); }} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" editable={!loading} /><Button label={sent ? 'Send a new code' : 'Send sign-in code'} onPress={() => void requestCode()} loading={loading} disabled={!email.trim()} icon={<ArrowRightIcon size={18} color={theme.colors.onBrand} weight="bold" />} />{sent ? <><TextField label="Six-digit code" value={code} onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" maxLength={6} placeholder="123456" hint={hint} editable={!loading} /><Button label="Enter PLANET" onPress={() => void verifyCode()} loading={loading} disabled={code.trim().length !== 6} variant="secondary" /></> : null}{error ? <AppText style={{ color: theme.colors.danger }}>{error}</AppText> : null}</Card><AppText variant="caption" muted>Private by default. Shared only with the people you choose.</AppText>{items.map(({ icon: Icon, title, body }) => <Card key={title} style={styles.card}><View style={[styles.itemIcon, { backgroundColor: theme.colors.brandSoft }]}><Icon size={22} color={theme.colors.brandStrong} weight="duotone" /></View><View style={styles.itemCopy}><AppText variant="heading">{title}</AppText><AppText muted>{body}</AppText></View></Card>)}</Screen>;
+  return <Screen scroll contentContainerStyle={styles.content}><AppText variant="caption" muted>PLANET / SIGN IN</AppText><AppText variant="display">Come back to your orbit.</AppText><AppText muted>Use your email to receive a secure sign-in code. No password to remember.</AppText><Card style={styles.form}><TextField label="Email" value={email} onChangeText={(value) => { setEmail(value); if (sent) { setSent(false); setCode(''); setHint(''); setResendSeconds(0); } setError(''); }} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" editable={!loading} /><Button label={sent ? (resendSeconds > 0 ? `Send a new code · ${resendSeconds}s` : 'Send a new code') : 'Send sign-in code'} onPress={() => void requestCode()} loading={loading} disabled={!email.trim() || resendSeconds > 0} icon={<ArrowRightIcon size={18} color={theme.colors.onBrand} weight="bold" />} />{sent ? <><TextField label="Six-digit code" value={code} onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" maxLength={6} placeholder="123456" hint={hint} editable={!loading} /><Button label="Enter PLANET" onPress={() => void verifyCode()} loading={loading} disabled={code.trim().length !== 6} variant="secondary" /></> : null}{error ? <AppText style={{ color: theme.colors.danger }}>{error}</AppText> : null}</Card><AppText variant="caption" muted>Private by default. Shared only with the people you choose.</AppText>{items.map(({ icon: Icon, title, body }) => <Card key={title} style={styles.card}><View style={[styles.itemIcon, { backgroundColor: theme.colors.brandSoft }]}><Icon size={22} color={theme.colors.brandStrong} weight="duotone" /></View><View style={styles.itemCopy}><AppText variant="heading">{title}</AppText><AppText muted>{body}</AppText></View></Card>)}</Screen>;
 }
 const styles = StyleSheet.create({ content: { maxWidth: 640, alignSelf: 'center', width: '100%', gap: 16 }, form: { gap: 14, marginTop: 6 }, card: { flexDirection: 'row', alignItems: 'center', gap: 12 }, itemIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, itemCopy: { flex: 1, gap: 3 } });

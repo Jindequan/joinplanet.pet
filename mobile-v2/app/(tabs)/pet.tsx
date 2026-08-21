@@ -835,6 +835,8 @@ export default function PetRoute() {
   const todayCompleted = todayItems.filter((item) => item.log?.status === "done" || item.log?.status === "completed").length;
   const todaySkipped = todayItems.filter((item) => item.log?.status === "skipped").length;
   const todayOpen = todayItems.length - todayCompleted - todaySkipped;
+  const todaySummaryTitle = today.isError ? "Today's care is unavailable" : today.isLoading ? "Checking today's care…" : todayItems.length === 0 ? "A clear day" : todayOpen === 0 ? "Everything is cared for" : `${todayOpen} moment${todayOpen === 1 ? "" : "s"} still open`;
+  const todaySummaryCaption = today.isError ? "Reconnect to refresh today's actions." : today.isLoading ? "Loading the latest care moments." : todayItems.length === 0 ? "No routine is due today." : `${todayCompleted} done${todaySkipped ? ` · ${todaySkipped} skipped` : ""} · ${todayItems.length} total`;
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -869,8 +871,8 @@ export default function PetRoute() {
       <View style={[styles.todaySummary, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <View style={styles.todaySummaryCopy}>
           <AppText variant="caption" muted>TODAY'S CARE</AppText>
-          <AppText variant="heading">{todayItems.length === 0 ? "A clear day" : todayOpen === 0 ? "Everything is cared for" : `${todayOpen} moment${todayOpen === 1 ? "" : "s"} still open`}</AppText>
-          <AppText variant="caption" muted>{todayItems.length === 0 ? "No routine is due today." : `${todayCompleted} done${todaySkipped ? ` · ${todaySkipped} skipped` : ""} · ${todayItems.length} total`}</AppText>
+          <AppText variant="heading">{todaySummaryTitle}</AppText>
+          <AppText variant="caption" muted>{todaySummaryCaption}</AppText>
         </View>
         <Button label="Open Today" variant="ghost" onPress={() => router.replace("/(tabs)")} />
       </View>

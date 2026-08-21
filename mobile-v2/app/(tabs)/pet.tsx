@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Share as NativeShare, StyleSheet, Switch, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
@@ -221,7 +221,7 @@ export default function PetRoute() {
   const [familyShareTargetId, setFamilyShareTargetId] = useState<string | null>(null);
   const [familyShareError, setFamilyShareError] = useState("");
   const [unshareFamilyId, setUnshareFamilyId] = useState<string | null>(null);
-  const [intentHandled, setIntentHandled] = useState(false);
+  const handledIntentKey = useRef<string | null>(null);
 
   const resetCareForm = () => {
     setCareType("custom");
@@ -508,13 +508,14 @@ export default function PetRoute() {
   const availableFamilyShares = circles.data?.circles.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
 
   useEffect(() => {
-    if (!intentHandled && params.intent === "care" && pet && !isArchived) {
+    const intentKey = `${selectedPetId ?? pet?.id ?? ""}:${params.intent ?? ""}`;
+    if (handledIntentKey.current !== intentKey && params.intent === "care" && pet && !isArchived) {
       setPetSection("care");
       setForm("care");
       setError("");
-      setIntentHandled(true);
+      handledIntentKey.current = intentKey;
     }
-  }, [intentHandled, isArchived, params.intent, pet]);
+  }, [isArchived, params.intent, pet, selectedPetId]);
 
   function openTaskEditor(task: Task) {
     const raw = task.schedule;

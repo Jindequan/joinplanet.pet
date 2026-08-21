@@ -46,7 +46,7 @@ export default function PetsRoute() {
   const [error, setError] = useState('');
   const create = useMutation({
     mutationFn: () => planetApi.pets.create(circle!.id, petPayload({ name, species, breed, birth_date: birthDate, sex, neutered, weight_g: weightG })),
-    onSuccess: (result) => { setName(''); setBreed(''); setBirthDate(''); setSex(''); setNeutered(false); setWeightG(''); setSpecies('dog'); setAdding(false); invalidate.pets(circle!.id); invalidate.circles(); router.push({ pathname: '/(tabs)/pet', params: { petId: result.pet.id } }); },
+    onSuccess: (result) => { setName(''); setBreed(''); setBirthDate(''); setSex(''); setNeutered(false); setWeightG(''); setSpecies('dog'); setAdding(false); invalidate.pets(circle!.id); invalidate.circles(); router.push({ pathname: '/(tabs)/pet', params: { petId: result.pet.id, intent: 'care' } }); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Unable to add this Pet.'),
   });
   function submitPet() {

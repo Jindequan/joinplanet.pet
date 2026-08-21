@@ -52,6 +52,7 @@ R=$(post /api/v1/circles "$TOKEN" '{"name":"Walkthrough Family","timezone":"Asia
 expect "create Family" '.circle.id and .invite_code' "$R"
 CIRCLE=$(jq -r '.circle.id' <<<"$R")
 INVITE=$(jq -r '.invite_code' <<<"$R")
+expect "Family keeps its IANA timezone" '.circle.timezone == "Asia/Shanghai"' "$R"
 R=$(post "/api/v1/circles/$CIRCLE/pets" "$TOKEN" '{"name":"Milo","species":"dog","breed":"Golden Retriever"}' "$(key)")
 expect "create Pet" '.pet.id and .pet.name == "Milo"' "$R"
 PET=$(jq -r '.pet.id' <<<"$R")
@@ -95,6 +96,20 @@ expect "record timeline symptom" '.event.type == "symptom"' "$R"
 expect "timeline returns the record" '.events | any(.type == "symptom")' "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
 expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/circles/$CIRCLE/alerts" "$TOKEN")"
 expect "daily digest returns the Family view" '.date and (.pets | type == "array")' "$(get "/api/v1/circles/$CIRCLE/digest" "$TOKEN")"
+
+echo "== F3b 用药生命周期 =="
+R=$(post "/api/v1/pets/$PET/medications" "$TOKEN" '{"name":"Heartgard","dose":"1 tablet","schedule":"monthly","note":"with food"}' "$(key)")
+expect "start medication" '.medication.id and .medication.ended_on == null' "$R"
+MED=$(jq -r '.medication.id' <<<"$R")
+expect "started medication appears in the Pet list" ".medications | any(.id == \"$MED\" and .ended_on == null)" "$(get "/api/v1/pets/$PET/medications" "$TOKEN")"
+expect "medication start is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"started\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+expect "stop medication" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}$\"))" "$R"
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+expect "repeating stop is idempotent" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}\"))" "$R"
+expect "medication stop is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"ended\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+delete "/api/v1/medications/$MED" "$TOKEN"
+expect "deleted medication removes its automatic history" ".events | all(.payload.medication_id != \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
 
 echo "== F4 分享、撤销、导出 =="
 R=$(post "/api/v1/pets/$PET/shares" "$TOKEN" '{"kind":"care_card","ttl_hours":24}' "$(key)")

@@ -187,6 +187,7 @@ export default function PetRoute() {
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   const [transferError, setTransferError] = useState("");
   const [transferNotice, setTransferNotice] = useState("");
+  const [exportError, setExportError] = useState("");
 
   const resetCareForm = () => {
     setCareType("custom");
@@ -356,6 +357,14 @@ export default function PetRoute() {
       if (pet?.circle_id) invalidate.transfers(pet.circle_id);
     },
     onError: (err) => setTransferError(err instanceof ApiError ? err.message : "Unable to start this Pet handoff."),
+  });
+  const exportPet = useMutation({
+    mutationFn: () => planetApi.pets.export(pet!.id),
+    onSuccess: async (result) => {
+      setExportError("");
+      await NativeShare.share({ title: `${pet!.name} · PLANET export`, message: JSON.stringify(result, null, 2) });
+    },
+    onError: (err) => setExportError(err instanceof ApiError ? err.message : "Unable to export this Pet record."),
   });
   const createShare = useMutation({
     mutationFn: () => {
@@ -1066,6 +1075,7 @@ export default function PetRoute() {
           {isArchived ? <AppText variant="caption" style={{ color: theme.colors.textMuted }}>MEMORY MODE</AppText> : null}
         </View>
         {error ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
+        {exportError ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{exportError}</AppText> : null}
         {transferNotice ? <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{transferNotice}</AppText> : null}
         {sourceFamily?.role === "owner" && !isArchived ? (
           transferOpen ? (
@@ -1106,9 +1116,10 @@ export default function PetRoute() {
               />
             </View>
           </View>
-        ) : (
-          <View style={styles.actions}>
-            {isArchived ? <Button label="Restore Pet" variant="secondary" onPress={() => setLifecycleAction("restore")} /> : <Button label="Archive Pet" variant="secondary" onPress={() => setLifecycleAction("archive")} />}
+          ) : (
+            <View style={styles.actions}>
+              <Button label="Export record" variant="secondary" loading={exportPet.isPending} onPress={() => { setExportError(""); exportPet.mutate(); }} />
+              {isArchived ? <Button label="Restore Pet" variant="secondary" onPress={() => setLifecycleAction("restore")} /> : <Button label="Archive Pet" variant="secondary" onPress={() => setLifecycleAction("archive")} />}
             <Button label="Delete Pet" variant="danger" onPress={() => setLifecycleAction("delete")} />
           </View>
         )}

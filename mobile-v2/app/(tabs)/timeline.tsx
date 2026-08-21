@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   PageHeader,
+  QueryErrorState,
   Screen,
   SegmentedControl,
   TextField,
@@ -183,6 +184,20 @@ export default function TimelineRoute() {
         <ActivityIndicator color={theme.colors.brand} />
       </Screen>
     );
+  if (circles.isError || accessiblePets.isError || timeline.isError)
+    return (
+      <Screen contentContainerStyle={styles.center}>
+        <QueryErrorState
+          title="The story is unavailable"
+          body="We could not load this Pet's timeline right now."
+          onRetry={() => {
+            void circles.refetch();
+            void accessiblePets.refetch();
+            if (pet) void timeline.refetch();
+          }}
+        />
+      </Screen>
+    );
   if (!pet)
     return (
       <Screen scroll contentContainerStyle={styles.content}>
@@ -300,24 +315,18 @@ export default function TimelineRoute() {
               { value: "note", label: "Note" },
               { value: "symptom", label: "Symptom" },
               { value: "weight", label: "Weight" },
+              { value: "vet_visit", label: "Vet visit" },
+              { value: "vaccine", label: "Vaccine" },
             ]}
           />
           <TextField
-            label={
-              eventType === "weight"
-                ? "Context (optional)"
-                : "A detail worth keeping"
-            }
+            label={eventType === "weight" ? "Context (optional)" : eventType === "vaccine" ? "Vaccine name" : eventType === "vet_visit" ? "Visit summary" : "A detail worth keeping"}
             value={text}
             onChangeText={(value) => {
               setText(value);
               setError("");
             }}
-            placeholder={
-              eventType === "weight"
-                ? "After a meal, morning weigh-in…"
-                : "Milo had a good walk"
-            }
+            placeholder={eventType === "weight" ? "After a meal, morning weigh-in…" : eventType === "vaccine" ? "Rabies vaccine" : eventType === "vet_visit" ? "Annual check-up" : "Milo had a good walk"}
             multiline
             error={error}
           />
@@ -465,6 +474,7 @@ export default function TimelineRoute() {
 }
 
 const styles = StyleSheet.create({
+  center: { justifyContent: "center", alignItems: "stretch" },
   content: {
     maxWidth: 680,
     alignSelf: "center",

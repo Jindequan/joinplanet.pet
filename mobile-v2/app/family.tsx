@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { useMutation } from "@tanstack/react-query";
-import { AppText, Button, Card, Screen, TextField } from "../src/ui/components";
+import { AppText, Button, Card, QueryErrorState, Screen, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
 import {
   useCircle,
@@ -38,6 +38,10 @@ export default function FamilyRoute() {
   const [invite, setInvite] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [editingFamily, setEditingFamily] = useState(false);
+  const [familyName, setFamilyName] = useState("");
+  const [familyAction, setFamilyAction] = useState<"leave" | "delete" | null>(null);
+  const [memberAction, setMemberAction] = useState<string | null>(null);
   const create = useMutation({
     mutationFn: () => planetApi.circles.create(name.trim()),
     onSuccess: (result) => {
@@ -74,6 +78,51 @@ export default function FamilyRoute() {
       setCopied(false);
     },
   });
+  const updateFamily = useMutation({
+    mutationFn: () => planetApi.circles.update(circle!.id, { name: familyName.trim() }),
+    onSuccess: () => {
+      setEditingFamily(false);
+      setError("");
+      invalidate.circles();
+      invalidate.circle(circle!.id);
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to update this Family."),
+  });
+  const removeMember = useMutation({
+    mutationFn: () => planetApi.circles.removeMember(circle!.id, memberAction!),
+    onSuccess: () => {
+      setMemberAction(null);
+      invalidate.circle(circle!.id);
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to remove this member."),
+  });
+  const transferOwnership = useMutation({
+    mutationFn: (userId: string) => planetApi.circles.transfer(circle!.id, userId),
+    onSuccess: () => {
+      setError("");
+      invalidate.circles();
+      invalidate.circle(circle!.id);
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to transfer ownership."),
+  });
+  const leaveFamily = useMutation({
+    mutationFn: () => planetApi.circles.leave(circle!.id),
+    onSuccess: () => {
+      setFamilyAction(null);
+      setActiveCircleId(undefined);
+      invalidate.circles();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to leave this Family."),
+  });
+  const deleteFamily = useMutation({
+    mutationFn: () => planetApi.circles.delete(circle!.id),
+    onSuccess: () => {
+      setFamilyAction(null);
+      setActiveCircleId(undefined);
+      invalidate.circles();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to delete this Family."),
+  });
   async function copyInvite() {
     if (!invite) return;
     try {
@@ -100,6 +149,22 @@ export default function FamilyRoute() {
     return (
       <Screen>
         <ActivityIndicator color={theme.colors.brand} />
+      </Screen>
+    );
+  if (circles.isError || detail.isError || pets.isError)
+    return (
+      <Screen contentContainerStyle={styles.center}>
+        <QueryErrorState
+          title="Your Family is unavailable"
+          body="We could not load the people and Pets in this care circle."
+          onRetry={() => {
+            void circles.refetch();
+            if (circle) {
+              void detail.refetch();
+              void pets.refetch();
+            }
+          }}
+        />
       </Screen>
     );
   const members = detail.data?.members ?? [];
@@ -344,6 +409,20 @@ export default function FamilyRoute() {
                       Owner
                     </AppText>
                   </View>
+                ) : circle.role === "owner" ? (
+                  <View style={styles.memberActions}>
+                    <Button label="Make owner" variant="ghost" onPress={() => transferOwnership.mutate(member.user_id)} disabled={transferOwnership.isPending} />
+                    <Button label="Remove" variant="danger" onPress={() => setMemberAction(member.user_id)} disabled={removeMember.isPending} />
+                  </View>
+                ) : null}
+                {memberAction === member.user_id ? (
+                  <View style={[styles.confirmBox, { backgroundColor: theme.colors.accentSurface }]}>
+                    <AppText variant="caption">Remove {member.display_name || "this member"} from the Family?</AppText>
+                    <View style={styles.actions}>
+                      <Button label="Keep" variant="secondary" onPress={() => setMemberAction(null)} />
+                      <Button label="Remove member" variant="danger" loading={removeMember.isPending} onPress={() => removeMember.mutate()} />
+                    </View>
+                  </View>
                 ) : null}
               </View>
             ))}
@@ -364,6 +443,43 @@ export default function FamilyRoute() {
               }}
             />
           </View>
+          <Card style={styles.managementCard}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <AppText variant="heading">Family settings</AppText>
+                <AppText variant="caption" muted>Keep the shared space accurate and governed.</AppText>
+              </View>
+              {circle.role === "owner" ? <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>OWNER</AppText> : null}
+            </View>
+            {circle.role === "owner" ? (
+              editingFamily ? (
+                <View style={styles.form}>
+                  <TextField label="Family name" value={familyName} onChangeText={setFamilyName} placeholder="The Milo household" error={error} />
+                  <View style={styles.actions}>
+                    <Button label="Cancel" variant="secondary" onPress={() => { setEditingFamily(false); setError(""); }} />
+                    <Button label="Save name" loading={updateFamily.isPending} disabled={!familyName.trim()} onPress={() => updateFamily.mutate()} />
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.actions}>
+                  <Button label="Rename Family" variant="secondary" onPress={() => { setFamilyName(circle.name); setEditingFamily(true); setError(""); }} />
+                  <Button label="Delete Family" variant="danger" onPress={() => setFamilyAction("delete")} />
+                </View>
+              )
+            ) : (
+              <Button label="Leave Family" variant="danger" onPress={() => setFamilyAction("leave")} />
+            )}
+            {familyAction ? (
+              <View style={[styles.confirmBox, { backgroundColor: theme.colors.surfaceRaised }]}>
+                <AppText variant="label">{familyAction === "delete" ? "Delete this Family?" : "Leave this Family?"}</AppText>
+                <AppText variant="caption" muted>{familyAction === "delete" ? "Pets must be transferred or deleted first. Shared history is not silently removed." : "You will lose access to the Pets shared in this Family."}</AppText>
+                <View style={styles.actions}>
+                  <Button label="Cancel" variant="secondary" onPress={() => setFamilyAction(null)} />
+                  <Button label={familyAction === "delete" ? "Delete Family" : "Leave Family"} variant="danger" loading={leaveFamily.isPending || deleteFamily.isPending} onPress={() => familyAction === "delete" ? deleteFamily.mutate() : leaveFamily.mutate()} />
+                </View>
+              </View>
+            ) : null}
+          </Card>
         </>
       ) : (
         <Card style={styles.emptyCard}>
@@ -466,6 +582,7 @@ export default function FamilyRoute() {
 }
 
 const styles = StyleSheet.create({
+  center: { justifyContent: "center", alignItems: "stretch" },
   content: {
     maxWidth: 680,
     alignSelf: "center",
@@ -574,6 +691,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
+  memberActions: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", gap: 4 },
   actions: {
     flexDirection: "row",
     alignItems: "center",
@@ -589,6 +707,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   form: { gap: 14 },
+  managementCard: { gap: 13 },
+  confirmBox: { borderRadius: 16, padding: 14, gap: 8 },
   formHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

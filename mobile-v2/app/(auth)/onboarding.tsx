@@ -23,6 +23,15 @@ export default function SignInRoute() {
   const requestingRef = useRef(false);
   const verifyingRef = useRef(false);
 
+  function authErrorMessage(errorValue: unknown, fallback: string) {
+    if (errorValue instanceof ApiError) {
+      if (errorValue.status === 401) return 'That code is invalid or expired. Send a new code and try again.';
+      if (errorValue.status === 429) return 'Too many attempts. Wait a moment, then request a new code.';
+      return errorValue.message;
+    }
+    return fallback;
+  }
+
   async function requestCode() {
     if (requestingRef.current || verifyingRef.current) return;
     requestingRef.current = true;
@@ -40,7 +49,7 @@ export default function SignInRoute() {
       setSent(true);
       if (result.dev_code) { setCode(result.dev_code); setHint(`Development code: ${result.dev_code}`); }
       else setHint('Check your inbox for the six-digit code.');
-    } catch (err) { setError(err instanceof ApiError ? err.message : 'Unable to send a code.'); }
+    } catch (err) { setError(authErrorMessage(err, 'Unable to send a code.')); }
     finally { requestingRef.current = false; setLoading(false); }
   }
 
@@ -59,7 +68,7 @@ export default function SignInRoute() {
       const result = await planetApi.auth.verifyCode(parsed.data.email, parsed.data.code, 'planet-mobile');
       await signIn(result.token);
       router.replace('/(tabs)');
-    } catch (err) { setError(err instanceof ApiError ? err.message : 'Unable to sign in.'); }
+    } catch (err) { setError(authErrorMessage(err, 'Unable to sign in.')); }
     finally { verifyingRef.current = false; setLoading(false); }
   }
 

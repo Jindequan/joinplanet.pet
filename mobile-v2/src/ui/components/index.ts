@@ -5,6 +5,7 @@ export * from './date-time-field';
 export * from './optimized-list';
 export * from './page-header';
 export * from './pet-filter-selector';
+export * from './query-error-state';
 export * from './rating';
 export * from './screen';
 export * from './section-row';

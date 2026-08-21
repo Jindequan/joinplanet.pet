@@ -31,6 +31,7 @@ export function useAccessiblePets(circleIds: string[]) {
     pets: [...petsById.values()],
     isLoading: queries.some((query) => query.isLoading),
     isError: queries.some((query) => query.isError),
+    refetch: () => Promise.all(queries.map((query) => query.refetch())),
   };
 }
 

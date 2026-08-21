@@ -172,7 +172,13 @@ export function petPayload(form: PetForm) {
 }
 
 export function timelinePayload(form: TimelineForm) {
-  const payload = form.type === 'weight' ? { weight_g: Number(form.weight_g), text: form.text } : { text: form.text };
+  const payload = form.type === 'weight'
+    ? { weight_g: Number(form.weight_g), text: form.text }
+    : form.type === 'vaccine'
+      ? { name: form.text, text: form.text }
+      : form.type === 'vet_visit'
+        ? { title: form.text, summary: form.text, text: form.text }
+        : { text: form.text };
   return { type: form.type, occurred_at: form.occurred_at, payload };
 }
 

@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   PageHeader,
+  QueryErrorState,
   Screen,
   SegmentedControl,
   TextField,
@@ -157,6 +158,7 @@ export default function PetRoute() {
   const [medDose, setMedDose] = useState("");
   const [medSchedule, setMedSchedule] = useState("");
   const [medNote, setMedNote] = useState("");
+  const [lifecycleAction, setLifecycleAction] = useState<"archive" | "restore" | "delete" | null>(null);
 
   const resetCareForm = () => {
     setCareType("custom");
@@ -282,7 +284,40 @@ export default function PetRoute() {
         err instanceof ApiError ? err.message : "Unable to save the Pet details.",
       ),
   });
+  const archivePet = useMutation({
+    mutationFn: () => planetApi.pets.archive(pet!.id),
+    onSuccess: () => {
+      setLifecycleAction(null);
+      setForm(null);
+      setError("");
+      invalidate.pet(pet!.id);
+      invalidate.petsAll();
+      invalidate.todayAll();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to archive this Pet."),
+  });
+  const restorePet = useMutation({
+    mutationFn: () => planetApi.pets.unarchive(pet!.id),
+    onSuccess: () => {
+      setLifecycleAction(null);
+      setError("");
+      invalidate.pet(pet!.id);
+      invalidate.petsAll();
+      invalidate.todayAll();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to restore this Pet."),
+  });
+  const deletePet = useMutation({
+    mutationFn: () => planetApi.pets.delete(pet!.id),
+    onSuccess: () => {
+      invalidate.petsAll();
+      invalidate.circles();
+      router.replace("/(tabs)/pets");
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to delete this Pet."),
+  });
   const taskList = useMemo(() => tasks.data?.tasks ?? [], [tasks.data?.tasks]);
+  const isArchived = Boolean(pet?.archived_at);
 
   function openTaskEditor(task: Task) {
     const raw = task.schedule;
@@ -377,6 +412,24 @@ export default function PetRoute() {
         <ActivityIndicator color={theme.colors.brand} />
       </Screen>
     );
+  if (circles.isError || accessiblePets.isError || detail.isError || medications.isError || tasks.isError)
+    return (
+      <Screen contentContainerStyle={styles.center}>
+        <QueryErrorState
+          title="This Pet is unavailable"
+          body="We could not load the care record and routines right now."
+          onRetry={() => {
+            void circles.refetch();
+            void accessiblePets.refetch();
+            if (pet) {
+              void detail.refetch();
+              void medications.refetch();
+              void tasks.refetch();
+            }
+          }}
+        />
+      </Screen>
+    );
   if (!pet)
     return (
       <Screen scroll contentContainerStyle={styles.content}>
@@ -423,6 +476,7 @@ export default function PetRoute() {
         <Button
           label="Add care"
           variant="secondary"
+          disabled={isArchived}
           icon={
             <PlusIcon
               size={17}
@@ -465,6 +519,7 @@ export default function PetRoute() {
           <Button
             label="Edit details"
             variant="ghost"
+            disabled={isArchived}
             onPress={() => {
               setEditName(pet.name);
               setEditSpecies(pet.species);
@@ -570,6 +625,7 @@ export default function PetRoute() {
           <Button
             label="Add care"
             variant="secondary"
+            disabled={isArchived}
             icon={
               <PlusIcon
                 size={17}
@@ -771,6 +827,7 @@ export default function PetRoute() {
           <Button
             label="Add"
             variant="secondary"
+            disabled={isArchived}
             onPress={() => {
               setForm("medication");
               setError("");
@@ -846,11 +903,46 @@ export default function PetRoute() {
           </View>
         ) : null}
       </Card>
+      <Card style={styles.lifecycleCard}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.rowCopy}>
+            <AppText variant="heading">Pet records</AppText>
+            <AppText variant="caption" muted>
+              {isArchived ? "This Pet is read-only. History is preserved." : "Archive when care ends; delete only when the record should disappear."}
+            </AppText>
+          </View>
+          {isArchived ? <AppText variant="caption" style={{ color: theme.colors.textMuted }}>MEMORY MODE</AppText> : null}
+        </View>
+        {error ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
+        {lifecycleAction ? (
+          <View style={[styles.confirmBox, { backgroundColor: lifecycleAction === "delete" ? theme.colors.surfaceRaised : theme.colors.accentSurface }]}>
+            <AppText variant="label">{lifecycleAction === "archive" ? `Archive ${pet.name}?` : lifecycleAction === "restore" ? `Restore ${pet.name}?` : `Delete ${pet.name} permanently?`}</AppText>
+            <AppText variant="caption" muted>
+              {lifecycleAction === "archive" ? "Future care moments and reminders stop. The profile and history remain available." : lifecycleAction === "restore" ? "Active care can be scheduled again after restoring this Pet." : "This removes the Pet and its care history. Export anything you need first."}
+            </AppText>
+            <View style={styles.actions}>
+              <Button label="Cancel" variant="secondary" onPress={() => setLifecycleAction(null)} />
+              <Button
+                label={lifecycleAction === "archive" ? "Archive Pet" : lifecycleAction === "restore" ? "Restore Pet" : "Delete permanently"}
+                variant={lifecycleAction === "delete" ? "danger" : "primary"}
+                loading={archivePet.isPending || restorePet.isPending || deletePet.isPending}
+                onPress={() => lifecycleAction === "archive" ? archivePet.mutate() : lifecycleAction === "restore" ? restorePet.mutate() : deletePet.mutate()}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.actions}>
+            {isArchived ? <Button label="Restore Pet" variant="secondary" onPress={() => setLifecycleAction("restore")} /> : <Button label="Archive Pet" variant="secondary" onPress={() => setLifecycleAction("archive")} />}
+            <Button label="Delete Pet" variant="danger" onPress={() => setLifecycleAction("delete")} />
+          </View>
+        )}
+      </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  center: { justifyContent: "center", alignItems: "stretch" },
   content: {
     maxWidth: 720,
     alignSelf: "center",
@@ -910,6 +1002,7 @@ const styles = StyleSheet.create({
   taskActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8, paddingBottom: 10 },
   confirmBox: { borderRadius: 16, padding: 14, gap: 8, marginBottom: 10 },
   medicationRow: { gap: 2, paddingVertical: 4 },
+  lifecycleCard: { gap: 12 },
   dayRow: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
   dayButton: {
     width: 36,

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,7 @@ import { useAccessiblePets, useAlertsForCircles, useCircles, useInvalidateApi, u
 import { planetApi, type TodayItem } from '../../src/core/api/planet-api';
 import { ApiError } from '../../src/core/network/api-client';
 import { useToast } from '../../src/core/providers/toast-provider';
+import { readViewPreference, writeViewPreference } from '../../src/core/storage/view-preference';
 import { CaretRightIcon, CheckIcon, ClockIcon, PawPrintIcon, PlusIcon, SparkleIcon, WarningCircleIcon } from '../../src/ui/icons';
 
 function dayGreeting(timeZone?: string) {
@@ -94,12 +95,31 @@ export default function TodayRoute() {
   const familyIds = families.map((family) => family.id);
   const accessiblePets = useAccessiblePets(familyIds);
   const [filter, setFilter] = useState<ViewFilter>({ kind: 'all' });
+  const [viewPreferenceLoaded, setViewPreferenceLoaded] = useState(false);
   const [dayOffset, setDayOffset] = useState(0);
+  useEffect(() => {
+    const userId = me.data?.user.id;
+    if (!userId) return;
+    let active = true;
+    setViewPreferenceLoaded(false);
+    void readViewPreference(userId).then((preference) => {
+      if (!active) return;
+      if (preference) setFilter(preference);
+      setViewPreferenceLoaded(true);
+    });
+    return () => { active = false; };
+  }, [me.data?.user.id]);
   const effectiveFilter = useMemo(() => {
     if (filter.kind === 'family' && !familyIds.includes(filter.familyId)) return { kind: 'all' } satisfies ViewFilter;
     if (filter.kind === 'pet' && !accessiblePets.pets.some((pet) => pet.id === filter.petId)) return { kind: 'all' } satisfies ViewFilter;
     return filter;
   }, [accessiblePets.pets, familyIds, filter]);
+  const effectiveFilterKey = JSON.stringify(effectiveFilter);
+  useEffect(() => {
+    const userId = me.data?.user.id;
+    if (!userId || !viewPreferenceLoaded) return;
+    void writeViewPreference(userId, JSON.parse(effectiveFilterKey) as ViewFilter);
+  }, [effectiveFilterKey, me.data?.user.id, viewPreferenceLoaded]);
   const activeFamilyId = effectiveFilter.kind === 'family' ? effectiveFilter.familyId : undefined;
   const displayTimezone = families.find((family) => family.id === activeFamilyId)?.timezone ?? families[0]?.timezone;
   const datesByFamily = useMemo(() => Object.fromEntries(families.map((family) => [family.id, dateKey(dayOffset, family.timezone)])), [dayOffset, families]);

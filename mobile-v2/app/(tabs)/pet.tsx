@@ -1471,6 +1471,7 @@ export default function PetRoute() {
             <View style={styles.transferForm}>
               <AppText variant="label">Move {pet.name} to another Family</AppText>
               <AppText variant="caption" muted>The other Family owner must accept. Until then, this Pet and all access remain unchanged.</AppText>
+              <AppText variant="caption" muted>When accepted, existing external share links are revoked. Create a new link from the destination Family if needed.</AppText>
               {targetFamilies.length ? (
                 <SegmentedControl
                   label="Destination Family"

@@ -41,6 +41,7 @@ import {
   usePet,
   usePetShares,
   useTasks,
+  useTodayForPet,
 } from "../../src/core/query/hooks";
 import { planetApi, type Medication, type Share, type Task } from "../../src/core/api/planet-api";
 import { appConfig } from "../../src/core/config";
@@ -214,6 +215,7 @@ export default function PetRoute() {
   );
   const medications = useMedications(pet?.id);
   const tasks = useTasks(pet?.id, true);
+  const today = useTodayForPet(pet?.id);
   const shares = usePetShares(pet?.id, canManagePet);
   const invalidate = useInvalidateApi();
 
@@ -792,10 +794,11 @@ export default function PetRoute() {
       void detail.refetch();
       void medications.refetch();
       void tasks.refetch();
+      void today.refetch();
     }
   };
   const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData) || (!pet && detail.isError);
-  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (detail.isError && pet) || medications.isError || tasks.isError);
+  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (detail.isError && pet) || medications.isError || tasks.isError || (today.isError && today.data));
   if (
     circles.isLoading ||
     me.isLoading ||
@@ -828,6 +831,10 @@ export default function PetRoute() {
       </Screen>
     );
   const profile = detail.data?.profile;
+  const todayItems = today.data?.pets.find((item) => item.pet_id === pet.id)?.items ?? [];
+  const todayCompleted = todayItems.filter((item) => item.log?.status === "done" || item.log?.status === "completed").length;
+  const todaySkipped = todayItems.filter((item) => item.log?.status === "skipped").length;
+  const todayOpen = todayItems.length - todayCompleted - todaySkipped;
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -859,6 +866,14 @@ export default function PetRoute() {
           </AppText>
         </View>
       </LinearGradient>
+      <View style={[styles.todaySummary, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <View style={styles.todaySummaryCopy}>
+          <AppText variant="caption" muted>TODAY'S CARE</AppText>
+          <AppText variant="heading">{todayItems.length === 0 ? "A clear day" : todayOpen === 0 ? "Everything is cared for" : `${todayOpen} moment${todayOpen === 1 ? "" : "s"} still open`}</AppText>
+          <AppText variant="caption" muted>{todayItems.length === 0 ? "No routine is due today." : `${todayCompleted} done${todaySkipped ? ` · ${todaySkipped} skipped` : ""} · ${todayItems.length} total`}</AppText>
+        </View>
+        <Button label="Open Today" variant="ghost" onPress={() => router.replace("/(tabs)")} />
+      </View>
       <View style={styles.quickActions}>
         <Button
             label="Add care"
@@ -1702,6 +1717,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   heroCopy: { flex: 1, gap: 5 },
+  todaySummary: { minHeight: 76, borderWidth: 1, borderRadius: 19, paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10 },
+  todaySummaryCopy: { flex: 1, gap: 2 },
   petMark: {
     width: 76,
     height: 76,

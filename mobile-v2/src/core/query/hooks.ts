@@ -106,6 +106,10 @@ export function useTasks(petId?: string, includeArchived = false) {
   return useQuery({ queryKey: queryKeys.tasks(petId ?? '', includeArchived), queryFn: () => planetApi.pets.tasks(petId as string, includeArchived), enabled: Boolean(petId) });
 }
 
+export function useTodayForPet(petId?: string, date = '') {
+  return useQuery({ queryKey: queryKeys.todayPet(petId ?? '', date), queryFn: () => planetApi.pets.today(petId as string, date || undefined), enabled: Boolean(petId) });
+}
+
 export function useCareAssignments(careItemId?: string) {
   return useQuery({ queryKey: queryKeys.assignments(careItemId ?? ''), queryFn: () => planetApi.tasks.assignments(careItemId as string), enabled: Boolean(careItemId) });
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ import {
   useInvalidateApi,
   useTimeline,
 } from "../../src/core/query/hooks";
-import { planetApi } from "../../src/core/api/planet-api";
+import { planetApi, type TimelineEvent } from "../../src/core/api/planet-api";
 import { timelinePayload, timelineSchema } from "../../src/core/forms";
 import { ApiError } from "../../src/core/network/api-client";
 import {
@@ -82,6 +82,8 @@ export default function TimelineRoute() {
   const [eventMenuId, setEventMenuId] = useState<string | null>(null);
   const [confirmEventId, setConfirmEventId] = useState<string | null>(null);
   const [editingOccurredAt, setEditingOccurredAt] = useState<string>("");
+  const [olderEvents, setOlderEvents] = useState<TimelineEvent[]>([]);
+  const [hasMore, setHasMore] = useState(true);
   const create = useMutation({
     mutationFn: () =>
       planetApi.pets.createEvent(
@@ -144,6 +146,22 @@ export default function TimelineRoute() {
         err instanceof ApiError ? err.message : "Unable to remove this record.",
       ),
   });
+  const loadOlder = useMutation({
+    mutationFn: () => {
+      const last = [...(timeline.data?.events ?? []), ...olderEvents].at(-1);
+      if (!last) return Promise.resolve({ events: [] as TimelineEvent[] });
+      return planetApi.pets.timeline(pet!.id, { before: last.occurred_at, before_id: last.id, limit: 100 });
+    },
+    onSuccess: (result) => {
+      setOlderEvents((current) => [...current, ...result.events]);
+      if (result.events.length < 100) setHasMore(false);
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to load older records."),
+  });
+  useEffect(() => {
+    setOlderEvents([]);
+    setHasMore(true);
+  }, [pet?.id, timeline.data?.events]);
   function openEventEditor(event: { id: string; type: string; occurred_at: string; payload: Record<string, unknown> }) {
     if (event.type !== "note" && event.type !== "symptom" && event.type !== "weight") return;
     setEditingEventId(event.id);
@@ -215,7 +233,7 @@ export default function TimelineRoute() {
         </Card>
       </Screen>
     );
-  const events = timeline.data?.events ?? [];
+  const events = [...(timeline.data?.events ?? []), ...olderEvents];
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <PageHeader
@@ -467,6 +485,9 @@ export default function TimelineRoute() {
               ) : null}
             </Card>
           ))}
+          {((timeline.data?.events.length ?? 0) === 100 || olderEvents.length > 0) && hasMore ? (
+            <Button label="Load older records" variant="secondary" loading={loadOlder.isPending} onPress={() => { setError(""); loadOlder.mutate(); }} />
+          ) : null}
         </View>
       )}
     </Screen>

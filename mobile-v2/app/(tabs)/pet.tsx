@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, Share as NativeShare, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, Share as NativeShare, StyleSheet, Switch, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -136,6 +136,20 @@ function shareExpiryLabel(expiresAt: string) {
   return `Expires ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
 }
 
+function firstProfileRecord(value: unknown): Record<string, unknown> {
+  if (!Array.isArray(value) || !value[0] || typeof value[0] !== "object") return {};
+  return value[0] as Record<string, unknown>;
+}
+
+function profileNames(value: unknown) {
+  if (!Array.isArray(value)) return "";
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => typeof item.name === "string" ? item.name : "")
+    .filter(Boolean)
+    .join(", ");
+}
+
 export default function PetRoute() {
   const { theme } = useTheme();
   const router = useRouter();
@@ -171,7 +185,17 @@ export default function PetRoute() {
   const [editName, setEditName] = useState("");
   const [editSpecies, setEditSpecies] = useState<"dog" | "cat" | "other">("dog");
   const [editBreed, setEditBreed] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
+  const [editSex, setEditSex] = useState<"" | "male" | "female">("");
+  const [editNeutered, setEditNeutered] = useState(false);
   const [editNotes, setEditNotes] = useState("");
+  const [editAllergies, setEditAllergies] = useState("");
+  const [editConditions, setEditConditions] = useState("");
+  const [editEmergencyName, setEditEmergencyName] = useState("");
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
+  const [editEmergencyRelation, setEditEmergencyRelation] = useState("");
+  const [editDecisionName, setEditDecisionName] = useState("");
+  const [editDecisionPhone, setEditDecisionPhone] = useState("");
   const [medDose, setMedDose] = useState("");
   const [medSchedule, setMedSchedule] = useState("");
   const [medNote, setMedNote] = useState("");
@@ -292,15 +316,23 @@ export default function PetRoute() {
   });
   const editProfile = useMutation({
     mutationFn: async () => {
-      await Promise.all([
-        planetApi.pets.update(pet!.id, {
-          version: pet!.version,
-          name: editName.trim(),
-          species: editSpecies,
-          breed: editBreed.trim(),
-        }),
-        planetApi.pets.updateProfile(pet!.id, { notes: editNotes.trim() }),
-      ]);
+      await planetApi.pets.update(pet!.id, {
+        version: pet!.version,
+        name: editName.trim(),
+        species: editSpecies,
+        breed: editBreed.trim(),
+        birth_date: editBirthDate,
+        sex: editSex,
+        neutered: editNeutered,
+      });
+      const names = (value: string) => value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean).map((name) => ({ name }));
+      await planetApi.pets.updateProfile(pet!.id, {
+        notes: editNotes.trim(),
+        allergies: names(editAllergies),
+        conditions: names(editConditions),
+        emergency_contacts: editEmergencyName.trim() || editEmergencyPhone.trim() ? [{ name: editEmergencyName.trim(), phone: editEmergencyPhone.trim(), relation: editEmergencyRelation.trim() }] : [],
+        med_decision_maker: editDecisionName.trim() || editDecisionPhone.trim() ? { name: editDecisionName.trim(), phone: editDecisionPhone.trim() } : {},
+      });
     },
     onSuccess: () => {
       setError("");
@@ -460,14 +492,14 @@ export default function PetRoute() {
     addMedication.mutate();
   }
   function submitProfile() {
-    const parsed = petSchema.safeParse({
-      name: editName,
-      species: editSpecies,
-      breed: editBreed,
-      birth_date: "",
-      sex: "",
-      neutered: false,
-      weight_g: "",
+      const parsed = petSchema.safeParse({
+        name: editName,
+        species: editSpecies,
+        breed: editBreed,
+        birth_date: editBirthDate,
+        sex: editSex,
+        neutered: editNeutered,
+        weight_g: "",
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the Pet details.");
@@ -599,7 +631,19 @@ export default function PetRoute() {
               setEditName(pet.name);
               setEditSpecies(pet.species);
               setEditBreed(pet.breed ?? "");
+              setEditBirthDate(pet.birth_date ?? "");
+              setEditSex(pet.sex ?? "");
+              setEditNeutered(pet.neutered);
               setEditNotes(profile?.notes ?? "");
+              setEditAllergies(profileNames(profile?.allergies));
+              setEditConditions(profileNames(profile?.conditions));
+              const emergency = firstProfileRecord(profile?.emergency_contacts);
+              setEditEmergencyName(typeof emergency.name === "string" ? emergency.name : "");
+              setEditEmergencyPhone(typeof emergency.phone === "string" ? emergency.phone : "");
+              setEditEmergencyRelation(typeof emergency.relation === "string" ? emergency.relation : "");
+              const decision = profile?.med_decision_maker && typeof profile.med_decision_maker === "object" ? profile.med_decision_maker as Record<string, unknown> : {};
+              setEditDecisionName(typeof decision.name === "string" ? decision.name : "");
+              setEditDecisionPhone(typeof decision.phone === "string" ? decision.phone : "");
               setError("");
               setForm("profile");
             }}
@@ -631,6 +675,20 @@ export default function PetRoute() {
             </AppText>
           </View>
         </View>
+        <View style={styles.safetyGrid}>
+          <View style={[styles.safetyCell, { backgroundColor: theme.colors.brandSoft }]}>
+            <AppText variant="caption" muted>ALLERGIES</AppText>
+            <AppText variant="label" numberOfLines={2}>{profileNames(profile?.allergies) || "None recorded"}</AppText>
+          </View>
+          <View style={[styles.safetyCell, { backgroundColor: theme.colors.brandSoft }]}>
+            <AppText variant="caption" muted>CONCERNS</AppText>
+            <AppText variant="label" numberOfLines={2}>{profileNames(profile?.conditions) || "None recorded"}</AppText>
+          </View>
+          <View style={[styles.safetyCell, { backgroundColor: theme.colors.brandSoft }]}>
+            <AppText variant="caption" muted>EMERGENCY</AppText>
+            <AppText variant="label" numberOfLines={2}>{typeof firstProfileRecord(profile?.emergency_contacts).name === "string" ? String(firstProfileRecord(profile?.emergency_contacts).name) : "Not added"}</AppText>
+          </View>
+        </View>
         {form === "profile" ? (
           <View style={styles.form}>
             <TextField
@@ -659,6 +717,26 @@ export default function PetRoute() {
               placeholder="Golden retriever"
             />
             <TextField
+              label="Birthday (optional)"
+              value={editBirthDate}
+              onChangeText={(value) => { setEditBirthDate(value); setError(""); }}
+              placeholder="YYYY-MM-DD"
+              hint="Use the date you know; you can leave it blank."
+            />
+            <SegmentedControl
+              label="Sex"
+              value={editSex}
+              onChange={setEditSex}
+              options={[{ value: "", label: "Not set" }, { value: "female", label: "Female" }, { value: "male", label: "Male" }]}
+            />
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleCopy}>
+                <AppText variant="label">Spayed / neutered</AppText>
+                <AppText variant="caption" muted>Keep this detail visible in their profile.</AppText>
+              </View>
+              <Switch accessibilityLabel="Spayed or neutered" value={editNeutered} onValueChange={setEditNeutered} trackColor={{ false: theme.colors.border, true: theme.colors.brand }} thumbColor={theme.colors.surface} />
+            </View>
+            <TextField
               label="Notes for a caregiver"
               value={editNotes}
               onChangeText={setEditNotes}
@@ -666,6 +744,27 @@ export default function PetRoute() {
               multiline
               maxLength={2000}
             />
+            <TextField
+              label="Allergies"
+              value={editAllergies}
+              onChangeText={setEditAllergies}
+              placeholder="Chicken, pollen"
+              hint="Separate multiple entries with commas."
+            />
+            <TextField
+              label="Conditions or ongoing concerns"
+              value={editConditions}
+              onChangeText={setEditConditions}
+              placeholder="Sensitive stomach"
+              hint="Keep this factual and easy for a caregiver to scan."
+            />
+            <View style={styles.formSectionLabel}><AppText variant="label">Emergency contact</AppText><AppText variant="caption" muted>Who should be called first?</AppText></View>
+            <TextField label="Name" value={editEmergencyName} onChangeText={setEditEmergencyName} placeholder="Alex" />
+            <TextField label="Phone" value={editEmergencyPhone} onChangeText={setEditEmergencyPhone} keyboardType="phone-pad" placeholder="+1 555 0100" />
+            <TextField label="Relationship (optional)" value={editEmergencyRelation} onChangeText={setEditEmergencyRelation} placeholder="Partner" />
+            <View style={styles.formSectionLabel}><AppText variant="label">Medical decision maker</AppText><AppText variant="caption" muted>Who can make urgent care decisions?</AppText></View>
+            <TextField label="Name" value={editDecisionName} onChangeText={setEditDecisionName} placeholder="Alex" />
+            <TextField label="Phone" value={editDecisionPhone} onChangeText={setEditDecisionPhone} keyboardType="phone-pad" placeholder="+1 555 0100" />
             {error ? (
               <AppText style={{ color: theme.colors.danger }}>{error}</AppText>
             ) : null}
@@ -1162,6 +1261,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   profileStats: { flexDirection: "row", gap: 30, paddingTop: 4 },
+  safetyGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingTop: 2 },
+  safetyCell: { flex: 1, minWidth: 120, gap: 3, padding: 10, borderRadius: 14 },
   shareHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   shareIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   shareResult: { borderWidth: 1, borderRadius: 16, padding: 13, gap: 8 },
@@ -1175,6 +1276,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   form: { gap: 12 },
+  formSectionLabel: { gap: 2, paddingTop: 4 },
   actions: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
   careRow: {
     minHeight: 58,
@@ -1197,6 +1299,8 @@ const styles = StyleSheet.create({
   medicationRow: { gap: 2, paddingVertical: 4 },
   lifecycleCard: { gap: 12 },
   transferForm: { gap: 9, paddingTop: 2 },
+  toggleRow: { minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  toggleCopy: { flex: 1, gap: 2 },
   dayRow: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
   dayButton: {
     width: 36,

@@ -40,6 +40,7 @@ export const profileSchema = z.object({
 
 export const taskSchema = z.object({
   title: z.string().trim().min(1, 'Name the routine.').max(120, 'Routine names are limited to 120 characters.'),
+  description: z.string().max(500, 'Instructions are limited to 500 characters.'),
   schedule_kind: z.enum(['daily', 'weekly', 'monthly', 'interval']),
   weekly_days: z.array(z.number().int().min(1).max(7)).max(7),
   monthly_day: z.string().regex(/^$|^([1-9]|[12]\d|3[01])$/, 'Choose a day from 1 to 31.'),
@@ -161,7 +162,7 @@ export function taskPayload(form: TaskForm) {
       : form.schedule_kind === 'monthly'
         ? { v: 1, kind: 'monthly', day: Number(form.monthly_day) }
         : { v: 1, kind: 'interval', every_n: Number(form.every_n) };
-  return { title: form.title.trim(), schedule, ...(form.time_of_day ? { time_of_day: form.time_of_day } : {}) };
+  return { title: form.title.trim(), description: form.description.trim(), schedule, ...(form.time_of_day ? { time_of_day: form.time_of_day } : {}) };
 }
 
 export function careItemPayload(form: CareItemForm) {

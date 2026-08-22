@@ -152,7 +152,7 @@ export const planetApi = {
     undo: (logId: string) => apiClient.post<void>(`/task-logs/${id(logId)}/undo`),
   },
   careItems: {
-    update: (careItemId: string, body: { title?: string; schedule?: Record<string, unknown>; time_of_day?: string; archived?: boolean }) => apiClient.patch<{ task: CarePlan }>(`/care-items/${id(careItemId)}`, body),
+    update: (careItemId: string, body: { title?: string; description?: string; schedule?: Record<string, unknown>; time_of_day?: string; archived?: boolean }) => apiClient.patch<{ task: CarePlan }>(`/care-items/${id(careItemId)}`, body),
     delete: (careItemId: string) => apiClient.delete<void>(`/care-items/${id(careItemId)}`),
     assignments: (careItemId: string) => apiClient.get<{ assignments: CareAssignment[] }>(`/care-items/${id(careItemId)}/assignments`),
     setAssignment: (careItemId: string, userId: string, role: 'helper' = 'helper') => apiClient.put<{ assignment: CareAssignment }>(`/care-items/${id(careItemId)}/assignments/${id(userId)}`, { role }),

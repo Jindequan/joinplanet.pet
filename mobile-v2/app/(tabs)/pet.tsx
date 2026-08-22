@@ -142,6 +142,7 @@ function CareRow({ task, onActions }: { task: Task; onActions?: () => void }) {
           {scheduleLabel(task)}
           {` · ${timeLabel(task.time_of_day)}`}
         </AppText>
+        {task.description ? <AppText variant="caption" muted numberOfLines={1}>{task.description}</AppText> : null}
       </View>
       {onActions ? (
         <Pressable
@@ -417,6 +418,7 @@ export default function PetRoute() {
         editingTaskId!,
         taskPayload({
           title: careTitle,
+          description: careDescription,
           schedule_kind: scheduleKind,
           weekly_days: weeklyDays,
           monthly_day: monthlyDay,
@@ -739,6 +741,7 @@ export default function PetRoute() {
     setConfirmTaskId(null);
     setCareTitle(task.title);
     setCareType(careTypeOptions.some((option) => option.value === task.type) ? task.type as CareType : "custom");
+    setCareDescription(task.description ?? "");
     setScheduleKind(kind);
     setWeeklyDays(Array.isArray(raw.days) ? (raw.days as number[]) : []);
     setMonthlyDay(typeof raw.day === "number" ? String(raw.day) : "1");
@@ -755,6 +758,7 @@ export default function PetRoute() {
     if (editingTaskId) {
       const parsed = taskSchema.safeParse({
         title: careTitle,
+        description: careDescription,
         schedule_kind: scheduleKind,
         weekly_days: weeklyDays,
         monthly_day: monthlyDay,
@@ -800,6 +804,7 @@ export default function PetRoute() {
     if (careStep === 2) {
       const parsed = taskSchema.safeParse({
         title: careTitle,
+        description: careDescription,
         schedule_kind: scheduleKind,
         weekly_days: weeklyDays,
         monthly_day: monthlyDay,
@@ -914,6 +919,73 @@ export default function PetRoute() {
   const todayOpen = todayItems.length - todayCompleted - todaySkipped;
   const todaySummaryTitle = today.isError ? "Today's care is unavailable" : today.isLoading ? "Checking today's care…" : todayItems.length === 0 ? "A clear day" : todayOpen === 0 ? "Everything is cared for" : `${todayOpen} moment${todayOpen === 1 ? "" : "s"} still open`;
   const todaySummaryCaption = today.isError ? "Reconnect to refresh today's actions." : today.isLoading ? "Loading the latest care moments." : todayItems.length === 0 ? "No routine is due today." : `${todayCompleted} done${todaySkipped ? ` · ${todaySkipped} skipped` : ""} · ${todayItems.length} total`;
+
+  if (form === "care" && canManagePet) {
+    return (
+      <Screen scroll contentContainerStyle={styles.editorScreen}>
+        <WorkspaceBar familyName={visibleFamily?.name} petName={pet.name} onPressWorkspace={() => resetCareForm()} />
+        <View style={styles.editorHeading}>
+          <View style={styles.rowCopy}>
+            <AppText variant="caption" muted>{editingTaskId ? "EDIT CARE PLAN" : "NEW CARE PLAN"}</AppText>
+            <AppText variant="display">Make care easy to do.</AppText>
+            <AppText muted>This becomes a shared instruction for {pet.name}, not just a reminder.</AppText>
+          </View>
+          <Button label="Close" variant="ghost" onPress={resetCareForm} />
+        </View>
+        <View style={styles.editorRail} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 3, now: careStep }}>
+          {[1, 2, 3].map((step) => <View key={step} style={[styles.editorRailItem, { backgroundColor: step <= careStep ? theme.colors.brandStrong : theme.colors.border }]} />)}
+        </View>
+        <Card style={styles.editorCard}>
+          {careStep === 1 ? <>
+            <View style={styles.editorSectionIntro}>
+              <AppText variant="heading">What needs to happen?</AppText>
+              <AppText variant="caption" muted>Choose a category, then describe the action clearly enough for another person to follow.</AppText>
+            </View>
+            <SegmentedControl label="Category" value={careType} onChange={setCareType} options={careTypeOptions} wrap />
+            <TextField label="Action name" value={careTitle} onChangeText={(value) => { setCareTitle(value); setError(""); }} placeholder={careTitlePlaceholder(careType)} autoFocus />
+            <TextField label="Instructions" value={careDescription} onChangeText={(value) => { setCareDescription(value); setError(""); }} placeholder={careType === "medication" ? "Give 1 tablet with food" : "Add the detail someone should know"} hint="Include dosage, quantity, location, or any handoff detail." multiline />
+          </> : null}
+          {careStep === 2 ? <>
+            <View style={styles.editorSectionIntro}>
+              <AppText variant="heading">When should it happen?</AppText>
+              <AppText variant="caption" muted>PLANET will create one actionable care moment for each scheduled day.</AppText>
+            </View>
+            <SegmentedControl label="Cadence" value={scheduleKind} onChange={setScheduleKind} options={scheduleOptions} />
+            {scheduleKind === "weekly" ? <View style={styles.dayPicker}>
+              <AppText variant="label">Days of the week</AppText>
+              <View style={styles.dayRow}>{dayOptions.map((day) => {
+                const selected = weeklyDays.includes(day.value);
+                return <Pressable key={day.value} accessibilityRole="button" accessibilityLabel={`Weekday ${day.value}`} accessibilityState={{ selected }} onPress={() => setWeeklyDays((current) => selected ? current.filter((value) => value !== day.value) : [...current, day.value].sort())} style={[styles.dayButton, { borderColor: selected ? theme.colors.brandStrong : theme.colors.border, backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface }]}><AppText variant="label" style={{ color: selected ? theme.colors.brandStrong : theme.colors.textMuted }}>{day.label}</AppText></Pressable>;
+              })}</View>
+            </View> : null}
+            {scheduleKind === "monthly" ? <TextField label="Day of month" value={monthlyDay} onChangeText={(value) => { setMonthlyDay(value); setError(""); }} keyboardType="number-pad" placeholder="1" hint="For months without this day, the moment will not be created." /> : null}
+            {scheduleKind === "interval" ? <TextField label="Repeat every" value={everyN} onChangeText={(value) => { setEveryN(value); setError(""); }} keyboardType="number-pad" placeholder="2" hint="Number of days between care moments." /> : null}
+            <DateTimeField label="Preferred time" value={timeOfDayValue} mode="time" onChange={(value) => { setTimeOfDayValue(value); setTimeOfDay(timeKey(value)); setError(""); }} onClear={() => { setTimeOfDayValue(null); setTimeOfDay(""); setError(""); }} placeholder="Any time" />
+          </> : null}
+          {careStep === 3 ? <>
+            <View style={styles.editorSectionIntro}>
+              <AppText variant="heading">Who carries it?</AppText>
+              <AppText variant="caption" muted>The plan stays controlled by the Pet owner. Helpers can complete the moment and leave the history intact.</AppText>
+            </View>
+            <SegmentedControl label="Responsible person" value={selectedCareHelper} onChange={setCareHelperSelection} options={careHelperOptions} />
+            {careHelperOptions.length === 1 ? <AppText variant="caption" muted>No other Family member is available yet. You can add one later.</AppText> : null}
+            <View style={[styles.editorReview, { backgroundColor: theme.colors.surfaceRaised }]}>
+              <AppText variant="caption" style={{ color: theme.colors.accentStrong }}>CARE PLAN PREVIEW</AppText>
+              <AppText variant="title">{careTitle.trim() || "Untitled care moment"}</AppText>
+              {careDescription.trim() ? <AppText variant="caption" muted>{careDescription.trim()}</AppText> : null}
+              <AppText variant="caption" muted>{scheduleKind === "daily" ? "Every day" : scheduleKind === "weekly" ? `Weekly · ${weeklyDays.length ? weeklyDays.map((day) => dayOptions[day - 1]?.label).join(" ") : "choose days"}` : scheduleKind === "monthly" ? `Monthly · day ${monthlyDay || "—"}` : `Every ${everyN || "—"} days`}{timeOfDay ? ` · ${timeLabel(timeOfDay)}` : " · Any time"}</AppText>
+              <AppText variant="caption" muted>{selectedCareHelper ? `Helped by ${careHelperOptions.find((option) => option.value === selectedCareHelper)?.label ?? "a Family member"}` : "Owned by you"}</AppText>
+            </View>
+          </> : null}
+          {error ? <AppText accessibilityLiveRegion="polite" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
+          <View style={styles.editorActions}>
+            <Button label={careStep === 1 ? "Cancel" : "Back"} variant="secondary" onPress={() => careStep === 1 ? resetCareForm() : setCareStep((careStep - 1) as 1 | 2 | 3)} />
+            <Button label={careStep === 3 ? (editingTaskId ? "Save care plan" : "Create care plan") : "Continue"} loading={addCare.isPending || updateTask.isPending} onPress={continueCareSetup} />
+          </View>
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -1449,122 +1521,6 @@ export default function PetRoute() {
             ))}
           </View>
         ) : null}
-        {form === "care" && canManagePet ? (
-          <View style={styles.form}>
-            <View style={styles.formHeader}>
-              <View style={styles.rowCopy}>
-                <AppText variant="title">{editingTaskId ? "Edit care plan" : "New care plan"}</AppText>
-                <AppText variant="caption" muted>{editingTaskId ? "Keep the routine accurate for everyone who helps." : `Create a recurring rhythm for ${pet.name}.`}</AppText>
-              </View>
-              <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>STEP {careStep} OF 3</AppText>
-            </View>
-            <View style={styles.stepRail} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 3, now: careStep }}>
-              {[1, 2, 3].map((step) => <View key={step} style={[styles.stepRailItem, { backgroundColor: step <= careStep ? theme.colors.brandStrong : theme.colors.border }]} />)}
-            </View>
-            {careStep === 1 ? <>
-              <AppText variant="label">What are you caring for?</AppText>
-              <SegmentedControl
-                label="Care type"
-                value={careType}
-                onChange={setCareType}
-                options={careTypeOptions}
-                wrap
-              />
-              <TextField
-                label="Name this care moment"
-                value={careTitle}
-                onChangeText={(value) => {
-                  setCareTitle(value);
-                  setError("");
-                }}
-                placeholder={careTitlePlaceholder(careType)}
-                autoFocus
-              />
-              <TextField
-                label="Helpful note (optional)"
-                value={careDescription}
-                onChangeText={setCareDescription}
-                placeholder="With food"
-                multiline
-              />
-            </> : null}
-            {careStep === 2 ? <>
-              <AppText variant="label">When should PLANET bring it back?</AppText>
-              <AppText variant="caption" muted>Choose a rhythm. You can always adjust it later without losing the history.</AppText>
-              <SegmentedControl
-                label="Repeat schedule"
-                value={scheduleKind}
-                onChange={setScheduleKind}
-                options={scheduleOptions}
-              />
-              {scheduleKind === "weekly" ? (
-                <View style={styles.dayRow}>
-                  {dayOptions.map((day) => {
-                    const selected = weeklyDays.includes(day.value);
-                    return (
-                      <Pressable
-                        key={day.value}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Weekday ${day.value}`}
-                        accessibilityState={{ selected }}
-                        onPress={() =>
-                          setWeeklyDays((current) =>
-                            selected
-                              ? current.filter((value) => value !== day.value)
-                              : [...current, day.value].sort(),
-                          )
-                        }
-                        style={[
-                          styles.dayButton,
-                          {
-                            borderColor: selected ? theme.colors.brandStrong : theme.colors.border,
-                            backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
-                          },
-                        ]}
-                      >
-                        <AppText variant="label" style={{ color: selected ? theme.colors.brandStrong : theme.colors.textMuted }}>{day.label}</AppText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : null}
-              {scheduleKind === "monthly" ? <TextField label="Day of month" value={monthlyDay} onChangeText={setMonthlyDay} keyboardType="number-pad" placeholder="1" /> : null}
-              {scheduleKind === "interval" ? <TextField label="Repeat every (days)" value={everyN} onChangeText={setEveryN} keyboardType="number-pad" placeholder="2" /> : null}
-              <DateTimeField label="Time (optional)" value={timeOfDayValue} mode="time" onChange={(value) => { setTimeOfDayValue(value); setTimeOfDay(timeKey(value)); setError(""); }} onClear={() => { setTimeOfDayValue(null); setTimeOfDay(""); setError(""); }} placeholder="Choose a time" />
-            </> : null}
-            {careStep === 3 ? <>
-              <AppText variant="label">Who can help?</AppText>
-              <AppText variant="caption" muted>You remain the plan owner. A helper can complete the care task without changing the plan.</AppText>
-              <SegmentedControl
-                label="Care responsibility"
-                value={selectedCareHelper}
-                onChange={setCareHelperSelection}
-                options={careHelperOptions}
-              />
-              {careHelperOptions.length === 1 && sourceFamily ? <AppText variant="caption" muted>No other Family members are available yet.</AppText> : null}
-              <View style={[styles.careSummary, { backgroundColor: theme.colors.surfaceRaised }]}>
-                <AppText variant="caption" style={{ color: theme.colors.accentStrong }}>READY TO ADD</AppText>
-                <AppText variant="heading">{careTitle.trim() || "Untitled care moment"}</AppText>
-                <AppText variant="caption" muted>{scheduleKind === "daily" ? "Every day" : scheduleKind === "weekly" ? "Weekly" : scheduleKind === "monthly" ? `Monthly on day ${monthlyDay || "1"}` : `Every ${everyN || "—"} days`}{timeOfDay ? ` · ${timeOfDay}` : " · Any time"}</AppText>
-              </View>
-            </> : null}
-            {error ? (
-              <AppText accessibilityLiveRegion="polite" style={{ color: theme.colors.danger }}>{error}</AppText>
-            ) : null}
-            <View style={styles.actions}>
-              <Button
-                label={careStep === 1 ? "Cancel" : "Back"}
-                variant="secondary"
-                onPress={() => careStep === 1 ? resetCareForm() : setCareStep((careStep - 1) as 1 | 2 | 3)}
-              />
-              <Button
-                label={careStep === 3 ? (editingTaskId ? "Save changes" : "Add care plan") : "Continue"}
-                loading={addCare.isPending || updateTask.isPending}
-                onPress={continueCareSetup}
-              />
-            </View>
-          </View>
-        ) : null}
       </Card>
       <Card style={styles.card}>
         <View style={styles.sectionHeader}>
@@ -1851,9 +1807,15 @@ const styles = StyleSheet.create({
   },
   form: { gap: 12 },
   formHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, paddingBottom: 2 },
-  stepRail: { flexDirection: "row", gap: 5, paddingVertical: 2 },
-  stepRailItem: { height: 4, flex: 1, borderRadius: 2 },
-  careSummary: { borderRadius: 16, padding: 14, gap: 4 },
+  editorScreen: { maxWidth: 680, alignSelf: "center", width: "100%", gap: 16, paddingBottom: 32 },
+  editorHeading: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  editorRail: { flexDirection: "row", gap: 6 },
+  editorRailItem: { height: 5, flex: 1, borderRadius: 3 },
+  editorCard: { gap: 18, padding: 18 },
+  editorSectionIntro: { gap: 4 },
+  editorReview: { borderRadius: 16, padding: 15, gap: 6 },
+  editorActions: { flexDirection: "row", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" },
+  dayPicker: { gap: 8 },
   assignmentField: { gap: 7, paddingTop: 2 },
   formSectionLabel: { gap: 2, paddingTop: 4 },
   actions: { flexDirection: "row", gap: 10, flexWrap: "wrap" },

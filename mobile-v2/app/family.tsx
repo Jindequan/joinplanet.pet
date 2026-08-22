@@ -640,11 +640,11 @@ function FamilyRoute() {
           </View> : null}
           {familySection === "manage" ? <Card style={styles.managementCard}>
             <View style={styles.sectionHeader}>
-              <View>
+              <View style={styles.rowCopy}>
                 <AppText variant="heading">Family settings</AppText>
                 <AppText variant="caption" muted>Keep the shared space accurate and governed.</AppText>
               </View>
-              {circle.role === "owner" ? <AppText variant="caption" style={{ color: theme.colors.brandStrong, marginLeft: 12 }}>OWNER</AppText> : null}
+              {circle.role === "owner" ? <View style={[styles.ownerPill, { backgroundColor: theme.colors.brandSoft }]}><CheckIcon size={13} color={theme.colors.brandStrong} weight="bold" /><AppText variant="caption" style={{ color: theme.colors.brandStrong }}>Owner</AppText></View> : null}
             </View>
             {circle.role === "owner" ? (
               editingFamily ? (

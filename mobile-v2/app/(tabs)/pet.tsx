@@ -256,6 +256,7 @@ export default function PetRoute() {
   const [restoreTaskId, setRestoreTaskId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [careType, setCareType] = useState<CareType>("custom");
+  const [careStep, setCareStep] = useState<1 | 2 | 3>(1);
   const [careTitle, setCareTitle] = useState("");
   const [careDescription, setCareDescription] = useState("");
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>("daily");
@@ -317,6 +318,7 @@ export default function PetRoute() {
 
   const resetCareForm = () => {
     setCareType("custom");
+    setCareStep(1);
     setCareTitle("");
     setCareDescription("");
     setScheduleKind("daily");
@@ -711,6 +713,7 @@ export default function PetRoute() {
     const intentKey = `${selectedPetId ?? pet?.id ?? ""}:${params.intent ?? ""}`;
     if (handledIntentKey.current !== intentKey && params.intent === "care" && pet && !isArchived) {
       setPetSection("care");
+      setCareStep(1);
       setForm("care");
       setError("");
       handledIntentKey.current = intentKey;
@@ -736,6 +739,7 @@ export default function PetRoute() {
     setTimeOfDay(task.time_of_day ?? "");
     setTimeOfDayValue(parseTimeKey(task.time_of_day));
     setCareHelperSelection(null);
+    setCareStep(1);
     setError("");
     setForm("care");
   }
@@ -774,6 +778,36 @@ export default function PetRoute() {
     }
     setError("");
     addCare.mutate();
+  }
+
+  function continueCareSetup() {
+    if (careStep === 1) {
+      if (!careTitle.trim()) {
+        setError("Name the care moment so everyone knows what to do.");
+        return;
+      }
+      setError("");
+      setCareStep(2);
+      return;
+    }
+    if (careStep === 2) {
+      const parsed = taskSchema.safeParse({
+        title: careTitle,
+        schedule_kind: scheduleKind,
+        weekly_days: weeklyDays,
+        monthly_day: monthlyDay,
+        every_n: everyN,
+        time_of_day: timeOfDay,
+      });
+      if (!parsed.success) {
+        setError(parsed.error.issues[0]?.message ?? "Choose when this care repeats.");
+        return;
+      }
+      setError("");
+      setCareStep(3);
+      return;
+    }
+    submitCare();
   }
   function submitMedication() {
     const parsed = medicationSchema.safeParse({
@@ -927,6 +961,7 @@ export default function PetRoute() {
           onPress={() => {
             setPetSection("care");
             setEditingTaskId(null);
+            setCareStep(1);
             setForm("care");
             setError("");
           }}
@@ -1316,6 +1351,7 @@ export default function PetRoute() {
             onPress={() => {
               setPetSection("care");
               setEditingTaskId(null);
+              setCareStep(1);
               setForm("care");
               setError("");
             }}
@@ -1400,135 +1436,115 @@ export default function PetRoute() {
         {form === "care" && canManagePet ? (
           <View style={styles.form}>
             <View style={styles.formHeader}>
-              <View>
+              <View style={styles.rowCopy}>
                 <AppText variant="title">{editingTaskId ? "Edit care plan" : "New care plan"}</AppText>
                 <AppText variant="caption" muted>{editingTaskId ? "Keep the routine accurate for everyone who helps." : `Create a recurring rhythm for ${pet.name}.`}</AppText>
               </View>
+              <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>STEP {careStep} OF 3</AppText>
             </View>
-            <SegmentedControl
-              label="Care type"
-              value={careType}
-              onChange={setCareType}
-              options={careTypeOptions}
-              wrap
-            />
-            <TextField
-              label="What needs to happen?"
-              value={careTitle}
-              onChangeText={(value) => {
-                setCareTitle(value);
-                setError("");
-              }}
-              placeholder={careTitlePlaceholder(careType)}
-            />
-            <TextField
-              label="Notes (optional)"
-              value={careDescription}
-              onChangeText={setCareDescription}
-              placeholder="With food"
-              multiline
-            />
-            <AppText variant="label">When does it repeat?</AppText>
-            <SegmentedControl
-              label="Repeat schedule"
-              value={scheduleKind}
-              onChange={setScheduleKind}
-              options={scheduleOptions}
-            />
-            {scheduleKind === "weekly" ? (
-              <View style={styles.dayRow}>
-                {dayOptions.map((day) => {
-                  const selected = weeklyDays.includes(day.value);
-                  return (
-                    <Pressable
-                      key={day.value}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Weekday ${day.value}`}
-                      accessibilityState={{ selected }}
-                      onPress={() =>
-                        setWeeklyDays((current) =>
-                          selected
-                            ? current.filter((value) => value !== day.value)
-                            : [...current, day.value].sort(),
-                        )
-                      }
-                      style={[
-                        styles.dayButton,
-                        {
-                          borderColor: selected
-                            ? theme.colors.brandStrong
-                            : theme.colors.border,
-                          backgroundColor: selected
-                            ? theme.colors.brandSoft
-                            : theme.colors.surface,
-                        },
-                      ]}
-                    >
-                      <AppText
-                        variant="label"
-                        style={{
-                          color: selected
-                            ? theme.colors.brandStrong
-                            : theme.colors.textMuted,
-                        }}
+            <View style={styles.stepRail} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 3, now: careStep }}>
+              {[1, 2, 3].map((step) => <View key={step} style={[styles.stepRailItem, { backgroundColor: step <= careStep ? theme.colors.brandStrong : theme.colors.border }]} />)}
+            </View>
+            {careStep === 1 ? <>
+              <AppText variant="label">What are you caring for?</AppText>
+              <SegmentedControl
+                label="Care type"
+                value={careType}
+                onChange={setCareType}
+                options={careTypeOptions}
+                wrap
+              />
+              <TextField
+                label="Name this care moment"
+                value={careTitle}
+                onChangeText={(value) => {
+                  setCareTitle(value);
+                  setError("");
+                }}
+                placeholder={careTitlePlaceholder(careType)}
+                autoFocus
+              />
+              <TextField
+                label="Helpful note (optional)"
+                value={careDescription}
+                onChangeText={setCareDescription}
+                placeholder="With food"
+                multiline
+              />
+            </> : null}
+            {careStep === 2 ? <>
+              <AppText variant="label">When should PLANET bring it back?</AppText>
+              <AppText variant="caption" muted>Choose a rhythm. You can always adjust it later without losing the history.</AppText>
+              <SegmentedControl
+                label="Repeat schedule"
+                value={scheduleKind}
+                onChange={setScheduleKind}
+                options={scheduleOptions}
+              />
+              {scheduleKind === "weekly" ? (
+                <View style={styles.dayRow}>
+                  {dayOptions.map((day) => {
+                    const selected = weeklyDays.includes(day.value);
+                    return (
+                      <Pressable
+                        key={day.value}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Weekday ${day.value}`}
+                        accessibilityState={{ selected }}
+                        onPress={() =>
+                          setWeeklyDays((current) =>
+                            selected
+                              ? current.filter((value) => value !== day.value)
+                              : [...current, day.value].sort(),
+                          )
+                        }
+                        style={[
+                          styles.dayButton,
+                          {
+                            borderColor: selected ? theme.colors.brandStrong : theme.colors.border,
+                            backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
+                          },
+                        ]}
                       >
-                        {day.label}
-                      </AppText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : null}
-            {scheduleKind === "monthly" ? (
-              <TextField
-                label="Day of month"
-                value={monthlyDay}
-                onChangeText={setMonthlyDay}
-                keyboardType="number-pad"
-                placeholder="1"
-              />
-            ) : null}
-            {scheduleKind === "interval" ? (
-              <TextField
-                label="Repeat every (days)"
-                value={everyN}
-                onChangeText={setEveryN}
-                keyboardType="number-pad"
-                placeholder="2"
-              />
-            ) : null}
-            <DateTimeField label="Time (optional)" value={timeOfDayValue} mode="time" onChange={(value) => { setTimeOfDayValue(value); setTimeOfDay(timeKey(value)); setError(""); }} onClear={() => { setTimeOfDayValue(null); setTimeOfDay(""); setError(""); }} placeholder="Choose a time" />
-            <View style={styles.assignmentField}>
-              <AppText variant="label">Who helps with this?</AppText>
-              <AppText variant="caption" muted>
-                You remain the plan owner. A helper can complete the care task without changing the plan.
-              </AppText>
+                        <AppText variant="label" style={{ color: selected ? theme.colors.brandStrong : theme.colors.textMuted }}>{day.label}</AppText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+              {scheduleKind === "monthly" ? <TextField label="Day of month" value={monthlyDay} onChangeText={setMonthlyDay} keyboardType="number-pad" placeholder="1" /> : null}
+              {scheduleKind === "interval" ? <TextField label="Repeat every (days)" value={everyN} onChangeText={setEveryN} keyboardType="number-pad" placeholder="2" /> : null}
+              <DateTimeField label="Time (optional)" value={timeOfDayValue} mode="time" onChange={(value) => { setTimeOfDayValue(value); setTimeOfDay(timeKey(value)); setError(""); }} onClear={() => { setTimeOfDayValue(null); setTimeOfDay(""); setError(""); }} placeholder="Choose a time" />
+            </> : null}
+            {careStep === 3 ? <>
+              <AppText variant="label">Who can help?</AppText>
+              <AppText variant="caption" muted>You remain the plan owner. A helper can complete the care task without changing the plan.</AppText>
               <SegmentedControl
                 label="Care responsibility"
                 value={selectedCareHelper}
                 onChange={setCareHelperSelection}
                 options={careHelperOptions}
               />
-              {careHelperOptions.length === 1 && sourceFamily ? (
-                <AppText variant="caption" muted>
-                  No other Family members are available yet.
-                </AppText>
-              ) : null}
-            </View>
+              {careHelperOptions.length === 1 && sourceFamily ? <AppText variant="caption" muted>No other Family members are available yet.</AppText> : null}
+              <View style={[styles.careSummary, { backgroundColor: theme.colors.surfaceRaised }]}>
+                <AppText variant="caption" style={{ color: theme.colors.accentStrong }}>READY TO ADD</AppText>
+                <AppText variant="heading">{careTitle.trim() || "Untitled care moment"}</AppText>
+                <AppText variant="caption" muted>{scheduleKind === "daily" ? "Every day" : scheduleKind === "weekly" ? "Weekly" : scheduleKind === "monthly" ? `Monthly on day ${monthlyDay || "1"}` : `Every ${everyN || "—"} days`}{timeOfDay ? ` · ${timeOfDay}` : " · Any time"}</AppText>
+              </View>
+            </> : null}
             {error ? (
-              <AppText style={{ color: theme.colors.danger }}>{error}</AppText>
+              <AppText accessibilityLiveRegion="polite" style={{ color: theme.colors.danger }}>{error}</AppText>
             ) : null}
             <View style={styles.actions}>
               <Button
-                label="Cancel"
+                label={careStep === 1 ? "Cancel" : "Back"}
                 variant="secondary"
-                onPress={resetCareForm}
+                onPress={() => careStep === 1 ? resetCareForm() : setCareStep((careStep - 1) as 1 | 2 | 3)}
               />
               <Button
-                label={editingTaskId ? "Save changes" : "Save care plan"}
+                label={careStep === 3 ? (editingTaskId ? "Save changes" : "Add care plan") : "Continue"}
                 loading={addCare.isPending || updateTask.isPending}
-                disabled={!careTitle.trim()}
-                onPress={submitCare}
+                onPress={continueCareSetup}
               />
             </View>
           </View>
@@ -1811,7 +1827,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   form: { gap: 12 },
-  formHeader: { gap: 2, paddingBottom: 2 },
+  formHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, paddingBottom: 2 },
+  stepRail: { flexDirection: "row", gap: 5, paddingVertical: 2 },
+  stepRailItem: { height: 4, flex: 1, borderRadius: 2 },
+  careSummary: { borderRadius: 16, padding: 14, gap: 4 },
   assignmentField: { gap: 7, paddingTop: 2 },
   formSectionLabel: { gap: 2, paddingTop: 4 },
   actions: { flexDirection: "row", gap: 10, flexWrap: "wrap" },

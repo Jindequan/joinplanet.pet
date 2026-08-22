@@ -1,7 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { clearSessionToken, readSessionToken, writeSessionToken } from '../storage/secure-storage';
 import { planetApi } from '../api/planet-api';
 import { setUnauthorizedHandler } from '../network/api-client';
@@ -39,6 +38,10 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
     let mounted = true;
     void (async () => {
       try {
+        // Keep the native-only push module out of the web bundle. Apart from
+        // avoiding an unsupported web listener warning, this makes push a
+        // best-effort native capability rather than part of session startup.
+        const Notifications = await import('expo-notifications');
         const current = await Notifications.getPermissionsAsync();
         const permission = current.granted || current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
           ? current

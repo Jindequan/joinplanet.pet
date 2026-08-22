@@ -3,7 +3,6 @@ import { View } from 'react-native';
 import { router, Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppErrorBoundary } from '../src/ui/components/error-boundary';
@@ -29,5 +28,5 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  return <GestureHandlerRootView style={{ flex: 1 }}><SafeAreaProvider><QueryClientProvider client={queryClient}><ThemeProvider><SessionProvider><ToastProvider><BottomSheetModalProvider><AppErrorBoundary><RootNavigator /></AppErrorBoundary></BottomSheetModalProvider></ToastProvider></SessionProvider></ThemeProvider></QueryClientProvider></SafeAreaProvider></GestureHandlerRootView>;
+  return <GestureHandlerRootView style={{ flex: 1 }}><SafeAreaProvider><QueryClientProvider client={queryClient}><ThemeProvider><SessionProvider><ToastProvider><AppErrorBoundary><RootNavigator /></AppErrorBoundary></ToastProvider></SessionProvider></ThemeProvider></QueryClientProvider></SafeAreaProvider></GestureHandlerRootView>;
 }

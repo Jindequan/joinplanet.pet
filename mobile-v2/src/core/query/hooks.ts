@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { planetApi, type Alert, type TodayPet } from '../api/planet-api';
 import { queryKeys } from './keys';
@@ -24,11 +25,14 @@ export function useCirclePets(circleId?: string) {
 
 export function useAccessiblePets(circleIds: string[]) {
   const accessible = useQuery({ queryKey: queryKeys.accessiblePets, queryFn: planetApi.pets.listAccessible });
+  const circleIdsKey = circleIds.join('\u001f');
+  const stableCircleIds = useMemo(() => [...circleIds], [circleIdsKey]);
+  const circleQueries = useMemo(() => stableCircleIds.map((circleId) => ({
+    queryKey: queryKeys.pets(circleId),
+    queryFn: () => planetApi.pets.list(circleId),
+  })), [stableCircleIds]);
   const queries = useQueries({
-    queries: circleIds.map((circleId) => ({
-      queryKey: queryKeys.pets(circleId),
-      queryFn: () => planetApi.pets.list(circleId),
-    })),
+    queries: circleQueries,
   });
   const petsById = new Map<string, NonNullable<(typeof queries)[number]['data']>['pets'][number]>();
   queries.forEach((query) => query.data?.pets.forEach((pet) => petsById.set(pet.id, pet)));
@@ -52,20 +56,28 @@ export function useToday(circleId?: string, date = '') {
 }
 
 export function useTodayForCircles(circleIds: string[], date: string | Record<string, string> = '', directPetIds: string[] = [], directDate = '') {
-  const queries = useQueries({
-    queries: circleIds.map((circleId) => {
-      const circleDate = typeof date === 'string' ? date : date[circleId] ?? '';
-      return {
+  const circleIdsKey = circleIds.join('\u001f');
+  const directPetIdsKey = directPetIds.join('\u001f');
+  const dateKey = typeof date === 'string' ? date : JSON.stringify(date);
+  const stableCircleIds = useMemo(() => [...circleIds], [circleIdsKey]);
+  const stableDirectPetIds = useMemo(() => [...directPetIds], [directPetIdsKey]);
+  const stableDate = useMemo(() => date, [dateKey]);
+  const circleQueries = useMemo(() => stableCircleIds.map((circleId) => {
+    const circleDate = typeof stableDate === 'string' ? stableDate : stableDate[circleId] ?? '';
+    return {
       queryKey: queryKeys.today(circleId, circleDate),
       queryFn: () => planetApi.circles.today(circleId, circleDate || undefined),
-      };
-    }),
+    };
+  }), [dateKey, stableCircleIds, stableDate]);
+  const queries = useQueries({
+    queries: circleQueries,
   });
+  const directQueriesConfig = useMemo(() => stableDirectPetIds.map((petId) => ({
+    queryKey: ['today', 'pet', petId, directDate],
+    queryFn: () => planetApi.pets.today(petId, directDate || undefined),
+  })), [directDate, stableDirectPetIds]);
   const directQueries = useQueries({
-    queries: directPetIds.map((petId) => ({
-      queryKey: ['today', 'pet', petId, directDate],
-      queryFn: () => planetApi.pets.today(petId, directDate || undefined),
-    })),
+    queries: directQueriesConfig,
   });
   const petsById = new Map<string, { pet_id: string; pet_name: string; items: TodayPet['items'] }>();
   queries.forEach((query) => {
@@ -129,11 +141,14 @@ export function useTransfers(circleId?: string, direction: 'incoming' | 'outgoin
 }
 
 export function useAlertsForCircles(circleIds: string[]) {
+  const circleIdsKey = circleIds.join('\u001f');
+  const stableCircleIds = useMemo(() => [...circleIds], [circleIdsKey]);
+  const circleQueries = useMemo(() => stableCircleIds.map((circleId) => ({
+    queryKey: queryKeys.alerts(circleId),
+    queryFn: () => planetApi.circles.alerts(circleId),
+  })), [stableCircleIds]);
   const queries = useQueries({
-    queries: circleIds.map((circleId) => ({
-      queryKey: queryKeys.alerts(circleId),
-      queryFn: () => planetApi.circles.alerts(circleId),
-    })),
+    queries: circleQueries,
   });
   const alerts: Alert[] = [];
   queries.forEach((query) => { if (query.data?.alerts) alerts.push(...query.data.alerts); });

@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import { Redirect, router, useLocalSearchParams, useNavigation, useSegments } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
-import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, StaleDataNotice, TextField } from "../src/ui/components";
+import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SectionRow, StaleDataNotice, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
 import { WorkspaceBar } from "../src/ui/navigation/workspace-bar";
 import { readViewPreference } from "../src/core/storage/view-preference";
@@ -26,6 +26,7 @@ import { humanDisplayName, pluralLabel } from "../src/core/presentation/labels";
 import {
   CheckIcon,
   CaretRightIcon,
+  GearSixIcon,
   PawPrintIcon,
   PlusIcon,
   UserCircleIcon,
@@ -281,6 +282,11 @@ function FamilyRoute() {
   const petCount = pets.data?.pets.length ?? 0;
   const pendingIncoming: Transfer[] = incomingTransfers.data?.transfers.filter((item) => item.status === "PENDING") ?? [];
   const pendingOutgoing: Transfer[] = outgoingTransfers.data?.transfers.filter((item) => item.status === "PENDING") ?? [];
+  const focusedSection = familySection === "people"
+    ? { eyebrow: `${circle?.name.toUpperCase() ?? "FAMILY"} / PEOPLE`, title: "People who help" }
+    : familySection === "manage"
+      ? { eyebrow: `${circle?.name.toUpperCase() ?? "FAMILY"} / SETTINGS`, title: "Family settings" }
+      : { eyebrow: "FAMILY CARE", title: "Family" };
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       {hasStaleData ? <StaleDataNotice onRetry={retryFamily} retrying={detail.isFetching || pets.isFetching} message="Some Family details are from the last saved view. Reconnect to refresh them." /> : null}
@@ -288,9 +294,9 @@ function FamilyRoute() {
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <AppText variant="caption" muted>
-            FAMILY WORKSPACE
+            {focusedSection.eyebrow}
           </AppText>
-          <AppText variant="display">Family</AppText>
+          <AppText variant="display">{focusedSection.title}</AppText>
           <AppText muted>
             Manage the people, Pets and permissions in this shared care space.
           </AppText>
@@ -393,17 +399,11 @@ function FamilyRoute() {
               </View>
             </View>
           </LinearGradient>
-          <SegmentedControl
-            label="Family workspace"
-            value={familySection}
-            onChange={setFamilySection}
-            compact
-            options={[
-              { value: "overview", label: "Overview" },
-              { value: "people", label: "People" },
-              { value: "manage", label: "Settings" },
-            ]}
-          />
+          {familySection !== "overview" ? <Button
+            label={`Back to ${circle.name}`}
+            variant="ghost"
+            onPress={() => setFamilySection("overview")}
+          /> : null}
           {familySection === "overview" ? <Card style={styles.petCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.rowCopy}>
@@ -524,6 +524,23 @@ function FamilyRoute() {
               )}
             </Card>
           ) : null}
+          {familySection === "overview" ? <Card style={styles.toolsCard}>
+            <AppText variant="caption" muted>MORE FOR {circle.name.toUpperCase()}</AppText>
+            <SectionRow
+              icon={UsersThreeIcon}
+              title="People who help"
+              description="Members, roles, invites, and ownership"
+              onPress={() => setFamilySection("people")}
+            />
+            <SectionRow
+              icon={GearSixIcon}
+              title="Family settings"
+              description="Name, timezone, leave, or delete"
+              onPress={() => setFamilySection("manage")}
+              accent="neutral"
+              last
+            />
+          </Card> : null}
           {familySection === "people" ? <>
           <View style={styles.sectionHeader}>
             <View>
@@ -864,6 +881,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   inviteCard: { gap: 14 },
+  toolsCard: { gap: 2 },
   petCard: { gap: 8 },
   petRow: { minHeight: 60, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
   petMarkSmall: { width: 38, height: 38, borderRadius: 13, alignItems: "center", justifyContent: "center" },

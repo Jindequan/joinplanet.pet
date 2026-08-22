@@ -21,7 +21,7 @@ type WorkspaceBarProps = {
  */
 export function WorkspaceBar({ familyName, petName, onPressWorkspace }: WorkspaceBarProps) {
   const { theme } = useTheme();
-  const workspaceLabel = familyName || 'All care spaces';
+  const workspaceLabel = familyName || 'All Families';
   const detailLabel = petName || 'All Pets';
   const content = (
     <>
@@ -29,7 +29,7 @@ export function WorkspaceBar({ familyName, petName, onPressWorkspace }: Workspac
         <PlanetIcon size={19} color={theme.colors.brandStrong} weight="duotone" />
       </View>
       <View style={styles.copy}>
-        <AppText variant="caption" muted>PLANET · CARE SPACE</AppText>
+        <AppText variant="caption" muted>PLANET · FAMILY CARE</AppText>
         <AppText variant="label" numberOfLines={1}>{workspaceLabel}</AppText>
         <AppText variant="caption" muted numberOfLines={1}>{detailLabel}</AppText>
       </View>

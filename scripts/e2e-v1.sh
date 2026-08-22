@@ -35,7 +35,7 @@ req() {
   if [ -n "$tok" ]; then args+=(-H "Authorization: Bearer $tok"); fi
   if [ -n "$body" ]; then args+=(-d "$body"); fi
   local out
-  if [ "$m" = "POST" ] && [[ "$p" != /api/v1/auth/* ]]; then
+  if { [ "$m" = "POST" ] || [ -n "$idem" ]; } && [[ "$p" != /api/v1/auth/* ]]; then
     [ -n "$idem" ] || idem="e2e-${UNIQ}-${RANDOM}-${PASS}-${FAIL}"
     args+=(-H "Idempotency-Key: $idem")
   fi
@@ -151,6 +151,18 @@ PET_ID=$(jget 'd["pet"]["id"]')
 
 req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$A_TOK"
 expect "1.4a A today view empty" 200 'd["date"] == "'"$TODAY"'" and d["pets"] == []'
+
+req GET "/api/v1/pets/$PET_ID" "$A_TOK"
+PET_VERSION=$(jget 'd["pet"]["version"]')
+RECORD_UPDATE_KEY="e2e-record-update-$UNIQ"
+RECORD_UPDATE_BODY="{\"version\":$PET_VERSION,\"name\":\"Mochi\",\"species\":\"cat\",\"notes\":\"Needs a quiet meal.\",\"allergies\":[],\"conditions\":[],\"emergency_contacts\":[],\"med_decision_maker\":{}}"
+req PATCH "/api/v1/pets/$PET_ID/record" "$A_TOK" "$RECORD_UPDATE_BODY" "$RECORD_UPDATE_KEY"
+expect "1.5a atomic Pet record update" 200 'd["pet"]["name"] == "Mochi" and d["profile"]["notes"] == "Needs a quiet meal."'
+req PATCH "/api/v1/pets/$PET_ID/record" "$A_TOK" "$RECORD_UPDATE_BODY" "$RECORD_UPDATE_KEY"
+expect "1.5b retry returns the same Pet record (idempotent)" 200 'd["pet"]["name"] == "Mochi" and d["profile"]["notes"] == "Needs a quiet meal."'
+RECORD_UPDATE_CONFLICT_BODY="{\"version\":$PET_VERSION,\"name\":\"Mochi\",\"species\":\"cat\",\"notes\":\"different request\",\"allergies\":[],\"conditions\":[],\"emergency_contacts\":[],\"med_decision_maker\":{}}"
+req PATCH "/api/v1/pets/$PET_ID/record" "$A_TOK" "$RECORD_UPDATE_CONFLICT_BODY" "$RECORD_UPDATE_KEY"
+expect "1.5c same key with different record is rejected" 409 'd["error"]["code"] == "IDEMPOTENCY_KEY_REUSED"'
 
 # ===========================================================================
 echo "== Scenario 2: task lifecycle — done / 409 / undo / skipped =="

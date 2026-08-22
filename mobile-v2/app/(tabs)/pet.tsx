@@ -112,6 +112,17 @@ function timeLabel(value?: string) {
   return `${hour}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
+function careTitlePlaceholder(type: CareType) {
+  return {
+    medication: "Give heart medicine",
+    feeding: "Serve dinner",
+    health: "Check weight",
+    grooming: "Brush their coat",
+    exercise: "Take an evening walk",
+    custom: "Name this care moment",
+  }[type];
+}
+
 function CareRow({ task, onActions }: { task: Task; onActions?: () => void }) {
   const { theme } = useTheme();
   return (
@@ -297,6 +308,7 @@ export default function PetRoute() {
   const careCreateIntent = useIdempotencyKey();
   const medicationCreateIntent = useIdempotencyKey();
   const shareCreateIntent = useIdempotencyKey();
+  const recordUpdateIntent = useIdempotencyKey();
 
   useEffect(() => {
     navigation.setOptions({ tabBarStyle: form ? { display: "none" } : undefined });
@@ -537,7 +549,8 @@ export default function PetRoute() {
   });
   const editProfile = useMutation({
     mutationFn: async () => {
-      await planetApi.pets.update(pet!.id, {
+      const names = (value: string) => value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean).map((name) => ({ name }));
+      return planetApi.pets.updateRecord(pet!.id, {
         version: pet!.version,
         name: editName.trim(),
         species: editSpecies,
@@ -545,33 +558,25 @@ export default function PetRoute() {
         birth_date: editBirthDate,
         sex: editSex,
         neutered: editNeutered,
-      });
-      const names = (value: string) => value.split(/[,\n]/).map((item) => item.trim()).filter(Boolean).map((name) => ({ name }));
-      await planetApi.pets.updateProfile(pet!.id, {
         notes: editNotes.trim(),
         allergies: names(editAllergies),
         conditions: names(editConditions),
         emergency_contacts: editEmergencyName.trim() || editEmergencyPhone.trim() ? [{ name: editEmergencyName.trim(), phone: editEmergencyPhone.trim(), relation: editEmergencyRelation.trim() }] : [],
         med_decision_maker: editDecisionName.trim() || editDecisionPhone.trim() ? { name: editDecisionName.trim(), phone: editDecisionPhone.trim() } : {},
-      });
+      }, recordUpdateIntent.current());
     },
     onSuccess: () => {
       setError("");
       setForm(null);
+      recordUpdateIntent.reset();
       invalidate.pet(pet!.id);
       invalidate.petsAll();
     },
     onError: (err) =>
       {
-        // The API currently exposes the core Pet and profile as two guarded
-        // writes. Refresh both projections after a partial failure so a
-        // retry uses the server's new optimistic-lock version instead of
-        // replaying a stale version and trapping the user in a 409 loop.
         invalidate.pet(pet!.id);
         invalidate.petsAll();
-        setError(
-          err instanceof ApiError ? err.message : "Unable to save the Pet details.",
-        );
+        setError(err instanceof ApiError ? err.message : "Unable to save the Pet details.");
       },
   });
   const archivePet = useMutation({
@@ -722,6 +727,7 @@ export default function PetRoute() {
     setTaskMenuId(null);
     setConfirmTaskId(null);
     setCareTitle(task.title);
+    setCareType(careTypeOptions.some((option) => option.value === task.type) ? task.type as CareType : "custom");
     setScheduleKind(kind);
     setWeeklyDays(Array.isArray(raw.days) ? (raw.days as number[]) : []);
     setMonthlyDay(typeof raw.day === "number" ? String(raw.day) : "1");
@@ -1032,6 +1038,12 @@ export default function PetRoute() {
         </View>
         {form === "profile" ? (
           <View style={styles.form}>
+            <View style={styles.formHeader}>
+              <View>
+                <AppText variant="title">Edit Pet record</AppText>
+                <AppText variant="caption" muted>Keep the details useful for every caregiver.</AppText>
+              </View>
+            </View>
             <TextField
               label="Name"
               value={editName}
@@ -1386,6 +1398,12 @@ export default function PetRoute() {
         ) : null}
         {form === "care" && canManagePet ? (
           <View style={styles.form}>
+            <View style={styles.formHeader}>
+              <View>
+                <AppText variant="title">{editingTaskId ? "Edit care plan" : "New care plan"}</AppText>
+                <AppText variant="caption" muted>{editingTaskId ? "Keep the routine accurate for everyone who helps." : `Create a recurring rhythm for ${pet.name}.`}</AppText>
+              </View>
+            </View>
             <SegmentedControl
               label="Care type"
               value={careType}
@@ -1400,7 +1418,7 @@ export default function PetRoute() {
                 setCareTitle(value);
                 setError("");
               }}
-              placeholder="Give heart medicine"
+              placeholder={careTitlePlaceholder(careType)}
             />
             <TextField
               label="Notes (optional)"
@@ -1789,6 +1807,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   form: { gap: 12 },
+  formHeader: { gap: 2, paddingBottom: 2 },
   assignmentField: { gap: 7, paddingTop: 2 },
   formSectionLabel: { gap: 2, paddingTop: 4 },
   actions: { flexDirection: "row", gap: 10, flexWrap: "wrap" },

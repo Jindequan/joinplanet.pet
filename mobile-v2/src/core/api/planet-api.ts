@@ -110,6 +110,7 @@ export const planetApi = {
     today: (petId: string, date?: string) => apiClient.get<Today>(`/today?pet_id=${id(petId)}${date ? `&date=${encodeURIComponent(date)}` : ''}`),
     export: (petId: string) => apiClient.get<ExportResponse>(`/pets/${id(petId)}/export`),
     update: (petId: string, body: Record<string, unknown>) => apiClient.patch<{ pet: Pet }>(`/pets/${id(petId)}`, body),
+    updateRecord: (petId: string, body: Record<string, unknown>, requestKey = createIdempotencyKey()) => apiClient.patch<{ pet: Pet; profile: Profile }>(`/pets/${id(petId)}/record`, body, { headers: { 'Idempotency-Key': requestKey } }),
     delete: (petId: string) => request<void>(`/pets/${id(petId)}`, { method: 'DELETE', body: { confirm: petId } }),
     updateProfile: (petId: string, body: Partial<Profile>) => apiClient.patch<{ profile: Profile }>(`/pets/${id(petId)}/profile`, body),
     archive: (petId: string) => apiClient.post<{ pet: Pet }>(`/pets/${id(petId)}/archive`),

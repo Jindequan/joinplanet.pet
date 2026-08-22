@@ -1741,8 +1741,13 @@ export default function PetRoute() {
                 <Button label="Send handoff request" loading={transferPet.isPending} disabled={!targetFamilies.length} onPress={() => { setTransferError(""); transferPet.mutate(); }} />
               </View>
             </View>
-          ) : (
+          ) : targetFamilies.length ? (
             <Button label="Move to another Family" variant="secondary" onPress={() => { setTransferOpen(true); setTransferTargetId(targetFamilies[0]?.id ?? null); setTransferNotice(""); setTransferError(""); }} />
+          ) : (
+            <View style={styles.transferForm}>
+              <AppText variant="caption" muted>To move {pet.name}, first create or join the destination Family. Nothing about this Pet changes until the other Family owner accepts.</AppText>
+              <Button label="Open Family" variant="secondary" onPress={() => router.push("/(tabs)/family")} />
+            </View>
           )
         ) : null}
         {canManagePet && lifecycleAction ? (

@@ -91,10 +91,10 @@ function EventGlyph({ event }: { event: TimelineEvent }) {
   return <CalendarDotsIcon size={18} color={theme.colors.lavender} weight="duotone" />;
 }
 
-function eventDayLabel(value: string) {
+function eventDayLabel(value: string, timeZone?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Earlier";
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("en-US", { timeZone, weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(date);
 }
 
 export default function TimelineRoute() {
@@ -123,6 +123,10 @@ export default function TimelineRoute() {
   const pet =
     accessiblePets.pets.find((candidate) => candidate.id === activePetId) ??
     accessiblePets.pets[0];
+  const petFamily = pet
+    ? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
+    : undefined;
+  const petTimeZone = petFamily?.timezone || undefined;
   const timeline = useTimeline(pet?.id);
   const invalidate = useInvalidateApi();
   const [eventType, setEventType] = useState<EventType>("note");
@@ -319,7 +323,7 @@ export default function TimelineRoute() {
   });
   const visibleEvents = timelineFilter === "all" ? events : events.filter((event) => eventBucket(event) === timelineFilter);
   const groupedEvents = visibleEvents.reduce<Array<{ label: string; events: TimelineEvent[] }>>((groups, event) => {
-    const label = eventDayLabel(event.occurred_at);
+    const label = eventDayLabel(event.occurred_at, petTimeZone);
     const current = groups[groups.length - 1];
     if (current?.label === label) current.events.push(event);
     else groups.push({ label, events: [event] });
@@ -332,7 +336,7 @@ export default function TimelineRoute() {
   const canEditEvent = (event: TimelineEvent) => event.source === "user" && (event.recorded_by === me.data?.user.id || hasOwnerAccess);
   return (
     <Screen scroll contentContainerStyle={styles.content}>
-      <WorkspaceBar familyName={circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))?.name} petName={pet.name} onPressWorkspace={() => router.push('/(tabs)/family')} />
+      <WorkspaceBar familyName={petFamily?.name} petName={pet.name} onPressWorkspace={() => router.push('/(tabs)/family')} />
       <PageHeader
         eyebrow={`${pet.name.toUpperCase()} / HISTORY`}
         title="Journal"
@@ -478,7 +482,7 @@ export default function TimelineRoute() {
                 <View style={styles.eventMeta}>
                   <AppText variant="label">{eventTitle(event.type)}</AppText>
                   <AppText variant="caption" muted>
-                    {new Date(event.occurred_at).toLocaleDateString()} ·{" "}
+                    {new Date(event.occurred_at).toLocaleDateString(undefined, { timeZone: petTimeZone })} ·{" "}
                     {event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "From care"}
                   </AppText>
                 </View>
@@ -513,7 +517,7 @@ export default function TimelineRoute() {
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: expandedEventId === event.id }} onPress={() => setExpandedEventId((current) => current === event.id ? null : event.id)} hitSlop={6}>
                 <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{expandedEventId === event.id ? "Hide details" : "View details"}</AppText>
               </Pressable>
-              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString()}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
+              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString(undefined, { timeZone: petTimeZone })}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
               {eventMenuId === event.id ? (
                 <View style={styles.eventActions}>
                   <Button

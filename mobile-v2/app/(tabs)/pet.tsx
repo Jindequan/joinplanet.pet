@@ -9,6 +9,7 @@ import {
   CheckCircleIcon,
   DotsThreeIcon,
   DogIcon,
+  BookOpenIcon,
   PawPrintIcon,
   PlusIcon,
   ShareNetworkIcon,
@@ -90,13 +91,25 @@ const dayOptions = [
 function scheduleLabel(task: Task) {
   const raw = task.schedule;
   const kind = typeof raw.kind === "string" ? raw.kind : "daily";
-  if (kind === "weekly" && Array.isArray(raw.days))
-    return `Weekly · ${(raw.days as number[]).sort().join(", ")}`;
+  if (kind === "weekly" && Array.isArray(raw.days)) {
+    const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const days = (raw.days as number[]).filter((day) => day >= 1 && day <= 7).sort((left, right) => left - right).map((day) => weekdayLabels[day - 1]);
+    return `Weekly · ${days.join(", ") || "selected days"}`;
+  }
   if (kind === "monthly" && typeof raw.day === "number")
     return `Monthly · day ${raw.day}`;
   if (kind === "interval" && typeof raw.every_n === "number")
     return `Every ${raw.every_n} days`;
   return "Daily";
+}
+
+function timeLabel(value?: string) {
+  if (!value) return "Any time";
+  const [hours = NaN, minutes = NaN] = value.split(":").map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return value;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour = hours % 12 || 12;
+  return `${hour}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
 function CareRow({ task, onActions }: { task: Task; onActions?: () => void }) {
@@ -116,7 +129,7 @@ function CareRow({ task, onActions }: { task: Task; onActions?: () => void }) {
         <AppText variant="label">{task.title}</AppText>
         <AppText variant="caption" muted>
           {scheduleLabel(task)}
-          {task.time_of_day ? ` · ${task.time_of_day}` : ""}
+          {` · ${timeLabel(task.time_of_day)}`}
         </AppText>
       </View>
       {onActions ? (
@@ -909,7 +922,7 @@ export default function PetRoute() {
           label="Timeline"
           variant="ghost"
           icon={
-            <PawPrintIcon
+            <BookOpenIcon
               size={17}
               color={theme.colors.brandStrong}
               weight="duotone"

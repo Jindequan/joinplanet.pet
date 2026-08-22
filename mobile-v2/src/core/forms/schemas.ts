@@ -75,6 +75,8 @@ export const careItemSchema = z.object({
   monthly_day: z.string().regex(/^$|^([1-9]|[12]\d|3[01])$/, 'Choose a day from 1 to 31.'),
   every_n: z.string().regex(/^$|^\d{1,3}$/, 'Use a number from 1 to 365.'),
   time_of_day: z.string().regex(/^$|^\d{2}:\d{2}$/, 'Use HH:MM.'),
+  start_date: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.'),
+  end_date: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.'),
 }).superRefine((value, context) => {
   if (value.schedule_kind === 'weekly' && value.weekly_days.length === 0) context.addIssue({ code: 'custom', path: ['weekly_days'], message: 'Choose at least one day.' });
   if (value.schedule_kind === 'monthly' && (!value.monthly_day || Number(value.monthly_day) < 1 || Number(value.monthly_day) > 31)) context.addIssue({ code: 'custom', path: ['monthly_day'], message: 'Choose a day from 1 to 31.' });
@@ -84,6 +86,7 @@ export const careItemSchema = z.object({
     const [hours = NaN, minutes = NaN] = value.time_of_day.split(':').map(Number);
     if (hours > 23 || minutes > 59) context.addIssue({ code: 'custom', path: ['time_of_day'], message: 'Use a real time.' });
   }
+  if (value.start_date && value.end_date && value.end_date < value.start_date) context.addIssue({ code: 'custom', path: ['end_date'], message: 'End date must be on or after the start date.' });
 });
 
 export const medicationSchema = z.object({
@@ -173,7 +176,7 @@ export function careItemPayload(form: CareItemForm) {
       : form.schedule_kind === 'monthly'
         ? { type: 'monthly' as const, day: Number(form.monthly_day) }
         : { type: 'interval' as const, interval: Number(form.every_n) };
-  return { type: form.type, title: form.title.trim(), description: form.description.trim(), rule: { ...rule, ...(form.time_of_day ? { time: form.time_of_day } : {}) } };
+  return { type: form.type, title: form.title.trim(), description: form.description.trim(), rule: { ...rule, ...(form.time_of_day ? { time: form.time_of_day } : {}), ...(form.start_date ? { start_date: form.start_date } : {}), ...(form.end_date ? { end_date: form.end_date } : {}) } };
 }
 
 export function petPayload(form: PetForm) {

@@ -269,6 +269,10 @@ export default function PetRoute() {
   const [everyN, setEveryN] = useState("");
   const [timeOfDay, setTimeOfDay] = useState("");
   const [timeOfDayValue, setTimeOfDayValue] = useState<Date | null>(null);
+  const [careStartDate, setCareStartDate] = useState("");
+  const [careStartDateValue, setCareStartDateValue] = useState<Date | null>(null);
+  const [careEndDate, setCareEndDate] = useState("");
+  const [careEndDateValue, setCareEndDateValue] = useState<Date | null>(null);
   const [careHelperSelection, setCareHelperSelection] = useState<string | null>("");
   const [medName, setMedName] = useState("");
   const [editName, setEditName] = useState("");
@@ -331,6 +335,10 @@ export default function PetRoute() {
     setEveryN("");
     setTimeOfDay("");
     setTimeOfDayValue(null);
+    setCareStartDate("");
+    setCareStartDateValue(null);
+    setCareEndDate("");
+    setCareEndDateValue(null);
     setCareHelperSelection("");
     setError("");
     setEditingTaskId(null);
@@ -382,6 +390,8 @@ export default function PetRoute() {
           monthly_day: monthlyDay,
           every_n: everyN,
           time_of_day: timeOfDay,
+          start_date: careStartDate,
+          end_date: careEndDate,
         }),
         careCreateIntent.current(),
       );
@@ -782,6 +792,8 @@ export default function PetRoute() {
       monthly_day: monthlyDay,
       every_n: everyN,
       time_of_day: timeOfDay,
+      start_date: careStartDate,
+      end_date: careEndDate,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the care plan.");
@@ -960,6 +972,10 @@ export default function PetRoute() {
             </View> : null}
             {scheduleKind === "monthly" ? <TextField label="Day of month" value={monthlyDay} onChangeText={(value) => { setMonthlyDay(value); setError(""); }} keyboardType="number-pad" placeholder="1" hint="For months without this day, the moment will not be created." /> : null}
             {scheduleKind === "interval" ? <TextField label="Repeat every" value={everyN} onChangeText={(value) => { setEveryN(value); setError(""); }} keyboardType="number-pad" placeholder="2" hint="Number of days between care moments." /> : null}
+            {editingTaskId ? <AppText variant="caption" muted>Start and end dates stay unchanged when you edit an existing plan.</AppText> : <View style={styles.dateRange}>
+              <View style={styles.dateField}><DateTimeField label="Starts" value={careStartDateValue} onChange={(value) => { setCareStartDateValue(value); setCareStartDate(dateKey(value)); setError(""); }} onClear={() => { setCareStartDateValue(null); setCareStartDate(""); setError(""); }} placeholder="Today" minimumDate={editingTaskId ? undefined : new Date()} /></View>
+              <View style={styles.dateField}><DateTimeField label="Ends (optional)" value={careEndDateValue} onChange={(value) => { setCareEndDateValue(value); setCareEndDate(dateKey(value)); setError(""); }} onClear={() => { setCareEndDateValue(null); setCareEndDate(""); setError(""); }} placeholder="No end date" minimumDate={careStartDateValue ?? new Date()} /></View>
+            </View>}
             <DateTimeField label="Preferred time" value={timeOfDayValue} mode="time" onChange={(value) => { setTimeOfDayValue(value); setTimeOfDay(timeKey(value)); setError(""); }} onClear={() => { setTimeOfDayValue(null); setTimeOfDay(""); setError(""); }} placeholder="Any time" />
           </> : null}
           {careStep === 3 ? <>
@@ -974,6 +990,7 @@ export default function PetRoute() {
               <AppText variant="title">{careTitle.trim() || "Untitled care moment"}</AppText>
               {careDescription.trim() ? <AppText variant="caption" muted>{careDescription.trim()}</AppText> : null}
               <AppText variant="caption" muted>{scheduleKind === "daily" ? "Every day" : scheduleKind === "weekly" ? `Weekly · ${weeklyDays.length ? weeklyDays.map((day) => dayOptions[day - 1]?.label).join(" ") : "choose days"}` : scheduleKind === "monthly" ? `Monthly · day ${monthlyDay || "—"}` : `Every ${everyN || "—"} days`}{timeOfDay ? ` · ${timeLabel(timeOfDay)}` : " · Any time"}</AppText>
+              <AppText variant="caption" muted>{careStartDate ? `Starts ${careStartDate}` : "Starts today"}{careEndDate ? ` · Ends ${careEndDate}` : " · No end date"}</AppText>
               <AppText variant="caption" muted>{selectedCareHelper ? `Helped by ${careHelperOptions.find((option) => option.value === selectedCareHelper)?.label ?? "a Family member"}` : "Owned by you"}</AppText>
             </View>
           </> : null}
@@ -1816,6 +1833,8 @@ const styles = StyleSheet.create({
   editorReview: { borderRadius: 16, padding: 15, gap: 6 },
   editorActions: { flexDirection: "row", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" },
   dayPicker: { gap: 8 },
+  dateRange: { flexDirection: "row", gap: 10 },
+  dateField: { flex: 1 },
   assignmentField: { gap: 7, paddingTop: 2 },
   formSectionLabel: { gap: 2, paddingTop: 4 },
   actions: { flexDirection: "row", gap: 10, flexWrap: "wrap" },

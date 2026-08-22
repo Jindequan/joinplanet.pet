@@ -21,7 +21,7 @@ function RootNavigator() {
     if (status === 'loading') return;
     const rootSegment = segments[0];
     const inAuth = rootSegment === 'welcome' || rootSegment === 'onboarding';
-    const inProtectedApp = rootSegment === '(tabs)' || rootSegment === 'account' || rootSegment === 'settings' || rootSegment === 'privacy' || rootSegment === 'family' || rootSegment === 'pets' || rootSegment === 'pet' || rootSegment === 'timeline';
+    const inProtectedApp = rootSegment === '(tabs)' || rootSegment === 'account' || rootSegment === 'settings' || rootSegment === 'privacy' || rootSegment === 'more' || rootSegment === 'family' || rootSegment === 'pets' || rootSegment === 'pet' || rootSegment === 'timeline';
     if (status === 'authenticated' && inAuth) router.replace('/(tabs)');
     if (status === 'unauthenticated' && inProtectedApp) router.replace('/welcome');
   }, [segments, status]);

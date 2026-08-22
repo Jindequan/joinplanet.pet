@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { AppText, Card, LoadingState, QueryErrorState, Screen, SectionRow, StaleDataNotice } from '../../src/ui/components';
 import { useTheme } from '../../src/core/providers/theme-provider';
 import { WorkspaceBar } from '../../src/ui/navigation/workspace-bar';
@@ -12,6 +12,7 @@ import { GearSixIcon, HeartIcon, PawPrintIcon, ShieldCheckIcon, UserCircleIcon, 
 
 export default function YouRoute() {
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const me = useMe();
   const circles = useCircles();
   const [preferredFamilyId, setPreferredFamilyId] = React.useState<string>();
@@ -24,6 +25,10 @@ export default function YouRoute() {
   }, [me.data?.user.id]);
   const circle = circles.data?.circles.find((item) => item.id === preferredFamilyId) ?? circles.data?.circles[0];
   const accessiblePets = useAccessiblePets(circles.data?.circles.map((item) => item.id) ?? []);
+  React.useEffect(() => {
+    navigation.setOptions({ tabBarStyle: { display: 'none' } });
+    return () => navigation.setOptions({ tabBarStyle: undefined });
+  }, [navigation]);
   const retrySpace = () => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); };
   const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData);
   const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData));
@@ -36,7 +41,7 @@ export default function YouRoute() {
 
 const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'stretch' },
-  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 192, gap: 16 },
+  content: { maxWidth: 680, alignSelf: 'center', width: '100%', paddingBottom: 48, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 },
   headerCopy: { flex: 1, gap: 5 },
   avatar: { width: 48, height: 48, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

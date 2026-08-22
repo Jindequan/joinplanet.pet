@@ -51,7 +51,7 @@ export function WorkspaceBar({ familyName, petName, onPressWorkspace }: Workspac
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open your account"
-        onPress={() => router.push('/(tabs)/more')}
+        onPress={() => router.push('/more')}
         style={({ pressed }) => [styles.account, { backgroundColor: theme.colors.surfaceRaised }, pressed && { opacity: theme.motion.pressOpacity }]}
       >
         <UserCircleIcon size={20} color={theme.colors.brandStrong} weight="duotone" />

@@ -149,7 +149,7 @@ export const planetApi = {
     assignments: (careItemId: string) => apiClient.get<{ assignments: CareAssignment[] }>(`/care-items/${id(careItemId)}/assignments`),
     setAssignment: (careItemId: string, userId: string, role: 'helper' = 'helper') => apiClient.put<{ assignment: CareAssignment }>(`/care-items/${id(careItemId)}/assignments/${id(userId)}`, { role }),
     removeAssignment: (careItemId: string, userId: string) => apiClient.delete<void>(`/care-items/${id(careItemId)}/assignments/${id(userId)}`),
-    complete: (taskId: string, body: { status: 'done' | 'skipped'; date?: string; note?: string }) => apiClient.post<{ log: TaskLog }>(`/care-tasks/${id(taskId)}/complete`, body),
+    complete: (taskId: string, body: { status: 'done' | 'skipped'; date?: string; note?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ log: TaskLog }>(`/care-tasks/${id(taskId)}/complete`, body, { headers: { 'Idempotency-Key': requestKey } }),
     undo: (logId: string) => apiClient.post<void>(`/task-logs/${id(logId)}/undo`),
   },
   timeline: {
@@ -159,8 +159,8 @@ export const planetApi = {
   transfers: {
     list: (circleId: string, direction?: 'incoming' | 'outgoing') => apiClient.get<{ transfers: Transfer[] }>(`/circles/${id(circleId)}/transfers${direction ? `?direction=${direction}` : ''}`),
     accept: (transferId: string, requestKey = createIdempotencyKey()) => apiClient.post<{ transfer: Transfer }>(`/transfers/${id(transferId)}/accept`, undefined, { headers: { 'Idempotency-Key': requestKey } }),
-    decline: (transferId: string) => apiClient.post<{ transfer: Transfer }>(`/transfers/${id(transferId)}/decline`),
-    cancel: (transferId: string) => apiClient.delete<void>(`/transfers/${id(transferId)}`),
+    decline: (transferId: string, requestKey = createIdempotencyKey()) => apiClient.post<{ transfer: Transfer }>(`/transfers/${id(transferId)}/decline`, undefined, { headers: { 'Idempotency-Key': requestKey } }),
+    cancel: (transferId: string, requestKey = createIdempotencyKey()) => apiClient.delete<void>(`/transfers/${id(transferId)}`, { headers: { 'Idempotency-Key': requestKey } }),
   },
   shares: {
     revoke: (shareId: string) => apiClient.delete<void>(`/shares/${id(shareId)}`),

@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   heroCopy: { flex: 1, gap: 3 },
   familyPicker: { gap: 8 },
   familyOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  familyOption: { minHeight: 38, borderRadius: 13, borderWidth: 1, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  familyOption: { minHeight: 44, borderRadius: 13, borderWidth: 1, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 6 },
   menu: { paddingHorizontal: 16, paddingVertical: 2 },
   preference: { minHeight: 76, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 12 },

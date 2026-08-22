@@ -418,7 +418,7 @@ function FamilyRoute() {
                 <View style={styles.rowCopy}><AppText variant="label">{familyPet.name}</AppText><AppText variant="caption" muted>{familyPet.breed || familyPet.species} · {familyPet.archived_at ? "Memory mode" : "Active care"}</AppText></View>
                 <CaretRightIcon size={18} color={theme.colors.textSubtle} weight="bold" />
               </Pressable>
-            )) : <View style={styles.petEmpty}><PawPrintIcon size={19} color={theme.colors.brandStrong} weight="duotone" /><AppText variant="caption" muted>No Pets in this Family yet.</AppText><Button label="Add a Pet" variant="secondary" onPress={() => router.push("/(tabs)/pets")} /></View>}
+            )) : <View style={styles.petEmpty}><PawPrintIcon size={19} color={theme.colors.brandStrong} weight="duotone" /><AppText variant="caption" muted>No Pets in this Family yet.</AppText><Button label="Add a Pet" variant="secondary" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { familyId: circle.id, add: "1" } })} /></View>}
             {pets.data?.pets.length && pets.data.pets.length > 4 ? <AppText variant="caption" muted style={styles.morePets}>Showing 4 of {pets.data.pets.length} Pets in this Family.</AppText> : null}
           </Card> : null}
           {familySection === "overview" ? <Card style={styles.inviteCard}>
@@ -697,6 +697,7 @@ function FamilyRoute() {
                 <AppText variant="label">{familyAction === "delete" ? "Delete this Family?" : "Leave this Family?"}</AppText>
                 <AppText variant="caption" muted>{familyAction === "delete" ? "Pets must be transferred or deleted first. Shared history is not silently removed." : "You will lose access to the Pets shared in this Family."}</AppText>
                 {familyAction === "delete" ? <TextField label={`Type ${circle.name} to confirm`} value={deleteFamilyConfirm} onChangeText={(value) => { setDeleteFamilyConfirm(value); setError(""); }} placeholder={circle.name} autoCapitalize="none" autoCorrect={false} /> : null}
+                {error ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
                 <View style={styles.actions}>
                   <Button label="Cancel" variant="secondary" onPress={() => { setFamilyAction(null); setDeleteFamilyConfirm(""); }} />
                   <Button label={familyAction === "delete" ? "Delete Family" : "Leave Family"} variant="danger" loading={leaveFamily.isPending || deleteFamily.isPending} disabled={familyAction === "delete" && deleteFamilyConfirm.trim() !== circle.name} onPress={() => familyAction === "delete" ? deleteFamily.mutate() : leaveFamily.mutate()} />
@@ -831,7 +832,7 @@ const styles = StyleSheet.create({
   familyPicker: { gap: 8 },
   familyOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   familyOption: {
-    minHeight: 38,
+    minHeight: 44,
     borderRadius: 13,
     borderWidth: 1,
     paddingHorizontal: 12,

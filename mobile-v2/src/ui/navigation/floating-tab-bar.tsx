@@ -17,7 +17,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   // membership, invitations and permissions are core care work, not settings.
   // Keep the tab list explicit so Expo route metadata cannot quietly change the
   // product navigation contract.
-  const topLevelRoutes = new Set(['index', 'pets', 'timeline', 'family']);
+  const topLevelRoutes = new Set(['index', 'pets', 'timeline', 'family', 'more']);
   const focusedRoute = state.routes[state.index];
   const focusedOptions = focusedRoute ? descriptors[focusedRoute.key]?.options : undefined;
   const focusedTabStyle = focusedOptions?.tabBarStyle

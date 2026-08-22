@@ -227,9 +227,12 @@ export default function PetRoute() {
   const accessiblePets = useAccessiblePets(circleIds);
   const selectedPetId =
     typeof params.petId === "string" ? params.petId : undefined;
-  const listedPet =
-    accessiblePets.pets.find((candidate) => candidate.id === selectedPetId) ??
-    accessiblePets.pets[0];
+  // An explicit deep link is authoritative. Never silently replace an
+  // unavailable Pet with the first accessible Pet; that can turn an invalid
+  // link into an edit/archive action against the wrong record.
+  const listedPet = selectedPetId
+    ? accessiblePets.pets.find((candidate) => candidate.id === selectedPetId)
+    : accessiblePets.pets[0];
   const detail = usePet(listedPet?.id);
   const pet = detail.data?.pet ?? listedPet;
   const visibleFamily = pet
@@ -423,11 +426,14 @@ export default function PetRoute() {
       );
       if (taskForEditor?.care_item_id && careHelperSelection !== null) {
         try {
-          const existingHelper = careAssignments.data?.assignments.find((assignment) => assignment.role === "helper");
+          const existingHelpers = careAssignments.data?.assignments.filter((assignment) => assignment.role === "helper") ?? [];
           if (careHelperSelection) {
+            for (const helper of existingHelpers) {
+              if (helper.user_id !== careHelperSelection) await planetApi.tasks.removeAssignment(taskForEditor.care_item_id, helper.user_id);
+            }
             await planetApi.tasks.setAssignment(taskForEditor.care_item_id, careHelperSelection);
-          } else if (existingHelper) {
-            await planetApi.tasks.removeAssignment(taskForEditor.care_item_id, existingHelper.user_id);
+          } else {
+            for (const helper of existingHelpers) await planetApi.tasks.removeAssignment(taskForEditor.care_item_id, helper.user_id);
           }
         } catch {
           throw new Error("Care plan updated, but the helper change could not be saved. Open it again to retry.");
@@ -707,7 +713,8 @@ export default function PetRoute() {
   const availableFamilyShares = circles.data?.circles.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
   const knownFamilyRoles = linkedFamilies.map((family) => family.role).filter(Boolean);
   const isReadOnlyMember = knownFamilyRoles.length > 0 && knownFamilyRoles.every((role) => role === "viewer" || role === "read_only");
-  const canEditPet = Boolean(pet && !isArchived && !isReadOnlyMember);
+  const directReadOnly = pet?.access_role === "viewer" || pet?.access_role === "read_only";
+  const canEditPet = Boolean(pet && !isArchived && !isReadOnlyMember && !directReadOnly);
 
   useEffect(() => {
     const intentKey = `${selectedPetId ?? pet?.id ?? ""}:${params.intent ?? ""}`;
@@ -892,10 +899,11 @@ export default function PetRoute() {
       <Screen scroll contentContainerStyle={styles.content}>
         <AppText variant="title">Your pet</AppText>
         <Card>
-          <AppText variant="heading">No pet selected</AppText>
+          <AppText variant="heading">This Pet is unavailable</AppText>
           <AppText muted>
-            Add a pet from the Pets page to start their care record.
+            The link may be stale, or you may no longer have access to this Pet.
           </AppText>
+          <Button label="Open Pets" onPress={() => router.replace("/(tabs)/pets")} />
         </Card>
       </Screen>
     );

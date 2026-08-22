@@ -1,4 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
 import { clearSessionToken, readSessionToken, writeSessionToken } from '../storage/secure-storage';
 import { planetApi } from '../api/planet-api';
 import { setUnauthorizedHandler } from '../network/api-client';
@@ -19,6 +22,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({ children }: React.PropsWithChildren) {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [token, setToken] = useState<string | null>(null);
+  const [pushToken, setPushToken] = useState<string | null>(null);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -29,6 +33,28 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
     });
     return () => setUnauthorizedHandler();
   }, []);
+
+  useEffect(() => {
+    if (status !== 'authenticated' || Platform.OS === 'web') return;
+    let mounted = true;
+    void (async () => {
+      try {
+        const current = await Notifications.getPermissionsAsync();
+        const permission = current.granted || current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+          ? current
+          : await Notifications.requestPermissionsAsync();
+        if (!permission.granted && permission.ios?.status !== Notifications.IosAuthorizationStatus.PROVISIONAL) return;
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        const result = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+        if (!mounted) return;
+        await planetApi.notifications.registerPushToken(result.data, Platform.OS);
+        if (mounted) setPushToken(result.data);
+      } catch {
+        // Push must never block sign-in on a simulator, Expo Go, or a denied permission.
+      }
+    })();
+    return () => { mounted = false; };
+  }, [status]);
 
   useEffect(() => {
     let mounted = true;
@@ -70,12 +96,16 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
   }, []);
 
   const signOut = useCallback(async () => {
+    if (pushToken) {
+      try { await planetApi.notifications.deletePushToken(pushToken); } catch { /* local sign-out still wins if offline */ }
+      setPushToken(null);
+    }
     try { await planetApi.auth.logout(); } catch { /* Local sign-out must still complete if the API is offline. */ }
     await clearSessionToken();
     queryClient.clear();
     setToken(null);
     setStatus('unauthenticated');
-  }, []);
+  }, [pushToken]);
 
   const value = useMemo(() => ({ status, token, signIn, signOut }), [signIn, signOut, status, token]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

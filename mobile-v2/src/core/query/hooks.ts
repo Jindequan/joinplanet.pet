@@ -36,6 +36,7 @@ export function useAccessiblePets(circleIds: string[]) {
   return {
     pets: [...petsById.values()],
     isLoading: accessible.isLoading || queries.some((query) => query.isLoading),
+    isFetching: accessible.isFetching || queries.some((query) => query.isFetching),
     isError: accessible.isError || queries.some((query) => query.isError),
     hasData: accessible.data !== undefined || queries.some((query) => query.data !== undefined),
     refetch: () => Promise.all([accessible.refetch(), ...queries.map((query) => query.refetch())]),
@@ -92,6 +93,7 @@ export function useTodayForCircles(circleIds: string[], date: string | Record<st
   return {
     data: { date: typeof date === 'string' && date ? date : 'Today', pets: [...petsById.values()] },
     isLoading: queries.some((query) => query.isLoading) || directQueries.some((query) => query.isLoading),
+    isFetching: queries.some((query) => query.isFetching) || directQueries.some((query) => query.isFetching),
     isError: queries.some((query) => query.isError) || directQueries.some((query) => query.isError),
     hasData: queries.some((query) => query.data !== undefined) || directQueries.some((query) => query.data !== undefined),
     refetch: () => Promise.all([...queries.map((query) => query.refetch()), ...directQueries.map((query) => query.refetch())]),
@@ -139,6 +141,7 @@ export function useAlertsForCircles(circleIds: string[]) {
   return {
     alerts,
     isLoading: queries.some((query) => query.isLoading),
+    isFetching: queries.some((query) => query.isFetching),
     isError: queries.some((query) => query.isError),
     hasData: queries.some((query) => query.data !== undefined),
     refetch: () => Promise.all(queries.map((query) => query.refetch())),

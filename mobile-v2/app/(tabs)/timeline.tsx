@@ -125,9 +125,10 @@ export default function TimelineRoute() {
     (choosePet || accessiblePets.pets.length > 1
       ? undefined
       : accessiblePets.pets[0]?.id);
-  const pet =
-    accessiblePets.pets.find((candidate) => candidate.id === activePetId) ??
-    accessiblePets.pets[0];
+  // When the user explicitly asks to choose a Pet (or has multiple Pets),
+  // keep the Journal unselected until they choose one. Do not fall back to a
+  // different story behind their back.
+  const pet = accessiblePets.pets.find((candidate) => candidate.id === activePetId);
   const petFamily = pet
     ? circles.data?.circles.find((circle) => circle.id === pet.circle_id) ?? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
     : undefined;
@@ -309,6 +310,7 @@ export default function TimelineRoute() {
   if (!pet)
     return (
       <Screen scroll contentContainerStyle={styles.content}>
+        <WorkspaceBar onPressWorkspace={() => router.push("/(tabs)/family")} />
         <PageHeader eyebrow="JOURNAL" title="Journal" />
         <Card style={styles.empty}>
           <CalendarDotsIcon
@@ -325,6 +327,7 @@ export default function TimelineRoute() {
             <Button label="Open Family" variant="secondary" onPress={() => router.push("/(tabs)/family")} />
           </View>
         </Card>
+        {accessiblePets.pets.length > 0 ? <Card style={styles.empty}><AppText variant="label">Open a Pet Journal</AppText>{accessiblePets.pets.map((candidate) => <Button key={candidate.id} label={candidate.name} variant="secondary" onPress={() => setTimelinePetId(candidate.id)} />)}</Card> : null}
       </Screen>
     );
   const events = [...(timeline.data?.events ?? []), ...olderEvents].sort((left, right) => {

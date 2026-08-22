@@ -525,7 +525,7 @@ export default function TimelineRoute() {
                 ) : null}
               </View>
               <AppText muted>{eventText(event.payload)}</AppText>
-              <Pressable accessibilityRole="button" accessibilityState={{ expanded: expandedEventId === event.id }} onPress={() => setExpandedEventId((current) => current === event.id ? null : event.id)} hitSlop={6}>
+              <Pressable accessibilityRole="button" accessibilityLabel={expandedEventId === event.id ? "Hide details" : "View details"} accessibilityState={{ expanded: expandedEventId === event.id }} onPress={() => setExpandedEventId((current) => current === event.id ? null : event.id)} hitSlop={6} style={({ pressed }) => [styles.eventDetailsToggle, pressed && { opacity: theme.motion.pressOpacity }]}>
                 <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{expandedEventId === event.id ? "Hide details" : "View details"}</AppText>
               </Pressable>
               {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString(undefined, { timeZone: petTimeZone })}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type, event.payload)}</AppText></View> : null}
@@ -555,7 +555,7 @@ export default function TimelineRoute() {
                 >
                   <AppText variant="label">Remove this record?</AppText>
                   <AppText variant="caption" muted>
-                    This only removes the note you recorded. Care history stays intact.
+                    This removes the record you added. Care history from your plans stays intact.
                   </AppText>
                   <View style={styles.eventActions}>
                     <Button
@@ -621,6 +621,7 @@ const styles = StyleSheet.create({
   },
   eventMeta: { flex: 1, gap: 2 },
   eventMenu: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  eventDetailsToggle: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center" },
   eventActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, paddingTop: 4 },
   confirmBox: { borderRadius: 16, padding: 14, gap: 8, marginTop: 2 },
   empty: { gap: 9, alignItems: "flex-start" },

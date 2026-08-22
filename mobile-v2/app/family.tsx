@@ -22,6 +22,7 @@ import {
 import { planetApi, type Transfer } from "../src/core/api/planet-api";
 import { ApiError } from "../src/core/network/api-client";
 import { familySchema, joinFamilySchema } from "../src/core/forms";
+import { humanDisplayName, pluralLabel } from "../src/core/presentation/labels";
 import {
   CheckIcon,
   CaretRightIcon,
@@ -510,12 +511,14 @@ export default function FamilyRoute() {
               </AppText>
             </View>
             <AppText variant="caption" muted>
-              {members.length} active
+              {pluralLabel(members.length, "active member", "active members")}
             </AppText>
           </View>
           <Card style={styles.members}>
-            {members.map((member, index) => (
-              <View
+            {members.map((member, index) => {
+              const memberName = humanDisplayName(member) ?? "Planet member";
+              return (
+                <View
                 key={member.user_id}
                 style={[
                   styles.member,
@@ -548,7 +551,7 @@ export default function FamilyRoute() {
                 </View>
                 <View style={styles.memberCopy}>
                   <AppText variant="label">
-                    {member.display_name || member.email || "Planet member"}
+                    {memberName}
                   </AppText>
                   <AppText variant="caption" muted>
                     {member.role === "owner" ? "Family owner" : "Caregiver"} ·
@@ -582,7 +585,7 @@ export default function FamilyRoute() {
                 ) : null}
                 {memberAction === member.user_id ? (
                   <View style={[styles.confirmBox, styles.memberConfirmBox, { backgroundColor: theme.colors.accentSurface }]}>
-                    <AppText variant="caption">Remove {member.display_name || "this member"} from the Family?</AppText>
+                    <AppText variant="caption">Remove {memberName} from the Family?</AppText>
                     <View style={styles.actions}>
                       <Button label="Keep" variant="secondary" onPress={() => setMemberAction(null)} />
                       <Button label="Remove member" variant="danger" loading={removeMember.isPending} onPress={() => removeMember.mutate()} />
@@ -592,7 +595,7 @@ export default function FamilyRoute() {
                 {ownershipTarget === member.user_id ? (
                   <View style={[styles.confirmBox, styles.memberConfirmBox, { backgroundColor: theme.colors.brandSoft }]}>
                     <AppText variant="label">Transfer Family ownership?</AppText>
-                    <AppText variant="caption" muted>{member.display_name || member.email || "This caregiver"} will become the owner. You will remain in the Family as a caregiver and lose owner-only controls.</AppText>
+                    <AppText variant="caption" muted>{memberName} will become the owner. You will remain in the Family as a caregiver and lose owner-only controls.</AppText>
                     <View style={styles.actions}>
                       <Button label="Keep ownership" variant="secondary" onPress={() => setOwnershipTarget(null)} />
                       <Button label="Transfer ownership" loading={transferOwnership.isPending} onPress={() => transferOwnership.mutate(member.user_id)} />
@@ -600,7 +603,8 @@ export default function FamilyRoute() {
                   </View>
                 ) : null}
               </View>
-            ))}
+                );
+            })}
           </Card>
           </> : null}
           {familySection === "manage" ? <View style={styles.actions}>

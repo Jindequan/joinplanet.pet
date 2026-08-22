@@ -10,12 +10,12 @@ export function ViewFilterBar({ value, families, pets, onChange }: { value: View
   const currentLabel = useMemo(() => {
     if (value.kind === 'family') return families.find((family) => family.id === value.familyId)?.name ?? 'Family';
     if (value.kind === 'pet') return pets.find((pet) => pet.id === value.petId)?.name ?? 'Pet';
-    return `${pets.length} ${pets.length === 1 ? 'Pet' : 'Pets'}`;
+    return 'All Pets';
   }, [families, pets, value]);
   const Icon = value.kind === 'pet' ? PawPrintIcon : UsersThreeIcon;
   return <View style={[styles.bar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
     <View style={[styles.icon, { backgroundColor: value.kind === 'pet' ? theme.colors.accentSurface : theme.colors.brandSoft }]}><Icon size={19} color={value.kind === 'pet' ? theme.colors.accentStrong : theme.colors.brandStrong} weight="duotone" /></View>
-    <View style={styles.copy}><AppText variant="caption" muted>CARE SPACE</AppText><AppText variant="label" numberOfLines={1}>{currentLabel}</AppText></View>
+    <View style={styles.copy}><AppText variant="caption" muted>VIEWING</AppText><AppText variant="label" numberOfLines={1}>{currentLabel}</AppText></View>
     <PetFilterSelector value={value} families={families} pets={pets} onChange={onChange} />
   </View>;
 }

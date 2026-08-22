@@ -39,7 +39,9 @@ import {
   ShieldCheckIcon,
   StethoscopeIcon,
   WarningCircleIcon,
+  XIcon,
 } from "../../src/ui/icons";
+import { actorLabel } from "../../src/core/presentation/labels";
 
 type EventType = "note" | "symptom" | "weight" | "vaccine" | "vet_visit";
 type TimelineFilter = "all" | "notes" | "health" | "care";
@@ -368,9 +370,9 @@ export default function TimelineRoute() {
       {canRecord ? <Button
         label={adding ? "Close record form" : "Record something"}
         variant="secondary"
-        icon={
-          <PlusIcon size={17} color={theme.colors.brandStrong} weight="bold" />
-        }
+        icon={adding
+          ? <XIcon size={17} color={theme.colors.brandStrong} weight="bold" />
+          : <PlusIcon size={17} color={theme.colors.brandStrong} weight="bold" />}
         onPress={() => {
           if (!adding) {
             setEditingEventId(null);
@@ -386,6 +388,7 @@ export default function TimelineRoute() {
         label="Filter care history"
         value={timelineFilter}
         onChange={setTimelineFilter}
+        compact
         options={[
           { value: "all", label: "All" },
           { value: "notes", label: "Notes" },
@@ -445,7 +448,7 @@ export default function TimelineRoute() {
             <AppText variant="title">Recent records</AppText>
           <AppText variant="caption" muted>
             {visibleEvents.length
-              ? `${visibleEvents.length} ${timelineFilter === "all" ? "records" : "matching records"}`
+              ? `${visibleEvents.length} ${timelineFilter === "all" ? (visibleEvents.length === 1 ? "record" : "records") : (visibleEvents.length === 1 ? "matching record" : "matching records")}`
               : timelineFilter === "all" ? "The first chapter is waiting" : "Nothing matches this filter"}
           </AppText>
         </View>
@@ -476,7 +479,7 @@ export default function TimelineRoute() {
                   <AppText variant="label">{eventTitle(event.type)}</AppText>
                   <AppText variant="caption" muted>
                     {new Date(event.occurred_at).toLocaleDateString()} ·{" "}
-                    {event.source === "user" ? `Recorded by ${event.recorded_by_name || "a caregiver"}` : "From care"}
+                    {event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "From care"}
                   </AppText>
                 </View>
                 {canEditEvent(event) &&
@@ -510,7 +513,7 @@ export default function TimelineRoute() {
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: expandedEventId === event.id }} onPress={() => setExpandedEventId((current) => current === event.id ? null : event.id)} hitSlop={6}>
                 <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{expandedEventId === event.id ? "Hide details" : "View details"}</AppText>
               </Pressable>
-              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString()}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${event.recorded_by_name || "a caregiver"}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
+              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString()}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
               {eventMenuId === event.id ? (
                 <View style={styles.eventActions}>
                   <Button

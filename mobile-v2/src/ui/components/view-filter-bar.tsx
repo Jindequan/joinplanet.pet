@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { PawPrintIcon, UsersThreeIcon } from '../icons';
+import { CatIcon, DogIcon, PawPrintIcon, UsersThreeIcon } from '../icons';
 import { useTheme } from '../../core/providers/theme-provider';
 import { AppText } from './app-text';
 import { PetFilterSelector, type ViewFilter, type ViewFilterFamily, type ViewFilterPet } from './pet-filter-selector';
@@ -12,7 +12,8 @@ export function ViewFilterBar({ value, families, pets, onChange }: { value: View
     if (value.kind === 'pet') return pets.find((pet) => pet.id === value.petId)?.name ?? 'Pet';
     return 'All Pets';
   }, [families, pets, value]);
-  const Icon = value.kind === 'pet' ? PawPrintIcon : UsersThreeIcon;
+  const selectedPet = value.kind === 'pet' ? pets.find((pet) => pet.id === value.petId) : undefined;
+  const Icon = value.kind !== 'pet' ? UsersThreeIcon : selectedPet?.species === 'cat' ? CatIcon : selectedPet?.species === 'dog' ? DogIcon : PawPrintIcon;
   return <View style={[styles.bar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
     <View style={[styles.icon, { backgroundColor: value.kind === 'pet' ? theme.colors.accentSurface : theme.colors.brandSoft }]}><Icon size={19} color={value.kind === 'pet' ? theme.colors.accentStrong : theme.colors.brandStrong} weight="duotone" /></View>
     <View style={styles.copy}><AppText variant="caption" muted>VIEWING</AppText><AppText variant="label" numberOfLines={1}>{currentLabel}</AppText></View>

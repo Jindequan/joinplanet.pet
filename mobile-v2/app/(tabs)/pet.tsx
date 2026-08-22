@@ -137,7 +137,9 @@ function CareRow({ task, onActions }: { task: Task; onActions?: () => void }) {
 function PetGlyph({ species, color }: { species: "dog" | "cat" | "other"; color: string }) {
   if (species === "cat")
     return <CatIcon size={46} color={color} weight="duotone" />;
-  return <DogIcon size={46} color={color} weight="duotone" />;
+  if (species === "dog")
+    return <DogIcon size={46} color={color} weight="duotone" />;
+  return <PawPrintIcon size={46} color={color} weight="duotone" />;
 }
 
 function shareKindLabel(kind: Share["kind"]) {

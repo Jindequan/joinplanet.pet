@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams, useSegments } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { AppText, Button, Card, DateTimeField, LoadingState, QueryErrorState, Screen, SegmentedControl, StaleDataNotice, TextField } from '../src/ui/components';
 import { useTheme } from '../src/core/providers/theme-provider';
@@ -22,7 +22,8 @@ function dateKey(value: Date | null) {
 
 function PetGlyph({ species, color, size = 32 }: { species: Pet['species']; color: string; size?: number }) {
   if (species === 'cat') return <CatIcon size={size} color={color} weight="duotone" />;
-  return <DogIcon size={size} color={color} weight="duotone" />;
+  if (species === 'dog') return <DogIcon size={size} color={color} weight="duotone" />;
+  return <PawPrintIcon size={size} color={color} weight="duotone" />;
 }
 
 type PetTodaySummary = { total: number; completed: number; open: number };
@@ -36,7 +37,16 @@ function PetCard({ pet, intent, today }: { pet: Pet; intent?: string; today?: Pe
   </Pressable>;
 }
 
-export default function PetsRoute() {
+export default function PetsRouteEntry() {
+  const params = useLocalSearchParams<{ intent?: string; familyId?: string }>();
+  const segments = useSegments();
+  if (segments[0] === 'pets') {
+    return <Redirect href={{ pathname: '/(tabs)/pets', params: { intent: params.intent, familyId: params.familyId } }} />;
+  }
+  return <PetsRoute />;
+}
+
+function PetsRoute() {
   const { theme } = useTheme();
   const params = useLocalSearchParams<{ intent?: string; familyId?: string }>();
   const circles = useCircles();
@@ -92,7 +102,7 @@ export default function PetsRoute() {
       return [pet.pet_id, { total: pet.items.length, completed, open: pet.items.length - completed - skipped } satisfies PetTodaySummary];
     }),
   );
-  if (!circles.data?.circles.length && list.length === 0) return <Screen scroll contentContainerStyle={styles.content}>{hasStaleData ? <StaleDataNotice onRetry={retryPets} /> : null}<AppText variant="caption" muted>YOUR ORBIT / PETS</AppText><AppText variant="display">Start with a Pet.</AppText><Card style={styles.emptyCard}><View style={[styles.emptyIcon, { backgroundColor: theme.colors.accentSurface }]}><PawPrintIcon size={27} color={theme.colors.accentStrong} weight="duotone" /></View><AppText variant="heading">Your care world is waiting</AppText><AppText muted>Create a Family first so the right people can share the right care.</AppText><Button label="Open Family" onPress={() => router.push('/(tabs)/family')} /></Card></Screen>;
+  if (!circles.data?.circles.length && list.length === 0) return <Screen scroll contentContainerStyle={styles.content}>{hasStaleData ? <StaleDataNotice onRetry={retryPets} /> : null}<AppText variant="caption" muted>YOUR ORBIT / PETS</AppText><AppText variant="display">Start with a care space.</AppText><Card style={styles.emptyCard}><View style={[styles.emptyIcon, { backgroundColor: theme.colors.accentSurface }]}><PawPrintIcon size={27} color={theme.colors.accentStrong} weight="duotone" /></View><AppText variant="heading">Create or join a Family first</AppText><AppText muted>Your Family is the shared boundary that keeps every Pet and every care record in the right hands.</AppText><Button label="Open Family" onPress={() => router.push('/(tabs)/family')} /></Card></Screen>;
   return <Screen scroll contentContainerStyle={styles.content}>{hasStaleData ? <StaleDataNotice onRetry={retryPets} retrying={circles.isFetching || accessiblePets.isLoading} /> : null}<WorkspaceBar familyName={circle.name} onPressWorkspace={() => router.push('/(tabs)/family')} /><View style={styles.header}><View style={styles.headerCopy}><AppText variant="caption" muted>{list.length ? `${list.length} ACTIVE RECORD${list.length === 1 ? '' : 'S'}` : 'PET RECORDS'}</AppText><AppText variant="display">Pets</AppText><AppText muted>{list.length ? 'Open a Pet to see care, history and people with access.' : 'Add a Pet to start a care plan.'}</AppText></View>{canCreatePet ? <Pressable accessibilityRole="button" accessibilityLabel="Add a Pet" onPress={() => { setAdding(true); setError(''); }} style={({ pressed }) => [styles.floatingAdd, { backgroundColor: theme.colors.brandStrong }, pressed && { opacity: theme.motion.pressOpacity }]}><PlusIcon size={18} color={theme.colors.onBrand} weight="bold" /><AppText variant="label" style={{ color: theme.colors.onBrand }}>Add Pet</AppText></Pressable> : null}</View>{params.intent === 'care' ? <Card style={[styles.intentCard, { backgroundColor: theme.colors.brandSoft }]}><PawPrintIcon size={20} color={theme.colors.brandStrong} weight="duotone" /><View style={styles.intentCopy}><AppText variant="label">Choose a Pet to add care</AppText><AppText variant="caption" muted>Open their record, then add the recurring care item there.</AppText></View></Card> : null}{params.intent === 'export' ? <Card style={[styles.intentCard, { backgroundColor: theme.colors.accentSurface }]}><ExportIcon size={20} color={theme.colors.brandStrong} weight="duotone" /><View style={styles.intentCopy}><AppText variant="label">Choose a Pet to export</AppText><AppText variant="caption" muted>Open the record, then use Manage to export its history.</AppText></View></Card> : null}{circleIds.length > 1 ? <View style={styles.familyPicker}><AppText variant="caption" muted>ADD NEW PET TO</AppText><View style={styles.familyOptions}>{circles.data?.circles.map((item) => <Pressable key={item.id} accessibilityRole="button" accessibilityState={{ selected: item.id === circle?.id }} onPress={() => setActiveCircleId(item.id)} style={[styles.familyOption, { borderColor: item.id === circle?.id ? theme.colors.brandStrong : theme.colors.border, backgroundColor: item.id === circle?.id ? theme.colors.brandSoft : theme.colors.surface }]}><AppText variant="label" style={{ color: item.id === circle?.id ? theme.colors.brandStrong : theme.colors.textMuted }}>{item.name}</AppText></Pressable>)}</View></View> : null}{list.length ? <View style={styles.list}>{list.map((pet) => <PetCard key={pet.id} pet={pet} intent={params.intent} today={todayByPet.get(pet.id)} />)}</View> : <Card style={styles.emptyCard}><View style={[styles.emptyIcon, { backgroundColor: theme.colors.accentSurface }]}><PawPrintIcon size={27} color={theme.colors.accentStrong} weight="duotone" /></View><AppText variant="heading">No Pets yet</AppText><AppText muted>Add one and PLANET will give their everyday care a clear place to land.</AppText>{canCreatePet ? <Button label="Add your first Pet" onPress={() => setAdding(true)} /> : <AppText variant="caption" muted>Your Family owner controls Pet creation.</AppText>}</Card>}{adding ? <Card style={styles.form}><View style={styles.formHeader}><View><AppText variant="title">Add a Pet</AppText><AppText variant="caption" muted>Adding to {circle.name}.</AppText></View><Pressable accessibilityRole="button" accessibilityLabel="Close add Pet form" onPress={() => setAdding(false)}><AppText variant="label" style={{ color: theme.colors.brandStrong }}>Cancel</AppText></Pressable></View><TextField label="Name" value={name} onChangeText={(value) => { setName(value); setError(''); }} placeholder="Milo" autoFocus /><SegmentedControl label="What kind of Pet?" value={species} onChange={setSpecies} options={speciesOptions} /><TextField label="Breed (optional)" value={breed} onChangeText={(value) => { setBreed(value); setError(''); }} placeholder="Golden retriever" /><DateTimeField label="Birthday (optional)" value={birthDate} onChange={(value) => { setBirthDate(value); setError(''); }} onClear={() => { setBirthDate(null); setError(''); }} placeholder="Choose a date" maximumDate={new Date()} /><SegmentedControl label="Sex" value={sex} onChange={setSex} options={[{ value: '', label: 'Not set' }, { value: 'female', label: 'Female' }, { value: 'male', label: 'Male' }]} /><View style={styles.toggleRow}><View style={styles.toggleCopy}><AppText variant="label">Spayed / neutered</AppText><AppText variant="caption" muted>Keep this detail visible in their profile.</AppText></View><Switch accessibilityLabel="Spayed or neutered" value={neutered} onValueChange={setNeutered} trackColor={{ false: theme.colors.border, true: theme.colors.brand }} thumbColor={theme.colors.surface} /></View><TextField label="Starting weight (g, optional)" value={weightG} onChangeText={(value) => { setWeightG(value.replace(/\D/g, '').slice(0, 6)); setError(''); }} keyboardType="number-pad" placeholder="5350" error={error} /><Button label="Create Pet" loading={create.isPending} disabled={!name.trim()} onPress={submitPet} /></Card> : null}</Screen>;
 }
 

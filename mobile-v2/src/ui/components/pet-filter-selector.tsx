@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretDownIcon, CheckCircleIcon, DogIcon, PawPrintIcon, UsersThreeIcon } from '../icons';
+import { CaretDownIcon, CatIcon, CheckCircleIcon, DogIcon, PawPrintIcon, UsersThreeIcon } from '../icons';
 import { useTheme } from '../../core/providers/theme-provider';
 import { AppText } from './app-text';
 
@@ -27,6 +27,12 @@ function sameFilter(left: ViewFilter, right: ViewFilter) {
   if (left.kind === 'family' && right.kind === 'family') return left.familyId === right.familyId;
   if (left.kind === 'pet' && right.kind === 'pet') return left.petId === right.petId;
   return false;
+}
+
+function PetOptionIcon({ species, color }: { species?: string; color: string }) {
+  if (species === 'cat') return <CatIcon size={20} color={color} weight="duotone" />;
+  if (species === 'dog') return <DogIcon size={20} color={color} weight="duotone" />;
+  return <PawPrintIcon size={20} color={color} weight="duotone" />;
 }
 
 export function PetFilterSelector({ value, families, pets, onChange, disabled = false }: PetFilterSelectorProps) {
@@ -79,7 +85,7 @@ export function PetFilterSelector({ value, families, pets, onChange, disabled = 
             {families.map((family) => <FilterOption key={family.id} icon={<UsersThreeIcon size={20} color={theme.colors.accent} weight="duotone" />} label={family.name} detail="Everyone and every Pet in this Family" selected={sameFilter(value, { kind: 'family', familyId: family.id })} onPress={() => select({ kind: 'family', familyId: family.id })} />)}
 
             {pets.length > 0 ? <AppText variant="caption" muted style={styles.sectionLabel}>PETS</AppText> : null}
-            {pets.map((pet) => <FilterOption key={pet.id} icon={<DogIcon size={20} color={theme.colors.lavender} weight="duotone" />} label={pet.name} detail={pet.species ? `${pet.species} · personal view` : 'Personal view'} selected={sameFilter(value, { kind: 'pet', petId: pet.id })} onPress={() => select({ kind: 'pet', petId: pet.id })} />)}
+            {pets.map((pet) => <FilterOption key={pet.id} icon={<PetOptionIcon species={pet.species} color={theme.colors.lavender} />} label={pet.name} detail={pet.species ? `${pet.species} · personal view` : 'Personal view'} selected={sameFilter(value, { kind: 'pet', petId: pet.id })} onPress={() => select({ kind: 'pet', petId: pet.id })} />)}
           </ScrollView>
         </View>
       </View>

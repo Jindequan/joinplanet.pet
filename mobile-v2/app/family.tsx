@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams, useSegments } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, StaleDataNotice, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
@@ -38,7 +38,16 @@ function deviceTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
-export default function FamilyRoute() {
+export default function FamilyRouteEntry() {
+  const params = useLocalSearchParams<{ mode?: string; familyId?: string }>();
+  const segments = useSegments();
+  if (segments[0] === "family") {
+    return <Redirect href={{ pathname: "/(tabs)/family", params: { mode: params.mode, familyId: params.familyId } }} />;
+  }
+  return <FamilyRoute />;
+}
+
+function FamilyRoute() {
   const { theme } = useTheme();
   const { showToast } = useToast();
   const params = useLocalSearchParams<{ mode?: string; familyId?: string }>();

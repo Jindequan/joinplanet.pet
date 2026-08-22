@@ -925,7 +925,7 @@ export default function PetRoute() {
           }}
         />
         <Button
-          label="Timeline"
+          label="Journal"
           variant="ghost"
           icon={
             <BookOpenIcon
@@ -1391,6 +1391,7 @@ export default function PetRoute() {
               value={careType}
               onChange={setCareType}
               options={careTypeOptions}
+              wrap
             />
             <TextField
               label="What needs to happen?"
@@ -1517,9 +1518,9 @@ export default function PetRoute() {
       <Card style={styles.card}>
         <View style={styles.sectionHeader}>
           <View>
-            <AppText variant="heading">Medication history</AppText>
+            <AppText variant="heading">{(medications.data?.medications.length ?? 0) > 0 ? "Medication history" : "Medications"}</AppText>
             <AppText variant="caption" muted>
-              {medications.data?.medications.length ?? 0} records
+              {(medications.data?.medications.length ?? 0) > 0 ? `${medications.data?.medications.length} records` : "Track prescriptions separately from recurring care."}
             </AppText>
           </View>
           <Button

@@ -40,7 +40,7 @@ export type Profile = {
   med_decision_maker?: unknown;
   notes: string;
 };
-export type Task = { id: string; circle_id: string; pet_id: string; care_item_id?: string; care_rule_id?: string; type?: string; title: string; description?: string; schedule: Record<string, unknown>; time_of_day?: string; timezone: string; due_at?: string; due_date?: string; status?: 'pending' | 'completed' | 'skipped' | 'missed'; assigned_to_user_id?: string; completed_by_user_id?: string; completed_at?: string; archived_at?: string | null; created_at: string };
+export type Task = { id: string; circle_id: string; pet_id: string; care_item_id?: string; care_rule_id?: string; type?: string; title: string; description?: string; schedule: Record<string, unknown>; time_of_day?: string; timezone: string; due_at?: string; due_date?: string; status?: 'pending' | 'completed' | 'skipped' | 'missed'; assigned_to_user_id?: string; assigned_to_name?: string; completed_by_user_id?: string; completed_at?: string; archived_at?: string | null; created_at: string };
 export type TaskLog = { id: string; task_id: string; log_date: string; status: 'done' | 'completed' | 'skipped'; done_by: string; done_at: string; note: string; done_by_name?: string };
 export type TodayItem = { task: Task; log: TaskLog | null };
 export type TodayPet = { pet_id: string; pet_name: string; items: TodayItem[] };
@@ -90,7 +90,7 @@ export const planetApi = {
     removeMember: (circleId: string, userId: string) => apiClient.delete<void>(`/circles/${id(circleId)}/members/${id(userId)}`),
     leave: (circleId: string) => apiClient.post<void>(`/circles/${id(circleId)}/leave`),
     usage: (circleId: string) => apiClient.get<Usage>(`/circles/${id(circleId)}/usage`),
-    transfer: (circleId: string, to_user_id: string) => apiClient.post<CircleDetailResponse>(`/circles/${id(circleId)}/transfer`, { to_user_id }),
+    transfer: (circleId: string, to_user_id: string, requestKey = createIdempotencyKey()) => apiClient.post<CircleDetailResponse>(`/circles/${id(circleId)}/transfer`, { to_user_id }, { headers: { 'Idempotency-Key': requestKey } }),
     delete: (circleId: string, confirm: string) => request<void>(`/circles/${id(circleId)}`, { method: 'DELETE', body: { confirm } }),
     restore: (circleId: string) => apiClient.post<{ circle: Circle }>(`/circles/${id(circleId)}/restore`),
     invitePreview: (code: string) => apiClient.get<{ circle: Circle }>(`/invite/${id(code)}`),
@@ -135,7 +135,7 @@ export const planetApi = {
     createEvent: (petId: string, body: { type: string; occurred_at: string; payload: Record<string, unknown> }, requestKey = createIdempotencyKey()) => apiClient.post<{ event: TimelineEvent }>(`/pets/${id(petId)}/timeline`, body, { headers: { 'Idempotency-Key': requestKey } }),
     shares: (petId: string) => apiClient.get<{ shares: Share[] }>(`/pets/${id(petId)}/shares`),
     createShare: (petId: string, body: { kind: Share['kind']; ttl_hours: 24 | 72 | 168; options?: Record<string, unknown> }, requestKey = createIdempotencyKey()) => apiClient.post<{ share: Share; token: string }>(`/pets/${id(petId)}/shares`, body, { headers: { 'Idempotency-Key': requestKey } }),
-    transfer: (petId: string, to_circle_id: string) => apiClient.post<{ transfer: Transfer }>(`/pets/${id(petId)}/transfer`, { to_circle_id }),
+    transfer: (petId: string, to_circle_id: string, requestKey = createIdempotencyKey()) => apiClient.post<{ transfer: Transfer }>(`/pets/${id(petId)}/transfer`, { to_circle_id }, { headers: { 'Idempotency-Key': requestKey } }),
   },
   medications: {
     update: (medicationId: string, body: Partial<Pick<Medication, 'name' | 'dose' | 'schedule' | 'note'>>) => apiClient.patch<{ medication: Medication }>(`/medications/${id(medicationId)}`, body),
@@ -157,7 +157,7 @@ export const planetApi = {
   },
   transfers: {
     list: (circleId: string, direction?: 'incoming' | 'outgoing') => apiClient.get<{ transfers: Transfer[] }>(`/circles/${id(circleId)}/transfers${direction ? `?direction=${direction}` : ''}`),
-    accept: (transferId: string) => apiClient.post<{ transfer: Transfer }>(`/transfers/${id(transferId)}/accept`),
+    accept: (transferId: string, requestKey = createIdempotencyKey()) => apiClient.post<{ transfer: Transfer }>(`/transfers/${id(transferId)}/accept`, undefined, { headers: { 'Idempotency-Key': requestKey } }),
     decline: (transferId: string) => apiClient.post<{ transfer: Transfer }>(`/transfers/${id(transferId)}/decline`),
     cancel: (transferId: string) => apiClient.delete<void>(`/transfers/${id(transferId)}`),
   },

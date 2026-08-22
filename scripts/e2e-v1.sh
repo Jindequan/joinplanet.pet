@@ -30,13 +30,14 @@ headc() { printf '%s' "$1" | cut -c1-400; }
 #   sets STATUS (http code) and BODY (response body)
 # ---------------------------------------------------------------------------
 req() {
-  local m=$1 p=$2 tok=${3:-} body=${4:-}
+  local m=$1 p=$2 tok=${3:-} body=${4:-} idem=${5:-}
   local args=(-s -X "$m" "$BASE$p" -H "$J" --max-time 20)
   if [ -n "$tok" ]; then args+=(-H "Authorization: Bearer $tok"); fi
   if [ -n "$body" ]; then args+=(-d "$body"); fi
   local out
-  if [ "$m" = "POST" ] && [[ "$p" != /api/v1/auth/* ]] && [ -n "$body" ]; then
-    args+=(-H "Idempotency-Key: e2e-${UNIQ}-${RANDOM}-${PASS}-${FAIL}")
+  if [ "$m" = "POST" ] && [[ "$p" != /api/v1/auth/* ]]; then
+    [ -n "$idem" ] || idem="e2e-${UNIQ}-${RANDOM}-${PASS}-${FAIL}"
+    args+=(-H "Idempotency-Key: $idem")
   fi
   out=$(curl "${args[@]}" -w $'\n%{http_code}')
   STATUS=${out##*$'\n'}
@@ -277,15 +278,23 @@ expect "7.1a B creates own circle" 201 'd["circle"]["role"] == "owner"'
 CIRCLE_B=$(jget 'd["circle"]["id"]')
 CIRCLE_B_NAME="Family B Renamed $UNIQ"
 
-req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_circle_id\":\"$CIRCLE_B\"}"
+TRANSFER_CREATE_KEY="e2e-transfer-create-$UNIQ"
+req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_circle_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
 expect "7.2a A (source owner) initiates transfer" 201 'd["transfer"]["status"] == "PENDING" and d["transfer"]["to_circle"] == "'"$CIRCLE_B"'"'
 TRANSFER_ID=$(jget 'd["transfer"]["id"]')
+
+req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_circle_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
+expect "7.2b retry returns the same transfer (idempotent)" 201 'd["transfer"]["id"] == "'"$TRANSFER_ID"'"'
 
 req GET "/api/v1/circles/$CIRCLE_B/transfers?direction=incoming" "$B_TOK"
 expect "7.3a B sees incoming PENDING transfer" 200 'any(t["id"] == "'"$TRANSFER_ID"'" and t["status"] == "PENDING" for t in d["transfers"])'
 
-req POST "/api/v1/transfers/$TRANSFER_ID/accept" "$B_TOK"
+TRANSFER_ACCEPT_KEY="e2e-transfer-accept-$UNIQ"
+req POST "/api/v1/transfers/$TRANSFER_ID/accept" "$B_TOK" "" "$TRANSFER_ACCEPT_KEY"
 expect "7.4a B accepts transfer" 200 'd["transfer"]["status"] == "ACCEPTED"'
+
+req POST "/api/v1/transfers/$TRANSFER_ID/accept" "$B_TOK" "" "$TRANSFER_ACCEPT_KEY"
+expect "7.4b retry returns the accepted transfer (idempotent)" 200 'd["transfer"]["id"] == "'"$TRANSFER_ID"'" and d["transfer"]["status"] == "ACCEPTED"'
 
 req GET "/api/v1/circles/$CIRCLE_B/pets" "$B_TOK"
 expect "7.5a pet now in B's circle" 200 'any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
@@ -314,8 +323,12 @@ INVITE_B=$(jget 'd["invite_code"]')
 req POST /api/v1/circles/join "$A_TOK" "{\"code\":\"$INVITE_B\"}"
 expect "8.3b A joins B's circle" 200 'd["circle"]["id"] == "'"$CIRCLE_B"'"'
 
-req POST "/api/v1/circles/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}"
+FAMILY_TRANSFER_KEY="e2e-family-transfer-$UNIQ"
+req POST "/api/v1/circles/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
 expect "8.3c B transfers circle ownership to A" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
+
+req POST "/api/v1/circles/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
+expect "8.3c2 retry returns the final Family ownership state (idempotent)" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
 
 req DELETE "/api/v1/pets/$PET_ID/families/$CIRCLE_A" "$B_TOK"
 expect "8.3d B removes the old Family visibility" 204

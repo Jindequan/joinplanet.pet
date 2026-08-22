@@ -46,7 +46,7 @@ import { actorLabel } from "../../src/core/presentation/labels";
 type EventType = "note" | "symptom" | "weight" | "vaccine" | "vet_visit";
 type TimelineFilter = "all" | "notes" | "health" | "care";
 
-function eventTitle(type: string) {
+function eventTitle(type: string, payload?: Record<string, unknown>) {
   const labels: Record<string, string> = {
     note: "Note",
     symptom: "Symptom",
@@ -58,6 +58,8 @@ function eventTitle(type: string) {
     medication: "Medication update",
     transfer: "Pet handoff",
   };
+  if (type === "care_task_completed" && typeof payload?.title === "string" && payload.title.trim()) return `Completed: ${payload.title}`;
+  if (type === "care_task_undone" && typeof payload?.title === "string" && payload.title.trim()) return `Reopened: ${payload.title}`;
   if (labels[type]) return labels[type];
   const readable = type.replace(/[_-]+/g, " ").trim();
   return readable ? readable.charAt(0).toUpperCase() + readable.slice(1) : "Care record";
@@ -76,7 +78,7 @@ function eventText(payload: Record<string, unknown>) {
 }
 
 function eventBucket(event: TimelineEvent): TimelineFilter {
-  if (event.source === "care" || event.source.startsWith("auto:care") || event.type === "care_task_completed" || event.type === "care_task_undone") return "care";
+  if (event.source === "care" || event.source?.startsWith("auto:care") || event.type === "care_task_completed" || event.type === "care_task_undone") return "care";
   if (event.type === "note" || event.type === "symptom") return "notes";
   return "health";
 }
@@ -120,7 +122,9 @@ export default function TimelineRoute() {
     (selectedPetId && accessiblePets.pets.some((candidate) => candidate.id === selectedPetId)
       ? selectedPetId
       : undefined) ??
-    choosePet ? undefined : accessiblePets.pets[0]?.id;
+    (choosePet || accessiblePets.pets.length > 1
+      ? undefined
+      : accessiblePets.pets[0]?.id);
   const pet =
     accessiblePets.pets.find((candidate) => candidate.id === activePetId) ??
     accessiblePets.pets[0];
@@ -312,9 +316,9 @@ export default function TimelineRoute() {
             color={theme.colors.brandStrong}
             weight="duotone"
           />
-          <AppText variant="heading">Choose a Pet first</AppText>
+          <AppText variant="heading">Choose a Pet to open its story</AppText>
           <AppText muted>
-            Your Pet's notes, visits and patterns will live here.
+            Journal is kept with the Pet it belongs to. Choose one before reading or adding a record.
           </AppText>
           <View style={styles.emptyActions}>
             <Button label="Choose a Pet" onPress={() => router.push("/(tabs)/pets")} />
@@ -413,6 +417,7 @@ export default function TimelineRoute() {
             label="What happened?"
             value={eventType}
             onChange={setEventType}
+            wrap
             options={[
               { value: "note", label: "Note" },
               { value: "symptom", label: "Symptom" },
@@ -486,7 +491,7 @@ export default function TimelineRoute() {
                   <EventGlyph event={event} />
                 </View>
                 <View style={styles.eventMeta}>
-                  <AppText variant="label">{eventTitle(event.type)}</AppText>
+                  <AppText variant="label">{eventTitle(event.type, event.payload)}</AppText>
                   <AppText variant="caption" muted>
                     {new Date(event.occurred_at).toLocaleDateString(undefined, { timeZone: petTimeZone })} ·{" "}
                     {event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "From care"}
@@ -500,7 +505,7 @@ export default function TimelineRoute() {
                   event.type === "vet_visit") ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Actions for ${eventTitle(event.type)}`}
+                    accessibilityLabel={`Actions for ${eventTitle(event.type, event.payload)}`}
                     onPress={() => {
                       setEventMenuId((current) =>
                         current === event.id ? null : event.id,
@@ -523,7 +528,7 @@ export default function TimelineRoute() {
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: expandedEventId === event.id }} onPress={() => setExpandedEventId((current) => current === event.id ? null : event.id)} hitSlop={6}>
                 <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>{expandedEventId === event.id ? "Hide details" : "View details"}</AppText>
               </Pressable>
-              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString(undefined, { timeZone: petTimeZone })}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type)}</AppText></View> : null}
+              {expandedEventId === event.id ? <View style={[styles.eventDetails, { backgroundColor: theme.colors.surfaceRaised }]}><AppText variant="caption" muted>Occurred {new Date(event.occurred_at).toLocaleString(undefined, { timeZone: petTimeZone })}</AppText><AppText variant="caption" muted>{event.source === "user" ? `Recorded by ${actorLabel(event.recorded_by, me.data?.user.id, event.recorded_by_name)}` : "Generated from a care plan"}</AppText><AppText variant="caption" muted>Type: {eventTitle(event.type, event.payload)}</AppText></View> : null}
               {eventMenuId === event.id ? (
                 <View style={styles.eventActions}>
                   <Button

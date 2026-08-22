@@ -23,6 +23,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
     ? (StyleSheet.flatten(focusedOptions.tabBarStyle) as { display?: string })
     : undefined;
   if (focusedTabStyle?.display === 'none') return null;
+  const activeRouteName = focusedRoute?.name === 'pet'
+    ? 'pets'
+    : focusedRoute?.name === 'family'
+      ? 'more'
+      : focusedRoute?.name;
   return (
     <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) }]}>
       <View style={[styles.glass, theme.shadow.floating, { borderColor: theme.colors.border, borderRadius: theme.radius.sheet }]}>
@@ -30,7 +35,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <View style={[styles.tint, { backgroundColor: dark ? theme.colors.glassDark : theme.colors.glassLight }]} />
         <View style={styles.row}>
           {state.routes.filter((route) => topLevelRoutes.has(route.name)).map((route) => {
-            const focused = state.routes[state.index]?.key === route.key;
+            const focused = activeRouteName === route.name;
             const options = descriptors[route.key]?.options;
             const Icon = iconMap[route.name as keyof typeof iconMap] ?? UserCircleIcon;
             const onPress = () => {

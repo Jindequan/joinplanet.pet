@@ -937,8 +937,8 @@ export default function PetRoute() {
     : petSection === "share"
       ? { eyebrow: `${pet.name.toUpperCase()} / HANDOFF`, title: "Share care info" }
       : petSection === "manage"
-        ? { eyebrow: `${pet.name.toUpperCase()} / RECORD`, title: "Manage record" }
-        : { eyebrow: "PET RECORD", title: pet.name };
+        ? { eyebrow: `${pet.name.toUpperCase()} / PET`, title: "Manage Pet" }
+        : { eyebrow: "PET CARE", title: pet.name };
 
   if (form === "care" && canManagePet) {
     return (
@@ -1151,7 +1151,7 @@ export default function PetRoute() {
           <View style={styles.form}>
             <View style={styles.formHeader}>
               <View>
-                <AppText variant="title">Edit Pet record</AppText>
+                <AppText variant="title">Edit Pet details</AppText>
                 <AppText variant="caption" muted>Keep the details useful for every caregiver.</AppText>
               </View>
             </View>
@@ -1262,7 +1262,7 @@ export default function PetRoute() {
         />
         <SectionRow
           icon={DotsThreeIcon}
-          title="Manage record"
+          title="Manage Pet"
           description="Edit, export, archive, or transfer"
           onPress={() => setPetSection("manage")}
           accent="neutral"
@@ -1681,7 +1681,7 @@ export default function PetRoute() {
       {petSection === "manage" ? <Card style={styles.lifecycleCard}>
         <View style={styles.sectionHeader}>
           <View style={styles.rowCopy}>
-            <AppText variant="heading">Pet records</AppText>
+            <AppText variant="heading">Pet lifecycle</AppText>
             <AppText variant="caption" muted>
               {isArchived ? "This Pet is read-only. History is preserved." : "Archive when care ends; delete only when the record should disappear."}
             </AppText>

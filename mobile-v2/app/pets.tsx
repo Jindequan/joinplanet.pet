@@ -106,7 +106,7 @@ function PetsRoute() {
     return accessiblePets.pets.filter((pet) => (pet.family_ids ?? [pet.circle_id]).includes(visibleFamilyId));
   }, [accessiblePets.pets, activeCircleId, params.familyId]);
   if (circles.isLoading || accessiblePets.isLoading) return <Screen><LoadingState label="Loading your Pets" /></Screen>;
-  if (blockingError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Pets are taking a moment" body="We could not load the Pet records you can access." onRetry={retryPets} /></Screen>;
+  if (blockingError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Pets are taking a moment" body="We could not load the Pets you can access." onRetry={retryPets} /></Screen>;
   if (today.isError && !today.hasData) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Care status is unavailable" body="Your Pet records are here, but today’s care status could not be refreshed." onRetry={retryPets} /></Screen>;
   const todayByPet = new Map(
     today.data.pets.map((pet) => {

@@ -685,6 +685,7 @@ export default function PetRoute() {
     onError: (err) => setShareError(err instanceof ApiError ? err.message : "Unable to revoke this link."),
   });
   const taskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => !task.archived_at), [tasks.data?.tasks]);
+  const medicationCount = medications.data?.medications.length ?? 0;
   const archivedTaskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => Boolean(task.archived_at)), [tasks.data?.tasks]);
   const careHelperOptions = useMemo(
     () => [
@@ -1536,9 +1537,9 @@ export default function PetRoute() {
       <Card style={styles.card}>
         <View style={styles.sectionHeader}>
           <View style={styles.rowCopy}>
-            <AppText variant="heading">{(medications.data?.medications.length ?? 0) > 0 ? "Medication history" : "Medications"}</AppText>
+            <AppText variant="heading">{medicationCount > 0 ? "Medication history" : "Medications"}</AppText>
             <AppText variant="caption" muted>
-              {(medications.data?.medications.length ?? 0) > 0 ? `${medications.data?.medications.length} records` : "Track prescriptions separately from recurring care."}
+              {medicationCount > 0 ? `${medicationCount} ${medicationCount === 1 ? "record" : "records"}` : "Track prescriptions separately from recurring care."}
             </AppText>
           </View>
           <Button
@@ -1578,6 +1579,7 @@ export default function PetRoute() {
                   accessibilityLabel={`Edit ${med.name}`}
                   onPress={() => openMedicationEditor(med)}
                   hitSlop={6}
+                  style={({ pressed }) => [styles.medicationActionButton, pressed && { opacity: theme.motion.pressOpacity }]}
                 >
                   <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>Edit</AppText>
                 </Pressable> : null}
@@ -1587,6 +1589,7 @@ export default function PetRoute() {
                     accessibilityLabel={`Stop ${med.name}`}
                     onPress={() => { setMedicationAction({ id: med.id, kind: "stop" }); setError(""); }}
                     hitSlop={6}
+                    style={({ pressed }) => [styles.medicationActionButton, pressed && { opacity: theme.motion.pressOpacity }]}
                   >
                     <AppText variant="caption" style={{ color: theme.colors.textMuted }}>Stop</AppText>
                   </Pressable>
@@ -1596,6 +1599,7 @@ export default function PetRoute() {
                   accessibilityLabel={`Delete ${med.name}`}
                   onPress={() => { setMedicationAction({ id: med.id, kind: "delete" }); setError(""); }}
                   hitSlop={6}
+                  style={({ pressed }) => [styles.medicationActionButton, pressed && { opacity: theme.motion.pressOpacity }]}
                 >
                   <AppText variant="caption" style={{ color: theme.colors.danger }}>Delete</AppText>
                 </Pressable>
@@ -1834,7 +1838,8 @@ const styles = StyleSheet.create({
   archivedCopy: { flex: 1, gap: 3 },
   medicationRow: { gap: 8, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center" },
   medicationCopy: { flex: 1, gap: 2 },
-  medicationActions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  medicationActions: { flexDirection: "row", alignItems: "center", gap: 2 },
+  medicationActionButton: { minHeight: 44, paddingHorizontal: 5, justifyContent: "center" },
   lifecycleCard: { gap: 12 },
   transferForm: { gap: 9, paddingTop: 2 },
   toggleRow: { minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },

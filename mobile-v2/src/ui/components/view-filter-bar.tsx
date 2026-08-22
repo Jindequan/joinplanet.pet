@@ -16,7 +16,7 @@ export function ViewFilterBar({ value, families, pets, onChange }: { value: View
   const Icon = value.kind !== 'pet' ? UsersThreeIcon : selectedPet?.species === 'cat' ? CatIcon : selectedPet?.species === 'dog' ? DogIcon : PawPrintIcon;
   return <View style={[styles.bar, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
     <View style={[styles.icon, { backgroundColor: value.kind === 'pet' ? theme.colors.accentSurface : theme.colors.brandSoft }]}><Icon size={19} color={value.kind === 'pet' ? theme.colors.accentStrong : theme.colors.brandStrong} weight="duotone" /></View>
-    <View style={styles.copy}><AppText variant="caption" muted>VIEWING</AppText><AppText variant="label" numberOfLines={1}>{currentLabel}</AppText></View>
+    <View style={styles.copy}><AppText variant="caption" muted numberOfLines={1}>VIEWING</AppText><AppText variant="label" numberOfLines={1}>{currentLabel}</AppText></View>
     <PetFilterSelector value={value} families={families} pets={pets} onChange={onChange} />
   </View>;
 }
@@ -24,5 +24,5 @@ export function ViewFilterBar({ value, families, pets, onChange }: { value: View
 const styles = StyleSheet.create({
   bar: { minHeight: 64, borderWidth: 1, borderRadius: 20, padding: 9, flexDirection: 'row', alignItems: 'center', gap: 10 },
   icon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  copy: { flex: 1, gap: 2 },
+  copy: { flex: 1, minWidth: 54, gap: 2 },
 });

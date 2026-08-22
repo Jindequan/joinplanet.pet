@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F7F1E8"
+      "backgroundColor": "#FAFAF9"
     },
     "plugins": ["expo-router", "expo-notifications"],
     "ios": {
@@ -21,7 +21,7 @@
       "package": "pet.joinplanet.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#F7F1E8"
+      "backgroundColor": "#FAFAF9"
       },
       "predictiveBackGestureEnabled": true
     }

@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" fill="#F7F1E8"/>
-  <circle cx="512" cy="512" r="292" fill="#23645D"/>
-  <ellipse cx="512" cy="512" rx="356" ry="190" transform="rotate(-24 512 512)" fill="none" stroke="#9FC4B8" stroke-width="22" opacity=".9"/>
-  <circle cx="772" cy="364" r="30" fill="#E9A98D"/>
-  <circle cx="512" cy="555" r="84" fill="#FFFDF8"/>
-  <circle cx="425" cy="437" r="38" fill="#FFFDF8"/>
-  <circle cx="488" cy="405" r="42" fill="#FFFDF8"/>
-  <circle cx="560" cy="405" r="42" fill="#FFFDF8"/>
-  <circle cx="623" cy="437" r="38" fill="#FFFDF8"/>
+  <rect width="1024" height="1024" fill="#FAFAF9"/>
+  <circle cx="512" cy="512" r="292" fill="#C2410C"/>
+  <ellipse cx="512" cy="512" rx="356" ry="190" transform="rotate(-24 512 512)" fill="none" stroke="#FFEDD5" stroke-width="22" opacity=".95"/>
+  <circle cx="772" cy="364" r="30" fill="#F97316"/>
+  <circle cx="512" cy="555" r="84" fill="#FAFAF9"/>
+  <circle cx="425" cy="437" r="38" fill="#FAFAF9"/>
+  <circle cx="488" cy="405" r="42" fill="#FAFAF9"/>
+  <circle cx="560" cy="405" r="42" fill="#FAFAF9"/>
+  <circle cx="623" cy="437" r="38" fill="#FAFAF9"/>
 </svg>

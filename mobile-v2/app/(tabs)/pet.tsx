@@ -36,21 +36,21 @@ import { useIdempotencyKey } from "../../src/core/hooks/use-idempotency-key";
 import {
   useAccessiblePets,
   useCareAssignments,
-  useCircle,
-  useCircles,
+  useFamily,
+  useFamilies,
   useInvalidateApi,
   useMedications,
   useMe,
   usePet,
   usePetShares,
-  useCareItems,
+  useCarePlans,
   useTodayForPet,
 } from "../../src/core/query/hooks";
 import { planetApi, type Medication, type Share, type Task } from "../../src/core/api/planet-api";
 import { appConfig } from "../../src/core/config";
 import {
-  careItemPayload,
-  careItemSchema,
+  carePlanPayload,
+  carePlanSchema,
   medicationSchema,
   petSchema,
   sharePayload,
@@ -224,9 +224,9 @@ export default function PetRoute() {
   const router = useRouter();
   const params = useLocalSearchParams<{ petId?: string; intent?: string }>();
   const me = useMe();
-  const circles = useCircles();
-  const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
-  const accessiblePets = useAccessiblePets(circleIds);
+  const families = useFamilies();
+  const familyIds = families.data?.families.map((item) => item.id) ?? [];
+  const accessiblePets = useAccessiblePets(familyIds);
   const selectedPetId =
     typeof params.petId === "string" ? params.petId : undefined;
   // An explicit deep link is authoritative. Never silently replace an
@@ -238,17 +238,17 @@ export default function PetRoute() {
   const detail = usePet(listedPet?.id);
   const pet = detail.data?.pet ?? listedPet;
   const visibleFamily = pet
-    ? circles.data?.circles.find((circle) => circle.id === pet.circle_id) ?? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
+    ? families.data?.families.find((family) => family.id === pet.family_ids?.[0])
     : undefined;
-  const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
-  const sourceFamilyDetail = useCircle(sourceFamily?.id);
+  const sourceFamily = visibleFamily;
+  const sourceFamilyDetail = useFamily(sourceFamily?.id);
   const canManagePet = Boolean(
     pet && me.data?.user.id &&
       (pet.current_owner_user_id === me.data.user.id ||
         (!pet.current_owner_user_id && sourceFamily?.role === "owner")),
   );
   const medications = useMedications(pet?.id);
-  const careItems = useCareItems(pet?.id, true);
+  const carePlans = useCarePlans(pet?.id, true);
   const today = useTodayForPet(pet?.id);
   const shares = usePetShares(pet?.id, canManagePet);
   const invalidate = useInvalidateApi();
@@ -375,14 +375,14 @@ export default function PetRoute() {
     if (pet?.id) resetTransientState();
   }, [pet?.id]);
   const taskForEditor = editingTaskId
-    ? careItems.data?.tasks.find((task) => task.id === editingTaskId)
+    ? carePlans.data?.care_plans.find((task) => task.id === editingTaskId)
     : undefined;
-  const careAssignments = useCareAssignments(taskForEditor?.care_item_id);
+  const careAssignments = useCareAssignments(taskForEditor?.care_plan_id);
   const addCare = useMutation({
     mutationFn: async () => {
-      const result = await planetApi.pets.createCareItem(
+      const result = await planetApi.pets.createCarePlan(
         pet!.id,
-        careItemPayload({
+        carePlanPayload({
           type: careType,
           title: careTitle,
           description: careDescription,
@@ -399,7 +399,7 @@ export default function PetRoute() {
       let helperAssigned = true;
       if (careHelperSelection) {
         try {
-          await planetApi.careItems.setAssignment(result.care_item.id, careHelperSelection);
+          await planetApi.carePlans.setAssignment(result.care_plan.id, careHelperSelection);
         } catch {
           helperAssigned = false;
         }
@@ -410,8 +410,8 @@ export default function PetRoute() {
       resetCareForm();
       careCreateIntent.reset();
       setError(helperAssigned ? "" : "Care plan created, but the helper assignment did not save. You can retry it from Care.");
-      invalidate.careItems(pet!.id);
-      invalidate.assignments(result.care_item.id);
+      invalidate.carePlans(pet!.id);
+      invalidate.assignments(result.care_plan.id);
       invalidate.todayAll();
       // The intent is a one-shot deep link from first-Pet setup. Remove it
       // after the plan is saved so a refresh does not reopen an empty form.
@@ -425,7 +425,7 @@ export default function PetRoute() {
   });
   const updateTask = useMutation({
     mutationFn: async () => {
-      const result = await planetApi.careItems.update(
+      const result = await planetApi.carePlans.update(
         editingTaskId!,
         taskPayload({
           title: careTitle,
@@ -437,16 +437,16 @@ export default function PetRoute() {
           time_of_day: timeOfDay,
         }),
       );
-      if (taskForEditor?.care_item_id && careHelperSelection !== null) {
+      if (taskForEditor?.care_plan_id && careHelperSelection !== null) {
         try {
           const existingHelpers = careAssignments.data?.assignments.filter((assignment) => assignment.role === "helper") ?? [];
           if (careHelperSelection) {
             for (const helper of existingHelpers) {
-              if (helper.user_id !== careHelperSelection) await planetApi.careItems.removeAssignment(taskForEditor.care_item_id, helper.user_id);
+              if (helper.user_id !== careHelperSelection) await planetApi.carePlans.removeAssignment(taskForEditor.care_plan_id, helper.user_id);
             }
-            await planetApi.careItems.setAssignment(taskForEditor.care_item_id, careHelperSelection);
+            await planetApi.carePlans.setAssignment(taskForEditor.care_plan_id, careHelperSelection);
           } else {
-            for (const helper of existingHelpers) await planetApi.careItems.removeAssignment(taskForEditor.care_item_id, helper.user_id);
+            for (const helper of existingHelpers) await planetApi.carePlans.removeAssignment(taskForEditor.care_plan_id, helper.user_id);
           }
         } catch {
           throw new Error("Care plan updated, but the helper change could not be saved. Open it again to retry.");
@@ -456,8 +456,8 @@ export default function PetRoute() {
     },
     onSuccess: () => {
       resetCareForm();
-      invalidate.careItems(pet!.id);
-      if (taskForEditor?.care_item_id) invalidate.assignments(taskForEditor.care_item_id);
+      invalidate.carePlans(pet!.id);
+      if (taskForEditor?.care_plan_id) invalidate.assignments(taskForEditor.care_plan_id);
       invalidate.todayAll();
       showToast({ message: "Care plan updated." });
     },
@@ -467,11 +467,11 @@ export default function PetRoute() {
       ),
   });
   const archiveTask = useMutation({
-    mutationFn: () => planetApi.careItems.update(confirmTaskId!, { archived: true }),
+    mutationFn: () => planetApi.carePlans.update(confirmTaskId!, { archived: true }),
     onSuccess: () => {
       setConfirmTaskId(null);
       setTaskMenuId(null);
-      invalidate.careItems(pet!.id);
+      invalidate.carePlans(pet!.id);
       invalidate.todayAll();
     },
     onError: (err) =>
@@ -480,11 +480,11 @@ export default function PetRoute() {
       ),
   });
   const restoreTask = useMutation({
-    mutationFn: (taskId: string) => planetApi.careItems.update(taskId, { archived: false }),
+    mutationFn: (taskId: string) => planetApi.carePlans.update(taskId, { archived: false }),
     onSuccess: () => {
       setRestoreTaskId(null);
       setTaskMenuId(null);
-      invalidate.careItems(pet!.id);
+      invalidate.carePlans(pet!.id);
       invalidate.todayAll();
       showToast({ message: "Care plan restored." });
     },
@@ -628,7 +628,7 @@ export default function PetRoute() {
     onSuccess: () => {
       setDeleteConfirmName("");
       invalidate.petsAll();
-      invalidate.circles();
+      invalidate.families();
       router.replace("/(tabs)/pets");
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to delete this Pet."),
@@ -640,9 +640,9 @@ export default function PetRoute() {
       setTransferTargetId(null);
       setTransferError("");
       setTransferNotice("The handoff request is waiting for the other Family owner.");
-      invalidate.circles();
+      invalidate.families();
       invalidate.petsAll();
-      if (pet?.circle_id) invalidate.transfers(pet.circle_id);
+      if (pet?.family_ids?.[0]) invalidate.transfers(pet.family_ids[0]);
     },
     onError: (err) => setTransferError(err instanceof ApiError ? err.message : "Unable to start this Pet handoff."),
   });
@@ -705,9 +705,9 @@ export default function PetRoute() {
     },
     onError: (err) => setShareError(err instanceof ApiError ? err.message : "Unable to revoke this link."),
   });
-  const taskList = useMemo(() => (careItems.data?.tasks ?? []).filter((task) => !task.archived_at), [careItems.data?.tasks]);
+  const taskList = useMemo(() => (carePlans.data?.care_plans ?? []).filter((task) => !task.archived_at), [carePlans.data?.care_plans]);
   const medicationCount = medications.data?.medications.length ?? 0;
-  const archivedTaskList = useMemo(() => (careItems.data?.tasks ?? []).filter((task) => Boolean(task.archived_at)), [careItems.data?.tasks]);
+  const archivedTaskList = useMemo(() => (carePlans.data?.care_plans ?? []).filter((task) => Boolean(task.archived_at)), [carePlans.data?.care_plans]);
   const careHelperOptions = useMemo(
     () => [
       { value: "", label: "Only me" },
@@ -720,10 +720,10 @@ export default function PetRoute() {
   const existingCareHelper = careAssignments.data?.assignments.find((assignment) => assignment.role === "helper");
   const selectedCareHelper = careHelperSelection ?? existingCareHelper?.user_id ?? "";
   const isArchived = Boolean(pet?.archived_at);
-  const targetFamilies = circles.data?.circles.filter((item) => item.id !== pet?.circle_id) ?? [];
-  const linkedFamilyIds = new Set(pet?.family_ids?.length ? pet.family_ids : pet?.circle_id ? [pet.circle_id] : []);
-  const linkedFamilies = circles.data?.circles.filter((item) => linkedFamilyIds.has(item.id)) ?? [];
-  const availableFamilyShares = circles.data?.circles.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
+  const linkedFamilyIds = new Set(pet?.family_ids ?? []);
+  const targetFamilies = families.data?.families.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
+  const linkedFamilies = families.data?.families.filter((item) => linkedFamilyIds.has(item.id)) ?? [];
+  const availableFamilyShares = families.data?.families.filter((item) => !linkedFamilyIds.has(item.id)) ?? [];
   const knownFamilyRoles = linkedFamilies.map((family) => family.role).filter(Boolean);
   const isReadOnlyMember = knownFamilyRoles.length > 0 && knownFamilyRoles.every((role) => role === "viewer" || role === "read_only");
   const directReadOnly = pet?.access_role === "viewer" || pet?.access_role === "read_only";
@@ -784,7 +784,7 @@ export default function PetRoute() {
       updateTask.mutate();
       return;
     }
-    const parsed = careItemSchema.safeParse({
+    const parsed = carePlanSchema.safeParse({
       type: careType,
       title: careTitle,
       description: careDescription,
@@ -881,23 +881,23 @@ export default function PetRoute() {
   }
 
   const retryPet = () => {
-    void circles.refetch();
+    void families.refetch();
     void accessiblePets.refetch();
     void me.refetch();
     if (pet) {
       void detail.refetch();
       void medications.refetch();
-      void careItems.refetch();
+      void carePlans.refetch();
       void today.refetch();
     }
   };
-  const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData) || (!pet && detail.isError);
-  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (detail.isError && pet) || medications.isError || careItems.isError || (today.isError && today.data));
+  const blockingError = (me.isError && !me.data) || (families.isError && !families.data) || (accessiblePets.isError && !accessiblePets.hasData) || (!pet && detail.isError);
+  const hasStaleData = Boolean((me.isError && me.data) || (families.isError && families.data) || (accessiblePets.isError && accessiblePets.hasData) || (detail.isError && pet) || medications.isError || carePlans.isError || (today.isError && today.data));
   if (
-    circles.isLoading ||
+    families.isLoading ||
     me.isLoading ||
     accessiblePets.isLoading ||
-    (pet && (detail.isLoading || medications.isLoading || careItems.isLoading || today.isLoading))
+    (pet && (detail.isLoading || medications.isLoading || carePlans.isLoading || today.isLoading))
   )
     return (
       <Screen><LoadingState label="Loading this Pet’s world" /></Screen>
@@ -1016,7 +1016,7 @@ export default function PetRoute() {
     <Screen scroll contentContainerStyle={styles.content}>
       <WorkspaceBar familyName={visibleFamily?.name} petName={pet.name} onPressWorkspace={() => router.push("/(tabs)/family")} />
       <PageHeader eyebrow={focusedSection.eyebrow} title={focusedSection.title} />
-      {hasStaleData ? <StaleDataNotice onRetry={retryPet} retrying={detail.isFetching || medications.isFetching || careItems.isFetching} message="Some care details are from the last saved view. Reconnect to refresh them." /> : null}
+      {hasStaleData ? <StaleDataNotice onRetry={retryPet} retrying={detail.isFetching || medications.isFetching || carePlans.isFetching} message="Some care details are from the last saved view. Reconnect to refresh them." /> : null}
       {accessiblePets.pets.length > 1 ? <View style={styles.petSwitcher}><AppText variant="caption" muted>SWITCH PET</AppText><PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") router.replace({ pathname: "/(tabs)/pet", params: { petId: next.petId } }); else router.replace("/(tabs)/pets"); }} /></View> : null}
       <LinearGradient
         colors={[theme.colors.accentSurface, theme.colors.brandSoft]}
@@ -1283,9 +1283,9 @@ export default function PetRoute() {
           <View key={family.id} style={[styles.accessRow, { borderColor: theme.colors.border }]}>
             <View style={styles.rowCopy}>
               <AppText variant="label">{family.name}</AppText>
-              <AppText variant="caption" muted>{family.id === pet.circle_id ? "Primary Family" : "Shared Family"}</AppText>
+              <AppText variant="caption" muted>Connected Family</AppText>
             </View>
-            {family.id !== pet.circle_id && canManagePet ? (
+            {canManagePet ? (
               unshareFamilyId === family.id ? (
                 <View style={styles.actions}>
                   <Button label="Keep" variant="secondary" onPress={() => setUnshareFamilyId(null)} />

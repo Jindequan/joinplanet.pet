@@ -51,12 +51,12 @@ USER_A=$(jq -r '.user.id' <<<"$R")
 expect "authenticated /me returns the same email" ".user.email == \"$EMAIL\"" "$(get /api/v1/me "$TOKEN")"
 
 echo "== F2 Family、成员、Pet =="
-R=$(post /api/v1/circles "$TOKEN" '{"name":"Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
-expect "create Family" '.circle.id and .invite_code' "$R"
-CIRCLE=$(jq -r '.circle.id' <<<"$R")
+R=$(post /api/v1/families "$TOKEN" '{"name":"Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
+expect "create Family" '.family.id and .invite_code' "$R"
+CIRCLE=$(jq -r '.family.id' <<<"$R")
 INVITE=$(jq -r '.invite_code' <<<"$R")
-expect "Family keeps its IANA timezone" '.circle.timezone == "Asia/Shanghai"' "$R"
-R=$(post "/api/v1/circles/$CIRCLE/pets" "$TOKEN" '{"name":"Milo","species":"dog","breed":"Golden Retriever"}' "$(key)")
+expect "Family keeps its IANA timezone" '.family.timezone == "Asia/Shanghai"' "$R"
+R=$(post "/api/v1/families/$CIRCLE/pets" "$TOKEN" '{"name":"Milo","species":"dog","breed":"Golden Retriever"}' "$(key)")
 expect "create Pet" '.pet.id and .pet.name == "Milo"' "$R"
 PET=$(jq -r '.pet.id' <<<"$R")
 expect "canonical accessible Pet list includes the owner Pet" ".pets | any(.id == \"$PET\")" "$(get /api/v1/pets "$TOKEN")"
@@ -72,47 +72,47 @@ R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_B\"}")
 CODE_B=$(jq -r '.dev_code' <<<"$R")
 R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_B\",\"code\":\"$CODE_B\"}")
 TOKEN_B=$(jq -r '.token' <<<"$R")
-R=$(post /api/v1/circles/join "$TOKEN_B" "{\"code\":\"$INVITE\"}")
-expect "second user joins Family" ".circle.id == \"$CIRCLE\"" "$R"
-expect "second user sees the shared Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/circles/$CIRCLE/pets" "$TOKEN_B")"
-R=$(post /api/v1/circles "$TOKEN_B" '{"name":"Second Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
-expect "create second Family for Pet sharing" '.circle.id and .invite_code' "$R"
-CIRCLE_2=$(jq -r '.circle.id' <<<"$R")
+R=$(post /api/v1/families/join "$TOKEN_B" "{\"code\":\"$INVITE\"}")
+expect "second user joins Family" ".family.id == \"$CIRCLE\"" "$R"
+expect "second user sees the shared Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/families/$CIRCLE/pets" "$TOKEN_B")"
+R=$(post /api/v1/families "$TOKEN_B" '{"name":"Second Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
+expect "create second Family for Pet sharing" '.family.id and .invite_code' "$R"
+CIRCLE_2=$(jq -r '.family.id' <<<"$R")
 INVITE_2=$(jq -r '.invite_code' <<<"$R")
-R=$(post /api/v1/circles/join "$TOKEN" "{\"code\":\"$INVITE_2\"}")
-expect "Pet owner joins the second Family" ".circle.id == \"$CIRCLE_2\"" "$R"
+R=$(post /api/v1/families/join "$TOKEN" "{\"code\":\"$INVITE_2\"}")
+expect "Pet owner joins the second Family" ".family.id == \"$CIRCLE_2\"" "$R"
 R=$(post "/api/v1/pets/$PET/families" "$TOKEN" "{\"family_id\":\"$CIRCLE_2\"}")
 expect "share Pet with another Family" ".family_id == \"$CIRCLE_2\"" "$R"
-expect "shared Family sees the Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/circles/$CIRCLE_2/pets" "$TOKEN_B")"
+expect "shared Family sees the Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/families/$CIRCLE_2/pets" "$TOKEN_B")"
 delete "/api/v1/pets/$PET/families/$CIRCLE_2" "$TOKEN"
-expect "remove shared Family access" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/circles/$CIRCLE_2/pets" "$TOKEN_B")"
+expect "remove shared Family access" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/families/$CIRCLE_2/pets" "$TOKEN_B")"
 
 echo "== F3 Care plan、Today、历史 =="
-R=$(post "/api/v1/pets/$PET/care-items" "$TOKEN" '{"type":"medication","title":"Heart medicine","description":"With food","rule":{"type":"daily","time":"08:00"}}' "$(key)")
-expect "create care plan" '.care_item.id and .care_rule.id and .task.id' "$R"
+R=$(post "/api/v1/pets/$PET/care-plans" "$TOKEN" '{"type":"medication","title":"Heart medicine","description":"With food","rule":{"type":"daily","time":"08:00"}}' "$(key)")
+expect "create care plan" '.care_plan.id and .care_rule.id and .task.id' "$R"
 TASK=$(jq -r '.task.id' <<<"$R")
-CARE_ITEM=$(jq -r '.care_item.id' <<<"$R")
-R=$(curl -sS -X PUT "$BASE/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"role":"helper"}')
+CARE_ITEM=$(jq -r '.care_plan.id' <<<"$R")
+R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"role":"helper"}')
 expect "assign a helper to the care plan" ".assignment.user_id == \"$USER_C\" and .assignment.role == \"helper\"" "$R"
-expect "care assignments list includes the helper" ".assignments | any(.user_id == \"$USER_C\" and .role == \"helper\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
-R=$(curl -sS -X PUT "$BASE/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN_B" -d '{"role":"helper"}')
+expect "care assignments list includes the helper" ".assignments | any(.user_id == \"$USER_C\" and .role == \"helper\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN_B" -d '{"role":"helper"}')
 expect "non-owner cannot change care assignments" '.error.code == "ROLE_FORBIDDEN"' "$R"
-delete "/api/v1/care-items/$CARE_ITEM/assignments/$USER_C" "$TOKEN"
-expect "remove helper from the care plan" ".assignments | all(.user_id != \"$USER_C\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
-R=$(curl -sS -w $'\n%{http_code}' -X DELETE "$BASE/api/v1/care-items/$CARE_ITEM/assignments/$USER_A" -H "Authorization: Bearer $TOKEN")
+delete "/api/v1/care-plans/$CARE_ITEM/assignments/$USER_C" "$TOKEN"
+expect "remove helper from the care plan" ".assignments | all(.user_id != \"$USER_C\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -w $'\n%{http_code}' -X DELETE "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_A" -H "Authorization: Bearer $TOKEN")
 OWNER_DELETE_STATUS="${R##*$'\n'}"
 OWNER_DELETE_BODY="${R%$'\n'*}"
 [ "$OWNER_DELETE_STATUS" = "409" ] && expect "care plan cannot lose its owner" '.error.code == "CARE_ASSIGNMENT_OWNER_REQUIRED"' "$OWNER_DELETE_BODY" || fail "care plan cannot lose its owner"
-expect "care plan owner assignment remains intact" ".assignments | any(.user_id == \"$USER_A\" and .role == \"owner\")" "$(get "/api/v1/care-items/$CARE_ITEM/assignments" "$TOKEN")"
+expect "care plan owner assignment remains intact" ".assignments | any(.user_id == \"$USER_A\" and .role == \"owner\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
 R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$TASK" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":true}')
 expect "archive care plan" ".task.archived_at != null" "$R"
-expect "archived care plan is discoverable when requested" ".tasks | any(.care_item_id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/tasks?include_archived=true" "$TOKEN")"
+expect "archived care plan is discoverable when requested" ".tasks | any(.care_plan_id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/tasks?include_archived=true" "$TOKEN")"
 R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$CARE_ITEM" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":false}')
 expect "restore care plan" ".task.archived_at == null" "$R"
-TODAY=$(get "/api/v1/circles/$CIRCLE/today" "$TOKEN")
-expect "Today contains the care task" ".pets[].items[] | select(.task.care_item_id == \"$CARE_ITEM\")" "$TODAY"
-TASK=$(jq -r '.pets[].items[] | select(.task.care_item_id == "'"$CARE_ITEM"'") | .task.id' <<<"$TODAY")
-expect "directly granted user sees Pet Today" ".pets[].items[] | select(.task.care_item_id == \"$CARE_ITEM\")" "$(get "/api/v1/today?pet_id=$PET" "$TOKEN_C")"
+TODAY=$(get "/api/v1/families/$CIRCLE/today" "$TOKEN")
+expect "Today contains the care task" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$TODAY"
+TASK=$(jq -r '.pets[].items[] | select(.task.care_plan_id == "'"$CARE_ITEM"'") | .task.id' <<<"$TODAY")
+expect "directly granted user sees Pet Today" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$(get "/api/v1/today?pet_id=$PET" "$TOKEN_C")"
 R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"done"}')
 expect "complete Today task" '.log.status == "completed" or .log.status == "done"' "$R"
 LOG=$(jq -r '.log.id' <<<"$R")
@@ -129,8 +129,8 @@ expect "timeline returns the record" '.events | any(.type == "symptom")' "$(get 
 R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN_B" '{"type":"note","occurred_at":"2026-08-21T09:00:00Z","payload":{"text":"B checked the morning walk"}}' "$(key)")
 expect "second caregiver can record a note" ".event.recorded_by_name == \"$DISPLAY_B\"" "$R"
 expect "timeline keeps the real recorder name" ".events | any(.recorded_by_name == \"$DISPLAY_B\" and .payload.text == \"B checked the morning walk\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
-expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/circles/$CIRCLE/alerts" "$TOKEN")"
-expect "daily digest returns the Family view" '.date and (.pets | type == "array")' "$(get "/api/v1/circles/$CIRCLE/digest" "$TOKEN")"
+expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/families/$CIRCLE/alerts" "$TOKEN")"
+expect "daily digest returns the Family view" '.date and (.pets | type == "array")' "$(get "/api/v1/families/$CIRCLE/digest" "$TOKEN")"
 
 echo "== F3b 用药生命周期 =="
 R=$(post "/api/v1/pets/$PET/medications" "$TOKEN" '{"name":"Heartgard","dose":"1 tablet","schedule":"monthly","note":"with food"}' "$(key)")
@@ -162,7 +162,7 @@ expect "revoking direct access removes the Pet" ".pets | all(.id != \"$PET\")" "
 
 echo "== F5 删除保护 =="
 delete "/api/v1/pets/$PET" "$TOKEN" "{\"confirm\":\"$PET\"}"
-expect "deleted Pet disappears from Family" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/circles/$CIRCLE/pets" "$TOKEN")"
+expect "deleted Pet disappears from Family" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/families/$CIRCLE/pets" "$TOKEN")"
 
 echo "== 汇总 =="
 echo "PASS=$PASS FAIL=$FAIL"

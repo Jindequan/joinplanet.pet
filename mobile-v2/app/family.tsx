@@ -11,10 +11,10 @@ import { readViewPreference } from "../src/core/storage/view-preference";
 import { useToast } from "../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../src/core/hooks/use-idempotency-key";
 import {
-  useCircle,
-  useCirclePets,
-  useCircles,
-  useDeletedCircles,
+  useFamily,
+  useFamilyPets,
+  useFamilies,
+  useDeletedFamilies,
   useInvalidateApi,
   useMe,
   useTransfers,
@@ -61,19 +61,19 @@ function FamilyRoute() {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ mode?: string; familyId?: string }>();
   const me = useMe();
-  const circles = useCircles();
-  const deletedCircles = useDeletedCircles();
-  const [activeCircleId, setActiveCircleId] = useState<string>();
+  const families = useFamilies();
+  const deletedFamilies = useDeletedFamilies();
+  const [activeFamilyId, setActiveFamilyId] = useState<string>();
   const [preferredFamilyId, setPreferredFamilyId] = useState<string>();
   const [familySection, setFamilySection] = useState<FamilySection>("overview");
   const createIntent = useIdempotencyKey();
-  const circle =
-    circles.data?.circles.find((item) => item.id === activeCircleId) ??
-    circles.data?.circles[0];
-  const detail = useCircle(circle?.id);
-  const pets = useCirclePets(circle?.id);
-  const incomingTransfers = useTransfers(circle?.role === "owner" ? circle.id : undefined, "incoming");
-  const outgoingTransfers = useTransfers(circle?.role === "owner" ? circle.id : undefined, "outgoing");
+  const family =
+    families.data?.families.find((item) => item.id === activeFamilyId) ??
+    families.data?.families[0];
+  const detail = useFamily(family?.id);
+  const pets = useFamilyPets(family?.id);
+  const incomingTransfers = useTransfers(family?.role === "owner" ? family.id : undefined, "incoming");
+  const outgoingTransfers = useTransfers(family?.role === "owner" ? family.id : undefined, "outgoing");
   const invalidate = useInvalidateApi();
   const [mode, setMode] = useState<"none" | "create" | "join">(params.mode === "join" ? "join" : params.mode === "create" ? "create" : "none");
   const [name, setName] = useState("");
@@ -105,17 +105,17 @@ function FamilyRoute() {
   }, [me.data?.user.id]);
   React.useEffect(() => {
     const requestedId = params.familyId ?? preferredFamilyId;
-    if (requestedId && circles.data?.circles.some((item) => item.id === requestedId)) setActiveCircleId(requestedId);
-  }, [circles.data?.circles, params.familyId, preferredFamilyId]);
+    if (requestedId && families.data?.families.some((item) => item.id === requestedId)) setActiveFamilyId(requestedId);
+  }, [families.data?.families, params.familyId, preferredFamilyId]);
   const create = useMutation({
-    mutationFn: () => planetApi.circles.create(name.trim(), deviceTimezone(), createIntent.current()),
+    mutationFn: () => planetApi.families.create(name.trim(), deviceTimezone(), createIntent.current()),
     onSuccess: (result) => {
       createIntent.reset();
       setName("");
       setMode("none");
       setInvite(result.invite_code);
-      setActiveCircleId(result.circle.id);
-      invalidate.circles();
+      setActiveFamilyId(result.family.id);
+      invalidate.families();
       showToast({ message: "Family created. Now add a Pet to begin care." });
     },
     onError: (err) =>
@@ -124,12 +124,12 @@ function FamilyRoute() {
       ),
   });
   const join = useMutation({
-    mutationFn: () => planetApi.circles.join(code.trim()),
+    mutationFn: () => planetApi.families.join(code.trim()),
     onSuccess: (result) => {
       setCode("");
       setMode("none");
-      setActiveCircleId(result.circle.id);
-      invalidate.circles();
+      setActiveFamilyId(result.family.id);
+      invalidate.families();
       showToast({ message: "You joined the Family." });
     },
     onError: (err) =>
@@ -140,7 +140,7 @@ function FamilyRoute() {
       ),
   });
   const refresh = useMutation({
-    mutationFn: () => planetApi.circles.refreshInvite(circle!.id),
+    mutationFn: () => planetApi.families.refreshInvite(family!.id),
     onSuccess: (result) => {
       setInvite(result.invite_code);
       setCopied(false);
@@ -149,32 +149,32 @@ function FamilyRoute() {
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to refresh the invite code."),
   });
   const updateFamily = useMutation({
-    mutationFn: () => planetApi.circles.update(circle!.id, { name: familyName.trim(), timezone: familyTimezone.trim() }),
+    mutationFn: () => planetApi.families.update(family!.id, { name: familyName.trim(), timezone: familyTimezone.trim() }),
     onSuccess: () => {
       setEditingFamily(false);
       setError("");
-      invalidate.circles();
-      invalidate.circle(circle!.id);
+      invalidate.families();
+      invalidate.family(family!.id);
       invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to update this Family."),
   });
   const removeMember = useMutation({
-    mutationFn: () => planetApi.circles.removeMember(circle!.id, memberAction!),
+    mutationFn: () => planetApi.families.removeMember(family!.id, memberAction!),
     onSuccess: () => {
       setMemberAction(null);
-      invalidate.circle(circle!.id);
+      invalidate.family(family!.id);
       invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to remove this member."),
   });
   const transferOwnership = useMutation({
-    mutationFn: (userId: string) => planetApi.circles.transfer(circle!.id, userId),
+    mutationFn: (userId: string) => planetApi.families.transfer(family!.id, userId),
     onSuccess: () => {
       setError("");
       setOwnershipTarget(null);
-      invalidate.circles();
-      invalidate.circle(circle!.id);
+      invalidate.families();
+      invalidate.family(family!.id);
       invalidate.todayAll();
       showToast({ message: "Family ownership transferred." });
     },
@@ -184,9 +184,9 @@ function FamilyRoute() {
     mutationFn: ({ id, action }: { id: string; action: "accept" | "decline" }) => action === "accept" ? planetApi.transfers.accept(id) : planetApi.transfers.decline(id),
     onSuccess: () => {
       setError("");
-      if (circle) {
-        invalidate.transfers(circle.id);
-        invalidate.circles();
+      if (family) {
+        invalidate.transfers(family.id);
+        invalidate.families();
         invalidate.petsAll();
         invalidate.todayAll();
       }
@@ -195,37 +195,37 @@ function FamilyRoute() {
   });
   const cancelPetTransfer = useMutation({
     mutationFn: (id: string) => planetApi.transfers.cancel(id),
-    onSuccess: () => circle && invalidate.transfers(circle.id),
+    onSuccess: () => family && invalidate.transfers(family.id),
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to cancel this Pet handoff."),
   });
   const leaveFamily = useMutation({
-    mutationFn: () => planetApi.circles.leave(circle!.id),
+    mutationFn: () => planetApi.families.leave(family!.id),
     onSuccess: () => {
       setFamilyAction(null);
-      setActiveCircleId(undefined);
-      invalidate.circles();
+      setActiveFamilyId(undefined);
+      invalidate.families();
       invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to leave this Family."),
   });
   const deleteFamily = useMutation({
-    mutationFn: () => planetApi.circles.delete(circle!.id, deleteFamilyConfirm.trim()),
+    mutationFn: () => planetApi.families.delete(family!.id, deleteFamilyConfirm.trim()),
     onSuccess: () => {
       setDeleteFamilyConfirm("");
       setFamilyAction(null);
-      setActiveCircleId(undefined);
-      invalidate.circles();
-      invalidate.deletedCircles();
+      setActiveFamilyId(undefined);
+      invalidate.families();
+      invalidate.deletedFamilies();
       invalidate.todayAll();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to delete this Family."),
   });
   const restoreFamily = useMutation({
-    mutationFn: (circleId: string) => planetApi.circles.restore(circleId),
+    mutationFn: (familyId: string) => planetApi.families.restore(familyId),
     onSuccess: (result) => {
-      setActiveCircleId(result.circle.id);
-      invalidate.circles();
-      invalidate.deletedCircles();
+      setActiveFamilyId(result.family.id);
+      invalidate.families();
+      invalidate.deletedFamilies();
       showToast({ message: "Family restored." });
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : "Unable to restore this Family."),
@@ -254,17 +254,17 @@ function FamilyRoute() {
     else join.mutate();
   }
   const retryFamily = () => {
-    void circles.refetch();
-    if (circle) {
+    void families.refetch();
+    if (family) {
       void detail.refetch();
       void pets.refetch();
       void incomingTransfers.refetch();
       void outgoingTransfers.refetch();
     }
   };
-  const blockingError = (circles.isError && !circles.data) || (!circle && detail.isError);
-  const hasStaleData = Boolean((circles.isError && circles.data) || (detail.isError && circle) || pets.isError);
-  if (circles.isLoading || (circle && (detail.isLoading || pets.isLoading || (circle.role === "owner" && (incomingTransfers.isLoading || outgoingTransfers.isLoading)))))
+  const blockingError = (families.isError && !families.data) || (!family && detail.isError);
+  const hasStaleData = Boolean((families.isError && families.data) || (detail.isError && family) || pets.isError);
+  if (families.isLoading || (family && (detail.isLoading || pets.isLoading || (family.role === "owner" && (incomingTransfers.isLoading || outgoingTransfers.isLoading)))))
     return (
       <Screen><LoadingState label="Loading your Family" /></Screen>
     );
@@ -273,7 +273,7 @@ function FamilyRoute() {
       <Screen contentContainerStyle={styles.center}>
         <QueryErrorState
           title="Your Family is unavailable"
-          body="We could not load the people and Pets in this care circle."
+          body="We could not load the people and Pets in this care family."
           onRetry={retryFamily}
         />
       </Screen>
@@ -283,14 +283,14 @@ function FamilyRoute() {
   const pendingIncoming: Transfer[] = incomingTransfers.data?.transfers.filter((item) => item.status === "PENDING") ?? [];
   const pendingOutgoing: Transfer[] = outgoingTransfers.data?.transfers.filter((item) => item.status === "PENDING") ?? [];
   const focusedSection = familySection === "people"
-    ? { eyebrow: `${circle?.name.toUpperCase() ?? "FAMILY"} / PEOPLE`, title: "People who help" }
+    ? { eyebrow: `${family?.name.toUpperCase() ?? "FAMILY"} / PEOPLE`, title: "People who help" }
     : familySection === "manage"
-      ? { eyebrow: `${circle?.name.toUpperCase() ?? "FAMILY"} / SETTINGS`, title: "Family settings" }
+      ? { eyebrow: `${family?.name.toUpperCase() ?? "FAMILY"} / SETTINGS`, title: "Family settings" }
       : { eyebrow: "FAMILY CARE", title: "Family" };
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       {hasStaleData ? <StaleDataNotice onRetry={retryFamily} retrying={detail.isFetching || pets.isFetching} message="Some Family details are from the last saved view. Reconnect to refresh them." /> : null}
-      <WorkspaceBar familyName={circle?.name ?? "No Family selected"} />
+      <WorkspaceBar familyName={family?.name ?? "No Family selected"} />
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <AppText variant="caption" muted>
@@ -314,21 +314,21 @@ function FamilyRoute() {
           />
         </View>
       </View>
-      {circles.data?.circles.length && circles.data.circles.length > 1 ? (
+      {families.data?.families.length && families.data.families.length > 1 ? (
         <View style={styles.familyPicker}>
           <AppText variant="caption" muted>
             YOUR FAMILIES
           </AppText>
           <View style={styles.familyOptions}>
-            {circles.data.circles.map((item) => {
-              const selected = item.id === circle?.id;
+            {families.data.families.map((item) => {
+              const selected = item.id === family?.id;
               return (
                 <Pressable
                   key={item.id}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   onPress={() => {
-                    setActiveCircleId(item.id);
+                    setActiveFamilyId(item.id);
                     setInvite("");
                   }}
                   style={[
@@ -359,7 +359,7 @@ function FamilyRoute() {
           </View>
         </View>
       ) : null}
-      {circle ? (
+      {family ? (
         <>
           <LinearGradient
             colors={[theme.colors.brandStrong, theme.colors.brand]}
@@ -375,7 +375,7 @@ function FamilyRoute() {
                 CARE CIRCLE
               </AppText>
               <AppText variant="title" style={{ color: theme.colors.onBrand }}>
-                {circle.name}
+                {family.name}
               </AppText>
               <AppText style={{ color: theme.colors.onBrandSoft }}>
                 {members.length} {members.length === 1 ? "person" : "people"} ·{" "}
@@ -400,7 +400,7 @@ function FamilyRoute() {
             </View>
           </LinearGradient>
           {familySection !== "overview" ? <Button
-            label={`Back to ${circle.name}`}
+            label={`Back to ${family.name}`}
             variant="ghost"
             onPress={() => setFamilySection("overview")}
           /> : null}
@@ -410,7 +410,7 @@ function FamilyRoute() {
                 <AppText variant="heading">Pets in this Family</AppText>
                 <AppText variant="caption" muted>Every Pet this group can care for.</AppText>
               </View>
-              <Button label="View all" accessibilityLabel="View all Pets in this Family" variant="ghost" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { familyId: circle.id } })} />
+              <Button label="View all" accessibilityLabel="View all Pets in this Family" variant="ghost" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { familyId: family.id } })} />
             </View>
             {pets.data?.pets.length ? pets.data.pets.slice(0, 4).map((familyPet) => (
               <Pressable key={familyPet.id} accessibilityRole="button" accessibilityLabel={`Open ${familyPet.name}`} onPress={() => router.push({ pathname: "/(tabs)/pet", params: { petId: familyPet.id } })} style={({ pressed }) => [styles.petRow, { borderColor: theme.colors.border }, pressed && { opacity: theme.motion.pressOpacity }]}>
@@ -418,7 +418,7 @@ function FamilyRoute() {
                 <View style={styles.rowCopy}><AppText variant="label">{familyPet.name}</AppText><AppText variant="caption" muted>{familyPet.breed || familyPet.species} · {familyPet.archived_at ? "Memory mode" : "Active care"}</AppText></View>
                 <CaretRightIcon size={18} color={theme.colors.textSubtle} weight="bold" />
               </Pressable>
-            )) : <View style={styles.petEmpty}><PawPrintIcon size={19} color={theme.colors.brandStrong} weight="duotone" /><AppText variant="caption" muted>No Pets in this Family yet.</AppText><Button label="Add a Pet" variant="secondary" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { familyId: circle.id, add: "1" } })} /></View>}
+            )) : <View style={styles.petEmpty}><PawPrintIcon size={19} color={theme.colors.brandStrong} weight="duotone" /><AppText variant="caption" muted>No Pets in this Family yet.</AppText><Button label="Add a Pet" variant="secondary" onPress={() => router.push({ pathname: "/(tabs)/pets", params: { familyId: family.id, add: "1" } })} /></View>}
             {pets.data?.pets.length && pets.data.pets.length > 4 ? <AppText variant="caption" muted style={styles.morePets}>Showing 4 of {pets.data.pets.length} Pets in this Family.</AppText> : null}
           </Card> : null}
           {familySection === "overview" ? <Card style={styles.inviteCard}>
@@ -442,7 +442,7 @@ function FamilyRoute() {
                 />
               </View>
             </View>
-            {circle.role === "owner" ? invite ? (
+            {family.role === "owner" ? invite ? (
               <View
                 style={[
                   styles.codeBox,
@@ -479,7 +479,7 @@ function FamilyRoute() {
               />
             ) : <AppText variant="caption" muted>Only the Family owner can create or refresh the invite code.</AppText>}
           </Card> : null}
-          {circle.role === "owner" && familySection === "overview" ? (
+          {family.role === "owner" && familySection === "overview" ? (
             <Card style={styles.transferCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.rowCopy}>
@@ -503,7 +503,7 @@ function FamilyRoute() {
                     <View key={item.id} style={[styles.transferRow, { borderColor: theme.colors.border }]}>
                       <View style={styles.rowCopy}>
                         <AppText variant="label">{item.pet_name}</AppText>
-                        <AppText variant="caption" muted>Incoming from {item.from_circle}</AppText>
+                        <AppText variant="caption" muted>Incoming from {item.from_family_id}</AppText>
                       </View>
                       <View style={styles.actions}>
                         <Button label="Decline" variant="ghost" disabled={decidePetTransfer.isPending} onPress={() => decidePetTransfer.mutate({ id: item.id, action: "decline" })} />
@@ -515,7 +515,7 @@ function FamilyRoute() {
                     <View key={item.id} style={[styles.transferRow, { borderColor: theme.colors.border }]}>
                       <View style={styles.rowCopy}>
                         <AppText variant="label">{item.pet_name}</AppText>
-                        <AppText variant="caption" muted>Waiting for {item.to_circle}</AppText>
+                        <AppText variant="caption" muted>Waiting for {item.to_family_id}</AppText>
                       </View>
                       <Button label="Cancel" variant="ghost" loading={cancelPetTransfer.isPending} onPress={() => cancelPetTransfer.mutate(item.id)} />
                     </View>
@@ -525,7 +525,7 @@ function FamilyRoute() {
             </Card>
           ) : null}
           {familySection === "overview" ? <Card style={styles.toolsCard}>
-            <AppText variant="caption" muted>MORE FOR {circle.name.toUpperCase()}</AppText>
+            <AppText variant="caption" muted>MORE FOR {family.name.toUpperCase()}</AppText>
             <SectionRow
               icon={UsersThreeIcon}
               title="People who help"
@@ -563,7 +563,7 @@ function FamilyRoute() {
                 <PlusIcon size={18} color={theme.colors.accentStrong} weight="bold" />
               </View>
             </View>
-            {circle.role === "owner" ? invite ? (
+            {family.role === "owner" ? invite ? (
               <View style={[styles.codeBox, { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border }]}>
                 <View style={styles.codeCopy}>
                   <AppText selectable variant="title" style={{ letterSpacing: 2 }}>{invite}</AppText>
@@ -636,7 +636,7 @@ function FamilyRoute() {
                       Owner
                     </AppText>
                   </View>
-                ) : circle.role === "owner" ? (
+                ) : family.role === "owner" ? (
                   <View style={styles.memberActions}>
                     <Button label="Make owner" variant="ghost" onPress={() => { setOwnershipTarget(member.user_id); setMemberAction(null); setError(""); }} disabled={transferOwnership.isPending} />
                     <Button label="Remove" variant="danger" onPress={() => setMemberAction(member.user_id)} disabled={removeMember.isPending} />
@@ -667,7 +667,7 @@ function FamilyRoute() {
           </Card>
           </> : null}
           {familySection === "manage" ? <View style={styles.actions}>
-            {circle.role === "owner" ? <Button
+            {family.role === "owner" ? <Button
               label="Refresh invite"
               variant="secondary"
               loading={refresh.isPending}
@@ -688,9 +688,9 @@ function FamilyRoute() {
                 <AppText variant="heading">Family settings</AppText>
                 <AppText variant="caption" muted>Keep the shared space accurate and governed.</AppText>
               </View>
-              {circle.role === "owner" ? <View style={[styles.ownerPill, { backgroundColor: theme.colors.brandSoft }]}><CheckIcon size={13} color={theme.colors.brandStrong} weight="bold" /><AppText variant="caption" style={{ color: theme.colors.brandStrong }}>Owner</AppText></View> : null}
+              {family.role === "owner" ? <View style={[styles.ownerPill, { backgroundColor: theme.colors.brandSoft }]}><CheckIcon size={13} color={theme.colors.brandStrong} weight="bold" /><AppText variant="caption" style={{ color: theme.colors.brandStrong }}>Owner</AppText></View> : null}
             </View>
-            {circle.role === "owner" ? (
+            {family.role === "owner" ? (
               editingFamily ? (
                 <View style={styles.form}>
                   <TextField label="Family name" value={familyName} onChangeText={setFamilyName} placeholder="The Milo household" error={error} />
@@ -702,7 +702,7 @@ function FamilyRoute() {
                 </View>
               ) : (
                 <View style={styles.actions}>
-                  <Button label="Edit Family" variant="secondary" onPress={() => { setFamilyName(circle.name); setFamilyTimezone(circle.timezone); setEditingFamily(true); setError(""); }} />
+                  <Button label="Edit Family" variant="secondary" onPress={() => { setFamilyName(family.name); setFamilyTimezone(family.timezone); setEditingFamily(true); setError(""); }} />
                   <Button label="Delete Family" variant="danger" onPress={() => { setDeleteFamilyConfirm(""); setFamilyAction("delete"); }} />
                 </View>
               )
@@ -713,11 +713,11 @@ function FamilyRoute() {
               <View style={[styles.confirmBox, { backgroundColor: theme.colors.surfaceRaised }]}>
                 <AppText variant="label">{familyAction === "delete" ? "Delete this Family?" : "Leave this Family?"}</AppText>
                 <AppText variant="caption" muted>{familyAction === "delete" ? "Pets must be transferred or deleted first. Shared history is not silently removed." : "You will lose access to the Pets shared in this Family."}</AppText>
-                {familyAction === "delete" ? <TextField label={`Type ${circle.name} to confirm`} value={deleteFamilyConfirm} onChangeText={(value) => { setDeleteFamilyConfirm(value); setError(""); }} placeholder={circle.name} autoCapitalize="none" autoCorrect={false} /> : null}
+                {familyAction === "delete" ? <TextField label={`Type ${family.name} to confirm`} value={deleteFamilyConfirm} onChangeText={(value) => { setDeleteFamilyConfirm(value); setError(""); }} placeholder={family.name} autoCapitalize="none" autoCorrect={false} /> : null}
                 {error ? <AppText variant="caption" style={{ color: theme.colors.danger }}>{error}</AppText> : null}
                 <View style={styles.actions}>
                   <Button label="Cancel" variant="secondary" onPress={() => { setFamilyAction(null); setDeleteFamilyConfirm(""); }} />
-                  <Button label={familyAction === "delete" ? "Delete Family" : "Leave Family"} variant="danger" loading={leaveFamily.isPending || deleteFamily.isPending} disabled={familyAction === "delete" && deleteFamilyConfirm.trim() !== circle.name} onPress={() => familyAction === "delete" ? deleteFamily.mutate() : leaveFamily.mutate()} />
+                  <Button label={familyAction === "delete" ? "Delete Family" : "Leave Family"} variant="danger" loading={leaveFamily.isPending || deleteFamily.isPending} disabled={familyAction === "delete" && deleteFamilyConfirm.trim() !== family.name} onPress={() => familyAction === "delete" ? deleteFamily.mutate() : leaveFamily.mutate()} />
                 </View>
               </View>
             ) : null}
@@ -737,7 +737,7 @@ function FamilyRoute() {
               weight="duotone"
             />
           </View>
-          <AppText variant="title">Start your care circle.</AppText>
+          <AppText variant="title">Start your care family.</AppText>
           <AppText muted>
             Keep the people, Pets and shared care in one calm place.
           </AppText>
@@ -814,7 +814,7 @@ function FamilyRoute() {
           />
         </Card>
       ) : null}
-      {deletedCircles.data?.circles.length ? <Card style={styles.deletedCard}><View style={styles.sectionHeader}><View style={styles.rowCopy}><AppText variant="heading">Recently deleted</AppText><AppText variant="caption" muted>Restore within 30 days. Deleted Families still reserve your Family quota.</AppText></View></View>{deletedCircles.data.circles.map((deleted) => <View key={deleted.id} style={[styles.deletedRow, { borderColor: theme.colors.border }]}><View style={styles.rowCopy}><AppText variant="label">{deleted.name}</AppText><AppText variant="caption" muted>Deleted {new Date(deleted.deleted_at).toLocaleDateString()}</AppText></View><Button label="Restore" variant="secondary" loading={restoreFamily.isPending && restoreFamily.variables === deleted.id} disabled={restoreFamily.isPending} onPress={() => restoreFamily.mutate(deleted.id)} /></View>)}</Card> : null}
+      {deletedFamilies.data?.families.length ? <Card style={styles.deletedCard}><View style={styles.sectionHeader}><View style={styles.rowCopy}><AppText variant="heading">Recently deleted</AppText><AppText variant="caption" muted>Restore within 30 days. Deleted Families still reserve your Family quota.</AppText></View></View>{deletedFamilies.data.families.map((deleted) => <View key={deleted.id} style={[styles.deletedRow, { borderColor: theme.colors.border }]}><View style={styles.rowCopy}><AppText variant="label">{deleted.name}</AppText><AppText variant="caption" muted>Deleted {new Date(deleted.deleted_at).toLocaleDateString()}</AppText></View><Button label="Restore" variant="secondary" loading={restoreFamily.isPending && restoreFamily.variables === deleted.id} disabled={restoreFamily.isPending} onPress={() => restoreFamily.mutate(deleted.id)} /></View>)}</Card> : null}
       <AppText variant="caption" muted style={styles.footnote}>
         Access is always granted through the Pet and Family relationship you
         choose.

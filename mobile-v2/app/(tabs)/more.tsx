@@ -6,7 +6,7 @@ import { AppText, Card, LoadingState, QueryErrorState, Screen, SectionRow, Stale
 import { useTheme } from '../../src/core/providers/theme-provider';
 import { WorkspaceBar } from '../../src/ui/navigation/workspace-bar';
 import { readViewPreference } from '../../src/core/storage/view-preference';
-import { useAccessiblePets, useCircles, useMe } from '../../src/core/query/hooks';
+import { useAccessiblePets, useFamilies, useMe } from '../../src/core/query/hooks';
 import { humanDisplayName, pluralLabel } from '../../src/core/presentation/labels';
 import { GearSixIcon, HeartIcon, PawPrintIcon, ShieldCheckIcon, UserCircleIcon, UsersThreeIcon } from '../../src/ui/icons';
 
@@ -14,7 +14,7 @@ export default function YouRoute() {
   const { theme } = useTheme();
   const navigation = useNavigation();
   const me = useMe();
-  const circles = useCircles();
+  const families = useFamilies();
   const [preferredFamilyId, setPreferredFamilyId] = React.useState<string>();
   React.useEffect(() => {
     const userId = me.data?.user.id;
@@ -23,20 +23,20 @@ export default function YouRoute() {
       if (preference?.kind === 'family') setPreferredFamilyId(preference.familyId);
     });
   }, [me.data?.user.id]);
-  const circle = circles.data?.circles.find((item) => item.id === preferredFamilyId) ?? circles.data?.circles[0];
-  const accessiblePets = useAccessiblePets(circles.data?.circles.map((item) => item.id) ?? []);
+  const family = families.data?.families.find((item) => item.id === preferredFamilyId) ?? families.data?.families[0];
+  const accessiblePets = useAccessiblePets(families.data?.families.map((item) => item.id) ?? []);
   React.useEffect(() => {
     navigation.setOptions({ tabBarStyle: { display: 'none' } });
     return () => navigation.setOptions({ tabBarStyle: undefined });
   }, [navigation]);
-  const retrySpace = () => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); };
-  const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData);
-  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData));
-  if (me.isLoading || circles.isLoading || accessiblePets.isLoading) return <Screen><LoadingState label="Loading your space" /></Screen>;
+  const retrySpace = () => { void me.refetch(); void families.refetch(); void accessiblePets.refetch(); };
+  const blockingError = (me.isError && !me.data) || (families.isError && !families.data) || (accessiblePets.isError && !accessiblePets.hasData);
+  const hasStaleData = Boolean((me.isError && me.data) || (families.isError && families.data) || (accessiblePets.isError && accessiblePets.hasData));
+  if (me.isLoading || families.isLoading || accessiblePets.isLoading) return <Screen><LoadingState label="Loading your space" /></Screen>;
   if (blockingError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Your space is unavailable" body="We could not load your account and care relationships." onRetry={retrySpace} /></Screen>;
   const user = me.data?.user;
   const name = humanDisplayName(user) ?? 'Your PLANET account';
-  return <Screen scroll contentContainerStyle={styles.content}>{hasStaleData ? <StaleDataNotice onRetry={retrySpace} retrying={me.isFetching || circles.isFetching} /> : null}<WorkspaceBar familyName={circle?.name} onPressWorkspace={() => router.push('/(tabs)/family')} /><View style={styles.header}><View style={styles.headerCopy}><AppText variant="caption" muted>ACCOUNT & APP</AppText><AppText variant="display">You</AppText><AppText muted>Manage your profile, Families, and app preferences.</AppText></View><View style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}><UserCircleIcon size={25} color={theme.colors.brandStrong} weight="duotone" /></View></View><LinearGradient colors={[theme.colors.accentSurface, theme.colors.brandSoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.profileHero}><View style={[styles.profileAvatar, { backgroundColor: theme.colors.surface }]}><AppText variant="title" style={{ color: theme.colors.accentStrong }}>{humanDisplayName(user)?.slice(0, 1).toUpperCase() ?? 'P'}</AppText></View><View style={styles.profileCopy}><AppText variant="title" numberOfLines={2}>{name}</AppText><AppText variant="caption" muted>{user?.email}</AppText><AppText variant="caption" style={{ color: theme.colors.brandStrong, marginTop: 4 }}>{pluralLabel(accessiblePets.pets.length, 'Pet')} · {pluralLabel(circles.data?.circles.length ?? 0, 'Family', 'Families')}</AppText></View></LinearGradient><AppText variant="caption" muted style={styles.sectionLabel}>PETS & FAMILIES</AppText><Card style={styles.menu}><SectionRow icon={PawPrintIcon} title="Pets" description={`${pluralLabel(accessiblePets.pets.length, 'Pet')} you can access`} onPress={() => router.push('/(tabs)/pets')} /><SectionRow icon={UsersThreeIcon} title="Family" description={circle?.name ?? 'Create or join a Family'} onPress={() => router.push('/(tabs)/family')} last /></Card><AppText variant="caption" muted style={styles.sectionLabel}>ACCOUNT</AppText><Card style={styles.menu}><SectionRow icon={UserCircleIcon} title="Profile" description="Name and email" onPress={() => router.push('/account')} /><SectionRow icon={GearSixIcon} title="Settings" description="Notifications and app preferences" onPress={() => router.push('/settings')} /><SectionRow icon={ShieldCheckIcon} title="Privacy & data" description="Sharing, export and deletion" onPress={() => router.push('/privacy')} last /></Card><View style={styles.closing}><HeartIcon size={15} color={theme.colors.accent} weight="fill" /><AppText variant="caption" muted>Care is easier when everyone can see what matters.</AppText></View></Screen>;
+  return <Screen scroll contentContainerStyle={styles.content}>{hasStaleData ? <StaleDataNotice onRetry={retrySpace} retrying={me.isFetching || families.isFetching} /> : null}<WorkspaceBar familyName={family?.name} onPressWorkspace={() => router.push('/(tabs)/family')} /><View style={styles.header}><View style={styles.headerCopy}><AppText variant="caption" muted>ACCOUNT & APP</AppText><AppText variant="display">You</AppText><AppText muted>Manage your profile, Families, and app preferences.</AppText></View><View style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}><UserCircleIcon size={25} color={theme.colors.brandStrong} weight="duotone" /></View></View><LinearGradient colors={[theme.colors.accentSurface, theme.colors.brandSoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.profileHero}><View style={[styles.profileAvatar, { backgroundColor: theme.colors.surface }]}><AppText variant="title" style={{ color: theme.colors.accentStrong }}>{humanDisplayName(user)?.slice(0, 1).toUpperCase() ?? 'P'}</AppText></View><View style={styles.profileCopy}><AppText variant="title" numberOfLines={2}>{name}</AppText><AppText variant="caption" muted>{user?.email}</AppText><AppText variant="caption" style={{ color: theme.colors.brandStrong, marginTop: 4 }}>{pluralLabel(accessiblePets.pets.length, 'Pet')} · {pluralLabel(families.data?.families.length ?? 0, 'Family', 'Families')}</AppText></View></LinearGradient><AppText variant="caption" muted style={styles.sectionLabel}>PETS & FAMILIES</AppText><Card style={styles.menu}><SectionRow icon={PawPrintIcon} title="Pets" description={`${pluralLabel(accessiblePets.pets.length, 'Pet')} you can access`} onPress={() => router.push('/(tabs)/pets')} /><SectionRow icon={UsersThreeIcon} title="Family" description={family?.name ?? 'Create or join a Family'} onPress={() => router.push('/(tabs)/family')} last /></Card><AppText variant="caption" muted style={styles.sectionLabel}>ACCOUNT</AppText><Card style={styles.menu}><SectionRow icon={UserCircleIcon} title="Profile" description="Name and email" onPress={() => router.push('/account')} /><SectionRow icon={GearSixIcon} title="Settings" description="Notifications and app preferences" onPress={() => router.push('/settings')} /><SectionRow icon={ShieldCheckIcon} title="Privacy & data" description="Sharing, export and deletion" onPress={() => router.push('/privacy')} last /></Card><View style={styles.closing}><HeartIcon size={15} color={theme.colors.accent} weight="fill" /><AppText variant="caption" muted>Care is easier when everyone can see what matters.</AppText></View></Screen>;
 }
 
 const styles = StyleSheet.create({

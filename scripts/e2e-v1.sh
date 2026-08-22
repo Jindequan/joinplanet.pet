@@ -3,7 +3,7 @@
 # against the live local API (default http://localhost:8081, DEV_AUTH_CODES=1).
 #
 # Routes/payloads verified against planet-api/internal/modules/*/http.go.
-# Idempotent: unique email/circle suffix per run (timestamp + PID).
+# Idempotent: unique email/family suffix per run (timestamp + PID).
 # Prints "PASS/FAIL <step>" per check, a final summary, and exits nonzero on any FAIL.
 #
 # NOTE on rate limits: auth IP limiter is 30/hour and each run consumes 6
@@ -103,7 +103,7 @@ if [ "$STATUS" != "200" ]; then
   exit 2
 fi
 
-# "Today" in the circles' timezone (Asia/Shanghai is the server default).
+# "Today" in the families' timezone (Asia/Shanghai is the server default).
 TODAY=$(python3 -c '
 from datetime import datetime, timedelta, timezone
 try:
@@ -132,24 +132,24 @@ login "$C_EMAIL"; C_TOK=$TOK; C_ID=$USER_ID
 pass "auth: 3 accounts logged in via dev_code (A=$A_ID B=$B_ID C=$C_ID)"
 
 # ===========================================================================
-echo "== Scenario 1: A bootstrap — me / circle / pet / today =="
+echo "== Scenario 1: A bootstrap — me / family / pet / today =="
 req GET /api/v1/me "$A_TOK"
 expect "1.1a A GET /me" 200 'd["user"]["email"] == "'"$A_EMAIL"'"'
 A_NAME_BEFORE=$(jget 'd["user"]["display_name"]')
 
-req GET /api/v1/circles "$A_TOK"
-expect "1.1b A has no circles yet" 200 'd["circles"] == []'
+req GET /api/v1/families "$A_TOK"
+expect "1.1b A has no families yet" 200 'd["families"] == []'
 
-req POST /api/v1/circles "$A_TOK" "{\"name\":\"Family A $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
-expect "1.2a A creates circle" 201 'd["circle"]["role"] == "owner" and len(d["invite_code"]) >= 6'
-CIRCLE_A=$(jget 'd["circle"]["id"]')
+req POST /api/v1/families "$A_TOK" "{\"name\":\"Family A $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
+expect "1.2a A creates family" 201 'd["family"]["role"] == "owner" and len(d["invite_code"]) >= 6'
+CIRCLE_A=$(jget 'd["family"]["id"]')
 CIRCLE_A_NAME="Family A $UNIQ"
 
-req POST "/api/v1/circles/$CIRCLE_A/pets" "$A_TOK" '{"name":"Mochi","species":"cat"}'
+req POST "/api/v1/families/$CIRCLE_A/pets" "$A_TOK" '{"name":"Mochi","species":"cat"}'
 expect "1.3a A creates pet Mochi" 201 'd["pet"]["name"] == "Mochi" and d["pet"]["species"] == "cat"'
 PET_ID=$(jget 'd["pet"]["id"]')
 
-req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$A_TOK"
+req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$A_TOK"
 expect "1.4a A today view empty" 200 'd["date"] == "'"$TODAY"'" and d["pets"] == []'
 
 req GET "/api/v1/pets/$PET_ID" "$A_TOK"
@@ -183,7 +183,7 @@ expect "2.4a undo log -> 204" 204
 req POST "/api/v1/tasks/$TASK1/logs" "$A_TOK" '{"status":"skipped"}'
 expect "2.5a re-log as skipped" 201 'd["log"]["status"] == "skipped"'
 
-req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$A_TOK"
+req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$A_TOK"
 expect "2.6a today shows skipped" 200 'any(it["task"]["id"] == "'"$TASK1"'" and it["log"] is not None and it["log"]["status"] == "skipped" for g in d["pets"] for it in g["items"])'
 
 req POST "/api/v1/pets/$PET_ID/tasks" "$A_TOK" '{"title":"Morning walk","time_of_day":"08:00","schedule":{"v":1,"kind":"daily"}}'
@@ -244,23 +244,23 @@ expect "4.4a auto medication ended event recorded" 200 'any(e["type"] == "medica
 
 # ===========================================================================
 echo "== Scenario 5: invite + join + shared today + B completes A's task =="
-req POST "/api/v1/circles/$CIRCLE_A/invite/refresh" "$A_TOK"
+req POST "/api/v1/families/$CIRCLE_A/invite/refresh" "$A_TOK"
 expect "5.1a A refreshes invite code" 200 'len(d["invite_code"]) >= 6'
 INVITE_A=$(jget 'd["invite_code"]')
 
-req POST /api/v1/circles/join "$B_TOK" "{\"code\":\"$INVITE_A\"}"
-expect "5.2a B joins via code" 200 'd["circle"]["id"] == "'"$CIRCLE_A"'" and d["circle"]["role"] == "caregiver"'
+req POST /api/v1/families/join "$B_TOK" "{\"code\":\"$INVITE_A\"}"
+expect "5.2a B joins via code" 200 'd["family"]["id"] == "'"$CIRCLE_A"'" and d["family"]["role"] == "caregiver"'
 
-req GET "/api/v1/circles/$CIRCLE_A" "$A_TOK"
+req GET "/api/v1/families/$CIRCLE_A" "$A_TOK"
 expect "5.3a B appears in members as caregiver" 200 'any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
 
-req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
+req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
 expect "5.4a B token can read today" 200 'd["date"] == "'"$TODAY"'"'
 
 req POST "/api/v1/tasks/$TASK2/logs" "$B_TOK" '{"status":"done"}'
-expect "5.5a B completes A-circle task" 201 'd["log"]["status"] in ("done", "completed") and d["log"]["done_by"] == "'"$B_ID"'"'
+expect "5.5a B completes A-family task" 201 'd["log"]["status"] in ("done", "completed") and d["log"]["done_by"] == "'"$B_ID"'"'
 
-req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
+req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
 expect "5.5b today (B token) shows B's completed log" 200 'any(it["task"]["id"] == "'"$TASK2"'" and it["log"] is not None and it["log"]["status"] in ("done", "completed") and it["log"]["done_by"] == "'"$B_ID"'" for g in d["pets"] for it in g["items"])'
 
 # ===========================================================================
@@ -284,21 +284,21 @@ req GET "/api/v1/shares/$SHARE1_TOKEN" ""
 expect "6.4a revoked share token -> 410 SHARE_GONE" 410 'd["error"]["code"] == "SHARE_GONE"'
 
 # ===========================================================================
-echo "== Scenario 7: pet transfer A-circle -> B-circle =="
-req POST /api/v1/circles "$B_TOK" "{\"name\":\"Family B $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
-expect "7.1a B creates own circle" 201 'd["circle"]["role"] == "owner"'
-CIRCLE_B=$(jget 'd["circle"]["id"]')
+echo "== Scenario 7: pet transfer A-family -> B-family =="
+req POST /api/v1/families "$B_TOK" "{\"name\":\"Family B $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
+expect "7.1a B creates own family" 201 'd["family"]["role"] == "owner"'
+CIRCLE_B=$(jget 'd["family"]["id"]')
 CIRCLE_B_NAME="Family B Renamed $UNIQ"
 
 TRANSFER_CREATE_KEY="e2e-transfer-create-$UNIQ"
-req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_circle_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
-expect "7.2a A (source owner) initiates transfer" 201 'd["transfer"]["status"] == "PENDING" and d["transfer"]["to_circle"] == "'"$CIRCLE_B"'"'
+req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_family_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
+expect "7.2a A (source owner) initiates transfer" 201 'd["transfer"]["status"] == "PENDING" and d["transfer"]["to_family_id"] == "'"$CIRCLE_B"'"'
 TRANSFER_ID=$(jget 'd["transfer"]["id"]')
 
-req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_circle_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
+req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_family_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
 expect "7.2b retry returns the same transfer (idempotent)" 201 'd["transfer"]["id"] == "'"$TRANSFER_ID"'"'
 
-req GET "/api/v1/circles/$CIRCLE_B/transfers?direction=incoming" "$B_TOK"
+req GET "/api/v1/families/$CIRCLE_B/transfers?direction=incoming" "$B_TOK"
 expect "7.3a B sees incoming PENDING transfer" 200 'any(t["id"] == "'"$TRANSFER_ID"'" and t["status"] == "PENDING" for t in d["transfers"])'
 
 TRANSFER_ACCEPT_KEY="e2e-transfer-accept-$UNIQ"
@@ -308,10 +308,10 @@ expect "7.4a B accepts transfer" 200 'd["transfer"]["status"] == "ACCEPTED"'
 req POST "/api/v1/transfers/$TRANSFER_ID/accept" "$B_TOK" "" "$TRANSFER_ACCEPT_KEY"
 expect "7.4b retry returns the accepted transfer (idempotent)" 200 'd["transfer"]["id"] == "'"$TRANSFER_ID"'" and d["transfer"]["status"] == "ACCEPTED"'
 
-req GET "/api/v1/circles/$CIRCLE_B/pets" "$B_TOK"
-expect "7.5a pet now in B's circle" 200 'any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
+req GET "/api/v1/families/$CIRCLE_B/pets" "$B_TOK"
+expect "7.5a pet now in B's family" 200 'any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
 
-req GET "/api/v1/circles/$CIRCLE_A/pets" "$A_TOK"
+req GET "/api/v1/families/$CIRCLE_A/pets" "$A_TOK"
 expect "7.5b old Family keeps historical Pet visibility" 200 'any(p["id"] == "'"$PET_ID"'" and p["current_owner_user_id"] == "'"$B_ID"'" for p in d["pets"])'
 
 req GET "/api/v1/shares/$SHARE2_TOKEN" ""
@@ -319,68 +319,68 @@ expect "7.6a share #2 auto-revoked by transfer -> 410 SHARE_GONE" 410 'd["error"
 
 # ===========================================================================
 echo "== Scenario 8: governance — rename, leave, ownership transfer, delete/restore =="
-req PATCH "/api/v1/circles/$CIRCLE_B" "$B_TOK" "{\"name\":\"Family B Renamed $UNIQ\"}"
-expect "8.1a B renames own circle (PATCH exists)" 200 'd["circle"]["name"] == "Family B Renamed '"$UNIQ"'"'
+req PATCH "/api/v1/families/$CIRCLE_B" "$B_TOK" "{\"name\":\"Family B Renamed $UNIQ\"}"
+expect "8.1a B renames own family (PATCH exists)" 200 'd["family"]["name"] == "Family B Renamed '"$UNIQ"'"'
 
-req POST "/api/v1/circles/$CIRCLE_A/leave" "$B_TOK"
-expect "8.2a B leaves A's circle -> 204" 204
+req POST "/api/v1/families/$CIRCLE_A/leave" "$B_TOK"
+expect "8.2a B leaves A's family -> 204" 204
 
-req GET "/api/v1/circles/$CIRCLE_A" "$A_TOK"
-expect "8.2b B gone from A's circle members" 200 'not any(m["user_id"] == "'"$B_ID"'" for m in d["members"])'
+req GET "/api/v1/families/$CIRCLE_A" "$A_TOK"
+expect "8.2b B gone from A's family members" 200 'not any(m["user_id"] == "'"$B_ID"'" for m in d["members"])'
 
-req POST "/api/v1/circles/$CIRCLE_B/invite/refresh" "$B_TOK"
-expect "8.3a B refreshes own circle invite" 200 'len(d["invite_code"]) >= 6'
+req POST "/api/v1/families/$CIRCLE_B/invite/refresh" "$B_TOK"
+expect "8.3a B refreshes own family invite" 200 'len(d["invite_code"]) >= 6'
 INVITE_B=$(jget 'd["invite_code"]')
 
-req POST /api/v1/circles/join "$A_TOK" "{\"code\":\"$INVITE_B\"}"
-expect "8.3b A joins B's circle" 200 'd["circle"]["id"] == "'"$CIRCLE_B"'"'
+req POST /api/v1/families/join "$A_TOK" "{\"code\":\"$INVITE_B\"}"
+expect "8.3b A joins B's family" 200 'd["family"]["id"] == "'"$CIRCLE_B"'"'
 
 FAMILY_TRANSFER_KEY="e2e-family-transfer-$UNIQ"
-req POST "/api/v1/circles/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
-expect "8.3c B transfers circle ownership to A" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
+req POST "/api/v1/families/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
+expect "8.3c B transfers family ownership to A" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
 
-req POST "/api/v1/circles/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
+req POST "/api/v1/families/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
 expect "8.3c2 retry returns the final Family ownership state (idempotent)" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
 
 req DELETE "/api/v1/pets/$PET_ID/families/$CIRCLE_A" "$B_TOK"
 expect "8.3d B removes the old Family visibility" 204
 
-req DELETE "/api/v1/circles/$CIRCLE_A" "$A_TOK" "{\"confirm\":\"$CIRCLE_A_NAME\"}"
+req DELETE "/api/v1/families/$CIRCLE_A" "$A_TOK" "{\"confirm\":\"$CIRCLE_A_NAME\"}"
 expect "8.3e A deletes the now-empty old Family" 204
 
-req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
-expect "8.4a delete circle with pet present -> 409 FAMILY_NOT_EMPTY" 409 'd["error"]["code"] == "FAMILY_NOT_EMPTY"'
+req DELETE "/api/v1/families/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
+expect "8.4a delete family with pet present -> 409 FAMILY_NOT_EMPTY" 409 'd["error"]["code"] == "FAMILY_NOT_EMPTY"'
 
 req DELETE "/api/v1/pets/$PET_ID" "$B_TOK" "{\"confirm\":\"$PET_ID\"}"
 expect "8.5a current Pet owner deletes pet (confirm=pet id) -> 204" 204
 
-req DELETE "/api/v1/circles/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
-expect "8.6a A deletes now-empty circle -> 204" 204
+req DELETE "/api/v1/families/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
+expect "8.6a A deletes now-empty family -> 204" 204
 
-req POST "/api/v1/circles/$CIRCLE_B/restore" "$A_TOK"
-expect "8.7a 30-day restore route exists -> 200" 200 'd["circle"]["id"] == "'"$CIRCLE_B"'"'
+req POST "/api/v1/families/$CIRCLE_B/restore" "$A_TOK"
+expect "8.7a 30-day restore route exists -> 200" 200 'd["family"]["id"] == "'"$CIRCLE_B"'"'
 
 # ===========================================================================
 echo "== Scenario 9: negative paths — isolation, quota, archived, malformed =="
-req GET "/api/v1/circles/$CIRCLE_A/today?date=$TODAY" "$C_TOK"
+req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$C_TOK"
 expect "9.1a C reads A's today -> 404" 404 'd["error"]["code"] == "RESOURCE_NOT_FOUND"'
 
-req POST "/api/v1/circles/$CIRCLE_A/pets" "$C_TOK" '{"name":"Intruder","species":"dog"}'
-expect "9.2a C creates pet in A's circle -> 404" 404 'd["error"]["code"] == "RESOURCE_NOT_FOUND"'
+req POST "/api/v1/families/$CIRCLE_A/pets" "$C_TOK" '{"name":"Intruder","species":"dog"}'
+expect "9.2a C creates pet in A's family -> 404" 404 'd["error"]["code"] == "RESOURCE_NOT_FOUND"'
 
-req POST /api/v1/circles "$C_TOK" "{\"name\":\"Family C $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
-expect "9.3a C creates fresh circle" 201 'True'
-CIRCLE_C=$(jget 'd["circle"]["id"]')
+req POST /api/v1/families "$C_TOK" "{\"name\":\"Family C $UNIQ\",\"timezone\":\"Asia/Shanghai\"}"
+expect "9.3a C creates fresh family" 201 'True'
+CIRCLE_C=$(jget 'd["family"]["id"]')
 
-req POST "/api/v1/circles/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetOne","species":"dog"}'
+req POST "/api/v1/families/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetOne","species":"dog"}'
 expect "9.3b C pet 1 created" 201 'True'
 PET_C1=$(jget 'd["pet"]["id"]')
 
-req POST "/api/v1/circles/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetTwo","species":"dog"}'
+req POST "/api/v1/families/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetTwo","species":"dog"}'
 expect "9.3c C pet 2 created" 201 'True'
 PET_C2=$(jget 'd["pet"]["id"]')
 
-req POST "/api/v1/circles/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetThree","species":"dog"}'
+req POST "/api/v1/families/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetThree","species":"dog"}'
 expect "9.3d C pet 3 -> 403 QUOTA_PETS_EXCEEDED (free pet_max=2)" 403 'd["error"]["code"] == "QUOTA_PETS_EXCEEDED" and d["usage"]["pet_max"] == 2'
 
 req POST "/api/v1/pets/$PET_C1/archive" "$C_TOK"

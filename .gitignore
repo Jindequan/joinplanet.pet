@@ -32,10 +32,12 @@ yarn-debug.log*
 
 # ZCode local
 .zcode/
+.dev/
 
 # Go local build artifacts
 planet-lemon-webhook
 .alma-snapshots
+.local-backups/
 
 # Independent repos living in this workspace (each has its own .git)
 /mobile/

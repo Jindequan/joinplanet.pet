@@ -66,9 +66,9 @@ export const taskSchema = z.object({
   }
 });
 
-export const careItemSchema = z.object({
+export const carePlanSchema = z.object({
   type: z.enum(['medication', 'feeding', 'health', 'grooming', 'exercise', 'custom']),
-  title: z.string().trim().min(1, 'Name the care item.').max(120, 'Care item names are limited to 120 characters.'),
+  title: z.string().trim().min(1, 'Name the care plan.').max(120, 'Care plan names are limited to 120 characters.'),
   description: z.string().max(500, 'Descriptions are limited to 500 characters.'),
   schedule_kind: z.enum(['daily', 'weekly', 'monthly', 'interval']),
   weekly_days: z.array(z.number().int().min(1).max(7)).max(7),
@@ -118,7 +118,7 @@ export const shareSchema = z.object({
 });
 
 export const transferSchema = z.object({
-  to_circle_id: z.string().uuid('Choose a valid Family.'),
+  to_family_id: z.string().uuid('Choose a valid Family.'),
 });
 
 export const notificationPrefsSchema = z.object({
@@ -142,7 +142,7 @@ export type JoinFamilyForm = z.infer<typeof joinFamilySchema>;
 export type PetForm = z.infer<typeof petSchema>;
 export type ProfileForm = z.infer<typeof profileSchema>;
 export type TaskForm = z.infer<typeof taskSchema>;
-export type CareItemForm = z.infer<typeof careItemSchema>;
+export type CarePlanForm = z.infer<typeof carePlanSchema>;
 export type MedicationForm = z.infer<typeof medicationSchema>;
 export type TimelineForm = z.infer<typeof timelineSchema>;
 export type ShareForm = z.infer<typeof shareSchema>;
@@ -168,7 +168,7 @@ export function taskPayload(form: TaskForm) {
   return { title: form.title.trim(), description: form.description.trim(), schedule, ...(form.time_of_day ? { time_of_day: form.time_of_day } : {}) };
 }
 
-export function careItemPayload(form: CareItemForm) {
+export function carePlanPayload(form: CarePlanForm) {
   const rule = form.schedule_kind === 'daily'
     ? { type: 'daily' as const }
     : form.schedule_kind === 'weekly'

@@ -6,7 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, StaleDataNotice, ViewFilterBar, type ViewFilter } from '../../src/ui/components';
 import { useTheme } from '../../src/core/providers/theme-provider';
-import { useAccessiblePets, useAlertsForCircles, useCircles, useInvalidateApi, useMe, useTodayForCircles } from '../../src/core/query/hooks';
+import { useAccessiblePets, useAlertsForFamilies, useFamilies, useInvalidateApi, useMe, useTodayForFamilies } from '../../src/core/query/hooks';
 import { planetApi, type TodayItem } from '../../src/core/api/planet-api';
 import { ApiError } from '../../src/core/network/api-client';
 import { useToast } from '../../src/core/providers/toast-provider';
@@ -97,8 +97,8 @@ export default function TodayRoute() {
   const { theme } = useTheme();
   const params = useLocalSearchParams<{ petId?: string }>();
   const me = useMe();
-  const circles = useCircles();
-  const families = circles.data?.circles ?? [];
+  const familyQuery = useFamilies();
+  const families = familyQuery.data?.families ?? [];
   const familyIds = families.map((family) => family.id);
   const accessiblePets = useAccessiblePets(familyIds);
   const [filter, setFilter] = useState<ViewFilter>({ kind: 'all' });
@@ -139,8 +139,8 @@ export default function TodayRoute() {
   const historicalDate = dayOffset === 0 ? '' : activeFamilyId ? datesByFamily[activeFamilyId] ?? '' : datesByFamily;
   const visibleDate = dateKey(dayOffset, displayTimezone);
   const directPetIds = useMemo(() => effectiveFilter.kind === 'family' ? [] : accessiblePets.pets.filter((pet) => !(pet.family_ids ?? []).some((familyId) => familyIds.includes(familyId))).map((pet) => pet.id), [accessiblePets.pets, effectiveFilter.kind, familyIds]);
-  const today = useTodayForCircles(activeFamilyId ? [activeFamilyId] : familyIds, historicalDate, directPetIds, dayOffset === 0 ? '' : visibleDate);
-  const alertsQuery = useAlertsForCircles(dayOffset === 0 ? (activeFamilyId ? [activeFamilyId] : familyIds) : []);
+  const today = useTodayForFamilies(activeFamilyId ? [activeFamilyId] : familyIds, historicalDate, directPetIds, dayOffset === 0 ? '' : visibleDate);
+  const alertsQuery = useAlertsForFamilies(dayOffset === 0 ? (activeFamilyId ? [activeFamilyId] : familyIds) : []);
   const pets = useMemo(() => effectiveFilter.kind === 'pet' ? today.data.pets.filter((pet) => pet.pet_id === effectiveFilter.petId) : today.data.pets, [effectiveFilter, today.data.pets]);
   const visibleAlerts = useMemo(() => effectiveFilter.kind === 'pet' ? alertsQuery.alerts.filter((alert) => alert.pet_id === effectiveFilter.petId) : alertsQuery.alerts, [alertsQuery.alerts, effectiveFilter]);
   const canActOnPet = (petId: string) => {
@@ -148,7 +148,7 @@ export default function TodayRoute() {
     if (!accessiblePet) return false;
     if (accessiblePet.access_role) return accessiblePet.access_role !== 'viewer' && accessiblePet.access_role !== 'read_only';
     if (accessiblePet.current_owner_user_id === me.data?.user.id) return true;
-    const linkedFamilyIds = accessiblePet.family_ids?.length ? accessiblePet.family_ids : [accessiblePet.circle_id];
+    const linkedFamilyIds = accessiblePet.family_ids ?? [];
     const roles = families.filter((family) => linkedFamilyIds.includes(family.id)).map((family) => family.role).filter(Boolean);
     return roles.some((role) => role !== 'viewer' && role !== 'read_only');
   };
@@ -165,7 +165,7 @@ export default function TodayRoute() {
   const items = careView === 'mine' ? allItems.filter(({ assignedToMe, item }) => assignedToMe || item.log?.done_by === me.data?.user.id) : allItems;
   const visiblePets = useMemo(() => {
     if (effectiveFilter.kind === 'pet') return accessiblePets.pets.filter((pet) => pet.id === effectiveFilter.petId);
-    if (effectiveFilter.kind === 'family') return accessiblePets.pets.filter((pet) => (pet.family_ids ?? [pet.circle_id]).includes(effectiveFilter.familyId));
+    if (effectiveFilter.kind === 'family') return accessiblePets.pets.filter((pet) => (pet.family_ids ?? []).includes(effectiveFilter.familyId));
     return accessiblePets.pets;
   }, [accessiblePets.pets, effectiveFilter]);
   const canAddCare = visiblePets.some((pet) => canActOnPet(pet.id));
@@ -204,10 +204,10 @@ export default function TodayRoute() {
     router.push({ pathname: '/(tabs)/pets', params: { intent: 'care', familyId: effectiveFilter.kind === 'family' ? effectiveFilter.familyId : undefined } });
   };
 
-  const retryToday = () => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); void today.refetch(); };
-  const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData) || (today.isError && !today.hasData);
-  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (today.isError && today.hasData));
-  if (circles.isLoading || accessiblePets.isLoading || today.isLoading || me.isLoading) return <Screen><LoadingState label="Loading today’s care" /></Screen>;
+  const retryToday = () => { void me.refetch(); void familyQuery.refetch(); void accessiblePets.refetch(); void today.refetch(); };
+  const blockingError = (me.isError && !me.data) || (familyQuery.isError && !familyQuery.data) || (accessiblePets.isError && !accessiblePets.hasData) || (today.isError && !today.hasData);
+  const hasStaleData = Boolean((me.isError && me.data) || (familyQuery.isError && familyQuery.data) || (accessiblePets.isError && accessiblePets.hasData) || (today.isError && today.hasData));
+  if (familyQuery.isLoading || accessiblePets.isLoading || today.isLoading || me.isLoading) return <Screen><LoadingState label="Loading today’s care" /></Screen>;
   if (blockingError) return <Screen contentContainerStyle={styles.center}><QueryErrorState title="Today is waiting" body="We could not reach your care plan right now." onRetry={retryToday} /></Screen>;
 
   if (families.length === 0 && accessiblePets.pets.length === 0) return <Screen scroll contentContainerStyle={styles.content}><View style={styles.welcomeTop}><View style={styles.welcomeCopy}><AppText variant="caption" muted>PLANET / TODAY</AppText><AppText variant="display">Build your care space.</AppText></View><View style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}><SparkleIcon size={21} color={theme.colors.brandStrong} weight="duotone" /></View></View><LinearGradient colors={[theme.colors.brandStrong, theme.colors.brand]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyHero}><PawPrintIcon size={30} color={theme.colors.onBrand} weight="duotone" /><AppText variant="title" style={{ color: theme.colors.onBrand }}>Start with the people and Pet you care about.</AppText><AppText style={{ color: theme.colors.onBrandSoft }}>Create a Family or join one with an invite. Today will become useful as soon as there is a shared care space.</AppText></LinearGradient><Card style={styles.setupCard}><AppText variant="heading">Choose your starting point</AppText><AppText muted>Create a shared space for the people, Pets and care that belong together.</AppText><View style={styles.setupActions}><Button label="Create a Family" onPress={() => router.push({ pathname: '/(tabs)/family', params: { mode: 'create' } })} /><Button label="Join with an invite" variant="secondary" onPress={() => router.push({ pathname: '/(tabs)/family', params: { mode: 'join' } })} /></View></Card></Screen>;
@@ -220,7 +220,7 @@ export default function TodayRoute() {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}><View style={styles.dayRow}>{[0, -1, -2, -3, -4, -5, -6].map((offset) => { const value = dateKey(offset, displayTimezone); const selected = offset === dayOffset; return <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setDayOffset(offset)} style={[styles.dayChip, { borderColor: selected ? theme.colors.brandStrong : theme.colors.border, backgroundColor: selected ? theme.colors.brandStrong : theme.colors.surface }]}><AppText variant="caption" style={{ color: selected ? theme.colors.onBrand : theme.colors.textMuted }}>{shortDateLabel(value, offset)}</AppText></Pressable>; })}</View></ScrollView>
     <View style={styles.filterRow}><View style={styles.filterGrow}><ViewFilterBar value={effectiveFilter} families={families} pets={accessiblePets.pets} onChange={setFilter} /></View>{canAddCare ? <Pressable accessibilityRole="button" accessibilityLabel={visiblePets.length === 1 ? 'Add care' : 'Choose a Pet for care'} onPress={openCareSetup} style={({ pressed }) => [styles.addButton, { backgroundColor: theme.colors.brandStrong }, pressed && { opacity: theme.motion.pressOpacity }]}><PlusIcon size={17} color={theme.colors.onBrand} weight="bold" /><AppText variant="label" style={{ color: theme.colors.onBrand }}>Add care</AppText></Pressable> : null}</View>
     <View style={styles.careViewRow}><AppText variant="caption" muted>CARE VIEW</AppText><View style={[styles.careViewToggle, { backgroundColor: theme.colors.brandSoft }]}><Pressable accessibilityRole="button" accessibilityLabel="Show all care" accessibilityState={{ selected: careView === 'all' }} onPress={() => setCareView('all')} style={[styles.careViewOption, careView === 'all' && { backgroundColor: theme.colors.surface, ...theme.shadow.card }]}><AppText variant="caption" style={{ color: careView === 'all' ? theme.colors.text : theme.colors.textMuted }}>All care</AppText></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Show my care" accessibilityState={{ selected: careView === 'mine' }} onPress={() => setCareView('mine')} style={[styles.careViewOption, careView === 'mine' && { backgroundColor: theme.colors.surface, ...theme.shadow.card }]}><AppText variant="caption" style={{ color: careView === 'mine' ? theme.colors.text : theme.colors.textMuted }}>My care</AppText></Pressable></View></View>
-    {hasStaleData ? <StaleDataNotice onRetry={retryToday} retrying={circles.isFetching || accessiblePets.isLoading || today.isLoading || me.isFetching} /> : null}
+    {hasStaleData ? <StaleDataNotice onRetry={retryToday} retrying={familyQuery.isFetching || accessiblePets.isLoading || today.isLoading || me.isFetching} /> : null}
     {visibleAlerts.length ? <View style={styles.alerts}><AppText variant="caption" muted style={styles.alertLabel}>NEEDS A CLOSER LOOK</AppText>{visibleAlerts.slice(0, 3).map((alert) => <AlertCard key={alert.id} title={alert.title} body={alert.body} petName={alert.pet_name} severity={alert.severity} onPress={() => router.push({ pathname: '/(tabs)/timeline', params: { petId: alert.pet_id } })} />)}</View> : alertsQuery.isError ? <View style={styles.alertRetry}><AppText variant="caption" muted>We could not check for care alerts.</AppText><Button label="Retry" variant="ghost" onPress={() => void alertsQuery.refetch()} /></View> : null}
     {items.length > 0 ? <><View style={[styles.progressCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><View style={styles.progressHeader}><View style={styles.progressCopy}><AppText variant="caption" style={{ color: theme.colors.accentStrong }}>TODAY'S CARE</AppText><AppText variant="title">{completed} of {items.length} done</AppText></View><AppText variant="title" style={{ color: theme.colors.brandStrong }}>{Math.round((completed / items.length) * 100)}%</AppText></View><View style={[styles.progressTrack, { backgroundColor: theme.colors.surfaceRaised }]}><View style={[styles.progressFill, { backgroundColor: theme.colors.brandStrong, width: `${Math.round((completed / items.length) * 100)}%` }]} /></View><AppText variant="caption" muted>{completed === items.length ? 'Everything important is cared for.' : skipped ? `${skipped} skipped · ${openCount} still open` : 'Small actions add up to a cared-for life.'}</AppText></View>{openCount > 0 ? <View style={styles.sectionHeading}><View><AppText variant="title">What needs you</AppText><AppText variant="caption" muted>{openCount} still to care for</AppText></View><ClockIcon size={22} color={theme.colors.textSubtle} weight="duotone" /></View> : skipped > 0 ? <View style={styles.sectionHeading}><View><AppText variant="title">Still to revisit</AppText><AppText variant="caption" muted>{skipped} skipped today</AppText></View><ClockIcon size={22} color={theme.colors.warning} weight="duotone" /></View> : <View style={styles.sectionHeading}><View><AppText variant="title">All caught up</AppText><AppText variant="caption" muted>{completed} {completed === 1 ? 'care moment' : 'care moments'} completed</AppText></View><CheckIcon size={22} color={theme.colors.brandStrong} weight="bold" /></View>}</> : null}
     {items.length === 0 ? <Card style={styles.emptyCard}><View style={[styles.emptyIcon, { backgroundColor: theme.colors.surfaceRaised }]}><PawPrintIcon size={24} color={theme.colors.brandStrong} weight="duotone" /></View><AppText variant="heading">{careView === 'mine' && allItems.length > 0 ? 'No care assigned to you' : dayOffset === 0 ? 'Give today a first care moment' : 'No care moments on this day'}</AppText><AppText muted>{careView === 'mine' && allItems.length > 0 ? 'Switch to All care to see the full shared plan.' : dayOffset === 0 ? 'Choose a simple routine and it will appear here whenever it is due.' : 'Nothing was scheduled or recorded for this day.'}</AppText>{careView === 'mine' && allItems.length > 0 ? <Button label="Show all care" variant="secondary" onPress={() => setCareView('all')} /> : dayOffset === 0 && canAddCare ? <Button label={visiblePets.length === 1 ? 'Add first care plan' : 'Choose a Pet'} variant="secondary" onPress={openCareSetup} /> : dayOffset === 0 ? <AppText variant="caption" muted>Care plans are managed by a Pet owner or caregiver.</AppText> : null}</Card> : <View style={styles.moments}>{openCount > 0 ? renderGroups(groupedOpenItems) : null}{skipped > 0 ? <View style={styles.statusSection}><View style={styles.statusSectionHeading}><AppText variant="caption" muted>SKIPPED TODAY</AppText></View>{renderGroups(groupedSkippedItems)}</View> : null}{completed > 0 ? <View style={styles.statusSection}><View style={styles.statusSectionHeading}><AppText variant="caption" muted>COMPLETED TODAY</AppText></View>{renderGroups(groupedCompletedItems)}</View> : null}</View>}

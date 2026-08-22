@@ -22,7 +22,7 @@ import { useToast } from "../../src/core/providers/toast-provider";
 import { useIdempotencyKey } from "../../src/core/hooks/use-idempotency-key";
 import {
   useAccessiblePets,
-  useCircles,
+  useFamilies,
   useInvalidateApi,
   useMe,
   useTimeline,
@@ -105,9 +105,9 @@ export default function TimelineRoute() {
   const navigation = useNavigation();
   const me = useMe();
   const params = useLocalSearchParams<{ petId?: string; choosePet?: string }>();
-  const circles = useCircles();
-  const circleIds = circles.data?.circles.map((item) => item.id) ?? [];
-  const accessiblePets = useAccessiblePets(circleIds);
+  const families = useFamilies();
+  const familyIds = families.data?.families.map((item) => item.id) ?? [];
+  const accessiblePets = useAccessiblePets(familyIds);
   const selectedPetId =
     typeof params.petId === "string" ? params.petId : undefined;
   const choosePet = params.choosePet === "1";
@@ -130,7 +130,7 @@ export default function TimelineRoute() {
   // different story behind their back.
   const pet = accessiblePets.pets.find((candidate) => candidate.id === activePetId);
   const petFamily = pet
-    ? circles.data?.circles.find((circle) => circle.id === pet.circle_id) ?? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
+    ? families.data?.families.find((family) => family.id === pet.family_ids?.[0])
     : undefined;
   const petTimeZone = petFamily?.timezone || undefined;
   const timeline = useTimeline(pet?.id);
@@ -285,12 +285,12 @@ export default function TimelineRoute() {
     }
     create.mutate();
   }
-  const retryTimeline = () => { void me.refetch(); void circles.refetch(); void accessiblePets.refetch(); if (pet) void timeline.refetch(); };
-  const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData) || (timeline.isError && !timeline.data);
-  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (timeline.isError && timeline.data));
+  const retryTimeline = () => { void me.refetch(); void families.refetch(); void accessiblePets.refetch(); if (pet) void timeline.refetch(); };
+  const blockingError = (me.isError && !me.data) || (families.isError && !families.data) || (accessiblePets.isError && !accessiblePets.hasData) || (timeline.isError && !timeline.data);
+  const hasStaleData = Boolean((me.isError && me.data) || (families.isError && families.data) || (accessiblePets.isError && accessiblePets.hasData) || (timeline.isError && timeline.data));
   if (
     me.isLoading ||
-    circles.isLoading ||
+    families.isLoading ||
     accessiblePets.isLoading ||
     (pet && timeline.isLoading)
   )
@@ -342,9 +342,9 @@ export default function TimelineRoute() {
     else groups.push({ label, events: [event] });
     return groups;
   }, []);
-  const linkedFamilyIds = new Set(pet.family_ids?.length ? pet.family_ids : [pet.circle_id]);
-  const hasOwnerAccess = pet.current_owner_user_id === me.data?.user.id || Boolean(circles.data?.circles.some((circle) => linkedFamilyIds.has(circle.id) && circle.role === "owner"));
-  const knownFamilyRoles = circles.data?.circles.filter((circle) => linkedFamilyIds.has(circle.id)).map((circle) => circle.role).filter(Boolean) ?? [];
+  const linkedFamilyIds = new Set(pet.family_ids ?? []);
+  const hasOwnerAccess = pet.current_owner_user_id === me.data?.user.id || Boolean(families.data?.families.some((family) => linkedFamilyIds.has(family.id) && family.role === "owner"));
+  const knownFamilyRoles = families.data?.families.filter((family) => linkedFamilyIds.has(family.id)).map((family) => family.role).filter(Boolean) ?? [];
   const canRecord = (pet.access_role && pet.access_role !== "viewer" && pet.access_role !== "read_only") || pet.current_owner_user_id === me.data?.user.id || knownFamilyRoles.some((role) => role !== "viewer" && role !== "read_only");
   const canEditEvent = (event: TimelineEvent) => event.source === "user" && (event.recorded_by === me.data?.user.id || hasOwnerAccess);
   return (

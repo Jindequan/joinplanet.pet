@@ -7,32 +7,32 @@ export function useMe(enabled = true) {
   return useQuery({ queryKey: queryKeys.me, queryFn: planetApi.me.get, enabled });
 }
 
-export function useCircles(enabled = true) {
-  return useQuery({ queryKey: queryKeys.circles, queryFn: planetApi.circles.list, enabled });
+export function useFamilies(enabled = true) {
+  return useQuery({ queryKey: queryKeys.families, queryFn: planetApi.families.list, enabled });
 }
 
-export function useDeletedCircles(enabled = true) {
-  return useQuery({ queryKey: queryKeys.deletedCircles, queryFn: planetApi.circles.deleted, enabled });
+export function useDeletedFamilies(enabled = true) {
+  return useQuery({ queryKey: queryKeys.deletedFamilies, queryFn: planetApi.families.deleted, enabled });
 }
 
-export function useCircle(circleId?: string) {
-  return useQuery({ queryKey: queryKeys.circle(circleId ?? ''), queryFn: () => planetApi.circles.detail(circleId as string), enabled: Boolean(circleId) });
+export function useFamily(familyId?: string) {
+  return useQuery({ queryKey: queryKeys.family(familyId ?? ''), queryFn: () => planetApi.families.detail(familyId as string), enabled: Boolean(familyId) });
 }
 
-export function useCirclePets(circleId?: string) {
-  return useQuery({ queryKey: queryKeys.pets(circleId ?? ''), queryFn: () => planetApi.pets.list(circleId as string), enabled: Boolean(circleId) });
+export function useFamilyPets(familyId?: string) {
+  return useQuery({ queryKey: queryKeys.pets(familyId ?? ''), queryFn: () => planetApi.pets.list(familyId as string), enabled: Boolean(familyId) });
 }
 
-export function useAccessiblePets(circleIds: string[]) {
+export function useAccessiblePets(familyIds: string[]) {
   const accessible = useQuery({ queryKey: queryKeys.accessiblePets, queryFn: planetApi.pets.listAccessible });
-  const circleIdsKey = circleIds.join('\u001f');
-  const stableCircleIds = useMemo(() => [...circleIds], [circleIdsKey]);
-  const circleQueries = useMemo(() => stableCircleIds.map((circleId) => ({
-    queryKey: queryKeys.pets(circleId),
-    queryFn: () => planetApi.pets.list(circleId),
-  })), [stableCircleIds]);
+  const familyIdsKey = familyIds.join('\u001f');
+  const stableFamilyIds = useMemo(() => [...familyIds], [familyIdsKey]);
+  const familyQueries = useMemo(() => stableFamilyIds.map((familyId) => ({
+    queryKey: queryKeys.pets(familyId),
+    queryFn: () => planetApi.pets.list(familyId),
+  })), [stableFamilyIds]);
   const queries = useQueries({
-    queries: circleQueries,
+    queries: familyQueries,
   });
   const petsById = new Map<string, NonNullable<(typeof queries)[number]['data']>['pets'][number]>();
   queries.forEach((query) => query.data?.pets.forEach((pet) => petsById.set(pet.id, pet)));
@@ -51,26 +51,26 @@ export function usePet(petId?: string) {
   return useQuery({ queryKey: queryKeys.pet(petId ?? ''), queryFn: () => planetApi.pets.get(petId as string), enabled: Boolean(petId) });
 }
 
-export function useToday(circleId?: string, date = '') {
-  return useQuery({ queryKey: queryKeys.today(circleId ?? '', date), queryFn: () => planetApi.circles.today(circleId as string, date || undefined), enabled: Boolean(circleId) });
+export function useToday(familyId?: string, date = '') {
+  return useQuery({ queryKey: queryKeys.today(familyId ?? '', date), queryFn: () => planetApi.families.today(familyId as string, date || undefined), enabled: Boolean(familyId) });
 }
 
-export function useTodayForCircles(circleIds: string[], date: string | Record<string, string> = '', directPetIds: string[] = [], directDate = '') {
-  const circleIdsKey = circleIds.join('\u001f');
+export function useTodayForFamilies(familyIds: string[], date: string | Record<string, string> = '', directPetIds: string[] = [], directDate = '') {
+  const familyIdsKey = familyIds.join('\u001f');
   const directPetIdsKey = directPetIds.join('\u001f');
   const dateKey = typeof date === 'string' ? date : JSON.stringify(date);
-  const stableCircleIds = useMemo(() => [...circleIds], [circleIdsKey]);
+  const stableFamilyIds = useMemo(() => [...familyIds], [familyIdsKey]);
   const stableDirectPetIds = useMemo(() => [...directPetIds], [directPetIdsKey]);
   const stableDate = useMemo(() => date, [dateKey]);
-  const circleQueries = useMemo(() => stableCircleIds.map((circleId) => {
-    const circleDate = typeof stableDate === 'string' ? stableDate : stableDate[circleId] ?? '';
+  const familyQueries = useMemo(() => stableFamilyIds.map((familyId) => {
+    const familyDate = typeof stableDate === 'string' ? stableDate : stableDate[familyId] ?? '';
     return {
-      queryKey: queryKeys.today(circleId, circleDate),
-      queryFn: () => planetApi.circles.today(circleId, circleDate || undefined),
+      queryKey: queryKeys.today(familyId, familyDate),
+      queryFn: () => planetApi.families.today(familyId, familyDate || undefined),
     };
-  }), [dateKey, stableCircleIds, stableDate]);
+  }), [dateKey, stableFamilyIds, stableDate]);
   const queries = useQueries({
-    queries: circleQueries,
+    queries: familyQueries,
   });
   const directQueriesConfig = useMemo(() => stableDirectPetIds.map((petId) => ({
     queryKey: ['today', 'pet', petId, directDate],
@@ -120,35 +120,35 @@ export function useMedications(petId?: string) {
   return useQuery({ queryKey: queryKeys.medications(petId ?? ''), queryFn: () => planetApi.pets.medications(petId as string), enabled: Boolean(petId) });
 }
 
-export function useCareItems(petId?: string, includeArchived = false) {
-  return useQuery({ queryKey: queryKeys.careItems(petId ?? '', includeArchived), queryFn: () => planetApi.pets.careItems(petId as string, includeArchived), enabled: Boolean(petId) });
+export function useCarePlans(petId?: string, includeArchived = false) {
+  return useQuery({ queryKey: queryKeys.carePlans(petId ?? '', includeArchived), queryFn: () => planetApi.pets.carePlans(petId as string, includeArchived), enabled: Boolean(petId) });
 }
 
 export function useTodayForPet(petId?: string, date = '') {
   return useQuery({ queryKey: queryKeys.todayPet(petId ?? '', date), queryFn: () => planetApi.pets.today(petId as string, date || undefined), enabled: Boolean(petId) });
 }
 
-export function useCareAssignments(careItemId?: string) {
-  return useQuery({ queryKey: queryKeys.assignments(careItemId ?? ''), queryFn: () => planetApi.careItems.assignments(careItemId as string), enabled: Boolean(careItemId) });
+export function useCareAssignments(carePlanId?: string) {
+  return useQuery({ queryKey: queryKeys.assignments(carePlanId ?? ''), queryFn: () => planetApi.carePlans.assignments(carePlanId as string), enabled: Boolean(carePlanId) });
 }
 
 export function usePetShares(petId?: string, enabled = true) {
   return useQuery({ queryKey: queryKeys.shares(petId ?? ''), queryFn: () => planetApi.pets.shares(petId as string), enabled: Boolean(petId) && enabled });
 }
 
-export function useTransfers(circleId?: string, direction: 'incoming' | 'outgoing' = 'incoming') {
-  return useQuery({ queryKey: queryKeys.transfers(circleId ?? '', direction), queryFn: () => planetApi.transfers.list(circleId as string, direction), enabled: Boolean(circleId) });
+export function useTransfers(familyId?: string, direction: 'incoming' | 'outgoing' = 'incoming') {
+  return useQuery({ queryKey: queryKeys.transfers(familyId ?? '', direction), queryFn: () => planetApi.transfers.list(familyId as string, direction), enabled: Boolean(familyId) });
 }
 
-export function useAlertsForCircles(circleIds: string[]) {
-  const circleIdsKey = circleIds.join('\u001f');
-  const stableCircleIds = useMemo(() => [...circleIds], [circleIdsKey]);
-  const circleQueries = useMemo(() => stableCircleIds.map((circleId) => ({
-    queryKey: queryKeys.alerts(circleId),
-    queryFn: () => planetApi.circles.alerts(circleId),
-  })), [stableCircleIds]);
+export function useAlertsForFamilies(familyIds: string[]) {
+  const familyIdsKey = familyIds.join('\u001f');
+  const stableFamilyIds = useMemo(() => [...familyIds], [familyIdsKey]);
+  const familyQueries = useMemo(() => stableFamilyIds.map((familyId) => ({
+    queryKey: queryKeys.alerts(familyId),
+    queryFn: () => planetApi.families.alerts(familyId),
+  })), [stableFamilyIds]);
   const queries = useQueries({
-    queries: circleQueries,
+    queries: familyQueries,
   });
   const alerts: Alert[] = [];
   queries.forEach((query) => { if (query.data?.alerts) alerts.push(...query.data.alerts); });
@@ -163,46 +163,46 @@ export function useAlertsForCircles(circleIds: string[]) {
   };
 }
 
-export function useCircleUsage(circleId?: string) {
-  return useQuery({ queryKey: queryKeys.usage(circleId ?? ''), queryFn: () => planetApi.circles.usage(circleId as string), enabled: Boolean(circleId) });
+export function useFamilyUsage(familyId?: string) {
+  return useQuery({ queryKey: queryKeys.usage(familyId ?? ''), queryFn: () => planetApi.families.usage(familyId as string), enabled: Boolean(familyId) });
 }
 
 export function useMeUsage(enabled = true) {
   return useQuery({ queryKey: queryKeys.meUsage, queryFn: planetApi.me.usage, enabled });
 }
 
-export function useAlerts(circleId?: string) {
-  return useQuery({ queryKey: queryKeys.alerts(circleId ?? ''), queryFn: () => planetApi.circles.alerts(circleId as string), enabled: Boolean(circleId) });
+export function useAlerts(familyId?: string) {
+  return useQuery({ queryKey: queryKeys.alerts(familyId ?? ''), queryFn: () => planetApi.families.alerts(familyId as string), enabled: Boolean(familyId) });
 }
 
-export function useNotificationPrefs(circleId?: string) {
-  return useQuery({ queryKey: queryKeys.notificationPrefs(circleId ?? ''), queryFn: () => planetApi.circles.notificationPrefs(circleId as string), enabled: Boolean(circleId) });
+export function useNotificationPrefs(familyId?: string) {
+  return useQuery({ queryKey: queryKeys.notificationPrefs(familyId ?? ''), queryFn: () => planetApi.families.notificationPrefs(familyId as string), enabled: Boolean(familyId) });
 }
 
 export function useInvalidateApi() {
   const client = useQueryClient();
   return {
     me: () => client.invalidateQueries({ queryKey: queryKeys.me }),
-    circles: () => client.invalidateQueries({ queryKey: queryKeys.circles }),
-    deletedCircles: () => client.invalidateQueries({ queryKey: queryKeys.deletedCircles }),
-    circle: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.circle(circleId) }),
-    pets: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.pets(circleId) }),
+    families: () => client.invalidateQueries({ queryKey: queryKeys.families }),
+    deletedFamilies: () => client.invalidateQueries({ queryKey: queryKeys.deletedFamilies }),
+    family: (familyId: string) => client.invalidateQueries({ queryKey: queryKeys.family(familyId) }),
+    pets: (familyId: string) => client.invalidateQueries({ queryKey: queryKeys.pets(familyId) }),
     petsAll: () => client.invalidateQueries({ queryKey: ['pets'] }),
     pet: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.pet(petId) }),
-    today: (circleId: string) => client.invalidateQueries({ queryKey: ['today', circleId] }),
+    today: (familyId: string) => client.invalidateQueries({ queryKey: ['today', familyId] }),
     todayAll: () => client.invalidateQueries({ queryKey: ['today'] }),
     timeline: (petId: string) => client.invalidateQueries({ queryKey: ['timeline', petId] }),
     medications: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.medications(petId) }),
     // Pet surfaces request both the active-only and include-archived task lists.
     // Invalidate their shared prefix so a care-plan mutation cannot leave the
     // Pet header stale while Today has already refreshed.
-    careItems: (petId: string) => client.invalidateQueries({ queryKey: ['care-items', petId] }),
-    assignments: (careItemId: string) => client.invalidateQueries({ queryKey: queryKeys.assignments(careItemId) }),
+    carePlans: (petId: string) => client.invalidateQueries({ queryKey: ['care-plans', petId] }),
+    assignments: (carePlanId: string) => client.invalidateQueries({ queryKey: queryKeys.assignments(carePlanId) }),
     shares: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.shares(petId) }),
-    transfers: (circleId: string) => client.invalidateQueries({ queryKey: ['transfers', circleId] }),
-    alerts: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.alerts(circleId) }),
+    transfers: (familyId: string) => client.invalidateQueries({ queryKey: ['transfers', familyId] }),
+    alerts: (familyId: string) => client.invalidateQueries({ queryKey: queryKeys.alerts(familyId) }),
     alertsAll: () => client.invalidateQueries({ queryKey: ['alerts'] }),
-    notificationPrefs: (circleId: string) => client.invalidateQueries({ queryKey: queryKeys.notificationPrefs(circleId) }),
+    notificationPrefs: (familyId: string) => client.invalidateQueries({ queryKey: queryKeys.notificationPrefs(familyId) }),
   };
 }
 

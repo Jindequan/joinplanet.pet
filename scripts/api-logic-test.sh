@@ -51,24 +51,24 @@ TC=$(token_for "$THIRD")
 [ -n "$TA" ] && [ "$TA" != "null" ] && [ -n "$TB" ] && [ -n "$TC" ] || { echo "FATAL: token bootstrap failed"; exit 1; }
 
 echo "== 配额与归档 =="
-R=$(request POST /api/v1/circles "$TA" '{"name":"Logic Family","timezone":"Asia/Singapore"}' "logic-circle-$TS")
-CIRCLE=$(jq -r '.circle.id' <<<"$R")
+R=$(request POST /api/v1/families "$TA" '{"name":"Logic Family","timezone":"Asia/Singapore"}' "logic-family-$TS")
+CIRCLE=$(jq -r '.family.id' <<<"$R")
 INVITE=$(jq -r '.invite_code' <<<"$R")
-check "create Family" '.circle.id and .invite_code' "$R"
-R=$(request POST "/api/v1/circles/$CIRCLE/pets" "$TA" '{"name":"LogicFox","species":"dog"}' "logic-pet-$TS-1")
+check "create Family" '.family.id and .invite_code' "$R"
+R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"LogicFox","species":"dog"}' "logic-pet-$TS-1")
 PET1=$(jq -r '.pet.id' <<<"$R")
 check "create first Pet" '.pet.id and .pet.name == "LogicFox"' "$R"
-R=$(request POST /api/v1/circles/join "$TB" "{\"code\":\"$INVITE\"}" "" "" 10.20.0.1)
-check "second member joins" '.circle.id' "$R"
-R=$(request_with_status POST /api/v1/circles/join "$TC" "{\"code\":\"$INVITE\"}" "" "" 10.20.0.2)
+R=$(request POST /api/v1/families/join "$TB" "{\"code\":\"$INVITE\"}" "" "" 10.20.0.1)
+check "second member joins" '.family.id' "$R"
+R=$(request_with_status POST /api/v1/families/join "$TC" "{\"code\":\"$INVITE\"}" "" "" 10.20.0.2)
 STATUS=$(status_part <<<"$R"); check "member quota is enforced" '.error.code == "QUOTA_MEMBERS_EXCEEDED"' "$(body_part <<<"$R")"; [ "$STATUS" = 403 ] && ok "member quota returns 403" || bad "member quota returns 403" "$STATUS"
-R=$(request POST "/api/v1/circles/$CIRCLE/pets" "$TA" '{"name":"Second","species":"cat"}' "logic-pet-$TS-2")
+R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Second","species":"cat"}' "logic-pet-$TS-2")
 PET2=$(jq -r '.pet.id' <<<"$R")
-R=$(request_with_status POST "/api/v1/circles/$CIRCLE/pets" "$TA" '{"name":"Third","species":"cat"}' "logic-pet-$TS-3")
+R=$(request_with_status POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Third","species":"cat"}' "logic-pet-$TS-3")
 STATUS=$(status_part <<<"$R"); check "Pet quota is enforced" '.error.code == "QUOTA_PETS_EXCEEDED"' "$(body_part <<<"$R")"; [ "$STATUS" = 403 ] && ok "Pet quota returns 403" || bad "Pet quota returns 403" "$STATUS"
 R=$(request POST "/api/v1/pets/$PET2/archive" "$TA")
 check "archive frees an active slot" '.pet.archived_at != null' "$R"
-R=$(request POST "/api/v1/circles/$CIRCLE/pets" "$TA" '{"name":"Third","species":"cat"}' "logic-pet-$TS-4")
+R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Third","species":"cat"}' "logic-pet-$TS-4")
 PET3=$(jq -r '.pet.id' <<<"$R")
 check "archived Pet frees quota" '.pet.id' "$R"
 R=$(request_with_status POST "/api/v1/pets/$PET2/unarchive" "$TA")
@@ -103,7 +103,7 @@ echo "== 导出、清理 =="
 R=$(request GET "/api/v1/pets/$PET1/export" "$TA")
 check "export includes the Pet" '.pet.id == "'"$PET1"'"' "$R"
 check "export includes timeline" '.timeline' "$R"
-R=$(request GET "/api/v1/circles/$CIRCLE/usage" "$TA")
+R=$(request GET "/api/v1/families/$CIRCLE/usage" "$TA")
 check "usage exposes quota state" '.pet_max and .member_max' "$R"
 request DELETE "/api/v1/pets/$PET1" "$TA" "{\"confirm\":\"$PET1\"}" >/dev/null
 request DELETE "/api/v1/pets/$PET2" "$TA" "{\"confirm\":\"$PET2\"}" >/dev/null

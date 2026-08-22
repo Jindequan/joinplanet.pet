@@ -925,6 +925,7 @@ export default function PetRoute() {
         label="Pet workspace"
         value={petSection}
         onChange={setPetSection}
+        compact
         options={[
           { value: "overview", label: "Overview" },
           { value: "care", label: "Care" },

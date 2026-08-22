@@ -25,7 +25,7 @@ export function ToastProvider({ children }: React.PropsWithChildren) {
     <ToastContext.Provider value={value}>
       {children}
       {toast ? (
-        <View style={[styles.host, { paddingTop: insets.top + theme.spacing.sm }]}>
+        <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) + 82 }]}>
           <View style={[styles.toast, theme.shadow.floating, { backgroundColor: theme.colors.inverseSurface }]}>
             <AppText variant="caption" style={[styles.message, { color: theme.colors.inverseText }]}>{toast.message}</AppText>
             {toast.actionLabel ? <Pressable accessibilityRole="button" accessibilityLabel={toast.actionLabel} onPress={() => { toast.onAction?.(); hideToast(); }} style={styles.actionButton}><AppText variant="label" style={{ color: theme.colors.brand }}>{toast.actionLabel}</AppText></Pressable> : null}

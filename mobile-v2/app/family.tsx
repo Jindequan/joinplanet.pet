@@ -374,6 +374,7 @@ export default function FamilyRoute() {
             label="Family workspace"
             value={familySection}
             onChange={setFamilySection}
+            compact
             options={[
               { value: "overview", label: "Overview" },
               { value: "people", label: "People" },

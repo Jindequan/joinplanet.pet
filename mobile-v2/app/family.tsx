@@ -34,6 +34,13 @@ import {
 
 type FamilySection = "overview" | "people" | "manage";
 
+function memberRoleLabel(role: string) {
+  if (role === "owner") return "Family owner";
+  if (role === "editor") return "Editor";
+  if (role === "viewer" || role === "read_only") return role === "viewer" ? "Viewer" : "Read-only viewer";
+  return "Caregiver";
+}
+
 function deviceTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
@@ -529,6 +536,27 @@ function FamilyRoute() {
               {pluralLabel(members.length, "active member", "active members")}
             </AppText>
           </View>
+          <Card style={styles.inviteCard}>
+            <View style={styles.inviteHeader}>
+              <View style={styles.rowCopy}>
+                <AppText variant="heading">Invite someone to help</AppText>
+                <AppText variant="caption" muted>Give a trusted person a clear way into this care space.</AppText>
+              </View>
+              <View style={[styles.inviteIcon, { backgroundColor: theme.colors.accentSurface }]}>
+                <PlusIcon size={18} color={theme.colors.accentStrong} weight="bold" />
+              </View>
+            </View>
+            {circle.role === "owner" ? invite ? (
+              <View style={[styles.codeBox, { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border }]}>
+                <View style={styles.codeCopy}>
+                  <AppText selectable variant="title" style={{ letterSpacing: 2 }}>{invite}</AppText>
+                  <AppText variant="caption" muted>Share this code with someone you trust.</AppText>
+                </View>
+                <Button label={copied ? "Copied" : "Copy code"} variant="secondary" onPress={() => void copyInvite()} />
+              </View>
+            ) : <Button label="Create an invite code" variant="secondary" loading={refresh.isPending} onPress={() => refresh.mutate()} />
+              : <AppText variant="caption" muted>Only the Family owner can create or refresh the invite code.</AppText>}
+          </Card>
           <Card style={styles.members}>
             {members.map((member, index) => {
               const memberName = member.user_id === me.data?.user.id ? "You" : humanDisplayName(member) ?? "Planet member";
@@ -548,7 +576,7 @@ function FamilyRoute() {
                     styles.memberAvatar,
                     {
                       backgroundColor:
-                        index === 0
+                        member.role === "owner"
                           ? theme.colors.brandSoft
                           : theme.colors.accentSurface,
                     },
@@ -557,7 +585,7 @@ function FamilyRoute() {
                   <UserCircleIcon
                     size={23}
                     color={
-                      index === 0
+                      member.role === "owner"
                         ? theme.colors.brandStrong
                         : theme.colors.accentStrong
                     }
@@ -569,8 +597,7 @@ function FamilyRoute() {
                     {memberName}
                   </AppText>
                   <AppText variant="caption" muted>
-                    {member.role === "owner" ? "Family owner" : "Caregiver"} ·
-                    active
+                    {memberRoleLabel(member.role)} · active
                   </AppText>
                 </View>
                 {member.role === "owner" ? (

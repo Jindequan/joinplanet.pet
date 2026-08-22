@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import {
   AppText,
@@ -100,6 +100,7 @@ function eventDayLabel(value: string, timeZone?: string) {
 export default function TimelineRoute() {
   const { theme } = useTheme();
   const { showToast } = useToast();
+  const navigation = useNavigation();
   const me = useMe();
   const params = useLocalSearchParams<{ petId?: string; choosePet?: string }>();
   const circles = useCircles();
@@ -143,6 +144,11 @@ export default function TimelineRoute() {
   const [olderEvents, setOlderEvents] = useState<TimelineEvent[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const createIntent = useIdempotencyKey();
+
+  useEffect(() => {
+    navigation.setOptions({ tabBarStyle: adding ? { display: "none" } : undefined });
+    return () => navigation.setOptions({ tabBarStyle: undefined });
+  }, [adding, navigation]);
 
   // Journal is a tab route that stays mounted. A deep link from Today must
   // win over the last locally selected Pet, otherwise an alert can open the

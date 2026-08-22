@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, Share as NativeShare, StyleSheet, Switch, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import {
   CatIcon,
@@ -207,6 +207,7 @@ function parseTimeKey(value?: string | null) {
 export default function PetRoute() {
   const { theme } = useTheme();
   const { showToast } = useToast();
+  const navigation = useNavigation();
   const router = useRouter();
   const params = useLocalSearchParams<{ petId?: string; intent?: string }>();
   const me = useMe();
@@ -296,6 +297,11 @@ export default function PetRoute() {
   const careCreateIntent = useIdempotencyKey();
   const medicationCreateIntent = useIdempotencyKey();
   const shareCreateIntent = useIdempotencyKey();
+
+  useEffect(() => {
+    navigation.setOptions({ tabBarStyle: form ? { display: "none" } : undefined });
+    return () => navigation.setOptions({ tabBarStyle: undefined });
+  }, [form, navigation]);
 
   const resetCareForm = () => {
     setCareType("custom");

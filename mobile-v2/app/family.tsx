@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
-import { Redirect, router, useLocalSearchParams, useSegments } from "expo-router";
+import { Redirect, router, useLocalSearchParams, useNavigation, useSegments } from "expo-router";
 import { useMutation } from "@tanstack/react-query";
 import { AppText, Button, Card, LoadingState, QueryErrorState, Screen, SegmentedControl, StaleDataNotice, TextField } from "../src/ui/components";
 import { useTheme } from "../src/core/providers/theme-provider";
@@ -50,6 +50,7 @@ export default function FamilyRouteEntry() {
 function FamilyRoute() {
   const { theme } = useTheme();
   const { showToast } = useToast();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ mode?: string; familyId?: string }>();
   const me = useMe();
   const circles = useCircles();
@@ -79,6 +80,11 @@ function FamilyRoute() {
   const [deleteFamilyConfirm, setDeleteFamilyConfirm] = useState("");
   const [memberAction, setMemberAction] = useState<string | null>(null);
   const [ownershipTarget, setOwnershipTarget] = useState<string | null>(null);
+  React.useEffect(() => {
+    const editing = mode !== "none" || editingFamily || Boolean(familyAction) || Boolean(memberAction) || Boolean(ownershipTarget);
+    navigation.setOptions({ tabBarStyle: editing ? { display: "none" } : undefined });
+    return () => navigation.setOptions({ tabBarStyle: undefined });
+  }, [editingFamily, familyAction, memberAction, mode, navigation, ownershipTarget]);
   React.useEffect(() => {
     if (params.mode === "join" || params.mode === "create") setMode(params.mode);
   }, [params.mode]);

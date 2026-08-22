@@ -17,6 +17,12 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   // still includes them in the tab navigator state, so filter by the product
   // navigation contract instead of relying on href metadata from descriptors.
   const topLevelRoutes = new Set(['index', 'pets', 'timeline', 'more']);
+  const focusedRoute = state.routes[state.index];
+  const focusedOptions = focusedRoute ? descriptors[focusedRoute.key]?.options : undefined;
+  const focusedTabStyle = focusedOptions?.tabBarStyle
+    ? (StyleSheet.flatten(focusedOptions.tabBarStyle) as { display?: string })
+    : undefined;
+  if (focusedTabStyle?.display === 'none') return null;
   return (
     <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) }]}>
       <View style={[styles.glass, theme.shadow.floating, { borderColor: theme.colors.border, borderRadius: theme.radius.sheet }]}>

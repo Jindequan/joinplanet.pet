@@ -70,7 +70,7 @@ const careTypeOptions: readonly { value: CareType; label: string }[] = [
   { value: "health", label: "Health" },
   { value: "grooming", label: "Grooming" },
   { value: "exercise", label: "Exercise" },
-  { value: "custom", label: "Other" },
+  { value: "custom", label: "Custom" },
 ];
 const scheduleOptions: readonly { value: ScheduleKind; label: string }[] = [
   { value: "daily", label: "Daily" },
@@ -963,7 +963,7 @@ export default function PetRoute() {
       {petSection === "overview" ? <>
       <Card style={styles.card}>
         <View style={styles.cardHeading}>
-          <View>
+          <View style={styles.rowCopy}>
             <AppText variant="heading">About {pet.name}</AppText>
             <AppText variant="caption" muted>
               The details that help someone care well.
@@ -1294,7 +1294,7 @@ export default function PetRoute() {
       {petSection === "care" ? <>
       <Card style={styles.card}>
         <View style={styles.sectionHeader}>
-          <View>
+          <View style={styles.rowCopy}>
             <AppText variant="heading">Care plan</AppText>
             <AppText variant="caption" muted>
               {taskList.length} ongoing{" "}
@@ -1379,7 +1379,7 @@ export default function PetRoute() {
         {archivedTaskList.length > 0 ? (
           <View style={styles.archivedSection}>
             <View style={styles.sectionHeader}>
-              <View>
+              <View style={styles.rowCopy}>
                 <AppText variant="label">Past care plans</AppText>
                 <AppText variant="caption" muted>Archived plans stay here with their history.</AppText>
               </View>
@@ -1535,7 +1535,7 @@ export default function PetRoute() {
       </Card>
       <Card style={styles.card}>
         <View style={styles.sectionHeader}>
-          <View>
+          <View style={styles.rowCopy}>
             <AppText variant="heading">{(medications.data?.medications.length ?? 0) > 0 ? "Medication history" : "Medications"}</AppText>
             <AppText variant="caption" muted>
               {(medications.data?.medications.length ?? 0) > 0 ? `${medications.data?.medications.length} records` : "Track prescriptions separately from recurring care."}

@@ -1235,7 +1235,7 @@ export default function PetRoute() {
       </> : null}
       {petSection === "share" ? <>
       <Card style={styles.card}>
-        <View style={styles.shareHeader}>
+          <View style={styles.shareHeader}>
           <View style={[styles.shareIcon, { backgroundColor: theme.colors.brandSoft }]}>
             <ShareNetworkIcon size={21} color={theme.colors.brandStrong} weight="duotone" />
           </View>
@@ -1245,7 +1245,11 @@ export default function PetRoute() {
               Give a sitter or vet the right view. Every link expires and can be revoked.
             </AppText>
           </View>
-        </View>
+          </View>
+          <View style={[styles.shareBoundary, { backgroundColor: theme.colors.surfaceRaised }]}>
+            <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>TWO DIFFERENT KINDS OF ACCESS</AppText>
+            <AppText variant="caption" muted>Family access is ongoing. These external links are temporary, read-only handoffs and can be revoked at any time.</AppText>
+          </View>
         {canManagePet ? <>
         <SegmentedControl
           label="What to share"
@@ -1253,6 +1257,10 @@ export default function PetRoute() {
           onChange={setShareKind}
           options={[{ value: "care_card", label: "Care card" }, { value: "summary", label: "Health summary" }]}
         />
+        <View style={[styles.shareInfo, { borderColor: theme.colors.border }]}>
+          <AppText variant="label">{shareKind === "care_card" ? "A quick care card" : "A time-limited health summary"}</AppText>
+          <AppText variant="caption" muted>{shareKind === "care_card" ? "Shows the practical details a sitter needs: profile, care routines and current medications. It does not include the full health timeline." : "Shows the Pet profile, medications and recent timeline records for the number of days you choose."}</AppText>
+        </View>
         <SegmentedControl
           label="Link lifetime"
           value={shareTtl}
@@ -1814,6 +1822,8 @@ const styles = StyleSheet.create({
   safetyGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingTop: 2 },
   safetyCell: { flex: 1, minWidth: 120, gap: 3, padding: 10, borderRadius: 14 },
   shareHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  shareBoundary: { borderRadius: 14, padding: 11, gap: 4 },
+  shareInfo: { borderWidth: 1, borderRadius: 14, padding: 11, gap: 4 },
   shareIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   shareResult: { borderWidth: 1, borderRadius: 16, padding: 13, gap: 8 },
   shareInlineError: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },

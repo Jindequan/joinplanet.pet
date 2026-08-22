@@ -13,10 +13,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const dark = theme.colors.background === theme.colors.inverseSurface;
-  // Family and Pet are workspace routes, not top-level destinations. Expo
-  // still includes them in the tab navigator state, so filter by the product
-  // navigation contract instead of relying on href metadata from descriptors.
-  const topLevelRoutes = new Set(['index', 'pets', 'timeline', 'more']);
+  // Pet is a nested workspace route. Family is a top-level destination because
+  // membership, invitations and permissions are core care work, not settings.
+  // Keep the tab list explicit so Expo route metadata cannot quietly change the
+  // product navigation contract.
+  const topLevelRoutes = new Set(['index', 'pets', 'timeline', 'family']);
   const focusedRoute = state.routes[state.index];
   const focusedOptions = focusedRoute ? descriptors[focusedRoute.key]?.options : undefined;
   const focusedTabStyle = focusedOptions?.tabBarStyle
@@ -26,7 +27,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const activeRouteName = focusedRoute?.name === 'pet'
     ? 'pets'
     : focusedRoute?.name === 'family'
-      ? 'more'
+      ? 'family'
       : focusedRoute?.name;
   return (
     <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) }]}>

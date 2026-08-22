@@ -1157,8 +1157,10 @@ export default function PetRoute() {
               <Button label="Share Pet" loading={sharePetFamily.isPending} disabled={!availableFamilyShares.length || isArchived} onPress={() => { setFamilyShareError(""); sharePetFamily.mutate(); }} />
             </View>
           </View>
+        ) : canManagePet && availableFamilyShares.length ? (
+          <Button label="Share with another Family" variant="secondary" disabled={isArchived} onPress={() => { setFamilyShareOpen(true); setFamilyShareTargetId(availableFamilyShares[0]?.id ?? null); setFamilyShareError(""); }} />
         ) : canManagePet ? (
-          <Button label="Share with another Family" variant="secondary" disabled={isArchived || !availableFamilyShares.length} onPress={() => { setFamilyShareOpen(true); setFamilyShareTargetId(availableFamilyShares[0]?.id ?? null); setFamilyShareError(""); }} />
+          <AppText variant="caption" muted>Create or join another Family to share this Pet with a second care space.</AppText>
         ) : null}
       </Card>
       </> : null}

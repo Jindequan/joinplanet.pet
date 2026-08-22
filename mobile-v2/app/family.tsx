@@ -516,7 +516,7 @@ export default function FamilyRoute() {
           </View>
           <Card style={styles.members}>
             {members.map((member, index) => {
-              const memberName = humanDisplayName(member) ?? "Planet member";
+              const memberName = member.user_id === me.data?.user.id ? "You" : humanDisplayName(member) ?? "Planet member";
               return (
                 <View
                 key={member.user_id}
@@ -629,7 +629,7 @@ export default function FamilyRoute() {
                 <AppText variant="heading">Family settings</AppText>
                 <AppText variant="caption" muted>Keep the shared space accurate and governed.</AppText>
               </View>
-              {circle.role === "owner" ? <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>OWNER</AppText> : null}
+              {circle.role === "owner" ? <AppText variant="caption" style={{ color: theme.colors.brandStrong, marginLeft: 12 }}>OWNER</AppText> : null}
             </View>
             {circle.role === "owner" ? (
               editingFamily ? (

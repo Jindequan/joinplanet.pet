@@ -10,7 +10,7 @@ export default function IndexRoute() {
   const { theme } = useTheme();
   useEffect(() => {
     if (status === 'authenticated') router.replace('/(tabs)');
-    if (status === 'unauthenticated') router.replace('/(auth)/welcome');
+    if (status === 'unauthenticated') router.replace('/welcome');
   }, [status]);
   return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background, padding: theme.spacing.page }}><LoadingState label="Opening PLANET" /></View>;
 }

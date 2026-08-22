@@ -20,10 +20,10 @@ function RootNavigator() {
   useEffect(() => {
     if (status === 'loading') return;
     const rootSegment = segments[0];
-    const inAuth = rootSegment === '(auth)';
+    const inAuth = rootSegment === 'welcome' || rootSegment === 'onboarding';
     const inProtectedApp = rootSegment === '(tabs)' || rootSegment === 'account' || rootSegment === 'settings' || rootSegment === 'privacy' || rootSegment === 'family' || rootSegment === 'pets' || rootSegment === 'pet' || rootSegment === 'timeline';
     if (status === 'authenticated' && inAuth) router.replace('/(tabs)');
-    if (status === 'unauthenticated' && inProtectedApp) router.replace('/(auth)/welcome');
+    if (status === 'unauthenticated' && inProtectedApp) router.replace('/welcome');
   }, [segments, status]);
   return <View style={{ flex: 1, backgroundColor: theme.colors.background }}><StatusBar style="dark" /><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background }, animation: 'fade' }} /></View>;
 }

@@ -13,7 +13,7 @@ import { BellSimpleIcon, MoonStarsIcon, ShieldCheckIcon, SignOutIcon } from '../
 
 function PreferenceRow({ title, description, value, onChange, disabled = false }: { title: string; description: string; value: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
   const { theme } = useTheme();
-  return <View style={[styles.preference, { borderBottomColor: theme.colors.border, opacity: disabled ? theme.motion.disabledOpacity : 1 }]}><View style={styles.preferenceCopy}><AppText variant="label">{title}</AppText><AppText variant="caption" muted>{description}</AppText></View><Switch accessibilityLabel={title} disabled={disabled} value={value} onValueChange={onChange} trackColor={{ false: theme.colors.border, true: theme.colors.brand }} thumbColor={theme.colors.surface} /> </View>;
+  return <View style={[styles.preference, { borderBottomColor: theme.colors.border, opacity: disabled ? theme.motion.disabledOpacity : 1 }]}><View style={styles.preferenceCopy}><AppText variant="label">{title}</AppText><AppText variant="caption" muted>{description}</AppText></View><Switch accessibilityLabel={title} disabled={disabled} value={value} onValueChange={onChange} trackColor={{ false: theme.colors.border, true: theme.colors.brand }} thumbColor={theme.colors.surface} /></View>;
 }
 
 export default function SettingsRoute() {

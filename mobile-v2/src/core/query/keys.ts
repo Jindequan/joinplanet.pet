@@ -9,7 +9,7 @@ export const queryKeys = {
   accessiblePets: ['pets', 'accessible'] as const,
   pet: (petId: string) => ['pet', petId] as const,
   medications: (petId: string) => ['medications', petId] as const,
-  tasks: (petId: string, includeArchived = false) => ['tasks', petId, includeArchived ? 'all' : 'active'] as const,
+  careItems: (petId: string, includeArchived = false) => ['care-items', petId, includeArchived ? 'all' : 'active'] as const,
   assignments: (careItemId: string) => ['care-assignments', careItemId] as const,
   today: (circleId: string, date: string) => ['today', circleId, date] as const,
   todayPet: (petId: string, date: string) => ['today', 'pet', petId, date] as const,

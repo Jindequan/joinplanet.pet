@@ -120,8 +120,8 @@ export function useMedications(petId?: string) {
   return useQuery({ queryKey: queryKeys.medications(petId ?? ''), queryFn: () => planetApi.pets.medications(petId as string), enabled: Boolean(petId) });
 }
 
-export function useTasks(petId?: string, includeArchived = false) {
-  return useQuery({ queryKey: queryKeys.tasks(petId ?? '', includeArchived), queryFn: () => planetApi.pets.tasks(petId as string, includeArchived), enabled: Boolean(petId) });
+export function useCareItems(petId?: string, includeArchived = false) {
+  return useQuery({ queryKey: queryKeys.careItems(petId ?? '', includeArchived), queryFn: () => planetApi.pets.careItems(petId as string, includeArchived), enabled: Boolean(petId) });
 }
 
 export function useTodayForPet(petId?: string, date = '') {
@@ -129,7 +129,7 @@ export function useTodayForPet(petId?: string, date = '') {
 }
 
 export function useCareAssignments(careItemId?: string) {
-  return useQuery({ queryKey: queryKeys.assignments(careItemId ?? ''), queryFn: () => planetApi.tasks.assignments(careItemId as string), enabled: Boolean(careItemId) });
+  return useQuery({ queryKey: queryKeys.assignments(careItemId ?? ''), queryFn: () => planetApi.careItems.assignments(careItemId as string), enabled: Boolean(careItemId) });
 }
 
 export function usePetShares(petId?: string, enabled = true) {
@@ -196,7 +196,7 @@ export function useInvalidateApi() {
     // Pet surfaces request both the active-only and include-archived task lists.
     // Invalidate their shared prefix so a care-plan mutation cannot leave the
     // Pet header stale while Today has already refreshed.
-    tasks: (petId: string) => client.invalidateQueries({ queryKey: ['tasks', petId] }),
+    careItems: (petId: string) => client.invalidateQueries({ queryKey: ['care-items', petId] }),
     assignments: (careItemId: string) => client.invalidateQueries({ queryKey: queryKeys.assignments(careItemId) }),
     shares: (petId: string) => client.invalidateQueries({ queryKey: queryKeys.shares(petId) }),
     transfers: (circleId: string) => client.invalidateQueries({ queryKey: ['transfers', circleId] }),

@@ -41,6 +41,8 @@ export type Profile = {
   notes: string;
 };
 export type Task = { id: string; circle_id: string; pet_id: string; care_item_id?: string; care_rule_id?: string; type?: string; title: string; description?: string; schedule: Record<string, unknown>; time_of_day?: string; timezone: string; due_at?: string; due_date?: string; status?: 'pending' | 'completed' | 'skipped' | 'missed'; assigned_to_user_id?: string; assigned_to_name?: string; completed_by_user_id?: string; completed_at?: string; archived_at?: string | null; created_at: string };
+/** A Care Item projected with its current rule for the Pet workspace. */
+export type CarePlan = Task;
 export type TaskLog = { id: string; task_id: string; log_date: string; status: 'done' | 'completed' | 'skipped'; done_by: string; done_at: string; note: string; done_by_name?: string };
 export type TodayItem = { task: Task; log: TaskLog | null };
 export type TodayPet = { pet_id: string; pet_name: string; items: TodayItem[] };
@@ -122,7 +124,9 @@ export const planetApi = {
     revokeAccess: (petId: string, grantId: string) => apiClient.delete<void>(`/pets/${id(petId)}/access-grants/${id(grantId)}`),
     medications: (petId: string) => apiClient.get<{ medications: Medication[] }>(`/pets/${id(petId)}/medications`),
     createMedication: (petId: string, body: { name: string; dose?: string; schedule?: string; note?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ medication: Medication }>(`/pets/${id(petId)}/medications`, body, { headers: { 'Idempotency-Key': requestKey } }),
-    tasks: (petId: string, includeArchived = false) => apiClient.get<{ tasks: Task[] }>(`/pets/${id(petId)}/tasks${includeArchived ? '?include_archived=true' : ''}`),
+    careItems: (petId: string, includeArchived = false) => apiClient.get<{ tasks: CarePlan[] }>(`/pets/${id(petId)}/care-items${includeArchived ? '?include_archived=true' : ''}`),
+    /** Legacy alias retained for older clients; new app code should use careItems. */
+    tasks: (petId: string, includeArchived = false) => planetApi.pets.careItems(petId, includeArchived),
     createCareItem: (petId: string, body: { type: CareItem['type']; title: string; description?: string; rule: { type: 'daily' | 'weekly' | 'monthly' | 'interval'; interval?: number; days?: number[]; day?: number; time?: string; start_date?: string; end_date?: string } }, requestKey = createIdempotencyKey()) => apiClient.post<CareItemCreateResponse>(`/pets/${id(petId)}/care-items`, body, { headers: { 'Idempotency-Key': requestKey } }),
     createTask: (petId: string, body: { title: string; schedule: Record<string, unknown>; time_of_day?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ task: Task }>(`/pets/${id(petId)}/tasks`, body, { headers: { 'Idempotency-Key': requestKey } }),
     timeline: (petId: string, params?: { before?: string; before_id?: string; limit?: number }) => {
@@ -144,13 +148,15 @@ export const planetApi = {
     delete: (medicationId: string) => apiClient.delete<void>(`/medications/${id(medicationId)}`),
   },
   tasks: {
-    update: (taskId: string, body: { title?: string; schedule?: Record<string, unknown>; time_of_day?: string; archived?: boolean }) => apiClient.patch<{ task: Task }>(`/tasks/${id(taskId)}`, body),
-    delete: (taskId: string) => apiClient.delete<void>(`/tasks/${id(taskId)}`),
+    complete: (taskId: string, body: { status: 'done' | 'skipped'; date?: string; note?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ log: TaskLog }>(`/care-tasks/${id(taskId)}/complete`, body, { headers: { 'Idempotency-Key': requestKey } }),
+    undo: (logId: string) => apiClient.post<void>(`/task-logs/${id(logId)}/undo`),
+  },
+  careItems: {
+    update: (careItemId: string, body: { title?: string; schedule?: Record<string, unknown>; time_of_day?: string; archived?: boolean }) => apiClient.patch<{ task: CarePlan }>(`/care-items/${id(careItemId)}`, body),
+    delete: (careItemId: string) => apiClient.delete<void>(`/care-items/${id(careItemId)}`),
     assignments: (careItemId: string) => apiClient.get<{ assignments: CareAssignment[] }>(`/care-items/${id(careItemId)}/assignments`),
     setAssignment: (careItemId: string, userId: string, role: 'helper' = 'helper') => apiClient.put<{ assignment: CareAssignment }>(`/care-items/${id(careItemId)}/assignments/${id(userId)}`, { role }),
     removeAssignment: (careItemId: string, userId: string) => apiClient.delete<void>(`/care-items/${id(careItemId)}/assignments/${id(userId)}`),
-    complete: (taskId: string, body: { status: 'done' | 'skipped'; date?: string; note?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ log: TaskLog }>(`/care-tasks/${id(taskId)}/complete`, body, { headers: { 'Idempotency-Key': requestKey } }),
-    undo: (logId: string) => apiClient.post<void>(`/task-logs/${id(logId)}/undo`),
   },
   timeline: {
     update: (eventId: string, body: { occurred_at: string; payload: Record<string, unknown> }) => apiClient.patch<{ event: TimelineEvent }>(`/timeline-events/${id(eventId)}`, body),

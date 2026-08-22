@@ -42,7 +42,7 @@ import {
   useMe,
   usePet,
   usePetShares,
-  useTasks,
+  useCareItems,
   useTodayForPet,
 } from "../../src/core/query/hooks";
 import { planetApi, type Medication, type Share, type Task } from "../../src/core/api/planet-api";
@@ -246,7 +246,7 @@ export default function PetRoute() {
         (!pet.current_owner_user_id && sourceFamily?.role === "owner")),
   );
   const medications = useMedications(pet?.id);
-  const tasks = useTasks(pet?.id, true);
+  const careItems = useCareItems(pet?.id, true);
   const today = useTodayForPet(pet?.id);
   const shares = usePetShares(pet?.id, canManagePet);
   const invalidate = useInvalidateApi();
@@ -365,7 +365,7 @@ export default function PetRoute() {
     if (pet?.id) resetTransientState();
   }, [pet?.id]);
   const taskForEditor = editingTaskId
-    ? tasks.data?.tasks.find((task) => task.id === editingTaskId)
+    ? careItems.data?.tasks.find((task) => task.id === editingTaskId)
     : undefined;
   const careAssignments = useCareAssignments(taskForEditor?.care_item_id);
   const addCare = useMutation({
@@ -387,7 +387,7 @@ export default function PetRoute() {
       let helperAssigned = true;
       if (careHelperSelection) {
         try {
-          await planetApi.tasks.setAssignment(result.care_item.id, careHelperSelection);
+          await planetApi.careItems.setAssignment(result.care_item.id, careHelperSelection);
         } catch {
           helperAssigned = false;
         }
@@ -398,7 +398,7 @@ export default function PetRoute() {
       resetCareForm();
       careCreateIntent.reset();
       setError(helperAssigned ? "" : "Care plan created, but the helper assignment did not save. You can retry it from Care.");
-      invalidate.tasks(pet!.id);
+      invalidate.careItems(pet!.id);
       invalidate.assignments(result.care_item.id);
       invalidate.todayAll();
       // The intent is a one-shot deep link from first-Pet setup. Remove it
@@ -413,7 +413,7 @@ export default function PetRoute() {
   });
   const updateTask = useMutation({
     mutationFn: async () => {
-      const result = await planetApi.tasks.update(
+      const result = await planetApi.careItems.update(
         editingTaskId!,
         taskPayload({
           title: careTitle,
@@ -429,11 +429,11 @@ export default function PetRoute() {
           const existingHelpers = careAssignments.data?.assignments.filter((assignment) => assignment.role === "helper") ?? [];
           if (careHelperSelection) {
             for (const helper of existingHelpers) {
-              if (helper.user_id !== careHelperSelection) await planetApi.tasks.removeAssignment(taskForEditor.care_item_id, helper.user_id);
+              if (helper.user_id !== careHelperSelection) await planetApi.careItems.removeAssignment(taskForEditor.care_item_id, helper.user_id);
             }
-            await planetApi.tasks.setAssignment(taskForEditor.care_item_id, careHelperSelection);
+            await planetApi.careItems.setAssignment(taskForEditor.care_item_id, careHelperSelection);
           } else {
-            for (const helper of existingHelpers) await planetApi.tasks.removeAssignment(taskForEditor.care_item_id, helper.user_id);
+            for (const helper of existingHelpers) await planetApi.careItems.removeAssignment(taskForEditor.care_item_id, helper.user_id);
           }
         } catch {
           throw new Error("Care plan updated, but the helper change could not be saved. Open it again to retry.");
@@ -443,7 +443,7 @@ export default function PetRoute() {
     },
     onSuccess: () => {
       resetCareForm();
-      invalidate.tasks(pet!.id);
+      invalidate.careItems(pet!.id);
       if (taskForEditor?.care_item_id) invalidate.assignments(taskForEditor.care_item_id);
       invalidate.todayAll();
       showToast({ message: "Care plan updated." });
@@ -454,11 +454,11 @@ export default function PetRoute() {
       ),
   });
   const archiveTask = useMutation({
-    mutationFn: () => planetApi.tasks.update(confirmTaskId!, { archived: true }),
+    mutationFn: () => planetApi.careItems.update(confirmTaskId!, { archived: true }),
     onSuccess: () => {
       setConfirmTaskId(null);
       setTaskMenuId(null);
-      invalidate.tasks(pet!.id);
+      invalidate.careItems(pet!.id);
       invalidate.todayAll();
     },
     onError: (err) =>
@@ -467,11 +467,11 @@ export default function PetRoute() {
       ),
   });
   const restoreTask = useMutation({
-    mutationFn: (taskId: string) => planetApi.tasks.update(taskId, { archived: false }),
+    mutationFn: (taskId: string) => planetApi.careItems.update(taskId, { archived: false }),
     onSuccess: () => {
       setRestoreTaskId(null);
       setTaskMenuId(null);
-      invalidate.tasks(pet!.id);
+      invalidate.careItems(pet!.id);
       invalidate.todayAll();
       showToast({ message: "Care plan restored." });
     },
@@ -692,9 +692,9 @@ export default function PetRoute() {
     },
     onError: (err) => setShareError(err instanceof ApiError ? err.message : "Unable to revoke this link."),
   });
-  const taskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => !task.archived_at), [tasks.data?.tasks]);
+  const taskList = useMemo(() => (careItems.data?.tasks ?? []).filter((task) => !task.archived_at), [careItems.data?.tasks]);
   const medicationCount = medications.data?.medications.length ?? 0;
-  const archivedTaskList = useMemo(() => (tasks.data?.tasks ?? []).filter((task) => Boolean(task.archived_at)), [tasks.data?.tasks]);
+  const archivedTaskList = useMemo(() => (careItems.data?.tasks ?? []).filter((task) => Boolean(task.archived_at)), [careItems.data?.tasks]);
   const careHelperOptions = useMemo(
     () => [
       { value: "", label: "Only me" },
@@ -869,17 +869,17 @@ export default function PetRoute() {
     if (pet) {
       void detail.refetch();
       void medications.refetch();
-      void tasks.refetch();
+      void careItems.refetch();
       void today.refetch();
     }
   };
   const blockingError = (me.isError && !me.data) || (circles.isError && !circles.data) || (accessiblePets.isError && !accessiblePets.hasData) || (!pet && detail.isError);
-  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (detail.isError && pet) || medications.isError || tasks.isError || (today.isError && today.data));
+  const hasStaleData = Boolean((me.isError && me.data) || (circles.isError && circles.data) || (accessiblePets.isError && accessiblePets.hasData) || (detail.isError && pet) || medications.isError || careItems.isError || (today.isError && today.data));
   if (
     circles.isLoading ||
     me.isLoading ||
     accessiblePets.isLoading ||
-    (pet && (detail.isLoading || medications.isLoading || tasks.isLoading || today.isLoading))
+    (pet && (detail.isLoading || medications.isLoading || careItems.isLoading || today.isLoading))
   )
     return (
       <Screen><LoadingState label="Loading this Pet’s world" /></Screen>
@@ -919,7 +919,7 @@ export default function PetRoute() {
     <Screen scroll contentContainerStyle={styles.content}>
       <WorkspaceBar familyName={visibleFamily?.name} petName={pet.name} onPressWorkspace={() => router.push("/(tabs)/family")} />
       <PageHeader eyebrow="PET RECORD" title={pet.name} />
-      {hasStaleData ? <StaleDataNotice onRetry={retryPet} retrying={detail.isFetching || medications.isFetching || tasks.isFetching} message="Some care details are from the last saved view. Reconnect to refresh them." /> : null}
+      {hasStaleData ? <StaleDataNotice onRetry={retryPet} retrying={detail.isFetching || medications.isFetching || careItems.isFetching} message="Some care details are from the last saved view. Reconnect to refresh them." /> : null}
       {accessiblePets.pets.length > 1 ? <View style={styles.petSwitcher}><AppText variant="caption" muted>SWITCH PET</AppText><PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") router.replace({ pathname: "/(tabs)/pet", params: { petId: next.petId } }); else router.replace("/(tabs)/pets"); }} /></View> : null}
       <LinearGradient
         colors={[theme.colors.accentSurface, theme.colors.brandSoft]}

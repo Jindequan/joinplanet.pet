@@ -1043,18 +1043,12 @@ export default function PetRoute() {
         </View>
         <Button label="Open Today" variant="ghost" onPress={() => router.replace({ pathname: "/(tabs)", params: { petId: pet.id } })} />
       </View>
-      <View style={styles.quickActions}>
-        <Button
-            label="Add care"
-            variant="secondary"
+      {petSection === "overview" || petSection === "care" ? <View style={styles.quickActions}>
+        {petSection === "overview" ? <Button
+          label="Add care"
+          variant="secondary"
           disabled={isArchived || !canManagePet}
-          icon={
-            <PlusIcon
-              size={17}
-              color={theme.colors.brandStrong}
-              weight="bold"
-            />
-          }
+          icon={<PlusIcon size={17} color={theme.colors.brandStrong} weight="bold" />}
           onPress={() => {
             setPetSection("care");
             setEditingTaskId(null);
@@ -1062,25 +1056,14 @@ export default function PetRoute() {
             setForm("care");
             setError("");
           }}
-        />
+        /> : null}
         <Button
           label="Journal"
           variant="ghost"
-          icon={
-            <BookOpenIcon
-              size={17}
-              color={theme.colors.brandStrong}
-              weight="duotone"
-            />
-          }
-          onPress={() =>
-            router.push({
-              pathname: "/(tabs)/timeline",
-              params: { petId: pet.id },
-            })
-          }
+          icon={<BookOpenIcon size={17} color={theme.colors.brandStrong} weight="duotone" />}
+          onPress={() => router.push({ pathname: "/(tabs)/timeline", params: { petId: pet.id } })}
         />
-      </View>
+      </View> : null}
       <SegmentedControl
         label="Pet workspace"
         value={petSection}

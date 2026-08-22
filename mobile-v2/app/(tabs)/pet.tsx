@@ -23,6 +23,7 @@ import {
   PageHeader,
   PetFilterSelector,
   QueryErrorState,
+  SectionRow,
   Screen,
   SegmentedControl,
   StaleDataNotice,
@@ -931,6 +932,13 @@ export default function PetRoute() {
   const todayOpen = todayItems.length - todayCompleted - todaySkipped;
   const todaySummaryTitle = today.isError ? "Today's care is unavailable" : today.isLoading ? "Checking today's care…" : todayItems.length === 0 ? "A clear day" : todayOpen === 0 ? "Everything is cared for" : `${todayOpen} moment${todayOpen === 1 ? "" : "s"} still open`;
   const todaySummaryCaption = today.isError ? "Reconnect to refresh today's actions." : today.isLoading ? "Loading the latest care moments." : todayItems.length === 0 ? "No routine is due today." : `${todayCompleted} done${todaySkipped ? ` · ${todaySkipped} skipped` : ""} · ${todayItems.length} total`;
+  const focusedSection = petSection === "care"
+    ? { eyebrow: `${pet.name.toUpperCase()} / CARE`, title: "Care routines" }
+    : petSection === "share"
+      ? { eyebrow: `${pet.name.toUpperCase()} / HANDOFF`, title: "Share care info" }
+      : petSection === "manage"
+        ? { eyebrow: `${pet.name.toUpperCase()} / RECORD`, title: "Manage record" }
+        : { eyebrow: "PET RECORD", title: pet.name };
 
   if (form === "care" && canManagePet) {
     return (
@@ -1007,7 +1015,7 @@ export default function PetRoute() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <WorkspaceBar familyName={visibleFamily?.name} petName={pet.name} onPressWorkspace={() => router.push("/(tabs)/family")} />
-      <PageHeader eyebrow="PET RECORD" title={pet.name} />
+      <PageHeader eyebrow={focusedSection.eyebrow} title={focusedSection.title} />
       {hasStaleData ? <StaleDataNotice onRetry={retryPet} retrying={detail.isFetching || medications.isFetching || careItems.isFetching} message="Some care details are from the last saved view. Reconnect to refresh them." /> : null}
       {accessiblePets.pets.length > 1 ? <View style={styles.petSwitcher}><AppText variant="caption" muted>SWITCH PET</AppText><PetFilterSelector value={{ kind: "pet", petId: pet.id }} families={[]} pets={accessiblePets.pets} onChange={(next) => { if (next.kind === "pet") router.replace({ pathname: "/(tabs)/pet", params: { petId: next.petId } }); else router.replace("/(tabs)/pets"); }} /></View> : null}
       <LinearGradient
@@ -1043,40 +1051,27 @@ export default function PetRoute() {
         </View>
         <Button label="Open Today" variant="ghost" onPress={() => router.replace({ pathname: "/(tabs)", params: { petId: pet.id } })} />
       </View>
-      {petSection === "overview" || petSection === "care" ? <View style={styles.quickActions}>
-        {petSection === "overview" ? <Button
-          label="Add care"
-          variant="secondary"
-          disabled={isArchived || !canManagePet}
-          icon={<PlusIcon size={17} color={theme.colors.brandStrong} weight="bold" />}
-          onPress={() => {
-            setPetSection("care");
-            setEditingTaskId(null);
-            setCareStep(1);
-            setForm("care");
-            setError("");
-          }}
-        /> : null}
-        <Button
-          label="Journal"
-          variant="ghost"
-          icon={<BookOpenIcon size={17} color={theme.colors.brandStrong} weight="duotone" />}
-          onPress={() => router.push({ pathname: "/(tabs)/timeline", params: { petId: pet.id } })}
-        />
-      </View> : null}
-      <SegmentedControl
-        label="Pet workspace"
-        value={petSection}
-        onChange={setPetSection}
-        compact
-        options={[
-          { value: "overview", label: "Overview" },
-          { value: "care", label: "Care" },
-          { value: "share", label: "Share" },
-          { value: "manage", label: "Manage" },
-        ]}
-      />
+      {petSection !== "overview" ? <Button
+        label={`Back to ${pet.name}`}
+        variant="ghost"
+        onPress={() => setPetSection("overview")}
+      /> : null}
       {petSection === "overview" ? <>
+      <Card style={styles.priorityCard}>
+        <View style={styles.cardHeading}>
+          <View style={styles.rowCopy}>
+            <AppText variant="caption" style={{ color: theme.colors.brandStrong }}>THE MAIN THING</AppText>
+            <AppText variant="heading">Care routines</AppText>
+            <AppText variant="caption" muted>Keep the plans that make {pet.name} easy to care for.</AppText>
+          </View>
+          <CheckCircleIcon size={24} color={theme.colors.brandStrong} weight="duotone" />
+        </View>
+        <View style={styles.glanceStats}>
+          <View style={styles.glanceStat}><AppText variant="title" style={{ color: theme.colors.brandStrong }}>{taskList.length}</AppText><AppText variant="caption" muted>ongoing plans</AppText></View>
+          <View style={styles.glanceStat}><AppText variant="title" style={{ color: theme.colors.accentStrong }}>{medications.data?.medications.filter((item) => !item.ended_on).length ?? 0}</AppText><AppText variant="caption" muted>active medications</AppText></View>
+        </View>
+        <Button label="Open care routines" onPress={() => setPetSection("care")} />
+      </Card>
       <Card style={styles.card}>
         <View style={styles.cardHeading}>
           <View style={styles.rowCopy}>
@@ -1250,18 +1245,29 @@ export default function PetRoute() {
           </View>
         ) : null}
       </Card>
-      <Card style={styles.glanceCard}>
-        <View style={styles.cardHeading}>
-          <View style={styles.rowCopy}>
-            <AppText variant="heading">Care at a glance</AppText>
-            <AppText variant="caption" muted>Keep the everyday close without opening every record.</AppText>
-          </View>
-          <Button label="Open Care" variant="ghost" onPress={() => setPetSection("care")} />
-        </View>
-        <View style={styles.glanceStats}>
-          <View style={styles.glanceStat}><AppText variant="title" style={{ color: theme.colors.brandStrong }}>{taskList.length}</AppText><AppText variant="caption" muted>ongoing plans</AppText></View>
-          <View style={styles.glanceStat}><AppText variant="title" style={{ color: theme.colors.accentStrong }}>{medications.data?.medications.filter((item) => !item.ended_on).length ?? 0}</AppText><AppText variant="caption" muted>active medications</AppText></View>
-        </View>
+      <Card style={styles.toolsCard}>
+        <AppText variant="caption" muted>MORE FOR {pet.name.toUpperCase()}</AppText>
+        <SectionRow
+          icon={BookOpenIcon}
+          title="Journal"
+          description="Browse the story of this Pet"
+          onPress={() => router.push({ pathname: "/(tabs)/timeline", params: { petId: pet.id } })}
+        />
+        <SectionRow
+          icon={ShareNetworkIcon}
+          title="Share care info"
+          description="Family access and temporary handoffs"
+          onPress={() => setPetSection("share")}
+          accent="accent"
+        />
+        <SectionRow
+          icon={DotsThreeIcon}
+          title="Manage record"
+          description="Edit, export, archive, or transfer"
+          onPress={() => setPetSection("manage")}
+          accent="neutral"
+          last
+        />
       </Card>
       </> : null}
       {petSection === "share" ? <>
@@ -1776,9 +1782,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  quickActions: { flexDirection: "row", alignItems: "center", gap: 9 },
+  priorityCard: { gap: 14 },
+  toolsCard: { gap: 2 },
   card: { gap: 11 },
-  glanceCard: { gap: 12 },
   glanceStats: { flexDirection: "row", gap: 28, paddingTop: 2 },
   glanceStat: { gap: 1 },
   cardHeading: {

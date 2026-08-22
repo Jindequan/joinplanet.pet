@@ -65,5 +65,5 @@ const styles = StyleSheet.create({
   workspace: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10 },
   mark: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, gap: 1 },
-  account: { width: 42, height: 42, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  account: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });

@@ -129,7 +129,7 @@ export default function TimelineRoute() {
     accessiblePets.pets.find((candidate) => candidate.id === activePetId) ??
     accessiblePets.pets[0];
   const petFamily = pet
-    ? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
+    ? circles.data?.circles.find((circle) => circle.id === pet.circle_id) ?? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
     : undefined;
   const petTimeZone = petFamily?.timezone || undefined;
   const timeline = useTimeline(pet?.id);

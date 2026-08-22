@@ -233,7 +233,7 @@ export default function PetRoute() {
   const detail = usePet(listedPet?.id);
   const pet = detail.data?.pet ?? listedPet;
   const visibleFamily = pet
-    ? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
+    ? circles.data?.circles.find((circle) => circle.id === pet.circle_id) ?? circles.data?.circles.find((circle) => (pet.family_ids ?? [pet.circle_id]).includes(circle.id))
     : undefined;
   const sourceFamily = circles.data?.circles.find((item) => item.id === pet?.circle_id);
   const sourceFamilyDetail = useCircle(sourceFamily?.id);

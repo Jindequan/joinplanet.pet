@@ -53,7 +53,8 @@ export type CarePlanCreateResponse = { care_plan: CarePlan; care_rule: CareRule;
 export type Medication = { id: string; pet_id: string; name: string; dose: string; schedule: string; started_on: string; ended_on?: string; note: string; created_at: string; updated_at: string };
 export type TimelineEvent = { id: string; pet_id: string; type: string; occurred_at: string; recorded_by: string; recorded_by_name?: string; recorded_at: string; edited_at?: string; payload: Record<string, unknown>; payload_version: number; source: string };
 export type Share = { id: string; pet_id: string; kind: 'care_card' | 'summary'; expires_at: string; revoked_at?: string | null; view_count: number; last_viewed_at?: string | null; created_at: string };
-export type Transfer = { id: string; pet_id: string; pet_name: string; from_family_id: string; to_family_id: string; status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'; created_by_user_id?: string; decided_by_user_id?: string; created_at: string; decided_at?: string };
+export type TransferStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+export type Transfer = { id: string; pet_id: string; pet_name: string; from_family_id: string; to_family_id: string; status: TransferStatus; created_by_user_id?: string; decided_by_user_id?: string; created_at: string; decided_at?: string };
 export type Alert = { id: string; kind: string; pet_id: string; pet_name: string; title: string; body: string; severity: 'watch' | 'warn'; occurred_at: string; data?: Record<string, unknown> };
 export type NotificationPrefs = { reminders: boolean; digest: boolean; alerts: boolean };
 export type Usage = { plan: string; members: number; member_max: number; pets: number; pet_max: number; resources?: Record<string, { used: number; limit: number }> };
@@ -124,17 +125,14 @@ export const planetApi = {
     medications: (petId: string) => apiClient.get<{ medications: Medication[] }>(`/pets/${id(petId)}/medications`),
     createMedication: (petId: string, body: { name: string; dose?: string; schedule?: string; note?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ medication: Medication }>(`/pets/${id(petId)}/medications`, body, { headers: { 'Idempotency-Key': requestKey } }),
     carePlans: (petId: string, includeArchived = false) => apiClient.get<{ care_plans: CarePlanSummary[] }>(`/pets/${id(petId)}/care-plans${includeArchived ? '?include_archived=true' : ''}`),
-    /** Legacy alias retained for older clients; new app code should use carePlans. */
-    tasks: (petId: string, includeArchived = false) => planetApi.pets.carePlans(petId, includeArchived),
     createCarePlan: (petId: string, body: { type: CarePlan['type']; title: string; description?: string; rule: { type: 'daily' | 'weekly' | 'monthly' | 'interval'; interval?: number; days?: number[]; day?: number; time?: string; start_date?: string; end_date?: string } }, requestKey = createIdempotencyKey()) => apiClient.post<CarePlanCreateResponse>(`/pets/${id(petId)}/care-plans`, body, { headers: { 'Idempotency-Key': requestKey } }),
-    createTask: (petId: string, body: { title: string; schedule: Record<string, unknown>; time_of_day?: string }, requestKey = createIdempotencyKey()) => apiClient.post<{ task: Task }>(`/pets/${id(petId)}/tasks`, body, { headers: { 'Idempotency-Key': requestKey } }),
     timeline: (petId: string, params?: { before?: string; before_id?: string; limit?: number }) => {
       const query = new URLSearchParams();
       if (params?.before) query.set('before', params.before);
       if (params?.before_id) query.set('before_id', params.before_id);
       if (params?.limit) query.set('limit', String(params.limit));
       const suffix = query.toString() ? `?${query.toString()}` : '';
-      return apiClient.get<{ events: TimelineEvent[] }>(`/pets/${id(petId)}/timeline${suffix}`);
+      return apiClient.get<{ events: TimelineEvent[]; next_cursor?: { before: string; before_id: string } }>(`/pets/${id(petId)}/timeline${suffix}`);
     },
     createEvent: (petId: string, body: { type: string; occurred_at: string; payload: Record<string, unknown> }, requestKey = createIdempotencyKey()) => apiClient.post<{ event: TimelineEvent }>(`/pets/${id(petId)}/timeline`, body, { headers: { 'Idempotency-Key': requestKey } }),
     shares: (petId: string) => apiClient.get<{ shares: Share[] }>(`/pets/${id(petId)}/shares`),

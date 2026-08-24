@@ -126,7 +126,7 @@ export default function TimelineRoute() {
       ? undefined
       : accessiblePets.pets[0]?.id);
   // When the user explicitly asks to choose a Pet (or has multiple Pets),
-  // keep the Journal unselected until they choose one. Do not fall back to a
+  // keep Timeline unselected until they choose one. Do not fall back to a
   // different story behind their back.
   const pet = accessiblePets.pets.find((candidate) => candidate.id === activePetId);
   const petFamily = pet
@@ -155,7 +155,7 @@ export default function TimelineRoute() {
     return () => navigation.setOptions({ tabBarStyle: undefined });
   }, [adding, navigation]);
 
-  // Journal is a tab route that stays mounted. A deep link from Today must
+  // Timeline is a tab route that stays mounted. A deep link from Today must
   // win over the last locally selected Pet, otherwise an alert can open the
   // wrong story after the user has browsed another Pet.
   useEffect(() => {
@@ -165,6 +165,13 @@ export default function TimelineRoute() {
     setAdding(false);
     setError("");
   }, [selectedPetId]);
+  useEffect(() => {
+    if (!choosePet) return;
+    routePetId.current = undefined;
+    setTimelinePetId(undefined);
+    setAdding(false);
+    setError("");
+  }, [choosePet]);
   const create = useMutation({
     mutationFn: () =>
       planetApi.pets.createEvent(
@@ -186,12 +193,15 @@ export default function TimelineRoute() {
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
       invalidate.alertsAll();
-      showToast({ message: "Record added to the Journal." });
+      showToast({ message: "Record added to Timeline." });
     },
-    onError: (err) =>
-      setError(
-        err instanceof ApiError ? err.message : "Unable to save this record.",
-      ),
+    onError: (err) => {
+      // Keep the key for network/timeout failures so retry cannot duplicate a
+      // record that may already have committed. A rejected payload must get a
+      // fresh intent key after the user corrects it.
+      if (!(err instanceof ApiError) || err.status !== 0) createIntent.reset();
+      setError(err instanceof ApiError ? err.message : "Unable to save this record.");
+    },
   });
   const updateEvent = useMutation({
     mutationFn: () =>
@@ -216,7 +226,7 @@ export default function TimelineRoute() {
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
       invalidate.alertsAll();
-      showToast({ message: "Journal record updated." });
+      showToast({ message: "Timeline record updated." });
     },
     onError: (err) =>
       setError(
@@ -231,7 +241,7 @@ export default function TimelineRoute() {
       invalidate.timeline(pet!.id);
       invalidate.pet(pet!.id);
       invalidate.alertsAll();
-      showToast({ message: "Journal record removed." });
+      showToast({ message: "Timeline record removed." });
     },
     onError: (err) => {
       const message = err instanceof ApiError ? err.message : "Unable to remove this record.";
@@ -242,12 +252,16 @@ export default function TimelineRoute() {
   const loadOlder = useMutation({
     mutationFn: () => {
       const last = [...(timeline.data?.events ?? []), ...olderEvents].at(-1);
-      if (!last) return Promise.resolve({ events: [] as TimelineEvent[] });
+      if (!last) return Promise.resolve({ events: [] as TimelineEvent[], next_cursor: undefined });
       return planetApi.pets.timeline(pet!.id, { before: last.occurred_at, before_id: last.id, limit: 100 });
     },
     onSuccess: (result) => {
-      setOlderEvents((current) => [...current, ...result.events]);
-      if (result.events.length < 100) setHasMore(false);
+      setOlderEvents((current) => {
+        const merged = new Map(current.map((event) => [event.id, event]));
+        result.events.forEach((event) => merged.set(event.id, event));
+        return [...merged.values()];
+      });
+      if (!result.next_cursor) setHasMore(false);
     },
     onError: (err) => { const message = err instanceof ApiError ? err.message : "Unable to load older records."; setError(message); showToast({ message }); },
   });
@@ -255,6 +269,12 @@ export default function TimelineRoute() {
     setOlderEvents([]);
     setHasMore(true);
   }, [pet?.id]);
+  useEffect(() => {
+    // A refreshed first page can overlap the locally loaded older page after
+    // a new record is created. Keep the cursor state, but remove stale dupes.
+    const currentIds = new Set((timeline.data?.events ?? []).map((event) => event.id));
+    if (currentIds.size) setOlderEvents((current) => current.filter((event) => !currentIds.has(event.id)));
+  }, [timeline.data?.events]);
   function openEventEditor(event: { id: string; type: string; occurred_at: string; payload: Record<string, unknown> }) {
     if (event.type !== "note" && event.type !== "symptom" && event.type !== "weight" && event.type !== "vaccine" && event.type !== "vet_visit") return;
     setEditingEventId(event.id);
@@ -295,7 +315,7 @@ export default function TimelineRoute() {
     (pet && timeline.isLoading)
   )
     return (
-      <Screen><LoadingState label="Loading the journal" /></Screen>
+      <Screen><LoadingState label="Loading Timeline" /></Screen>
     );
   if (blockingError)
     return (
@@ -311,7 +331,7 @@ export default function TimelineRoute() {
     return (
       <Screen scroll contentContainerStyle={styles.content}>
         <WorkspaceBar onPressWorkspace={() => router.push("/(tabs)/family")} />
-        <PageHeader eyebrow="JOURNAL" title="Journal" />
+        <PageHeader eyebrow="PET HISTORY" title="Timeline" />
         <Card style={styles.empty}>
           <CalendarDotsIcon
             size={27}
@@ -320,17 +340,17 @@ export default function TimelineRoute() {
           />
           <AppText variant="heading">Choose a Pet to open its story</AppText>
           <AppText muted>
-            Journal is kept with the Pet it belongs to. Choose one before reading or adding a record.
+            Timeline belongs to a Pet. Choose one before reading or adding a record.
           </AppText>
           <View style={styles.emptyActions}>
             <Button label="Choose a Pet" onPress={() => router.push("/(tabs)/pets")} />
             <Button label="Open Family" variant="secondary" onPress={() => router.push("/(tabs)/family")} />
           </View>
         </Card>
-        {accessiblePets.pets.length > 0 ? <Card style={styles.empty}><AppText variant="label">Open a Pet Journal</AppText>{accessiblePets.pets.map((candidate) => <Button key={candidate.id} label={candidate.name} variant="secondary" onPress={() => setTimelinePetId(candidate.id)} />)}</Card> : null}
+        {accessiblePets.pets.length > 0 ? <Card style={styles.empty}><AppText variant="label">Open a Pet Timeline</AppText>{accessiblePets.pets.map((candidate) => <Button key={candidate.id} label={candidate.name} variant="secondary" onPress={() => setTimelinePetId(candidate.id)} />)}</Card> : null}
       </Screen>
     );
-  const events = [...(timeline.data?.events ?? []), ...olderEvents].sort((left, right) => {
+  const events = [...new Map([...(timeline.data?.events ?? []), ...olderEvents].map((event) => [event.id, event])).values()].sort((left, right) => {
     const occurred = new Date(right.occurred_at).getTime() - new Date(left.occurred_at).getTime();
     return occurred || right.id.localeCompare(left.id);
   });
@@ -351,8 +371,8 @@ export default function TimelineRoute() {
     <Screen scroll contentContainerStyle={styles.content}>
       <WorkspaceBar familyName={petFamily?.name} petName={pet.name} onPressWorkspace={() => router.push('/(tabs)/family')} />
       <PageHeader
-        eyebrow={`${pet.name.toUpperCase()} / HISTORY`}
-        title="Journal"
+        eyebrow={`${pet.name.toUpperCase()} · HISTORY`}
+        title="Timeline"
         showBack={false}
       />
       {accessiblePets.pets.length > 1 ? (
@@ -364,29 +384,9 @@ export default function TimelineRoute() {
         </View>
       ) : null}
       {hasStaleData ? <StaleDataNotice onRetry={retryTimeline} retrying={timeline.isFetching || accessiblePets.isLoading} /> : null}
-      <View style={styles.intro}>
-        <View
-          style={[
-            styles.introIcon,
-            { backgroundColor: theme.colors.accentSurface },
-          ]}
-        >
-          <CalendarDotsIcon
-            size={24}
-            color={theme.colors.accentStrong}
-            weight="duotone"
-          />
-        </View>
-        <View style={styles.introCopy}>
-          <AppText variant="heading">{pet.name}'s care history</AppText>
-          <AppText muted>
-            Keep the details that help you notice, remember and care.
-          </AppText>
-        </View>
-      </View>
       {canRecord ? <Button
-        label={adding ? "Close record form" : "Record something"}
-        variant="secondary"
+        label={adding ? "Close record form" : "Add a record"}
+        variant={adding ? "secondary" : "primary"}
         icon={adding
           ? <XIcon size={17} color={theme.colors.brandStrong} weight="bold" />
           : <PlusIcon size={17} color={theme.colors.brandStrong} weight="bold" />}
@@ -463,7 +463,7 @@ export default function TimelineRoute() {
       ) : null}
       <View style={styles.sectionHeader}>
         <View>
-            <AppText variant="title">Recent records</AppText>
+            <AppText variant="title">Recent activity</AppText>
           <AppText variant="caption" muted>
             {visibleEvents.length
               ? `${visibleEvents.length} ${timelineFilter === "all" ? (visibleEvents.length === 1 ? "record" : "records") : (visibleEvents.length === 1 ? "matching record" : "matching records")}`
@@ -578,7 +578,7 @@ export default function TimelineRoute() {
             </Card>
             ))}
           </View>)}
-          {((timeline.data?.events.length ?? 0) === 100 || olderEvents.length > 0) && hasMore ? (
+          {((timeline.data?.next_cursor !== undefined) || olderEvents.length > 0) && hasMore ? (
             <Button label="Load older records" variant="secondary" loading={loadOlder.isPending} onPress={() => { setError(""); loadOlder.mutate(); }} />
           ) : null}
         </View>
@@ -593,14 +593,14 @@ const styles = StyleSheet.create({
     maxWidth: 680,
     alignSelf: "center",
     width: "100%",
-    paddingBottom: 192,
-    gap: 16,
+    paddingBottom: 136,
+    gap: 20,
   },
   intro: { flexDirection: "row", alignItems: "center", gap: 12 },
   introIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -608,17 +608,17 @@ const styles = StyleSheet.create({
   petPicker: { gap: 8 },
   form: { gap: 13 },
   sectionHeader: { marginTop: 7 },
-  events: { gap: 10 },
-  eventGroup: { gap: 9 },
-  eventDay: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 3, paddingTop: 4 },
+  events: { gap: 22 },
+  eventGroup: { gap: 0 },
+  eventDay: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 4, paddingBottom: 8 },
   eventRule: { flex: 1, height: StyleSheet.hairlineWidth },
-  event: { gap: 11 },
-  eventDetails: { borderRadius: 12, padding: 10, gap: 3 },
+  event: { gap: 9, paddingHorizontal: 0, paddingVertical: 14, borderWidth: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderRadius: 0, backgroundColor: "transparent" },
+  eventDetails: { borderRadius: 8, padding: 10, gap: 3 },
   eventTop: { flexDirection: "row", alignItems: "center", gap: 10 },
   eventDot: {
     width: 36,
     height: 36,
-    borderRadius: 13,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },

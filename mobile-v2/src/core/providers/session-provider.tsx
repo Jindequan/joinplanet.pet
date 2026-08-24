@@ -6,6 +6,7 @@ import { planetApi } from '../api/planet-api';
 import { setUnauthorizedHandler } from '../network/api-client';
 import { ApiError } from '../network/api-client';
 import { queryClient } from '../query/query-client';
+import { discardLegacyCareActions } from '../storage/care-action-queue';
 
 type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -22,6 +23,12 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [token, setToken] = useState<string | null>(null);
   const [pushToken, setPushToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // The old queue had no owner identity. Drop it instead of risking that a
+    // later sign-in replays another user's care action.
+    void discardLegacyCareActions();
+  }, []);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {

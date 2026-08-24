@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { ArrowRightIcon, CheckCircleIcon, LockKeyIcon, SparkleIcon } from '../src/ui/icons';
+import { ArrowRightIcon, LockKeyIcon } from '../src/ui/icons';
 import { AppText, Button, Card, Screen, TextField } from '../src/ui/components';
 import { useTheme } from '../src/core/providers/theme-provider';
 import { planetApi } from '../src/core/api/planet-api';
@@ -9,11 +9,10 @@ import { ApiError } from '../src/core/network/api-client';
 import { useSession } from '../src/core/providers/session-provider';
 import { codeSchema, emailSchema } from '../src/core/forms';
 
-const items = [{ icon: SparkleIcon, title: 'A clear day', body: 'See the care moments that deserve your attention.' }, { icon: CheckCircleIcon, title: 'A shared rhythm', body: 'Let the right people help without losing the thread.' }, { icon: LockKeyIcon, title: 'A private record', body: 'Keep their health story close and in your control.' }];
-
 export default function SignInRoute() {
   const { theme } = useTheme();
   const { signIn } = useSession();
+  const params = useLocalSearchParams<{ inviteCode?: string }>();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
@@ -64,14 +63,16 @@ export default function SignInRoute() {
     if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? 'Enter a valid code.'); verifyingRef.current = false; setVerifying(false); return; }
     try {
       const result = await planetApi.auth.verifyCode(parsed.data.email, parsed.data.code, 'planet-mobile');
-      await signIn(result.token); router.replace('/(tabs)');
+      await signIn(result.token);
+      const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
+      router.replace(inviteCode ? { pathname: '/(tabs)/family', params: { mode: 'join', code: inviteCode } } : '/(tabs)');
     } catch (err) { setError(authErrorMessage(err, 'Unable to sign in.')); }
     finally { verifyingRef.current = false; setVerifying(false); }
   }
 
   const sendCodeLabel = sent ? (resendSeconds > 0 ? `Send a new code · ${resendSeconds}s` : 'Send a new code') : (resendSeconds > 0 ? `Try again in ${resendSeconds}s` : 'Send sign-in code');
   const loading = requesting || verifying;
-  return <Screen scroll contentContainerStyle={styles.content}><AppText variant="caption" muted>PLANET / SIGN IN</AppText><AppText variant="display">Come back to your orbit.</AppText><AppText muted>Use your email to receive a secure sign-in code. No password to remember.</AppText><Card style={styles.form}><TextField label="Email" value={email} onChangeText={(value) => { setEmail(value); if (sent) { setSent(false); setCode(''); setHint(''); setResendSeconds(0); } setError(''); }} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" editable={!loading} /><Button label={sendCodeLabel} onPress={() => void requestCode()} loading={requesting} disabled={loading || !email.trim() || resendSeconds > 0} icon={<ArrowRightIcon size={18} color={theme.colors.onBrand} weight="bold" />} />{sent ? <><TextField label="Six-digit code" value={code} onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" maxLength={6} placeholder="123456" hint={hint} editable={!loading} /><Button label="Enter PLANET" onPress={() => void verifyCode()} loading={verifying} disabled={loading || code.trim().length !== 6} variant="secondary" /></> : null}{error ? <AppText style={{ color: theme.colors.danger }}>{error}</AppText> : null}</Card><AppText variant="caption" muted>Private by default. Shared only with the people you choose.</AppText>{items.map(({ icon: Icon, title, body }) => <Card key={title} style={styles.card}><View style={[styles.itemIcon, { backgroundColor: theme.colors.brandSoft }]}><Icon size={22} color={theme.colors.brandStrong} weight="duotone" /></View><View style={styles.itemCopy}><AppText variant="heading">{title}</AppText><AppText muted>{body}</AppText></View></Card>)}</Screen>;
+  return <Screen scroll contentContainerStyle={styles.content}><View style={styles.intro}><AppText variant="caption" muted>PLANET / SIGN IN</AppText><AppText variant="display">Welcome to your care space.</AppText><AppText muted>We’ll email you a secure six-digit code. No password to remember.</AppText></View><Card style={styles.form}><TextField label="Email" value={email} onChangeText={(value) => { setEmail(value); if (sent) { setSent(false); setCode(''); setHint(''); setResendSeconds(0); } setError(''); }} autoCapitalize="none" autoComplete="email" keyboardType="email-address" placeholder="you@example.com" editable={!loading} /><Button label={sendCodeLabel} onPress={() => void requestCode()} loading={requesting} disabled={loading || !email.trim() || resendSeconds > 0} icon={<ArrowRightIcon size={18} color={theme.colors.onBrand} weight="bold" />} />{sent ? <><TextField label="Six-digit code" value={code} onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" maxLength={6} placeholder="123456" hint={hint} editable={!loading} /><Button label="Enter PLANET" onPress={() => void verifyCode()} loading={verifying} disabled={loading || code.trim().length !== 6} variant="secondary" /></> : null}{error ? <AppText style={{ color: theme.colors.danger }}>{error}</AppText> : null}</Card><View style={[styles.privacy, { backgroundColor: theme.colors.brandSoft }]}><View style={[styles.privacyIcon, { backgroundColor: theme.colors.surface }]}><LockKeyIcon size={19} color={theme.colors.brandStrong} weight="duotone" /></View><View style={styles.privacyCopy}><AppText variant="label">Private by default</AppText><AppText variant="caption" muted>Shared only with the people you choose.</AppText></View></View></Screen>;
 }
 
-const styles = StyleSheet.create({ content: { maxWidth: 640, alignSelf: 'center', width: '100%', gap: 16 }, form: { gap: 14, marginTop: 6 }, card: { flexDirection: 'row', alignItems: 'center', gap: 12 }, itemIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, itemCopy: { flex: 1, gap: 3 } });
+const styles = StyleSheet.create({ content: { maxWidth: 560, alignSelf: 'center', width: '100%', gap: 22, paddingTop: 34 }, intro: { gap: 10 }, form: { gap: 14, padding: 18 }, privacy: { minHeight: 72, borderRadius: 20, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 11 }, privacyIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, privacyCopy: { flex: 1, gap: 2 } });

@@ -8,6 +8,21 @@ import { PetAvatar } from "../../ui/pet-avatar";
 import { WeightChart, type WeightPoint } from "../../ui/weight-chart";
 import { speciesLabel } from "../../core/display";
 
+function civilFromDays(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+function civilToday(): string {
+  return civilFromDays(0);
+}
+type CareStats = {
+  total: number; completed: number; skipped: number; missed: number; handled: number;
+  rate: number | null;
+  per_pet: Array<{ pet_id: string; pet_name: string; total: number; completed: number; skipped: number; missed: number; handled: number; rate: number | null }>;
+};
+
 const RANGES = [
   { key: "1m", label: "近一个月", days: 30 },
   { key: "3m", label: "三个月", days: 90 },
@@ -56,6 +71,16 @@ export function TrendsPage() {
     queryKey: ["trends-events", scope.type, scope.type === "all" ? "" : scope.id, range.key],
     queryFn: () => fetchEventsInRange(scope, Date.now() - range.days * 86_400_000),
   });
+  // 服务端事实的照护执行统计:分母含 missed(该做没做),不是前端拼凑
+  const statsQuery = useQuery({
+    queryKey: ["care-stats", scope.type, scope.type === "all" ? "" : scope.id, range.key],
+    queryFn: () => {
+      const params = new URLSearchParams({ from: civilFromDays(range.days), to: civilToday() });
+      if (scope.type === "family") params.set("family_id", scope.id);
+      if (scope.type === "pet") params.set("pet_id", scope.id);
+      return api.get<CareStats>(`/care-stats?${params.toString()}`);
+    },
+  });
 
   const familyList = families.data?.families ?? [];
   const allPets = pets.data?.pets ?? [];
@@ -98,17 +123,6 @@ export function TrendsPage() {
     eventsByPet.set(event.pet_id, list);
   }
 
-  const totalCompleted = events.filter(
-    (event) =>
-      event.type === "care_task_completed" &&
-      event.payload?.status !== "skipped",
-  ).length;
-  const totalSkipped = events.filter(
-    (event) =>
-      event.type === "care_task_completed" &&
-      event.payload?.status === "skipped",
-  ).length;
-
   return (
     <Page className="design-page trends-page">
       <section className="trends-head">
@@ -131,19 +145,32 @@ export function TrendsPage() {
       </section>
 
       <section className="trends-summary">
-        <div>
-          <strong>{totalCompleted}</strong>
-          <span>照护完成</span>
-        </div>
-        <i />
-        <div>
-          <strong>{totalSkipped}</strong>
-          <span>跳过</span>
-        </div>
+        {statsQuery.data && (
+          <>
+            <div>
+              <strong>
+                {statsQuery.data.rate === null
+                  ? "—"
+                  : `${statsQuery.data.rate}%`}
+              </strong>
+              <span>按时完成率</span>
+            </div>
+            <i />
+            <div>
+              <strong>{statsQuery.data.completed}</strong>
+              <span>完成</span>
+            </div>
+            <i />
+            <div>
+              <strong>{statsQuery.data.missed}</strong>
+              <span>该做未做</span>
+            </div>
+          </>
+        )}
         <i />
         <div>
           <strong>{events.length}</strong>
-          <span>条记录</span>
+          <span>条动态记录</span>
         </div>
       </section>
 

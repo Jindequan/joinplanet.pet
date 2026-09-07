@@ -3,20 +3,20 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../core/api/client";
 import { InlineError, PageSkeleton, EmptyState } from "../../core/ui";
-import { Page, ScopeCascade, useFamilies, usePets, useScope, type Event } from "../../app/shared";
+import { Page, ScopeCascade, useFamilies, usePets, useScope, civilDateInTimezone, civilDaysBefore, type Event } from "../../app/shared";
 import { PetAvatar } from "../../ui/pet-avatar";
 import { WeightChart, type WeightPoint } from "../../ui/weight-chart";
 import { speciesLabel } from "../../core/display";
 import { useT } from "../../core/i18n";
 
-function civilFromDays(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+// 统计边界用家庭时区的 civil date（后端 care-stats 语义=规则时区业务日）。
+// 家庭 scope 用该家庭时区；宠物 scope 用其家庭；全部 scope 跨时区聚合，
+// 找得到任一时区就用它，否则退回设备本地（与 Today 的兜底一致）。
+function civilFromDays(days: number, timezone?: string): string {
+  return civilDaysBefore(civilDateInTimezone(timezone), days);
 }
-function civilToday(): string {
-  return civilFromDays(0);
+function civilToday(timezone?: string): string {
+  return civilFromDays(0, timezone);
 }
 type CareStats = {
   total: number; completed: number; skipped: number; missed: number; handled: number;
@@ -76,6 +76,16 @@ export function TrendsPage() {
   const families = useFamilies();
   const [rangeKey, setRangeKey] = useState<RangeKey>("1m");
   const range = RANGES.find((item) => item.key === rangeKey) ?? RANGES[0];
+  const familyList = families.data?.families ?? [];
+  const allPets = pets.data?.pets ?? [];
+  const scopeTimezone =
+    scope.type === "family"
+      ? familyList.find((family) => family.id === scope.id)?.timezone
+      : scope.type === "pet"
+        ? familyList.find((family) =>
+            (allPets.find((pet) => pet.id === scope.id)?.family_ids ?? []).includes(family.id),
+          )?.timezone
+        : familyList[0]?.timezone;
 
   const eventsQuery = useQuery({
     queryKey: ["trends-events", scope.type, scope.type === "all" ? "" : scope.id, range.key],
@@ -83,21 +93,19 @@ export function TrendsPage() {
   });
   // 服务端事实的照护执行统计:分母含 missed(该做没做),不是前端拼凑
   const statsQuery = useQuery({
-    queryKey: ["care-stats", scope.type, scope.type === "all" ? "" : scope.id, range.key],
+    queryKey: ["care-stats", scope.type, scope.type === "all" ? "" : scope.id, range.key, scopeTimezone ?? ""],
     queryFn: () => {
-      const params = new URLSearchParams({ from: civilFromDays(range.days), to: civilToday() });
+      const params = new URLSearchParams({ from: civilFromDays(range.days, scopeTimezone), to: civilToday(scopeTimezone) });
       if (scope.type === "family") params.set("family_id", scope.id);
       if (scope.type === "pet") params.set("pet_id", scope.id);
       return api.get<CareStats>(`/care-stats?${params.toString()}`);
     },
   });
 
-  const familyList = families.data?.families ?? [];
-  const allPets = pets.data?.pets ?? [];
   const petsInScope = scope.type === "pet"
     ? allPets.filter((pet) => pet.id === scope.id)
     : scope.type === "family"
-      ? allPets.filter((pet) => !pet.archived_at && pet.family_ids.includes(scope.id))
+      ? allPets.filter((pet) => !pet.archived_at && (pet.family_ids ?? []).includes(scope.id))
       : allPets.filter((pet) => !pet.archived_at);
   const scopeText = scope.type === "all"
     ? t("全部宠物", "All pets")

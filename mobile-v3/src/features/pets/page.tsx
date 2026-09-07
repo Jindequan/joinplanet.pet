@@ -1,7 +1,7 @@
 import * as React from "react";
 /* eslint-disable react-refresh/only-export-components -- pet helpers stay private to this feature module. */
-import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../core/api/client";
 import { useT, tt } from "../../core/i18n";
@@ -12,6 +12,7 @@ import { queryClient } from "../../core/query/client";
 import { queryKeys } from "../../core/query/keys";
 import { ChevronRight, CircleAlert, ClipboardList, Download, Info, Pencil, Pill, Plus, Settings2, Trash2, Users, X } from "lucide-react";
 import { MedicationForm, Sharing } from "../families/page";
+import { HandoffCard, MedReminderDialog } from "../handoff/card";
 import { WeightChart, type WeightPoint } from "../../ui/weight-chart";
 import { MoreGroup, MoreRow } from "../../ui/more";
 import { ageText, carePlanTypeLabel, ruleText, sexLabel, speciesLabel, weightKg } from "../../core/display";
@@ -409,17 +410,15 @@ export function PetPage() {
             location.pathname.includes("/access")
           ? "sharing"
           : "overview";
-  const [edit, setEdit] = useState(() => location.pathname.endsWith("/edit"));
+  // 编辑态完全由 URL 派生（/edit 后缀），不镜像成 state——曾经的双写
+  // effect 是 set-state-in-effect 反模式的来源。
+  const edit = location.pathname.endsWith("/edit");
   const [confirm, setConfirm] = useState<"delete" | "archive" | null>(null);
   const invalidate = useInvalidate();
   const [toast, setToast] = useState("");
   const commandId = useRef(createCommandId());
-  useEffect(() => {
-    if (location.pathname.endsWith("/edit")) setEdit(true);
-  }, [location.pathname]);
   function closeEdit() {
-    setEdit(false);
-    if (location.pathname.endsWith("/edit")) navigate(`/pets/${petId}`);
+    if (edit) navigate(`/pets/${petId}`);
   }
   if (petQuery.isLoading)
     return (
@@ -514,22 +513,29 @@ export function PetPage() {
               medicationsQuery.data?.medications?.[0]
             }
             onEdit={() => {
-              setEdit(true);
-              if (!location.pathname.endsWith("/edit")) navigate(`/pets/${pet.id}/edit`);
+              if (!edit) navigate(`/pets/${pet.id}/edit`);
             }}
             onArchive={() => setConfirm("archive")}
             onDelete={() => setConfirm("delete")}
           />
         )}
         {tab === "care" && (
-          <CarePlans
-            pet={pet}
-            timezone={families.data?.families.find((family) => pet.family_ids.includes(family.id))?.timezone}
-            initialShow={location.pathname.endsWith("/care/new")}
-          />
+          <>
+            <HandoffCard pet={pet} />
+            <CarePlans
+              pet={pet}
+              timezone={families.data?.families.find((family) => (pet.family_ids ?? []).includes(family.id))?.timezone}
+              initialShow={location.pathname.endsWith("/care/new")}
+            />
+          </>
         )}
         {tab === "meds" && <Medications pet={pet} />}
-        {tab === "sharing" && <Sharing pet={pet} />}
+        {tab === "sharing" && (
+          <>
+            <PetFamilyLinks pet={pet} />
+            <Sharing pet={pet} />
+          </>
+        )}
         {edit && (
           <PetEdit
             pet={pet}
@@ -674,20 +680,21 @@ function ProfileSummary({ profile }: { profile: Profile }) {
 export function PetFamilyLinks({ pet }: { pet: Pet }) {
   const t = useT();
   const families = useFamilies();
-  const client = useQueryClient();
   const [familyId, setFamilyId] = useState("");
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
+  const invalidate = useInvalidate();
+  const linkedIds = pet.family_ids ?? [];
   const available = (families.data?.families ?? []).filter(
-    (family) => !pet.family_ids.includes(family.id),
+    (family) => !linkedIds.includes(family.id),
   );
   async function share() {
     if (!familyId) return;
     try {
       await api.post(`/pets/${pet.id}/families`, { family_id: familyId });
       setToast(t("已链接到该家庭。", "Linked to this family."));
-      await families.refetch();
-      await client.invalidateQueries({ queryKey: queryKeys.pet(pet.id) });
+      setFamilyId("");
+      invalidate();
     } catch (e) {
       setToast(errorMessage(e));
     }
@@ -698,7 +705,7 @@ export function PetFamilyLinks({ pet }: { pet: Pet }) {
       await api.delete(`/pets/${pet.id}/families/${removeId}`);
       setToast(t("已解除家庭链接。", "Family unlinked."));
       setRemoveId(null);
-      await client.invalidateQueries({ queryKey: queryKeys.pet(pet.id) });
+      invalidate();
     } catch (e) {
       setToast(errorMessage(e));
     }
@@ -713,23 +720,31 @@ export function PetFamilyLinks({ pet }: { pet: Pet }) {
       </div>
       <div className="stack compact">
         {(families.data?.families ?? [])
-          .filter((family) => pet.family_ids.includes(family.id))
-          .map((family) => (
-            <div className="row-between" key={family.id}>
-              <span>
-                <strong>{family.name}</strong>
-                <small>{family.timezone}</small>
-              </span>
-              {pet.family_ids.length > 1 && (
-                <button
-                  className="text-button"
-                  onClick={() => setRemoveId(family.id)}
-                >
-                  {t("解除链接", "Unlink")}
-                </button>
-              )}
-            </div>
-          ))}
+          .filter((family) => linkedIds.includes(family.id))
+          .map((family) => {
+            const isPrimary = pet.primary_family_id === family.id;
+            return (
+              <div className="row-between" key={family.id}>
+                <span>
+                  <strong>{family.name}</strong>
+                  {isPrimary && (
+                    <span className="role-pill" style={{ marginLeft: 8 }}>
+                      {t("主家庭", "Primary")}
+                    </span>
+                  )}
+                  <small>{family.timezone}</small>
+                </span>
+                {linkedIds.length > 1 && (
+                  <button
+                    className="text-button"
+                    onClick={() => setRemoveId(family.id)}
+                  >
+                    {t("解除链接", "Unlink")}
+                  </button>
+                )}
+              </div>
+            );
+          })}
       </div>
       {!pet.archived_at && available.length > 0 && (
         <div className="form-inline">
@@ -756,7 +771,11 @@ export function PetFamilyLinks({ pet }: { pet: Pet }) {
       {removeId && (
         <ConfirmDialog
           title={t("解除这个家庭的链接？", "Unlink this family?")}
-          consequence={t("该家庭的成员将失去查看这只宠物的权限；宠物历史不受影响。", "Members of this family will lose access to this pet. Pet history is unaffected.")}
+          consequence={
+            removeId === pet.primary_family_id
+              ? t("这是主家庭（照护时区跟随它）。解除后该家庭成员将失去查看权限，宠物历史不受影响。", "This is the primary family (care timezone follows it). Members will lose access to this pet. Pet history is unaffected.")
+              : t("该家庭的成员将失去查看这只宠物的权限；宠物历史不受影响。", "Members of this family will lose access to this pet. Pet history is unaffected.")
+          }
           confirmLabel={t("解除链接", "Unlink")}
           onCancel={() => setRemoveId(null)}
           onConfirm={unshare}
@@ -1442,6 +1461,7 @@ export function Medications({ pet }: { pet: Pet }) {
   const [deleting, setDeleting] = useState<Medication | null>(null);
   const [confirmStopId, setConfirmStopId] = useState("");
   const [toastNotice, setToastNotice] = useState("");
+  const [reminderMed, setReminderMed] = useState<Medication | null>(null);
   const invalidate = useInvalidate();
   const families = useFamilies();
   if (query.isLoading) return <PageSkeleton />;
@@ -1500,9 +1520,12 @@ export function Medications({ pet }: { pet: Pet }) {
       {!pet.archived_at && (
         <MedQuickAdd
           petId={pet.id}
-          onSaved={(name) => {
-            setToastNotice(t(`已开始记录「${name}」。`, `Started recording "${name}".`));
+          onSaved={(medication) => {
+            setToastNotice(t(`已开始记录「${medication.name}」。`, `Started recording "${medication.name}".`));
             invalidate();
+            // 停药自动归档的联动从 medication_id 关联开始：记完药立刻
+            // 问一句要不要每天定点提醒。
+            setReminderMed(medication);
           }}
         />
       )}
@@ -1551,6 +1574,20 @@ export function Medications({ pet }: { pet: Pet }) {
           confirmLabel={t("删除药物", "Delete Medication")}
           onCancel={() => setDeleting(null)}
           onConfirm={() => destroy(deleting)}
+        />
+      )}
+      {reminderMed && (
+        <MedReminderDialog
+          pet={pet}
+          medicationId={reminderMed.id}
+          medicationName={reminderMed.name}
+          dose={reminderMed.dose || undefined}
+          onClose={() => setReminderMed(null)}
+          onCreated={() => {
+            setReminderMed(null);
+            setToastNotice(t("已创建用药提醒，停药时会自动结束。", "Reminder created. It ends automatically when the medication stops."));
+            invalidate();
+          }}
         />
       )}
     </section>
@@ -1657,7 +1694,7 @@ function MedQuickAdd({
   onSaved,
 }: {
   petId: string;
-  onSaved: (name: string) => void;
+  onSaved: (medication: Medication) => void;
 }) {
   const t = useT();
   const [name, setName] = useState("");
@@ -1674,7 +1711,7 @@ function MedQuickAdd({
     setBusy(true);
     setError("");
     try {
-      await api.post(
+      const result = await api.post<{ medication: Medication }>(
         `/pets/${petId}/medications`,
         {
           name: name.trim(),
@@ -1688,7 +1725,7 @@ function MedQuickAdd({
       setDose("");
       setSchedule("");
       commandId.current = createCommandId();
-      onSaved(name.trim());
+      onSaved(result.medication);
     } catch (e) {
       setError(errorMessage(e));
     } finally {

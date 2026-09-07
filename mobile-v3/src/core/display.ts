@@ -1,6 +1,27 @@
 // 展示助手：所有服务端枚举 → 用户可见中文文案的唯一映射位置。
 // 页面不得内联第二套同类翻译，避免同一字段在不同页面叫法不一致。
-import { tt } from "./i18n";
+import { tt, getLang } from "./i18n";
+
+/** 日期/时间格式随界面语言走（zh→zh-CN，en→en-US）。
+ *  历史上 5 处硬编码 zh-CN，英文模式下也输出中文格式。 */
+function localeTag(): string {
+  return getLang() === "en" ? "en-US" : "zh-CN";
+}
+export function formatDateTime(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(localeTag());
+}
+export function formatDate(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString(localeTag());
+}
+export function formatTime(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleTimeString(localeTag(), { hour: "2-digit", minute: "2-digit" });
+}
+export { tt };
 
 export function roleLabel(role: string | undefined): string {
   switch (role) {

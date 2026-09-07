@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../core/api/client";
@@ -8,10 +9,11 @@ import { EmptyState, InlineError, PageSkeleton, Toast, BusyButton, ConfirmDialog
 import { queryKeys } from "../../core/query/keys";
 import { Check, ChevronRight, Copy, Home, Pencil, PawPrint, Plus, ShieldCheck, Trash2, Undo2, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { AccessGrant, BackHeader, Card, Family, Member, Medication, Pet, Share, Transfer, Page, PageTitle, useFamilies, useInvalidate } from "../../app/shared";
-import { roleLabel, speciesLabel, timezoneCity, timezoneLabel, timezoneOptions, transferStatusLabel } from "../../core/display";
+import { formatDate, formatDateTime, roleLabel, speciesLabel, timezoneCity, timezoneLabel, timezoneOptions, transferStatusLabel } from "../../core/display";
 import { tt, useT } from "../../core/i18n";
 import { MoreGroup, MoreRow } from "../../ui/more";
 import { PetAvatar } from "../../ui/pet-avatar";
+import { FamilyHandoffSummary } from "../handoff/card";
 
 /** 「永久」分享用 100 年过期时间实现；展示层识别为永久。 */
 function isPermanentExpiry(expiresAt: string): boolean {
@@ -27,7 +29,7 @@ export function AssignmentsPage() {
     queryFn: () => api.get<{ pet: Pet }>(`/pets/${petId}`),
     enabled: Boolean(petId),
   });
-  const familyId = pet.data?.pet.family_ids[0] ?? "";
+  const familyId = pet.data?.pet.family_ids?.[0] ?? "";
   const family = useQuery({
     queryKey: queryKeys.family(familyId),
     queryFn: () =>
@@ -363,10 +365,17 @@ export function FamilyTransfersPage() {
               <Card key={transfer.id}>
                 <div className="row-between">
                   <div>
-                    <strong>{transfer.pet_name || transfer.pet_id}</strong>
+                    <strong>
+                      {transfer.pet_name || transfer.pet_id}
+                      {transfer.pet_archived && (
+                        <span className="role-pill" style={{ marginLeft: 8 }}>
+                          {t("纪念", "Memorial")}
+                        </span>
+                      )}
+                    </strong>
                     <small>
                       {transferStatusLabel(transfer.status)} ·{" "}
-                      {new Date(transfer.created_at).toLocaleString("zh-CN")}
+                      {formatDateTime(transfer.created_at)}
                     </small>
                   </div>
                   {transfer.status === "pending" &&
@@ -616,8 +625,8 @@ export function Sharing({ pet }: { pet: Pet }) {
                     {isPermanentExpiry(share.expires_at)
                       ? t("永久有效", "Never expires")
                       : t(
-                          `${new Date(share.expires_at).toLocaleString("zh-CN")} 过期`,
-                          `Expires ${new Date(share.expires_at).toLocaleString("zh-CN")}`,
+                          `${formatDateTime(share.expires_at)} 过期`,
+                          `Expires ${formatDateTime(share.expires_at)}`,
                         )}{" "}
                     {t(
                       `· 已被查看 ${share.view_count} 次`,
@@ -735,19 +744,22 @@ export function Sharing({ pet }: { pet: Pet }) {
           onConfirm={revokeGrant}
         />
       )}
-      {!pet.archived_at && (
-        <MoreGroup label={t("归属治理", "Ownership")}>
-          <MoreRow
-            icon={<Users size={19} />}
-            title={t("转移所有权", "Transfer Ownership")}
-            sub={t(
-              "把这只宠物转给另一个家庭，需对方圈主接受",
-              "Move this pet to another family; their owner must accept",
-            )}
-            to={`/pets/${pet.id}/transfer`}
-          />
-        </MoreGroup>
-      )}
+      <MoreGroup label={t("归属治理", "Ownership")}>
+        <MoreRow
+          icon={<Users size={19} />}
+          title={
+            pet.archived_at
+              ? t("转移纪念档案", "Transfer Memorial Record")
+              : t("转移所有权", "Transfer Ownership")
+          }
+          sub={
+            pet.archived_at
+              ? t("把纪念档案交还给原来的家庭", "Hand the memorial record back to its family")
+              : t("把这只宠物转给另一个家庭，需对方圈主接受", "Move this pet to another family; their owner must accept")
+          }
+          to={`/pets/${pet.id}/transfer`}
+        />
+      </MoreGroup>
     </section>
   );
 }
@@ -823,7 +835,6 @@ export function GrantForm({
             onChange={(event) => setExpires(event.target.value)}
           />
         </label>
-        {error && <p className="form-error">{error}</p>}
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
@@ -1244,7 +1255,7 @@ export function DeletedFamilies({ onRestored }: { onRestored: () => void }) {
             <div>
               <strong>{family.name}</strong>
               <small>
-                {t("删除于", "Deleted on")} {new Date(family.deleted_at).toLocaleDateString("zh-CN")}
+                {t("删除于", "Deleted on")} {formatDate(family.deleted_at)}
               </small>
             </div>
             <button
@@ -1284,6 +1295,7 @@ export function FamilyPage() {
   });
   const [edit, setEdit] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [relocating, setRelocating] = useState(false);
   const [confirm, setConfirm] = useState<"delete" | "leave" | Member | null>(
     null,
   );
@@ -1398,6 +1410,7 @@ export function FamilyPage() {
           )}
         </MoreGroup>
         <MoreGroup label={t(`宠物 · ${pets.data?.pets.length ?? 0}`, `Pets · ${pets.data?.pets.length ?? 0}`)}>
+          <FamilyHandoffSummary familyId={family.id} />
           {(pets.data?.pets ?? []).map((pet) => (
             <MoreRow
               key={pet.id}
@@ -1445,7 +1458,16 @@ export function FamilyPage() {
         <div className="more-danger">
           <button
             className="danger-link"
-            onClick={() => setConfirm(isOwner ? "delete" : "leave")}
+            onClick={() => {
+              if (!isOwner) {
+                setConfirm("leave");
+                return;
+              }
+              // 删除家庭前必须清空宠物链接（后端 409 FAMILY_NOT_EMPTY）。
+              // 有宠物时先进引导面板逐只安置，而不是让用户撞英文 409。
+              if ((pets.data?.pets.length ?? 0) > 0) setRelocating(true);
+              else setConfirm("delete");
+            }}
           >
             <Trash2 size={16} /> {isOwner ? t("删除家庭", "Delete Family") : t("退出家庭", "Leave Family")}
           </button>
@@ -1472,6 +1494,21 @@ export function FamilyPage() {
             }}
           />
         )}
+        {relocating && (
+          <RelocateDialog
+            family={family}
+            pets={pets.data?.pets ?? []}
+            onClose={() => setRelocating(false)}
+            onChanged={() => {
+              void pets.refetch();
+              invalidate();
+            }}
+            onReadyToDelete={() => {
+              setRelocating(false);
+              setConfirm("delete");
+            }}
+          />
+        )}
         {confirm && (
           <ConfirmDialog
             title={
@@ -1484,8 +1521,8 @@ export function FamilyPage() {
             consequence={
               confirm === "delete"
                 ? t(
-                    "成员关系立即结束；已链接的宠物和历史依然受保护保留。",
-                    "Membership ends immediately; linked pets and history stay protected.",
+                    "成员关系与邀请立即结束；宠物已在别处安置，历史数据不受影响。",
+                    "Membership and invites end immediately; pets are settled elsewhere and history is unaffected.",
                   )
                 : t("你的访问会立即结束；已有历史不受影响。", "Your access ends immediately; existing history is unaffected.")
             }
@@ -1503,6 +1540,107 @@ export function FamilyPage() {
         )}
       </Page>
     </div>
+  );
+}
+
+/** 删家庭前的宠物安置引导：逐只「转移」或「解除链接」，清空后解锁删除。 */
+function RelocateDialog({
+  family,
+  pets,
+  onClose,
+  onChanged,
+  onReadyToDelete,
+}: {
+  family: Family;
+  pets: Pet[];
+  onClose: () => void;
+  onChanged: () => void;
+  onReadyToDelete: () => void;
+}) {
+  const t = useT();
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+  async function unlink(pet: Pet) {
+    setBusyId(pet.id);
+    setError("");
+    try {
+      await api.delete(`/pets/${pet.id}/families/${family.id}`);
+      onChanged();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusyId("");
+    }
+  }
+  return createPortal(
+    <div className="modal-backdrop">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="relocate-title">
+        <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
+          ×
+        </button>
+        <span className="eyebrow">{t("删除家庭 · 先安置宠物", "Delete Family · Settle Pets First")}</span>
+        <h2 id="relocate-title">
+          {pets.length > 0
+            ? t(`「${family.name}」里还有 ${pets.length} 只宠物`, `${pets.length} pets are still linked to "${family.name}"`)
+            : t("全部宠物已安置妥当", "All pets are settled")}
+        </h2>
+        <p>
+          {pets.length > 0
+            ? t(
+                "删除家庭前，先把每只宠物转移到另一个家庭，或解除它与这个家庭的链接（每只宠物至少保留一个家庭）。历史记录不会受影响。",
+                "Before deleting, transfer each pet to another family or unlink it here (every pet keeps at least one family). History is unaffected.",
+              )
+            : t("现在可以安全删除这个家庭了。", "The family is now safe to delete.")}
+        </p>
+        <div className="stack compact">
+          {pets.map((pet) => {
+            const multiFamily = (pet.family_ids ?? []).length > 1;
+            return (
+              <div className="row-between" key={pet.id}>
+                <span className="more-row-copy">
+                  <strong>{pet.name}</strong>
+                  <small>
+                    {multiFamily
+                      ? t("已链接多个家庭，可直接解除", "Linked to multiple families — safe to unlink")
+                      : t("只链接了这个家庭，需要先转移", "Only this family — transfer first")}
+                  </small>
+                </span>
+                <span className="row-actions">
+                  <Link className="button ghost" to={`/pets/${pet.id}/transfer`}>
+                    {t("转移", "Transfer")}
+                  </Link>
+                  {multiFamily && (
+                    <BusyButton
+                      className="button ghost"
+                      busy={busyId === pet.id}
+                      onClick={() => void unlink(pet)}
+                    >
+                      {t("解除链接", "Unlink")}
+                    </BusyButton>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="modal-actions">
+          <button className="button secondary" onClick={onClose}>
+            {t("稍后再说", "Later")}
+          </button>
+          {pets.length === 0 && (
+            <button className="button primary" onClick={onReadyToDelete}>
+              {t("继续删除家庭", "Continue to Delete")}
+            </button>
+          )}
+        </div>
+      </section>
+    </div>,
+    document.body,
   );
 }
 export function FamilyEdit({

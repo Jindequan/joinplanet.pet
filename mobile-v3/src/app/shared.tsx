@@ -33,6 +33,11 @@ export type Member = {
 export type Pet = {
   id: string;
   family_ids: string[];
+  /** primary 边的家庭（转移接受后的目标家庭）；无 primary 边时省略。 */
+  primary_family_id?: string;
+  /** 宠物当前主人（后端 petDTO）；注销预检与所有权判断用。 */
+  current_owner_user_id?: string;
+  access_role?: string;
   name: string;
   species: string;
   breed: string;
@@ -136,6 +141,8 @@ export type Transfer = {
   id: string;
   pet_id: string;
   pet_name?: string;
+  /** 纪念（归档）宠的转移：接受方列表里显示徽标。 */
+  pet_archived?: boolean;
   from_family_id: string;
   to_family_id: string;
   status: "pending" | "accepted" | "declined" | "cancelled";
@@ -354,11 +361,13 @@ export function usePets(enabled = true) {
 export function invalidateAll(client: ReturnType<typeof useQueryClient>) {
   const prefixes = [
     ["families"],
+    ["family"], // 单家庭详情(["family", id])
     ["pets"],
     ["pet"], // 单宠详情(["pet", id])
     ["today"],
     ["timeline"],
     ["care-plans"],
+    ["care-stats"], // 趋势页统计:完成动作后完成率必须跟上
     ["medications"],
     ["shares"],
     ["design-pet-today"],
@@ -369,6 +378,8 @@ export function invalidateAll(client: ReturnType<typeof useQueryClient>) {
     ["access-grants"],
     ["deleted-pets"],
     ["family-transfers"],
+    ["handoff"],
+    ["handoff-summary"],
   ];
   for (const prefix of prefixes)
     void client.invalidateQueries({ queryKey: prefix });
@@ -436,6 +447,16 @@ export function civilDateInTimezone(timezone: string | undefined, date = new Dat
   } catch {
     return localCivilDate(date);
   }
+}
+
+/** 在 YYYY-MM-DD civil date 上做天数回退（纯日历算术，不经过时区换算）。
+ *  统计区间/回看窗口的边界必须用这个口径，与后端"规则时区业务日"对齐。 */
+export function civilDaysBefore(base: string, days: number): string {
+  const parsed = new Date(`${base}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return base;
+  parsed.setDate(parsed.getDate() - days);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
 }
 
 export function Brand() {

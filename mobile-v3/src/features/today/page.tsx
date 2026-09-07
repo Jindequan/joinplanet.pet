@@ -44,6 +44,16 @@ function readPending(userId: string): PendingTask[] {
   }
 }
 
+/** 在 YYYY-MM-DD civil date 上做天数回退（不经过时区换算，纯日历算术）。 */
+function civilDaysBefore(base: string, days: number): string {
+  const parsed = new Date(`${base}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return base;
+  parsed.setDate(parsed.getDate() - days);
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${parsed.getFullYear()}-${month}-${day}`;
+}
+
 export function TodayPage() {
   const t = useT();
   const { scope } = useScope();
@@ -53,7 +63,7 @@ export function TodayPage() {
   const family = scope.type === "family"
     ? families.data?.families.find((item) => item.id === scope.id)
     : scope.type === "pet"
-      ? families.data?.families.find((item) => pets.data?.pets.find((pet) => pet.id === scope.id)?.family_ids.includes(item.id))
+      ? families.data?.families.find((item) => (pets.data?.pets.find((pet) => pet.id === scope.id)?.family_ids ?? []).includes(item.id))
       : undefined;
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
@@ -119,6 +129,7 @@ export function TodayPage() {
     setRetrying(true);
     const remaining: PendingTask[] = [];
     let synced = 0;
+    let converged = 0;
     let firstError = "";
     for (const item of pending) {
       try {
@@ -129,6 +140,16 @@ export function TodayPage() {
         );
         synced += 1;
       } catch (error) {
+        // 收敛即出队：409 TASK_LOG_EXISTS=家人已记录；409 键复用=同一命令
+        // 已按别的请求体生效；404=任务已删除。留在队列只会变成永久横幅。
+        if (
+          isApiError(error) &&
+          (error.status === 404 ||
+            (error.status === 409 && (error.code === "TASK_LOG_EXISTS" || error.code === "IDEMPOTENCY_KEY_REUSED")))
+        ) {
+          converged += 1;
+          continue;
+        }
         const message = errorMessage(error);
         firstError ||= message;
         remaining.push({ ...item, lastError: message });
@@ -137,7 +158,11 @@ export function TodayPage() {
     setPending(remaining);
     setRetrying(false);
     if (remaining.length === 0) {
-      setToast(t(`${synced} 条离线照护记录已同步。`, `${synced} offline care records synced.`));
+      setToast(
+        converged > 0
+          ? t(`${synced} 条已同步，${converged} 条家人已处理过。`, `${synced} synced. ${converged} were already handled by family.`)
+          : t(`${synced} 条离线照护记录已同步。`, `${synced} offline care records synced.`),
+      );
       invalidate();
     } else {
       setToast(t(`还有 ${remaining.length} 条待同步：${firstError}`, `${remaining.length} still waiting to sync: ${firstError}`));
@@ -269,13 +294,10 @@ export function TodayPage() {
   const skipped = items.filter((item) => item.log?.status === "skipped").length;
   const resolved = completed + skipped;
   const actionDate = (task: Task) => task.due_date || date;
-  // 服务端只允许补记最近 7 天；查看窗口仍是 30 天
+  // 服务端只允许补记最近 7 天；查看窗口仍是 30 天。边界一律在家庭时区的
+  // civil date 上做天数算术（设备本地日历跨界会差一天）。
   const BACKFILL_DAYS = 7;
-  const backfillEarliest = (() => {
-    const earliest = new Date(clock);
-    earliest.setDate(earliest.getDate() - BACKFILL_DAYS);
-    return civilDateInTimezone(family?.timezone, earliest);
-  })();
+  const backfillEarliest = civilDaysBefore(today, BACKFILL_DAYS);
   function beyondBackfill(task: Task) {
     const target = actionDate(task);
     return Boolean(target && target < backfillEarliest);
@@ -318,13 +340,10 @@ export function TodayPage() {
       `${weekdayEn}, ${monthEn} ${parsed.getDate()}`,
     );
   }
-  // 回看窗口：允许最近 30 天的补记，符合「有限的历史回看」。
-  const EARLIEST_VIEW_DATE = (() => {
-    const earliest = new Date(clock);
-    earliest.setDate(earliest.getDate() - 30);
-    return civilDateInTimezone(family?.timezone, earliest);
-  })();
-  // 最近 7 天（含今天）的周条；全部派生自 clock state，保持渲染纯度。
+  // 回看窗口：允许最近 30 天的回看，符合「有限的历史回看」。
+  const EARLIEST_VIEW_DATE = civilDaysBefore(today, 30);
+  // 最近 7 天（含今天）的周条；label/weekday 一律从家庭时区的 civil date
+  // 派生（value 与显示同一口径，设备与家庭跨日时不再错位）。
   const WEEKDAY_CHARS = ["日", "一", "二", "三", "四", "五", "六"];
   const WEEKDAY_CHARS_EN = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
   const weekStrip = () =>
@@ -332,10 +351,11 @@ export function TodayPage() {
       const parsed = new Date(clock);
       parsed.setDate(parsed.getDate() - (6 - offset));
       const value = civilDateInTimezone(family?.timezone, parsed);
+      const civil = new Date(`${value}T00:00:00`);
       return {
         value,
-        weekday: t(WEEKDAY_CHARS[parsed.getDay()], WEEKDAY_CHARS_EN[parsed.getDay()]),
-        label: String(parsed.getDate()),
+        weekday: t(WEEKDAY_CHARS[civil.getDay()], WEEKDAY_CHARS_EN[civil.getDay()]),
+        label: String(civil.getDate()),
       };
     });
   const progress = items.length ? Math.round((resolved / items.length) * 100) : 0;

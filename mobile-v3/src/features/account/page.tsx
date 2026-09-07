@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../core/api/client";
+import { createCommandId } from "../../core/api/idempotency";
 import { errorMessage, isApiError } from "../../core/api/errors";
 import { useSession } from "../../core/auth/session-context";
 import { useLang, useT, tt } from "../../core/i18n";
@@ -10,9 +11,9 @@ import { queryKeys } from "../../core/query/keys";
 import { Bell, Home, PawPrint, Trash2, TrendingUp, Users } from "lucide-react";
 import { CreatePet } from "../pets/page";
 import { DeletedFamilies, FamilyForm } from "../families/page";
-import { sexLabel, speciesLabel } from "../../core/display";
+import { sexLabel, speciesLabel, formatDateTime } from "../../core/display";
 import { MoreGroup, MoreRow } from "../../ui/more";
-import { AlertSummary, BackHeader, Brand, Card, DigestView, Page, PageTitle, SharedViewResponse, civilDateInTimezone, useFamilies, usePets,
+import { AlertSummary, BackHeader, Brand, Card, DigestView, Page, PageTitle, SharedViewResponse, civilDateInTimezone, useFamilies, useInvalidate, usePets,
 } from "../../app/shared";
 
 export function AccountPage() {
@@ -34,7 +35,7 @@ export function AccountPage() {
   });
   const [name, setName] = useState(user?.display_name ?? "");
   const [locale, setLocale] = useState(user?.locale ?? "zh-CN");
-  const [confirm, setConfirm] = useState(false);
+  const [confirm, setConfirm] = useState<null | boolean | "guide">(null);
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
   const families = useFamilies();
@@ -86,6 +87,10 @@ export function AccountPage() {
   }
   const petCount = pets.data?.pets.filter((pet) => !pet.archived_at).length ?? 0;
   const familyCount = families.data?.families.length ?? 0;
+  // 与后端注销阻断谓词同构：current_owner_user_id === 我 且未归档。
+  const ownedActivePets = pets.data?.pets.filter(
+    (pet) => !pet.archived_at && pet.current_owner_user_id === accountUser.id,
+  ) ?? [];
   return (
     <Page className="more-page">
       {/* 身份：唯一的大卡片，之后全部是分区列表 */}
@@ -221,15 +226,40 @@ export function AccountPage() {
         <button className="sign-out" onClick={() => void signOut(true)}>
           <LogOutIcon /> {t("退出当前设备", "Sign out of this device")}
         </button>
-        <button className="danger-link muted" onClick={() => setConfirm(true)}>
+        <button
+          className="danger-link muted"
+          onClick={() => {
+            // 预检与后端阻断同构：活跃宠物（我名下且未归档）必须先处理；
+            // 纪念宠不阻塞（后端会终结其所有权并保留数据）。
+            setConfirm(ownedActivePets.length > 0 ? "guide" : true);
+          }}
+        >
           <Trash2 size={16} /> {t("删除账户", "Delete account")}
         </button>
       </div>
 
-      {confirm && (
+      {confirm === "guide" && (
+        <ConfirmDialog
+          title={t("先安置你的宠物", "Settle your pets first")}
+          consequence={t(
+            `你名下还有 ${ownedActivePets.length} 只活跃宠物。删除账户前，请先到宠物页把它们转移给家人或删除（纪念中的宠物不受影响）。`,
+            `You still have ${ownedActivePets.length} active pet(s). Transfer them to family or delete them before deleting your account (memorialized pets are unaffected).`,
+          )}
+          confirmLabel={t("去处理宠物", "Go to pets")}
+          onCancel={() => setConfirm(false)}
+          onConfirm={async () => {
+            setConfirm(false);
+            navigate("/pets");
+          }}
+        />
+      )}
+      {confirm === true && (
         <ConfirmDialog
           title={t("删除你的 Planet 账户？", "Delete your Planet account?")}
-          consequence={t("名下资源会进入服务端保护期流程；删除成功后你会被退出登录。", "Resources under your account enter a server-side protection period; once deleted you'll be signed out.")}
+          consequence={t(
+            "名下资源会进入服务端保护期流程；进行中的宠物转移会被取消；删除成功后你会被退出登录。",
+            "Resources under your account enter a server-side protection period; pending pet transfers will be cancelled; once deleted you'll be signed out.",
+          )}
           confirmLabel={t("删除账户", "Delete account")}
           requireText={accountUser.email}
           onCancel={() => setConfirm(false)}
@@ -412,7 +442,12 @@ export function DeletedFamiliesPage() {
 export function SettingsPage() {
   const t = useT();
   const families = useFamilies();
-  const familyId = families.data?.families[0]?.id ?? "";
+  const invalidate = useInvalidate();
+  const [selectedFamilyId, setSelectedFamilyId] = useState("");
+  const familyList = families.data?.families ?? [];
+  const familyId = selectedFamilyId || familyList[0]?.id || "";
+  const family = familyList.find((item) => item.id === familyId);
+  const isOwner = family?.role === "owner";
   const digest = useQuery({
     queryKey: queryKeys.digest(
         familyId,
@@ -429,6 +464,33 @@ export function SettingsPage() {
       api.get<{ alerts: AlertSummary[] }>(`/families/${familyId}/alerts`),
     enabled: Boolean(familyId),
   });
+  // 手动发送：owner-only，服务端按 (family, date) 持久去重——同天重发
+  // 返回 skipped=true，不会重复打扰成员。
+  const [sending, setSending] = useState(false);
+  const [sendNotice, setSendNotice] = useState("");
+  async function sendDigest() {
+    setSending(true);
+    setSendNotice("");
+    try {
+      const result = await api.post<{ sent: number; skipped?: boolean; failures?: Array<{ to: string; error: string }> }>(
+        `/families/${familyId}/digest/send`,
+        {},
+        { idempotencyKey: createCommandId() },
+      );
+      if (result.skipped && result.sent === 0) {
+        setSendNotice(t("今天已经发过这份摘要了，明天 20:00 会自动再发。", "This digest was already sent today. It sends automatically again at 20:00 tomorrow."));
+      } else if (result.failures && result.failures.length > 0) {
+        setSendNotice(t(`已发送 ${result.sent} 位，${result.failures.length} 位失败。`, `Sent to ${result.sent}; ${result.failures.length} failed.`));
+      } else {
+        setSendNotice(t(`已发送给 ${result.sent} 位成员。`, `Sent to ${result.sent} member(s).`));
+      }
+      invalidate();
+    } catch (e) {
+      setSendNotice(errorMessage(e));
+    } finally {
+      setSending(false);
+    }
+  }
   return (
     <div className="detail-view">
       <BackHeader title={t("设置", "Settings")} />
@@ -438,6 +500,23 @@ export function SettingsPage() {
           title={t("设置", "Settings")}
           description={t("这里只展示真实的服务端状态，没有任何假装成功的操作。", "Only real server state is shown here — no fake success actions.")}
         />
+        {familyList.length > 1 && (
+          <div className="form-inline settings-family-picker">
+            <label>
+              <span>{t("查看哪个家庭", "Which family")}</span>
+              <select
+                value={familyId}
+                onChange={(event) => setSelectedFamilyId(event.target.value)}
+              >
+                {familyList.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
         <MoreGroup label={t("快捷入口", "Quick Links")}>
           <MoreRow
             icon={<Bell size={19} />}
@@ -459,7 +538,17 @@ export function SettingsPage() {
           />
         </MoreGroup>
         <Card>
-          <span className="eyebrow">{t("今日摘要", "Today's Digest")}</span>
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">{t("今日摘要", "Today's Digest")}</span>
+            </div>
+            {isOwner && (
+              <BusyButton className="button ghost" busy={sending} onClick={() => void sendDigest()}>
+                {t("立即发送摘要", "Send Digest Now")}
+              </BusyButton>
+            )}
+          </div>
+          {sendNotice && <p className="muted-copy">{sendNotice}</p>}
           {digest.isLoading ? (
             <PageSkeleton />
           ) : digest.error ? (
@@ -482,6 +571,9 @@ export function SettingsPage() {
                   </div>
                 </div>
               ))}
+              <p className="muted-copy">
+                {t("每天 20:00（家庭时区）自动发送给开启摘要的成员。", "Sent automatically at 20:00 (family time) to members who enable the digest.")}
+              </p>
             </div>
           ) : (
             <p className="muted-copy">{t("这个家庭还没有照护摘要。", "No care digest for this family yet.")}</p>
@@ -507,13 +599,12 @@ export function SettingsPage() {
                     <p>{alert.body}</p>
                   </div>
                   <span className="role-pill">
-                    {alert.severity === "high"
-                      ? t("高", "High")
-                      : alert.severity === "medium"
-                        ? t("中", "Medium")
-                        : alert.severity === "low"
-                          ? t("低", "Low")
-                          : alert.severity}
+                    {/* 后端枚举只有 watch|warn；未知值原样回显做防御 */}
+                    {alert.severity === "warn"
+                      ? t("警戒", "Warning")
+                      : alert.severity === "watch"
+                        ? t("留意", "Watch")
+                        : alert.severity}
                   </span>
                 </div>
               ))}
@@ -632,7 +723,7 @@ export function SharedViewCard({ view }: { view: SharedViewResponse }) {
         </Card>
       )}
       <p className="muted-copy">
-        {t(`这个只读视图将于 ${new Date(view.expires_at).toLocaleString("zh-CN")} 过期。`, `This read-only view expires on ${new Date(view.expires_at).toLocaleString("zh-CN")}.`)}
+        {t(`这个只读视图将于 ${formatDateTime(view.expires_at)} 过期。`, `This read-only view expires on ${formatDateTime(view.expires_at)}.`)}
       </p>
     </div>
   );
@@ -692,23 +783,6 @@ export function NotFound() {
         action={
           <Link className="button primary" to="/today">
             {t("回到今天", "Back to Today")}
-          </Link>
-        }
-      />
-    </main>
-  );
-}
-export function AccountDeletedPage() {
-  const t = useT();
-  return (
-    <main className="center-page">
-      <Brand />
-      <EmptyState
-        title={t("账户已删除", "Account Deleted")}
-        description={t("你的 Planet 账户和相关访问权限已移除。如果以后改变主意，可以重新登录并创建新账户。", "Your Planet account and its access have been removed. If you change your mind later, you can sign in again and create a new account.")}
-        action={
-          <Link className="button primary" to="/auth">
-            {t("返回登录", "Back to Sign In")}
           </Link>
         }
       />

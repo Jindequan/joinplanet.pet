@@ -14,6 +14,7 @@ import {
   CheckCircle2, Pill, Plus, Stethoscope, Syringe,
   HeartPulse, PenLine, Undo2, Weight, X,
 } from "lucide-react";
+import { formatTime } from "../../core/display";
 import { createPortal } from "react-dom";
 import { PetAvatar } from "../../ui/pet-avatar";
 import {
@@ -34,12 +35,16 @@ export function TimelinePage() {
   const petId = timelineScope.type === "pet" ? timelineScope.id : "";
   const pets = usePets();
   const families = useFamilies();
-  // 分组与展示时间统一按家庭时区解释；All 视图退回浏览器时区。
+  // 分组与展示时间统一按家庭时区解释；宠物 scope 优先主家庭（转移后
+  // 原家庭降级 shared，不再决定 civil day），无 primary 边才退回首个链接。
+  const scopePet = petId ? pets.data?.pets.find((pet) => pet.id === petId) : undefined;
   const timezone = timelineScope.type === "family"
     ? families.data?.families.find((family) => family.id === timelineScope.id)?.timezone
-    : petId
-      ? families.data?.families.find((family) =>
-          pets.data?.pets.find((pet) => pet.id === petId)?.family_ids.includes(family.id),
+    : scopePet
+      ? (families.data?.families ?? []).find((family) =>
+          scopePet.primary_family_id
+            ? family.id === scopePet.primary_family_id
+            : (scopePet.family_ids ?? []).includes(family.id),
         )?.timezone
       : undefined;
   // 头部：按 scope 展示宠物身份或可横滑的宠物列表
@@ -50,7 +55,7 @@ export function TimelinePage() {
     timelineScope.type === "pet"
       ? pet.id === timelineScope.id
       : timelineScope.type === "family"
-        ? !pet.archived_at && pet.family_ids.includes(timelineScope.id)
+        ? !pet.archived_at && (pet.family_ids ?? []).includes(timelineScope.id)
         : !pet.archived_at,
   );
   const routeForcedPetId = routePetId;
@@ -327,10 +332,7 @@ export function EventCard({
   const t = useT();
   const description = describeEvent(event.type, event.payload);
   const manual = isManualEvent(event.source);
-  const timeText = new Date(event.occurred_at).toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const timeText = formatTime(event.occurred_at);
   return (
     <article className="design-event-card">
       <div className={`design-event-icon design-event-icon-${description.icon}`}>

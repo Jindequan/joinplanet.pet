@@ -17,6 +17,7 @@ import {
 import { formatTime } from "../../core/display";
 import { createPortal } from "react-dom";
 import { PetAvatar } from "../../ui/pet-avatar";
+import { useComposerIntent } from "../../ui/command-palette";
 import {
   Event, Page, ScopeCascade, useFamilies, useInvalidate, usePets, useScope,
   dateTimeLocalInTimezone, formatInTimeZoneSafe, instantFromCivilDateTime,
@@ -26,6 +27,8 @@ export function TimelinePage() {
   const t = useT();
   const { scope } = useScope();
   const [composerOpen, setComposerOpen] = useState(false);
+  // ⌘K「记一笔」意图:进入时间线(含同路由重复导航)时读取并清除,自动展开 composer
+  useComposerIntent(setComposerOpen);
   // 页面内的「看谁的记录」过滤：只影响本页查询，不改全局 scope
   const [filterPetId, setFilterPetId] = useState("");
   const { petId: routePetId = "" } = useParams();

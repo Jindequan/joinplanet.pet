@@ -5,3 +5,5 @@ playwright-report/
 .env
 *.local
 *.tsbuildinfo
+design-review/
+journey-*.tmp.mjs

@@ -4233,17 +4233,19 @@ to {
   .bottom-nav a.active svg { color: #fff; }
 }
 
-/* 2) 时间线事件图标:按实际生成的类名配色(旧 -color- 前缀族永不命中) */
+/* 2) 时间线事件图标:按实际生成的类名配色(旧 -color- 前缀族永不命中)
+   收敛为品牌四族——健康/照护=sage,异常/症状=陶土,记录/用药=奶油金,note/中性=灰;
+   蓝/紫彻底移除,类目间靠图标形状+色族区分 */
 .design-event-icon { background: var(--sage-soft); color: var(--forest-2); }
-.design-event-icon-pill { color: #8A5338; background: #F3DDCB; }
-.design-event-icon-syringe { color: #3F6C57; background: #DFEBDD; }
-.design-event-icon-weight { color: #7A6320; background: var(--amber-soft, #FBF0D3); }
-.design-event-icon-stethoscope { color: #4A5F84; background: #E1E7F2; }
-.design-event-icon-symptom { color: #9A4E36; background: #F6DFD2; }
-.design-event-icon-note { color: #585043; background: #ECE8DC; }
-.design-event-icon-care { color: #33604C; background: #DEEBDA; }
-.design-event-icon-undo { color: #7A6320; background: #F4E7BE; }
-.design-event-icon-generic { color: #55655B; background: #E4E9E1; }
+.design-event-icon-pill { color: #7A5C1E; background: var(--amber-soft); }
+.design-event-icon-syringe { color: var(--forest-2); background: #DFEBDD; }
+.design-event-icon-weight { color: #7A6320; background: var(--amber-soft); }
+.design-event-icon-stethoscope { color: var(--forest); background: var(--sage-soft); }
+.design-event-icon-symptom { color: var(--coral-dark); background: var(--coral-soft); }
+.design-event-icon-note { color: #57534A; background: #EBE9E1; }
+.design-event-icon-care { color: var(--forest); background: #DEEBDA; }
+.design-event-icon-undo { color: #3F6C57; background: var(--sage-soft); }
+.design-event-icon-generic { color: #6B7370; background: #E7E9E5; }
 
 /* 3) 记一笔弹出层遮罩需盖过 dock:层高见 --z-composer */
 
@@ -5258,3 +5260,215 @@ body:has(.modal-backdrop:not(.page-variant)) {
 }
 .design-pet-add:active,.pet-add-card:active {
   transform:scale(.985)}
+
+/* ============================================================
+   家庭详情桌面双栏层(≥1024px) —— 追加层,<1024px 零影响
+   左栏:邀请码+成员+宠物(行式更密);右栏:设置+危险区;身份条横跨。
+   不重构 JSX:靠 grid 列指派 + order 配对(成员↔设置 / 宠物↔危险区)
+   与 nth-last-of-type 定位三个 more-group(设置恒为最后一个 section,
+   成员/宠物依次为其前两个),条件渲染的 invite-card/form-error 不影响计数。
+   ============================================================ */
+@media (width>=1024px) {
+  .more-page.family-detail-page {
+    display:grid!important;
+    grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr)!important;
+    gap:0 var(--space-8)!important;
+    align-items:start;
+    max-width:940px;
+  }
+
+  /* 身份条与错误提示:横跨两栏 */
+  .family-detail-page > .family-hero,
+  .family-detail-page > .form-error {
+    grid-column:1/-1!important;
+  }
+
+  /* 邀请码横幅属于成员侧:左栏顶部(自然流) */
+  .family-detail-page > .invite-card {
+    grid-column:1!important;
+  }
+
+  /* 成员分区:左栏,与右栏设置同排 */
+  .family-detail-page > section.more-group:nth-last-of-type(3) {
+    grid-column:1!important;
+    order:1;
+  }
+
+  /* 宠物分区:左栏下一排,与右栏危险区同排 */
+  .family-detail-page > section.more-group:nth-last-of-type(2) {
+    grid-column:1!important;
+    order:2;
+  }
+
+  /* 设置分区:右栏首排 */
+  .family-detail-page > section.more-group:last-of-type {
+    grid-column:2!important;
+    order:1;
+  }
+
+  /* 危险区:右栏下一排 */
+  .family-detail-page > .more-danger {
+    grid-column:2!important;
+    order:2;
+  }
+
+  /* 左栏行式更密:成员/宠物行收紧内距与最小高 */
+  .family-detail-page > section.more-group:nth-last-of-type(n+2) .more-row {
+    min-height:46px;
+    padding:8px 12px;
+  }
+  .family-detail-page > section.more-group:nth-last-of-type(n+2) .more-row-icon {
+    width:32px;
+    height:32px;
+    border-radius:11px;
+  }
+}
+
+
+/* ============================================================
+   ⌘K 命令面板(cmdk)—— 桌面专属追加层
+   复用 modal 语言:var(--z-modal) 层高 / blur 遮罩 / radius-xl 卡片。
+   风格对标 Linear:顶部起吊、克制动效(150–250ms)、无弹跳。
+   组件挂载经 createPortal 到 body,规避祖先 backdrop-filter 劫持 fixed。
+   ============================================================ */
+.cmdk-backdrop {
+  z-index:var(--z-modal);
+  position:fixed;
+  inset:0;
+  background:#18221c66;
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+  justify-content:center;
+  align-items:flex-start;
+  padding:clamp(48px,12vh,120px) 18px 18px;
+  animation:cmdk-fade .16s var(--ease);
+  display:flex}
+@keyframes cmdk-fade {
+  0% {
+  opacity:0}
+}
+.cmdk-panel {
+  width:min(100%,560px);
+  max-height:min(480px,72vh);
+  box-shadow:var(--shadow-lg);
+  background:linear-gradient(#fffefa,#fbf8f0);
+  border:1px solid #fffc;
+  border-radius:var(--radius-xl);
+  flex-direction:column;
+  overflow:hidden;
+  display:flex;
+  animation:cmdk-pop .18s var(--ease)}
+@keyframes cmdk-pop {
+  0% {
+  opacity:0;
+  transform:translateY(8px) scale(.985)}
+}
+.cmdk-input-row {
+  border-bottom:1px solid var(--line);
+  align-items:center;
+  gap:11px;
+  padding:5px 18px;
+  display:flex}
+.cmdk-input-row > svg {
+  color:var(--muted);
+  flex:none}
+.cmdk-input-row input {
+  flex:1;
+  min-width:0;
+  border:0;
+  outline:0;
+  background:0 0;
+  letter-spacing:-.01em;
+  font-size:15px;
+  padding:14px 0}
+.cmdk-input-row input::placeholder {
+  color:#98a099}
+.cmdk-kbd {
+  color:var(--soft);
+  border:1px solid var(--line);
+  border-radius:7px;
+  align-items:center;
+  padding:3px 7px;
+  font:600 10.5px/1 "DM Mono",Manrope,monospace;
+  display:flex;
+  flex:none}
+.cmdk-list {
+  overscroll-behavior:contain;
+  overflow-y:auto;
+  padding:8px}
+.cmdk-group-label {
+  color:var(--soft);
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  margin:10px 8px 4px;
+  font-size:10.5px;
+  font-weight:800}
+.cmdk-group-label:first-child {
+  margin-top:2px}
+.cmdk-option {
+  width:100%;
+  color:var(--ink);
+  text-align:left;
+  border:0;
+  background:0 0;
+  border-radius:12px;
+  align-items:center;
+  gap:12px;
+  min-height:42px;
+  padding:6px 9px;
+  text-decoration:none;
+  display:flex;
+  transition:background var(--motion-fast) var(--ease)}
+.cmdk-option.active {
+  background:var(--sage-soft)}
+.cmdk-option-icon {
+  color:var(--forest-2);
+  background:var(--sage-soft);
+  border-radius:10px;
+  place-items:center;
+  width:30px;
+  height:30px;
+  display:grid;
+  flex:none;
+  transition:background var(--motion-fast) var(--ease)}
+.cmdk-option.active .cmdk-option-icon {
+  background:#fffdf8}
+.cmdk-option-icon .pet-mascot {
+  width:22px!important;
+  height:22px!important}
+.cmdk-option-label {
+  flex:1;
+  min-width:0;
+  letter-spacing:-.01em;
+  font-size:13.5px;
+  font-weight:700;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap}
+.cmdk-option-hint {
+  color:var(--soft);
+  font-size:11.5px;
+  flex:none}
+.cmdk-empty {
+  color:var(--muted);
+  margin:0;
+  padding:30px 18px;
+  text-align:center;
+  font-size:13px}
+.cmdk-foot {
+  border-top:1px solid var(--line);
+  color:var(--muted);
+  gap:16px;
+  padding:9px 16px;
+  font-size:11px;
+  display:flex}
+.cmdk-foot span {
+  align-items:center;
+  gap:4px;
+  display:flex}
+.cmdk-foot kbd {
+  color:var(--soft);
+  border:1px solid var(--line);
+  border-radius:5px;
+  padding:1px 5px;
+  font:600 10px/1.4 "DM Mono",Manrope,monospace}

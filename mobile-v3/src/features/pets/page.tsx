@@ -1479,7 +1479,7 @@ export function Medications({ pet }: { pet: Pet }) {
     (b.started_on || "").localeCompare(a.started_on || ""),
   );
   const timezone = families.data?.families.find((family) =>
-    pet.family_ids.includes(family.id),
+    (pet.family_ids ?? []).includes(family.id),
   )?.timezone;
 
   async function stop(med: Medication) {

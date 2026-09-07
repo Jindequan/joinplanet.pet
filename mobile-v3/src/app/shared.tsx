@@ -167,7 +167,7 @@ export type DigestPet = {
   done: Array<{ title: string; by_name?: string; at?: string }>;
   pending: Array<{ title: string; time_of_day?: string }>;
   skipped: Array<{ title: string; by_name?: string; at?: string }>;
-  alerts: Array<{ title: string; body: string; severity: string }>;
+  alerts?: Array<{ title: string; body: string; severity: string }> | null;
 };
 export type DigestView = { date: string; timezone: string; pets: DigestPet[] };
 export type AlertSummary = {
@@ -210,7 +210,7 @@ export function ScopeCascade({ variant = "header" }: { variant?: "header" | "pag
     ? familyList.find((family) => family.id === stepFamilyId) ?? null
     : null;
   const stepPets = stepFamilyId
-    ? petList.filter((pet) => pet.family_ids.includes(stepFamilyId))
+    ? petList.filter((pet) => (pet.family_ids ?? []).includes(stepFamilyId))
     : [];
 
   const current =

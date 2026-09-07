@@ -25,6 +25,7 @@ import {
   CreatePetRoute,
   FamilyFormRoute,
 } from "../features/account/page";
+import { CommandPalette } from "../ui/command-palette";
 
 function AccountDeletedPage() {
   const t = useT();
@@ -79,7 +80,8 @@ export class AppErrorBoundary extends React.Component<
 
 export function AppRoutes() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/auth/code" element={<AuthPage />} />
       <Route path="/account/deleted" element={<AccountDeletedPage />} />
@@ -134,5 +136,8 @@ export function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+    {/* 桌面专属 ⌘K 命令面板:仅精确指针/宽屏设备响应,移动端零成本挂载 */}
+    <CommandPalette />
+    </>
   );
 }

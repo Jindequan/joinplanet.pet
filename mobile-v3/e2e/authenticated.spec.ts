@@ -93,10 +93,17 @@ async function mockApi(page: import("@playwright/test").Page) {
             description: "",
             status: "active",
             frequency: { kind: "daily" },
+            schedule: { kind: "daily" },
             start_date: "2026-08-23",
             timezone: family.timezone,
           },
-          task: null,
+          care_rule: {
+            id: "rule-1",
+            care_plan_id: "plan-1",
+            frequency: { kind: "daily" },
+            start_date: "2026-08-23",
+            timezone: family.timezone,
+          },
         },
         201,
       );

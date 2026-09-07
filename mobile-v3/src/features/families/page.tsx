@@ -185,7 +185,7 @@ export function PetTransferPage() {
         />
       </Page>
     );
-  const current = new Set(pet.data.pet.family_ids);
+  const current = new Set(pet.data.pet.family_ids ?? []);
   const options = (families.data?.families ?? []).filter(
     (family) => !current.has(family.id),
   );
@@ -1348,7 +1348,7 @@ export function FamilyPage() {
   return (
     <div className="detail-view">
       <BackHeader title={family.name} />
-      <Page className="more-page">
+      <Page className="more-page family-detail-page">
         {error && <p className="form-error" role="alert">{error}</p>}
         <section className="family-hero">
           <span className="family-icon" aria-hidden>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#2e5747" />
+    <meta name="robots" content="noindex" />
+    <title>离线了 — PLANET</title>
+    <style>
+      :root {
+        --paper: #f7f5ee;
+        --paper-strong: #fffdf8;
+        --forest: #2e5747;
+        --sage: #a9c0a4;
+        --sage-soft: #e8eee1;
+        --ink: #26332c;
+        --muted: #5f6b62;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+        background:
+          radial-gradient(120% 90% at 50% 0%, #eef2e8 0%, var(--paper) 58%, #f2efe4 100%);
+        color: var(--ink);
+        font-family: "Manrope", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB",
+          "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif;
+        text-rendering: optimizeLegibility;
+      }
+      .card {
+        max-width: 420px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        padding: 40px 32px;
+        border-radius: 24px;
+        background: var(--paper-strong);
+        border: 1px solid rgba(38, 51, 44, 0.08);
+        box-shadow: 0 1px 1px rgba(255, 255, 255, 0.9) inset,
+          0 18px 40px -16px rgba(30, 40, 33, 0.18);
+      }
+      .emblem {
+        width: 104px;
+        height: 104px;
+        display: block;
+      }
+      .wordmark {
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.42em;
+        text-indent: 0.42em; /* balance tracking on centered text */
+        color: var(--forest);
+      }
+      .message {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.7;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .hint {
+        margin: -6px 0 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--sage);
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <svg class="emblem" viewBox="0 0 96 96" role="img" aria-label="PLANET 徽标">
+        <circle cx="48" cy="48" r="27" fill="#a9c0a4" />
+        <circle cx="48" cy="48" r="27" fill="url(#planetShade)" />
+        <defs>
+          <radialGradient id="planetShade" cx="0.34" cy="0.26" r="0.95">
+            <stop offset="0" stop-color="#bcd1b6" stop-opacity="0.9" />
+            <stop offset="1" stop-color="#2e5747" stop-opacity="0.22" />
+          </radialGradient>
+        </defs>
+        <g fill="#fffdf8">
+          <ellipse cx="48" cy="55" rx="8.2" ry="6.6" />
+          <ellipse cx="38.5" cy="47.5" rx="3.1" ry="4" transform="rotate(-18 38.5 47.5)" />
+          <ellipse cx="45" cy="44" rx="3.1" ry="4.2" transform="rotate(-6 45 44)" />
+          <ellipse cx="51.6" cy="44" rx="3.1" ry="4.2" transform="rotate(6 51.6 44)" />
+          <ellipse cx="57.8" cy="47.5" rx="3.1" ry="4" transform="rotate(18 57.8 47.5)" />
+        </g>
+        <ellipse
+          cx="48"
+          cy="50"
+          rx="42"
+          ry="12.5"
+          fill="none"
+          stroke="#2e5747"
+          stroke-opacity="0.5"
+          stroke-width="2.4"
+          transform="rotate(-16 48 50)"
+        />
+      </svg>
+      <p class="wordmark">PLANET</p>
+      <p class="message">离线了，记录会在恢复后同步</p>
+      <p class="hint">网络恢复后打开 PLANET 继续照护</p>
+      <span class="dot" aria-hidden="true"></span>
+    </main>
+  </body>
+</html>

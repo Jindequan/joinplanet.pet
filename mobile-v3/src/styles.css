@@ -73,7 +73,7 @@
   font-synthesis:none;
   text-rendering:optimizelegibility;
   background:#fbf9f8;
-  font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+  font-family:Manrope,PingFang SC,Noto Sans SC,Source Han Sans SC,Noto Sans CJK SC,WenQuanYi Zen Hei,Hiragino Sans GB,Microsoft YaHei,-apple-system,Segoe UI,sans-serif;
 }
 * {
   box-sizing:border-box}
@@ -542,7 +542,7 @@ a {
   background:var(--paper-strong);
   min-height:330px;
   transition:transform .25s var(--ease), box-shadow .25s var(--ease);
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   flex-direction:column;
   align-items:flex-start;
   gap:15px;
@@ -573,7 +573,7 @@ a {
   transition:transform var(--motion-base) var(--ease), box-shadow var(--motion-base) var(--ease);
   background:#f7faf5cc;
   border:1px solid #ffffffa6;
-  border-radius:21px;
+  border-radius:var(--radius-xl);
   place-items:center;
   display:grid}
 .pet-avatar.large {
@@ -608,7 +608,7 @@ a {
   background:var(--paper-strong);
   min-height:430px;
   box-shadow:var(--shadow-sm);
-  border-radius:24px;
+  border-radius:var(--radius-xl);
   grid-template-columns:minmax(300px,.9fr) minmax(380px,1.1fr);
   display:grid;
   overflow:hidden}
@@ -852,7 +852,7 @@ a {
 .account-card {
   color:#fff;
   background:linear-gradient(120deg,#23392ef5,#354f41d1),url(/backgrounds/today-3.webp) 50%/cover;
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   align-items:center;
   gap:20px;
   min-height:155px;
@@ -879,7 +879,7 @@ a {
 .account-avatar {
   color:#704333;
   background:#e7ad98;
-  border-radius:21px;
+  border-radius:var(--radius-xl);
   flex:none;
   place-items:center;
   width:76px;
@@ -1061,7 +1061,7 @@ textarea {
   animation:modal-in .25s var(--ease);
   background:#fbfaf6;
   border:1px solid #fff9;
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   padding:29px 25px 25px;
   position:relative;
   overflow:auto}
@@ -1309,7 +1309,7 @@ textarea {
 .family-actions {
   grid-template-columns:1fr 1fr}
 .family-onboarding {
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   grid-template-columns:1fr;
   min-height:0}
 .family-onboarding-art {
@@ -1343,7 +1343,7 @@ textarea {
   width:100%;
   max-height:92vh;
   padding:27px 20px calc(22px + env(safe-area-inset-bottom));
-  border-radius:24px 24px 0 0}
+  border-radius:var(--radius-xl) var(--radius-xl) 0 0}
 .bottom-nav {
   z-index:var(--z-dock);
   height:calc(72px + env(safe-area-inset-bottom));
@@ -1436,10 +1436,10 @@ body,.app-stage {
 .icon-button:hover {
   background:#fff}
 .page h1,.page h2,.page h3,.page-title h1,.pet-heading h1 {
-  font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+  font-family:Manrope,PingFang SC,Noto Sans SC,Source Han Sans SC,Noto Sans CJK SC,WenQuanYi Zen Hei,Hiragino Sans GB,Microsoft YaHei,-apple-system,Segoe UI,sans-serif}
 .eyebrow,.nav-label,.task-time,.timeline-meta {
   letter-spacing:.08em;
-  font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+  font-family:Manrope,PingFang SC,Noto Sans SC,Source Han Sans SC,Noto Sans CJK SC,WenQuanYi Zen Hei,Hiragino Sans GB,Microsoft YaHei,-apple-system,Segoe UI,sans-serif}
 .card,.pet-card,.timeline-card,.family-card,.settings-links a,.task-row {
   -webkit-backdrop-filter:blur(20px);
   backdrop-filter:blur(20px);
@@ -1690,7 +1690,7 @@ input:focus,textarea:focus,select:focus {
   margin-bottom:20px}
 
 .pet-card {
-  border-radius:25px;
+  border-radius:var(--radius-xl);
   grid-template-columns:124px minmax(0,1fr) 36px;
   align-items:center;
   gap:18px;
@@ -1752,7 +1752,7 @@ input:focus,textarea:focus,select:focus {
 .pet-page .action-grid {
   display:none}
 .pet-page .card {
-  border-radius:24px;
+  border-radius:var(--radius-xl);
   margin:14px 0;
   padding:20px}
 .pet-page .section-heading .eyebrow {
@@ -1833,7 +1833,7 @@ input:focus,textarea:focus,select:focus {
   display:block}
 
 .design-feature-card {
-  border-radius:24px;
+  border-radius:var(--radius-xl);
   overflow:hidden}
 .design-feature-image {
   background:linear-gradient(#0000,#00000040),url(/backgrounds/today-2.webp) 50%/cover;
@@ -1899,7 +1899,7 @@ input:focus,textarea:focus,select:focus {
   margin:0;
   font:600 25px/1.4 Manrope,PingFang SC,Noto Sans SC,Source Han Sans SC,Noto Sans CJK SC,sans-serif}
 .design-upcoming-row {
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   align-items:center;
   gap:14px;
   min-height:88px;
@@ -2007,7 +2007,7 @@ input:focus,textarea:focus,select:focus {
 .design-pet-row {
   min-height:112px;
   color:inherit;
-  border-radius:24px;
+  border-radius:var(--radius-xl);
   align-items:center;
   gap:14px;
   padding:16px;
@@ -2104,7 +2104,7 @@ input:focus,textarea:focus,select:focus {
   display:grid}
 .design-workspace-stats {
   z-index:2;
-  border-radius:24px;
+  border-radius:var(--radius-xl);
   justify-content:space-between;
   align-items:center;
   gap:8px;
@@ -2150,7 +2150,7 @@ input:focus,textarea:focus,select:focus {
   padding:0 24px;
   display:grid}
 .design-info-card {
-  border-radius:24px;
+  border-radius:var(--radius-xl);
   padding:20px}
 .design-card-heading {
   justify-content:space-between;
@@ -2335,7 +2335,7 @@ input:focus,textarea:focus,select:focus {
 .design-upcoming h2 {
   font-size:27px}
 .design-upcoming-row {
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   min-height:88px;
   margin-top:13px;
   padding:16px}
@@ -2374,7 +2374,7 @@ input:focus,textarea:focus,select:focus {
   margin-top:9px;
   font-size:19px}
 .design-pet-row {
-  border-radius:25px;
+  border-radius:var(--radius-xl);
   min-height:126px;
   padding:17px}
 
@@ -2599,7 +2599,7 @@ input[type=date],input[type=time],input[type=datetime-local] {
   max-height:86vh;
   padding-bottom:calc(22px + env(safe-area-inset-bottom));
   border-bottom:0;
-  border-radius:26px 26px 0 0;
+  border-radius:var(--radius-xl) var(--radius-xl) 0 0;
   animation:.32s cubic-bezier(.22,1.1,.36,1) sheet-up;
   overflow-y:auto}
 .modal:before {
@@ -2649,7 +2649,7 @@ input[type=date],input[type=time],input[type=datetime-local] {
   border-radius:16px;
   height:54px}
 .skeleton-page>span:nth-child(2) {
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   height:200px}
 .skeleton-page>span:nth-child(3),.skeleton-page>span:nth-child(4) {
   border-radius:18px;
@@ -2740,7 +2740,7 @@ input[type=date],input[type=time],input[type=datetime-local] {
   box-shadow:var(--shadow-card);
   -webkit-backdrop-filter:none;
   backdrop-filter:none;
-  border-radius:26px;
+  border-radius:var(--radius-xl);
   overflow:hidden}
 .design-feature-card.is-resolved {
   filter:saturate(.85)}
@@ -2800,7 +2800,7 @@ input[type=date],input[type=time],input[type=datetime-local] {
   min-height:76px;
   box-shadow:var(--shadow-sm);
   transition:transform var(--motion-fast) var(--ease), box-shadow var(--motion-base);
-  border-radius:21px;
+  border-radius:var(--radius-xl);
   margin-top:10px;
   padding:13px 15px}
 .design-upcoming-row:hover {
@@ -2829,7 +2829,7 @@ input[type=date],input[type=time],input[type=datetime-local] {
   animation:modal-pop var(--motion-base) var(--ease);
   background:linear-gradient(135deg,#f2f6ec,#fbf7ec);
   border:1px solid #dce7d3;
-  border-radius:26px;
+  border-radius:var(--radius-xl);
   align-items:center;
   gap:16px;
   margin-top:4px;
@@ -2840,7 +2840,7 @@ input[type=date],input[type=time],input[type=datetime-local] {
   object-fit:cover;
   object-position:center 30%;
   background:#fbf5ea;
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   flex:none;
   width:118px;
   height:118px}
@@ -3025,7 +3025,7 @@ input[type=date],input[type=time],input[type=datetime-local] {
   backdrop-filter:blur(8px);
   background:#fffdf8f5;
   border:1px solid #ffffffe6;
-  border-radius:26px;
+  border-radius:var(--radius-xl);
   position:relative}
 .auth-art {
   transition:filter var(--motion-slow,.4s)}
@@ -3293,7 +3293,7 @@ to {
   border:1px solid var(--line);
   background:var(--paper-strong);
   box-shadow:var(--shadow-sm);
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   margin:10px 0 14px;
   padding:16px 17px 13px}
 .med-phase.ended .med-phase-body {
@@ -3362,7 +3362,7 @@ to {
   box-shadow:var(--shadow-sm);
   background:linear-gradient(160deg,#fdfcf6,#f4f7ee);
   border:1.5px solid #d8e2d2;
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   margin:2px 0 12px;
   padding:14px 15px 12px}
 .med-quick-row {
@@ -3402,7 +3402,7 @@ to {
   box-shadow:var(--shadow-sm);
   transition:border-color var(--motion-base), box-shadow var(--motion-base);
   background:linear-gradient(160deg,#fdfcf6,#f6f4ec);
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   margin:0 0 18px;
   padding:12px 14px}
 .event-composer.open {
@@ -3461,7 +3461,7 @@ to {
 .care-templates {
   background:#e8eee180;
   border:1.5px dashed #cbd8c5;
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   margin:2px 0 4px;
   padding:14px 15px}
 .care-templates-label {
@@ -3499,7 +3499,7 @@ to {
   border:1px solid var(--line);
   box-shadow:var(--shadow-sm);
   background:linear-gradient(165deg,#fdfcf6,#f3f6ee);
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   padding:18px 18px 12px}
 .weight-trend-value {
   align-items:baseline;
@@ -3720,7 +3720,7 @@ to {
   border:1px solid #ffffff1f;
   color:#fff;
   background:linear-gradient(135deg,#39705b,#2e5747);
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   align-items:center;
   gap:14px;
   padding:18px;
@@ -3779,7 +3779,7 @@ to {
   border:1px solid var(--line);
   background:var(--paper-strong);
   box-shadow:var(--shadow-sm);
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   padding:4px 6px;
   overflow:hidden;
   width:100%}
@@ -3868,7 +3868,7 @@ to {
 .more-danger {
   background:#f9e9df73;
   border:1px solid #b04a352e;
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   margin:22px 0 8px;
   padding:6px}
 .more-danger .sign-out,.more-danger .danger-link {
@@ -3887,7 +3887,7 @@ to {
   border:1px solid var(--line);
   background:var(--paper-strong);
   box-shadow:var(--shadow-sm);
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   align-items:center;
   gap:14px;
   padding:17px 18px;
@@ -3941,9 +3941,9 @@ to {
 .trends-head .eyebrow {
   color:var(--soft)}
 .trends-head h1 {
-  letter-spacing:-.02em;
+  letter-spacing:-.03em;
   margin:6px 0 0;
-  font-size:26px;
+  font-size:34px;
   font-weight:800}
 .trends-ranges {
   flex-wrap:wrap;
@@ -3980,7 +3980,7 @@ to {
   border:1px solid var(--line);
   background:var(--paper-strong);
   box-shadow:var(--shadow-sm);
-  border-radius:20px;
+  border-radius:var(--radius-xl);
   justify-content:space-around;
   align-items:center;
   gap:8px;
@@ -4011,7 +4011,7 @@ to {
   border:1px solid var(--line);
   background:var(--paper-strong);
   box-shadow:var(--shadow-sm);
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   padding:16px 16px 8px}
 .trend-pet-head {
   align-items:center;
@@ -4202,7 +4202,7 @@ to {
   display:none}
 @media (width<=720px) {
   .modal.page-variant {
-  border-radius:22px;
+  border-radius:var(--radius-xl);
   max-height:none;
   padding-bottom:22px;
   display:block;
@@ -5226,3 +5226,35 @@ body:has(.modal-backdrop:not(.page-variant)) {
     transition-duration:.01ms!important;
     scroll-behavior:auto!important}
 }
+
+/* ---- 精品二批：编辑动作统一 / 时间戳等宽 / 幽灵卡反馈 ---- */
+/* 编辑/删除动作全站一个样子：32px 圆底、细边、悬停显影 */
+.row-actions .icon-button,.design-event-card .row-actions .icon-button {
+  width:32px;
+  height:32px;
+  border:1px solid var(--line);
+  border-radius:50%;
+  background:transparent}
+@media (hover:hover) {
+  .row-actions .icon-button:not(:disabled):hover {
+    background:var(--sage-soft);
+    border-color:#588a6a3d}
+}
+.row-actions .icon-button:not(:disabled):active {
+  transform:scale(.92)}
+
+/* 时间戳/署名等宽数字，避免宽度抖动 */
+.design-event-topline span,.design-event-card small,.design-day-chip span {
+  font-variant-numeric:tabular-nums}
+
+/* 添加宠物幽灵卡：悬停/按压时虚线变实、图标微弹 */
+.design-pet-add,.pet-add-card {
+  transition:border-color var(--motion-fast) var(--ease),transform var(--motion-fast) var(--ease),background var(--motion-fast) var(--ease)}
+@media (hover:hover) {
+  .design-pet-add:hover,.pet-add-card:hover {
+    border-style:solid;
+    border-color:#588a6a66;
+    background:#f3f6ef}
+}
+.design-pet-add:active,.pet-add-card:active {
+  transform:scale(.985)}

@@ -460,7 +460,7 @@ export function TodayPage() {
         )
       ) : (
         <>
-          {resolved === items.length ? (
+          {resolved === items.length && (
             <article className="design-all-done">
               <img src="/backgrounds/today-2.webp" alt="" aria-hidden loading="lazy" />
               <div>
@@ -475,38 +475,41 @@ export function TodayPage() {
               </div>
               <PartyPopper aria-hidden size={22} />
             </article>
-          ) : (
-            (() => {
-              const featured = items.find((item) => !item.log) ?? items[0];
-              return (
-                <>
+          )}
+          {(() => {
+            // 全部完成时 featured 不存在：横幅之下仍渲染记录列表，
+            // 已完成行保留撤销入口，误触可恢复。
+            const featured = items.find((item) => !item.log);
+            return (
+              <>
+                {featured && (
                   <FeatureCard
                     item={featured}
                     busy={busyTaskId === featured.task.id}
-                    overdue={!featured.log && Boolean(featured.task.due_date && featured.task.due_date < today)}
+                    overdue={Boolean(featured.task.due_date && featured.task.due_date < today)}
                     onToggle={() => void toggle(featured)}
                     onSkip={() => setSkip(featured.task)}
                   />
-                  <section className="design-upcoming">
-                    <h2>{t("接下来的", "Coming Up")}</h2>
-                    <div>
-                      {items
-                        .filter((item) => item.task.id !== featured.task.id)
-                        .map((item) => (
-                          <UpcomingRow
-                            key={item.task.id}
-                            item={item}
-                            busy={busyTaskId === item.task.id}
-                            onToggle={() => void toggle(item)}
-                            onSkip={() => setSkip(item.task)}
-                          />
-                        ))}
-                    </div>
-                  </section>
-                </>
-              );
-            })()
-          )}
+                )}
+                <section className="design-upcoming">
+                  <h2>{featured ? t("接下来的", "Coming Up") : t("今日记录", "Today's Records")}</h2>
+                  <div>
+                    {items
+                      .filter((item) => item.task.id !== featured?.task.id)
+                      .map((item) => (
+                        <UpcomingRow
+                          key={item.task.id}
+                          item={item}
+                          busy={busyTaskId === item.task.id}
+                          onToggle={() => void toggle(item)}
+                          onSkip={() => setSkip(item.task)}
+                        />
+                      ))}
+                  </div>
+                </section>
+              </>
+            );
+          })()}
         </>
       )}
       {skip && (
@@ -633,7 +636,17 @@ function UpcomingRow({
         <p><Clock3 size={15} /> {task.time_of_day || t("时间未定", "Time TBD")}</p>
       </div>
       {log ? (
-        <span className="role-pill">{statusLabel(log)}</span>
+        <span className="row-actions">
+          <span className="role-pill">{statusLabel(log)}</span>
+          <button
+            className="icon-button subtle"
+            onClick={onToggle}
+            disabled={busy}
+            aria-label={t(`撤销 ${task.title}`, `Undo ${task.title}`)}
+          >
+            <Undo2 size={16} />
+          </button>
+        </span>
       ) : (
         <span className="row-actions">
           <button

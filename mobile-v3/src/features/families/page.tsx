@@ -1197,7 +1197,7 @@ export function FamilyForm({
               <input
                 value={code}
                 onChange={(event) => setCode(event.target.value.toUpperCase())}
-                placeholder={t("如 ABCD-1234", "e.g. ABCD-1234")}
+                placeholder={t("如 KU4BAK2XEP", "e.g. KU4BAK2XEP")}
                 autoFocus
               />
             </label>

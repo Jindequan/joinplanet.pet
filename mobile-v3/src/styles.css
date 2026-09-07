@@ -63,6 +63,7 @@
   --z-fab: 46;
   --z-dock: 50;
   --z-composer: 58;
+  --z-composer-pop: 59;
   --z-shell-modal: 60;
   --z-sheet: 90;
   --z-modal: 100;
@@ -4136,7 +4137,7 @@ to {
   left:14px;
   right:14px;
   bottom:calc(168px + env(safe-area-inset-bottom));
-  z-index:var(--z-fab);
+  z-index:var(--z-composer-pop);
   animation:.28s cubic-bezier(.22,1.1,.36,1) composer-rise;
   position:fixed}
 @keyframes composer-rise {

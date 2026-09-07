@@ -350,6 +350,7 @@ export function EventCard({
           <div className="design-weight-line">
             <strong>{description.headline}</strong>
             {weightDelta ? <span>{weightDelta}</span> : null}
+            {description.detail && <p className="design-event-detail">{description.detail}</p>}
           </div>
         ) : (
           <>

@@ -110,7 +110,8 @@ export function describeEvent(
       return { category: tt("撤销记录", "Record Undone"), icon: "undo", headline: str("title") };
     case "weight": {
       const grams = typeof data.weight_g === "number" ? data.weight_g : undefined;
-      const kg = grams !== undefined ? `${grams >= 10000 ? Math.round(grams / 1000) : Math.round((grams / 1000) * 100) / 100} kg` : undefined;
+      // 统一保留两位小数（12.5 kg）：整数取整曾让 ≥10kg 的卡片与变化量、趋势页三处精度打架。
+      const kg = grams !== undefined ? `${Math.round((grams / 1000) * 100) / 100} kg` : undefined;
       return { category: tt("体重", "Weight"), icon: "weight", headline: kg ?? str("note"), detail: grams === undefined ? undefined : str("note") };
     }
     case "vaccine":

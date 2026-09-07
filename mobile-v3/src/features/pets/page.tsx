@@ -1,7 +1,7 @@
 import * as React from "react";
 /* eslint-disable react-refresh/only-export-components -- pet helpers stay private to this feature module. */
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../core/api/client";
 import { useT, tt } from "../../core/i18n";
@@ -508,7 +508,7 @@ export function PetPage() {
           </Card>
         )}
         {tab === "overview" && (
-          <WeightTrendCard events={weightEventsQuery.data?.events ?? []} currentWeightG={pet.weight_g} />
+          <WeightTrendCard events={weightEventsQuery.data?.events ?? []} currentWeightG={pet.weight_g} petId={pet.id} />
         )}
         {tab === "overview" && (
           <DesignPetOverview
@@ -1785,11 +1785,18 @@ function MedQuickAdd({
 function WeightTrendCard({
   events,
   currentWeightG,
+  petId,
 }: {
   events: Event[];
   currentWeightG?: number;
+  petId: string;
 }) {
   const t = useT();
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const commandId = useRef(createCommandId());
   const points: WeightPoint[] = events
     .filter((event) => event.type === "weight" && typeof event.payload?.weight_g === "number")
     .map((event) => {
@@ -1806,6 +1813,40 @@ function WeightTrendCard({
   const previous = points.at(-2);
   const delta =
     latest && previous ? Math.round((latest.kg - previous.kg) * 100) / 100 : null;
+  // 曲线卡上的速记：回车即记（与时间线 composer 同一端点与载荷），
+  // 记完曲线立即生长——先记录后补全。
+  async function quickAdd() {
+    const kg = Number(draft.replace(",", "."));
+    if (!Number.isFinite(kg) || kg <= 0 || kg > 500) {
+      setNotice(t("输入一个有效体重（公斤）。", "Enter a valid weight in kg."));
+      return;
+    }
+    setBusy(true);
+    setNotice("");
+    try {
+      await api.post(
+        `/pets/${petId}/timeline`,
+        {
+          type: "weight",
+          occurred_at: new Date().toISOString(),
+          payload: { weight_g: Math.round(kg * 1000) },
+        },
+        { idempotencyKey: commandId.current },
+      );
+      commandId.current = createCommandId();
+      setDraft("");
+      navigator.vibrate?.(14);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["weight-events", petId] }),
+        queryClient.invalidateQueries({ queryKey: ["pet", petId] }),
+        queryClient.invalidateQueries({ queryKey: ["timeline"] }),
+      ]);
+    } catch (e) {
+      setNotice(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <section className="weight-trend-card">
       <div className="weight-trend-head">
@@ -1843,6 +1884,27 @@ function WeightTrendCard({
           <span>{latest?.label} {t("最新", "Latest")}</span>
         </div>
       )}
+      <form
+        className="weight-quickadd"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!busy && draft.trim()) void quickAdd();
+        }}
+      >
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          inputMode="decimal"
+          placeholder={t("记一次体重，如 12.5", "Log a weight, e.g. 12.5")}
+          disabled={busy}
+          aria-label={t("今天体重（公斤）", "Today's weight in kg")}
+        />
+        <span className="unit">kg</span>
+        <BusyButton className="button secondary" type="submit" busy={busy}>
+          {t("记下", "Log")}
+        </BusyButton>
+      </form>
+      {notice && <p className="form-error" role="alert">{notice}</p>}
     </section>
   );
 }

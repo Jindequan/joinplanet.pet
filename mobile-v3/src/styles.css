@@ -2430,7 +2430,34 @@ input:focus,textarea:focus,select:focus {
   line-height:1}
 
 .design-upcoming-row.is-resolved {
-  opacity:.6}
+  opacity:.6;
+  animation:resolve-pop .26s var(--ease)}
+@keyframes resolve-pop {
+  0% { transform:scale(1); opacity:1}
+  45% { transform:scale(.985); opacity:.75}
+  100% { transform:scale(1); opacity:.6}}
+.weight-quickadd {
+  gap:8px;
+  display:flex;
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--line)}
+.weight-quickadd input {
+  flex:1;
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  background:var(--paper-strong);
+  padding:10px 12px;
+  font:600 14px/1 inherit;
+  color:var(--ink)}
+.weight-quickadd input:focus-visible {
+  box-shadow:var(--focus-ring);
+  outline:none}
+.weight-quickadd .unit {
+  align-self:center;
+  color:var(--muted);
+  font-size:13px}
 
 .design-date-step:disabled {
   opacity:.35}
@@ -5473,3 +5500,37 @@ body:has(.modal-backdrop:not(.page-variant)) {
   border-radius:5px;
   padding:1px 5px;
   font:600 10px/1.4 "DM Mono",Manrope,monospace}
+
+/* ============================================================
+   体重曲线触点查值 —— 2026-09-08 追加层
+   透明命中圆 / 选中放大描边 / SVG 内数值气泡
+   ============================================================ */
+.weight-chart {
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none}
+.weight-chart-hit {
+  fill:transparent;
+  cursor:pointer;
+  touch-action:manipulation}
+.weight-chart-dot {
+  transform-box:fill-box;
+  transform-origin:center;
+  transition:transform .18s var(--ease), stroke .18s var(--ease)}
+.weight-chart-dot.is-active {
+  transform:scale(2);
+  stroke:var(--forest);
+  stroke-width:2.2}
+.weight-chart-tip {
+  pointer-events:none}
+.weight-chart-tip-box {
+  fill:var(--paper-strong);
+  stroke:var(--line);
+  rx:var(--radius-sm);
+  filter:drop-shadow(0 3px 8px #1e28211f)}
+.weight-chart-tip-text {
+  fill:var(--ink);
+  font-size:11px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums}

@@ -206,6 +206,8 @@ export function TodayPage() {
       setOptimistic((current) => ({ ...current, [variables.task.id]: variables.status }));
     },
     onSuccess: (_, variables) => {
+      // 轻触觉确认（支持的设备才有，静默降级）——打卡是高频动作，值得一次物理反馈。
+      navigator.vibrate?.(variables.status === "done" ? 14 : [8, 60, 8]);
       setToast(
         variables.status === "done"
           ? t("已记录完成。", "Marked as done.")
@@ -284,8 +286,26 @@ export function TodayPage() {
     }),
   );
   // 未完成的排在前面（各自保持时间序），已处理的靠后仍可撤销。
+  // 逾期判定用「条目自己的时间」：有时刻按绝对 due_at，无时刻按该宠物
+  // 管理家庭的 civil 日历比 due_date——聚合作用域下不再拿单一 scope 日历
+  // 去比跨时区家庭（会差一天）。时区绑 family 是模型定论：照护节律是
+  // 家庭级现实，规则的时区快照已由后端落对。
+  // now 用现成的 30s 走时钟——逾期徽章最多滞后半分钟，无需额外状态。
+  const nowMs = clock.getTime();
+  const petTimezone = (petId: string) => {
+    const pet = pets.data?.pets.find((item) => item.id === petId);
+    const familyId = pet?.primary_family_id ?? (pet?.family_ids ?? [])[0];
+    return families.data?.families.find((item) => item.id === familyId)?.timezone;
+  };
+  const isOverdue = (item: (typeof allItems)[number]) => {
+    if (item.log) return false;
+    if (item.task.due_at) return new Date(item.task.due_at).getTime() <= nowMs;
+    return Boolean(item.task.due_date && item.task.due_date < civilDateInTimezone(petTimezone(item.task.pet_id)));
+  };
   const items = [
-    ...allItems.filter((item) => !item.log),
+    ...allItems
+      .filter((item) => !item.log)
+      .sort((a, b) => Number(isOverdue(b)) - Number(isOverdue(a))),
     ...allItems.filter((item) => item.log),
   ];
   const completed = items.filter(
@@ -486,7 +506,7 @@ export function TodayPage() {
                   <FeatureCard
                     item={featured}
                     busy={busyTaskId === featured.task.id}
-                    overdue={Boolean(featured.task.due_date && featured.task.due_date < today)}
+                    overdue={isOverdue(featured)}
                     onToggle={() => void toggle(featured)}
                     onSkip={() => setSkip(featured.task)}
                   />
@@ -501,6 +521,7 @@ export function TodayPage() {
                           key={item.task.id}
                           item={item}
                           busy={busyTaskId === item.task.id}
+                          overdue={isOverdue(item)}
                           onToggle={() => void toggle(item)}
                           onSkip={() => setSkip(item.task)}
                         />
@@ -613,6 +634,7 @@ function FeatureCard({
 function UpcomingRow({
   item,
   busy,
+  overdue,
   onToggle,
   onSkip,
 }: {
@@ -623,6 +645,7 @@ function UpcomingRow({
     petSpecies?: string;
   };
   busy: boolean;
+  overdue: boolean;
   onToggle: () => void;
   onSkip: () => void;
 }) {
@@ -633,7 +656,10 @@ function UpcomingRow({
       <PetAvatar petId={task.pet_id} species={item.petSpecies} size={50} />
       <div>
         <h3>{item.petName ? `${item.petName} · ` : ""}{task.title}</h3>
-        <p><Clock3 size={15} /> {task.time_of_day || t("时间未定", "Time TBD")}</p>
+        <p>
+          <Clock3 size={15} /> {task.time_of_day || t("时间未定", "Time TBD")}
+          {overdue && !log && <span className="design-overdue"><CircleAlert size={13} /> {t("已逾期", "Overdue")}</span>}
+        </p>
       </div>
       {log ? (
         <span className="row-actions">

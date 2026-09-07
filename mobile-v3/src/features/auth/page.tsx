@@ -112,6 +112,7 @@ export function AuthPage() {
         </span>
         <div className="orbit-line" />
       </div>
+      <div className="auth-right">
       <section className="auth-card">
         <Brand />
         <span className="eyebrow">{t("欢迎回家", "Welcome home")}</span>
@@ -183,6 +184,7 @@ export function AuthPage() {
         )}
       </section>
       <p className="auth-note">{t("所有照顾它的人，共用一个安心的地方。", "Everyone who cares for them shares one reassuring place.")}</p>
+      </div>
     </div>
   );
 }

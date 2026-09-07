@@ -1,6 +1,6 @@
 import * as React from "react";
 /* eslint-disable react-refresh/only-export-components -- pet helpers stay private to this feature module. */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../core/api/client";
@@ -414,6 +414,12 @@ export function PetPage() {
   // effect 是 set-state-in-effect 反模式的来源。
   const edit = location.pathname.endsWith("/edit");
   const [confirm, setConfirm] = useState<"delete" | "archive" | null>(null);
+  const tabsRef = useRef<HTMLElement | null>(null);
+  // 子页签横滚时激活项可能落在渐隐区：切页签即滚入视野。
+  useEffect(() => {
+    const active = tabsRef.current?.querySelector<HTMLButtonElement>("button.selected");
+    active?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [tab]);
   const invalidate = useInvalidate();
   const [toast, setToast] = useState("");
   const commandId = useRef(createCommandId());
@@ -486,7 +492,7 @@ export function PetPage() {
           <i />
           <div><strong>{activeMeds}</strong><span>{t("在用药物", "Active Meds")}</span></div>
         </section>
-        <nav className="design-workspace-tabs">
+        <nav className="design-workspace-tabs" ref={tabsRef}>
           <button className={tab === "overview" ? "selected" : ""} onClick={() => navigate(`/pets/${pet.id}`)}>{t("档案", "Profile")}</button>
           <button className={tab === "care" ? "selected" : ""} onClick={() => navigate(`/pets/${pet.id}/care`)}>{t("照护计划", "Care Plan")}{activePlans > 0 && <i>{activePlans}</i>}</button>
           <button className={tab === "meds" ? "selected" : ""} onClick={() => navigate(`/pets/${pet.id}/medications`)}>{t("用药", "Medication")}{activeMeds > 0 && <i>{activeMeds}</i>}</button>

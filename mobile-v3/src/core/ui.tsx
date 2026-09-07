@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, Check, LoaderCircle, RefreshCw, X } from "lucide-react";
 import { errorMessage } from "./api/errors";
 import { useT } from "./i18n";
@@ -87,7 +88,7 @@ export function Toast({
     const timer = window.setTimeout(() => closeRef.current(), 3400);
     return () => window.clearTimeout(timer);
   }, [message]);
-  return (
+  return createPortal(
     <div
       className={`toast ${variant === "error" ? "toast-error" : ""}`}
       role={variant === "error" ? "alert" : "status"}
@@ -98,7 +99,8 @@ export function Toast({
       <button onClick={onClose} aria-label={t("关闭", "Close")}>
         <X size={14} />
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

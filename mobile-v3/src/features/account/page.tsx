@@ -498,7 +498,7 @@ export function SettingsPage() {
         <PageTitle
           eyebrow={t("按你的方式", "Your Way")}
           title={t("设置", "Settings")}
-          description={t("这里只展示真实的服务端状态，没有任何假装成功的操作。", "Only real server state is shown here — no fake success actions.")}
+          description={t("偏好与服务状态，改动即时生效。", "Preferences and service status, applied instantly.")}
         />
         {familyList.length > 1 && (
           <div className="form-inline settings-family-picker">

@@ -45,13 +45,23 @@ export function MoreRow({
       {right ?? <ChevronRight size={17} className="more-row-go" aria-hidden />}
     </>
   );
-  return to ? (
-    <Link className="more-row" to={to}>
+  if (to) {
+    return (
+      <Link className="more-row" to={to}>
+        {body}
+      </Link>
+    );
+  }
+  if (onClick) {
+    return (
+      <button type="button" className="more-row" onClick={onClick}>
+        {body}
+      </button>
+    );
+  }
+  return (
+    <div className="more-row more-row-static" role="group">
       {body}
-    </Link>
-  ) : (
-    <button className="more-row" onClick={onClick}>
-      {body}
-    </button>
+    </div>
   );
 }

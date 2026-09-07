@@ -5,6 +5,7 @@ import { api } from "../../core/api/client";
 import { createCommandId } from "../../core/api/idempotency";
 import { errorMessage, isApiError } from "../../core/api/errors";
 import { InlineError, PageSkeleton, Toast, BusyButton } from "../../core/ui";
+import { useT, tt } from "../../core/i18n";
 import { queryKeys } from "../../core/query/keys";
 import { CalendarDays, Check, ChevronRight, CircleAlert, Clock3, PartyPopper, Undo2 } from "lucide-react";
 import { PetAvatar } from "../../ui/pet-avatar";
@@ -44,6 +45,7 @@ function readPending(userId: string): PendingTask[] {
 }
 
 export function TodayPage() {
+  const t = useT();
   const { scope } = useScope();
   const { user } = useSession();
   const families = useFamilies();
@@ -135,10 +137,10 @@ export function TodayPage() {
     setPending(remaining);
     setRetrying(false);
     if (remaining.length === 0) {
-      setToast(`${synced} 条离线照护记录已同步。`);
+      setToast(t(`${synced} 条离线照护记录已同步。`, `${synced} offline care records synced.`));
       invalidate();
     } else {
-      setToast(`还有 ${remaining.length} 条待同步：${firstError}`);
+      setToast(t(`还有 ${remaining.length} 条待同步：${firstError}`, `${remaining.length} still waiting to sync: ${firstError}`));
     }
   };
   // 让 online/focus 监听常驻一次，同时总是调用最新一轮的 retryPending。
@@ -181,8 +183,8 @@ export function TodayPage() {
     onSuccess: (_, variables) => {
       setToast(
         variables.status === "done"
-          ? "已记录完成。"
-          : "已记录跳过，历史里看得见。",
+          ? t("已记录完成。", "Marked as done.")
+          : t("已记录跳过，历史里看得见。", "Marked as skipped — it stays visible in history."),
       );
       invalidate();
     },
@@ -209,12 +211,12 @@ export function TodayPage() {
                 },
               ],
         );
-        setToast("当前离线，这条操作已排队，恢复网络后自动同步。");
+        setToast(t("当前离线，这条操作已排队，恢复网络后自动同步。", "You're offline — this action is queued and will sync automatically once you're back online."));
       } else if (isApiError(e) && e.code === "TASK_LOG_EXISTS") {
-        setToast("家人已经记录过这条了。");
+        setToast(t("家人已经记录过这条了。", "A family member already recorded this one."));
         invalidate();
       } else if (isApiError(e) && /future occurrences/i.test(e.message)) {
-        setToast("还没到执行时间——到点了再来记录。");
+        setToast(t("还没到执行时间——到点了再来记录。", "It's not due yet — come back when it's time."));
       } else {
         setToast(errorMessage(e));
         if (isApiError(e) && e.status !== 0) invalidate();
@@ -281,14 +283,14 @@ export function TodayPage() {
   async function toggle(item: (typeof items)[number]) {
     if (busyTaskId === item.task.id) return;
     if (beyondBackfill(item.task)) {
-      setToast("补记只支持最近 7 天,再早的记录请联系家人线下核对。");
+      setToast(t("补记只支持最近 7 天,再早的记录请联系家人线下核对。", "Backfill only covers the last 7 days. For anything older, check with your family offline."));
       return;
     }
     setBusyTaskId(item.task.id);
     try {
       if (item.log && !item.log.id.startsWith("optimistic-")) {
         await api.post(`/task-logs/${item.log.id}/undo`);
-        setToast("已移回今天待完成。");
+        setToast(t("已移回今天待完成。", "Moved back to today's to-dos."));
         setBusyTaskId(null);
         invalidate();
       } else {
@@ -308,8 +310,13 @@ export function TodayPage() {
   function dateHeading(value: string) {
     const parsed = new Date(`${value}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return value;
-    const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][parsed.getDay()];
-    return `${parsed.getMonth() + 1}月${parsed.getDate()}日 ${weekday}`;
+    const weekdayZh = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][parsed.getDay()];
+    const weekdayEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][parsed.getDay()];
+    const monthEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][parsed.getMonth()];
+    return t(
+      `${parsed.getMonth() + 1}月${parsed.getDate()}日 ${weekdayZh}`,
+      `${weekdayEn}, ${monthEn} ${parsed.getDate()}`,
+    );
   }
   // 回看窗口：允许最近 30 天的补记，符合「有限的历史回看」。
   const EARLIEST_VIEW_DATE = (() => {
@@ -319,6 +326,7 @@ export function TodayPage() {
   })();
   // 最近 7 天（含今天）的周条；全部派生自 clock state，保持渲染纯度。
   const WEEKDAY_CHARS = ["日", "一", "二", "三", "四", "五", "六"];
+  const WEEKDAY_CHARS_EN = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
   const weekStrip = () =>
     Array.from({ length: 7 }, (_, offset) => {
       const parsed = new Date(clock);
@@ -326,26 +334,35 @@ export function TodayPage() {
       const value = civilDateInTimezone(family?.timezone, parsed);
       return {
         value,
-        weekday: WEEKDAY_CHARS[parsed.getDay()],
+        weekday: t(WEEKDAY_CHARS[parsed.getDay()], WEEKDAY_CHARS_EN[parsed.getDay()]),
         label: String(parsed.getDate()),
       };
     });
   const progress = items.length ? Math.round((resolved / items.length) * 100) : 0;
   return (
     <Page className="design-page design-today-page">
+      <section className="design-today-heading">
+        <div>
+          <span className="eyebrow">{dateHeading(date)}</span>
+          <h1>{selectedDate && selectedDate !== today ? t("那一天", "That Day") : t("今天", "Today")}</h1>
+          <p>{items.length
+            ? t(`还有 ${Math.max(items.length - resolved, 0)} 项照护等待处理`, `${Math.max(items.length - resolved, 0)} care items still to do`)
+            : t("照护安排与家人实时同步", "Care plans, synced with your family in real time")}</p>
+        </div>
+        <div className="design-today-progress" aria-label={t(`${resolved} / ${items.length} 已处理`, `${resolved} / ${items.length} taken care of`)}>
+          <strong>{resolved}/{items.length || 0} <span>{t("完成", "Done")}</span></strong>
+          <span><i style={{ width: `${progress}%` }} /></span>
+        </div>
+      </section>
       <section className="design-today-top">
         <ScopeCascade variant="page" />
         {selectedDate && selectedDate !== today && (
           <button className="design-date-chip" onClick={() => setSelectedDate("")}>
-            {dateHeading(selectedDate)} · 回看 ×
+            {dateHeading(selectedDate)} · {t("回看", "Looking back")} ×
           </button>
         )}
-        <div className="design-today-progress" aria-label={`${resolved} / ${items.length} 已处理`}>
-          <strong>{resolved}/{items.length || 0} <span>完成</span></strong>
-          <span><i style={{ width: `${progress}%` }} /></span>
-        </div>
       </section>
-      <div className="design-week-strip" role="group" aria-label="按天查看照护">
+      <div className="design-week-strip" role="group" aria-label={t("按天查看照护", "View care by day")}>
         {weekStrip().map((day) => (
           <button
             key={day.value}
@@ -358,16 +375,16 @@ export function TodayPage() {
           </button>
         ))}
         {/* 更早的日期：原生选择器覆盖最近 30 天回看窗口 */}
-        <label className="design-day-chip design-day-more" title="查看更早日期">
+        <label className="design-day-chip design-day-more" title={t("查看更早日期", "View Earlier Dates")}>
           <CalendarDays size={16} />
-          <span>更早</span>
+          <span>{t("更早", "Earlier")}</span>
           <input
             type="date"
             value={date}
             min={EARLIEST_VIEW_DATE}
             max={today}
             onChange={(event) => setSelectedDate(event.target.value)}
-            aria-label="选择历史日期"
+            aria-label={t("选择历史日期", "Pick a past date")}
           />
         </label>
       </div>
@@ -375,11 +392,11 @@ export function TodayPage() {
         <Card className="notice design-notice">
           <CircleAlert size={18} />
           <div>
-            <strong>{pending.length} 条照护操作待同步</strong>
-            <p>恢复网络后用同一幂等键重试，不会重复记录。</p>
+            <strong>{t(`${pending.length} 条照护操作待同步`, `${pending.length} care actions waiting to sync`)}</strong>
+            <p>{t("恢复网络后用同一幂等键重试，不会重复记录。", "They retry with the same idempotency key once you're back online, so nothing gets recorded twice.")}</p>
           </div>
           <button className="button ghost" disabled={retrying} onClick={() => void retryPending()}>
-            立即同步
+            {t("立即同步", "Sync Now")}
           </button>
         </Card>
       )}
@@ -387,35 +404,35 @@ export function TodayPage() {
         scope.type === "pet" ? (
           <section className="guided-empty pet-care-empty">
             <div className="empty-copy">
-              <span className="eyebrow">下一步</span>
-              <h2>给这只宠物建立照护节奏</h2>
-              <p>把喂饭、用药和日常流程变成全家共享的清单，谁做了什么一目了然。</p>
+              <span className="eyebrow">{t("下一步", "Next Step")}</span>
+              <h2>{t("给这只宠物建立照护节奏", "Set up a care routine for this pet")}</h2>
+              <p>{t("把喂饭、用药和日常流程变成全家共享的清单，谁做了什么一目了然。", "Turn feeding, medication, and daily routines into a checklist the whole family shares — who did what, at a glance.")}</p>
               <Link className="button primary" to={`/pets/${scope.id}`}>
-                打开照护工作区 <ChevronRight size={16} />
+                {t("打开照护工作区", "Open Care Workspace")} <ChevronRight size={16} />
               </Link>
             </div>
           </section>
         ) : (
           <section className="setup-journey">
             <div className="setup-intro">
-              <span className="eyebrow">三步开始 · 全家共养</span>
-              <h2>搭好你们的共同照护空间</h2>
-              <p>Planet 分三小步变得有用。每一步都会创建真实的共享数据——不是演示。</p>
+              <span className="eyebrow">{t("三步开始 · 全家共养", "Three Steps · One Shared Pet")}</span>
+              <h2>{t("搭好你们的共同照护空间", "Build Your Shared Care Space")}</h2>
+              <p>{t("Planet 分三小步变得有用。每一步都会创建真实的共享数据——不是演示。", "Planet gets useful in three small steps. Each one creates real shared data — not a demo.")}</p>
             </div>
             <div className="setup-steps">
               <Link className={(families.data?.families.length ?? 0) > 0 ? "complete" : "current"} to="/families">
                 <span className="step-number">01</span>
-                <span><strong>创建家庭</strong><small>设定家的时区，拉上帮忙的人。</small></span>
+                <span><strong>{t("创建家庭", "Create a Family")}</strong><small>{t("设定家的时区，拉上帮忙的人。", "Set your family's timezone and bring in helpers.")}</small></span>
                 {(families.data?.families.length ?? 0) > 0 ? <Check size={18} /> : <ChevronRight size={18} />}
               </Link>
               <Link className={(pets.data?.pets.length ?? 0) > 0 ? "complete" : (families.data?.families.length ?? 0) > 0 ? "current" : "locked"} to={(families.data?.families.length ?? 0) > 0 ? "/pets" : "/families/new"}>
                 <span className="step-number">02</span>
-                <span><strong>添加宠物</strong><small>档案、健康信息和每个家保持连接。</small></span>
+                <span><strong>{t("添加宠物", "Add a Pet")}</strong><small>{t("档案、健康信息和每个家保持连接。", "Profiles and health info, connected across every home.")}</small></span>
                 {(pets.data?.pets.length ?? 0) > 0 ? <Check size={18} /> : <ChevronRight size={18} />}
               </Link>
               <Link className={(pets.data?.pets.length ?? 0) > 0 ? "current" : "locked"} to={(pets.data?.pets.length ?? 0) > 0 ? `/pets/${pets.data?.pets[0]?.id}` : "/pets"}>
                 <span className="step-number">03</span>
-                <span><strong>排照护计划</strong><small>设置日常事务，分配给合适的人。</small></span>
+                <span><strong>{t("排照护计划", "Plan Their Care")}</strong><small>{t("设置日常事务，分配给合适的人。", "Set up routines and assign them to the right person.")}</small></span>
                 <ChevronRight size={18} />
               </Link>
             </div>
@@ -427,11 +444,13 @@ export function TodayPage() {
             <article className="design-all-done">
               <img src="/backgrounds/today-2.webp" alt="" aria-hidden loading="lazy" />
               <div>
-                <span className="eyebrow">今日圆满</span>
-                <h2>今天的照护都完成了</h2>
+                <span className="eyebrow">{t("今日圆满", "All Done Today")}</span>
+                <h2>{t("今天的照护都完成了", "Today's Care Is All Done")}</h2>
                 <p>
-                  {skipped > 0 ? `${completed} 项完成 · ${skipped} 项跳过` : `${completed} 项全部完成`}
-                  ，家人都能看到这份记录。
+                  {skipped > 0
+                    ? t(`${completed} 项完成 · ${skipped} 项跳过`, `${completed} done · ${skipped} skipped`)
+                    : t(`${completed} 项全部完成`, `All ${completed} done`)}
+                  {t("，家人都能看到这份记录。", ". Your family can see this record.")}
                 </p>
               </div>
               <PartyPopper aria-hidden size={22} />
@@ -449,7 +468,7 @@ export function TodayPage() {
                     onSkip={() => setSkip(featured.task)}
                   />
                   <section className="design-upcoming">
-                    <h2>接下来的</h2>
+                    <h2>{t("接下来的", "Coming Up")}</h2>
                     <div>
                       {items
                         .filter((item) => item.task.id !== featured.task.id)
@@ -476,7 +495,7 @@ export function TodayPage() {
           onCancel={() => setSkip(null)}
           onConfirm={async (note) => {
             if (beyondBackfill(skip)) {
-              setToast("补记只支持最近 7 天。");
+              setToast(t("补记只支持最近 7 天。", "Backfill only covers the last 7 days."));
               return;
             }
             try {
@@ -501,7 +520,7 @@ export function TodayPage() {
 
 function statusLabel(log: TaskLog | null | undefined): string {
   if (!log) return "";
-  return log.status === "skipped" ? "已跳过" : "已完成";
+  return log.status === "skipped" ? tt("已跳过", "Skipped") : tt("已完成", "Done");
 }
 
 function FeatureCard({
@@ -522,6 +541,7 @@ function FeatureCard({
   onToggle: () => void;
   onSkip: () => void;
 }) {
+  const t = useT();
   const { task, log } = item;
   const resolvedText = statusLabel(log);
   return (
@@ -532,33 +552,33 @@ function FeatureCard({
         aria-hidden
       >
         {overdue && (
-          <span className="design-overdue"><CircleAlert size={15} /> 已逾期</span>
+          <span className="design-overdue"><CircleAlert size={15} /> {t("已逾期", "Overdue")}</span>
         )}
       </div>
       <div className="design-feature-body">
         <div className="design-feature-copy">
           <div className="design-task-time">
             <Clock3 size={18} />
-            {[item.petName, task.time_of_day || "时间未定", task.assigned_to_name]
+            {[item.petName, task.time_of_day || t("时间未定", "Time TBD"), task.assigned_to_name]
               .filter(Boolean)
               .join(" · ")}
           </div>
           <h2>{task.title}</h2>
-          <p>{task.description || "没有额外说明。"}</p>
+          <p>{task.description || t("没有额外说明。", "No extra notes.")}</p>
         </div>
         {resolvedText && <span className="role-pill">{resolvedText}</span>}
         {!log && (
           <div className="design-feature-actions">
-            <button className="design-complete-button" onClick={onToggle} disabled={busy} aria-label={`完成 ${task.title}`}>
-              <Check size={20} /> 完成
+            <button className="design-complete-button" onClick={onToggle} disabled={busy} aria-label={t(`完成 ${task.title}`, `Mark ${task.title} done`)}>
+              <Check size={20} /> {t("完成", "Done")}
             </button>
-            <button className="design-skip-button" onClick={onSkip} disabled={busy}>跳过</button>
+            <button className="design-skip-button" onClick={onSkip} disabled={busy}>{t("跳过", "Skip")}</button>
           </div>
         )}
         {log && (
           <div className="design-feature-actions">
             <button className="design-skip-button" onClick={onToggle} disabled={busy}>
-              <Undo2 size={16} /> 撤销
+              <Undo2 size={16} /> {t("撤销", "Undo")}
             </button>
           </div>
         )}
@@ -583,13 +603,14 @@ function UpcomingRow({
   onToggle: () => void;
   onSkip: () => void;
 }) {
+  const t = useT();
   const { task, log } = item;
   return (
     <article className={`design-upcoming-row ${log ? "is-resolved" : ""}`}>
       <PetAvatar petId={task.pet_id} species={item.petSpecies} size={50} />
       <div>
         <h3>{item.petName ? `${item.petName} · ` : ""}{task.title}</h3>
-        <p><Clock3 size={15} /> {task.time_of_day || "时间未定"}</p>
+        <p><Clock3 size={15} /> {task.time_of_day || t("时间未定", "Time TBD")}</p>
       </div>
       {log ? (
         <span className="role-pill">{statusLabel(log)}</span>
@@ -599,7 +620,7 @@ function UpcomingRow({
             className="icon-button subtle"
             onClick={onToggle}
             disabled={busy}
-            aria-label={`完成 ${task.title}`}
+            aria-label={t(`完成 ${task.title}`, `Mark ${task.title} done`)}
           >
             <Check size={17} />
           </button>
@@ -607,7 +628,7 @@ function UpcomingRow({
             className="icon-button subtle"
             onClick={onSkip}
             disabled={busy}
-            aria-label={`跳过 ${task.title}`}
+            aria-label={t(`跳过 ${task.title}`, `Skip ${task.title}`)}
           >
             <CircleAlert size={17} />
           </button>
@@ -626,6 +647,7 @@ export function SkipDialog({
   onCancel: () => void;
   onConfirm: (note: string) => Promise<void>;
 }) {
+  const t = useT();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -636,23 +658,23 @@ export function SkipDialog({
         aria-modal="true"
         aria-labelledby="skip-dialog-title"
       >
-        <button className="modal-close" onClick={onCancel} aria-label="关闭">
+        <button className="modal-close" onClick={onCancel} aria-label={t("关闭", "Close")}>
           ×
         </button>
-        <span className="eyebrow">记录一次跳过</span>
+        <span className="eyebrow">{t("记录一次跳过", "Log a Skip")}</span>
         <h2 id="skip-dialog-title">{task.title}</h2>
-        <p>跳过会留在照护历史里，家人都会知道发生了什么。</p>
+        <p>{t("跳过会留在照护历史里，家人都会知道发生了什么。", "Skips stay in the care history, so your family knows what happened.")}</p>
         <label className="form-field">
-          <span>原因或备注</span>
+          <span>{t("原因或备注", "Reason or Note")}</span>
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="选填"
+            placeholder={t("选填", "Optional")}
           />
         </label>
         <div className="modal-actions">
           <button className="button secondary" onClick={onCancel}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton
             className="button primary"
@@ -666,7 +688,7 @@ export function SkipDialog({
               }
             }}
           >
-            跳过并记录
+            {t("跳过并记录", "Skip & Log")}
           </BusyButton>
         </div>
       </section>

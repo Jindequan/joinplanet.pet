@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tt } from "../../core/i18n";
 
 const textPayload = z
   .object({ title: z.string().optional(), detail: z.string().optional(), text: z.string().optional(), summary: z.string().optional() })
@@ -53,16 +54,28 @@ export type EventDescription = {
   detail?: string;
 };
 
-const EVENT_CATEGORY: Record<string, string> = {
-  note: "笔记",
-  symptom: "症状",
-  weight: "体重",
-  vet_visit: "就诊",
-  vaccine: "疫苗",
-  medication: "用药",
-  care_task_completed: "照护",
-  care_task_undone: "照护",
-};
+/** Record 映射改为取值函数：tt() 在调用时求值，避免模块导入期冻结语言。 */
+function eventCategory(type: string): string {
+  switch (type) {
+    case "note":
+      return tt("笔记", "Note");
+    case "symptom":
+      return tt("症状", "Symptom");
+    case "weight":
+      return tt("体重", "Weight");
+    case "vet_visit":
+      return tt("就诊", "Vet Visit");
+    case "vaccine":
+      return tt("疫苗", "Vaccine");
+    case "medication":
+      return tt("用药", "Medication");
+    case "care_task_completed":
+    case "care_task_undone":
+      return tt("照护", "Care");
+    default:
+      return type;
+  }
+}
 
 function joined(...values: Array<string | undefined>): string {
   return values.filter(Boolean).join(" · ");
@@ -83,46 +96,46 @@ export function describeEvent(
       const action = str("action");
       const name = str("name") ?? "";
       if (action === "ended")
-        return { category: "停药", icon: "pill", headline: name };
+        return { category: tt("停药", "Medication Ended"), icon: "pill", headline: name };
       if (action === "started")
-        return { category: "开始用药", icon: "pill", headline: name };
-      return { category: EVENT_CATEGORY.medication ?? "用药", icon: "pill", headline: name || undefined };
+        return { category: tt("开始用药", "Medication Started"), icon: "pill", headline: name };
+      return { category: eventCategory("medication"), icon: "pill", headline: name || undefined };
     }
     case "care_task_completed": {
       if (str("status") === "skipped")
-        return { category: "已跳过", icon: "care", headline: str("title") };
-      return { category: "完成照护", icon: "care", headline: str("title") };
+        return { category: tt("已跳过", "Skipped"), icon: "care", headline: str("title") };
+      return { category: tt("完成照护", "Care Completed"), icon: "care", headline: str("title") };
     }
     case "care_task_undone":
-      return { category: "撤销记录", icon: "undo", headline: str("title") };
+      return { category: tt("撤销记录", "Record Undone"), icon: "undo", headline: str("title") };
     case "weight": {
       const grams = typeof data.weight_g === "number" ? data.weight_g : undefined;
       const kg = grams !== undefined ? `${grams >= 10000 ? Math.round(grams / 1000) : Math.round((grams / 1000) * 100) / 100} kg` : undefined;
-      return { category: "体重", icon: "weight", headline: kg ?? str("note"), detail: grams === undefined ? undefined : str("note") };
+      return { category: tt("体重", "Weight"), icon: "weight", headline: kg ?? str("note"), detail: grams === undefined ? undefined : str("note") };
     }
     case "vaccine":
       return {
-        category: "疫苗",
+        category: tt("疫苗", "Vaccine"),
         icon: "syringe",
         headline: str("name"),
-        detail: str("due") ? `下次到期 ${str("due")}` : str("text"),
+        detail: str("due") ? tt(`下次到期 ${str("due")}`, `Next due ${str("due")}`) : str("text"),
       };
     case "vet_visit":
       return {
-        category: "就诊",
+        category: tt("就诊", "Vet Visit"),
         icon: "stethoscope",
         headline: str("title"),
         detail: joined(str("clinic"), str("summary")),
       };
     case "symptom":
       return {
-        category: "症状",
+        category: tt("症状", "Symptom"),
         icon: "symptom",
         headline: str("title"),
         detail: str("detail"),
       };
     case "note":
-      return { category: "笔记", icon: "note", headline: str("text") ?? str("title"), detail: str("detail") };
+      return { category: tt("笔记", "Note"), icon: "note", headline: str("text") ?? str("title"), detail: str("detail") };
     default: {
       // 未知类型：过滤掉内部 id 字段后安全展示，绝不让页面崩溃。
       const extras = Object.entries(data)

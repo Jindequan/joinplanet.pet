@@ -8,13 +8,10 @@ import { EmptyState, InlineError, PageSkeleton, Toast, BusyButton, ConfirmDialog
 import { queryKeys } from "../../core/query/keys";
 import { Check, ChevronRight, Copy, Home, Pencil, PawPrint, Plus, ShieldCheck, Trash2, Undo2, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { AccessGrant, BackHeader, Card, Family, Member, Medication, Pet, Share, Transfer, Page, PageTitle, useFamilies, useInvalidate } from "../../app/shared";
-import { roleLabel, speciesLabel, timezoneCity, timezoneLabel, timezoneOptions, TRANSFER_STATUS_LABELS } from "../../core/display";
+import { roleLabel, speciesLabel, timezoneCity, timezoneLabel, timezoneOptions, transferStatusLabel } from "../../core/display";
+import { tt, useT } from "../../core/i18n";
 import { MoreGroup, MoreRow } from "../../ui/more";
 import { PetAvatar } from "../../ui/pet-avatar";
-
-function transferStatus(status: string) {
-  return TRANSFER_STATUS_LABELS[status] ?? status;
-}
 
 /** 「永久」分享用 100 年过期时间实现；展示层识别为永久。 */
 function isPermanentExpiry(expiresAt: string): boolean {
@@ -24,6 +21,7 @@ function isPermanentExpiry(expiresAt: string): boolean {
 
 export function AssignmentsPage() {
   const { petId = "", planId = "" } = useParams();
+  const t = useT();
   const pet = useQuery({
     queryKey: queryKeys.pet(petId),
     queryFn: () => api.get<{ pet: Pet }>(`/pets/${petId}`),
@@ -73,12 +71,15 @@ export function AssignmentsPage() {
   }
   return (
     <div className="detail-view">
-      <BackHeader title="照护负责人" />
+      <BackHeader title={t("照护负责人", "Care Leads")} />
       <Page>
         <PageTitle
-          eyebrow="谁负责什么"
-          title="照护负责人"
-          description="负责人按当前家庭成员设置，由服务端校验权限。"
+          eyebrow={t("谁负责什么", "Who does what")}
+          title={t("照护负责人", "Care Leads")}
+          description={t(
+            "负责人按当前家庭成员设置，由服务端校验权限。",
+            "Leads are set from the current family members and validated server-side.",
+          )}
         />
         {pet.isLoading || family.isLoading || assignments.isLoading ? (
           <PageSkeleton />
@@ -107,10 +108,10 @@ export function AssignmentsPage() {
                       <small>{member.email ?? roleLabel(member.role)}</small>
                     </div>
                     <span className="role-pill">
-                      {isAssigned ? "已负责" : "未负责"}
+                      {isAssigned ? t("已负责", "Assigned") : t("未负责", "Not assigned")}
                     </span>
                     {isOwner ? (
-                      <small className="muted-copy">圈主</small>
+                      <small className="muted-copy">{t("圈主", "Owner")}</small>
                     ) : (
                       <button
                         className="button ghost"
@@ -122,10 +123,10 @@ export function AssignmentsPage() {
                         }
                       >
                         {busyUser === member.user_id
-                          ? "保存中…"
+                          ? t("保存中…", "Saving…")
                           : isAssigned
-                            ? "移除"
-                            : "指派"}
+                            ? t("移除", "Remove")
+                            : t("指派", "Assign")}
                       </button>
                     )}
                   </div>
@@ -137,9 +138,15 @@ export function AssignmentsPage() {
         )}
         {removeUser && (
           <ConfirmDialog
-            title={`移除 ${removeUser.display_name} 的负责？`}
-            consequence="对方将不再负责这个照护计划。"
-            confirmLabel="移除负责人"
+            title={t(
+              `移除 ${removeUser.display_name} 的负责？`,
+              `Remove ${removeUser.display_name} as a lead?`,
+            )}
+            consequence={t(
+              "对方将不再负责这个照护计划。",
+              "They will no longer be responsible for this care plan.",
+            )}
+            confirmLabel={t("移除负责人", "Remove Lead")}
             onCancel={() => setRemoveUser(null)}
             onConfirm={() => setAssignment(removeUser.user_id, false)}
           />
@@ -152,6 +159,7 @@ export function AssignmentsPage() {
 export function PetTransferPage() {
   const { petId = "" } = useParams();
   const navigate = useNavigate();
+  const t = useT();
   const pet = useQuery({
     queryKey: queryKeys.pet(petId),
     queryFn: () => api.get<{ pet: Pet }>(`/pets/${petId}`),
@@ -181,7 +189,7 @@ export function PetTransferPage() {
   );
   async function transfer() {
     if (!familyId) {
-      setError("请选择目标家庭。");
+      setError(t("请选择目标家庭。", "Please choose a destination family."));
       return;
     }
     setBusy(true);
@@ -201,21 +209,24 @@ export function PetTransferPage() {
   }
   return (
     <div className="detail-view">
-      <BackHeader title="转移宠物" />
+      <BackHeader title={t("转移宠物", "Transfer Pet")} />
       <Page>
         <PageTitle
-          eyebrow="宠物归属"
-          title={`转移 ${pet.data.pet.name}`}
-          description="需要目标家庭的圈主接受后，所有权才会真正变更。"
+          eyebrow={t("宠物归属", "Pet Ownership")}
+          title={t(`转移 ${pet.data.pet.name}`, `Transfer ${pet.data.pet.name}`)}
+          description={t(
+            "需要目标家庭的圈主接受后，所有权才会真正变更。",
+            "Ownership only changes once the destination family's owner accepts.",
+          )}
         />
         <Card>
           <label className="form-field">
-            <span>目标家庭</span>
+            <span>{t("目标家庭", "Destination Family")}</span>
             <select
               value={familyId}
               onChange={(event) => setFamilyId(event.target.value)}
             >
-              <option value="">选择家庭…</option>
+              <option value="">{t("选择家庭…", "Choose a family…")}</option>
               {options.map((family) => (
                 <option value={family.id} key={family.id}>
                   {family.name}
@@ -225,7 +236,10 @@ export function PetTransferPage() {
           </label>
           {options.length === 0 && (
             <p className="muted-copy">
-              请先创建或加入另一个家庭，再发起转移。
+              {t(
+                "请先创建或加入另一个家庭，再发起转移。",
+                "Create or join another family before starting a transfer.",
+              )}
             </p>
           )}
           {error && <p className="form-error">{error}</p>}
@@ -235,7 +249,7 @@ export function PetTransferPage() {
             disabled={!familyId}
             onClick={() => void transfer()}
           >
-            发送转移请求
+            {t("发送转移请求", "Send Transfer Request")}
           </BusyButton>
         </Card>
       </Page>
@@ -245,6 +259,7 @@ export function PetTransferPage() {
 
 export function FamilyTransfersPage() {
   const { familyId = "" } = useParams();
+  const t = useT();
   const [direction, setDirection] = useState<"incoming" | "outgoing">(
     "incoming",
   );
@@ -282,7 +297,12 @@ export function FamilyTransfersPage() {
       await client.invalidateQueries({ queryKey: ["families"] });
       await client.invalidateQueries({ queryKey: ["pets"] });
       await client.invalidateQueries({ queryKey: ["shares"] });
-      setToast(`转移请求已${action === "accept" ? "接受" : action === "decline" ? "婉拒" : "取消"}。`);
+      setToast(
+        t(
+          `转移请求已${action === "accept" ? "接受" : action === "decline" ? "婉拒" : "取消"}。`,
+          `Transfer request ${action === "accept" ? "accepted" : action === "decline" ? "declined" : "cancelled"}.`,
+        ),
+      );
     } catch (e) {
       setError(errorMessage(e));
       throw e;
@@ -305,31 +325,37 @@ export function FamilyTransfersPage() {
   const transfers = query.data?.transfers ?? [];
   return (
     <div className="detail-view">
-      <BackHeader title="宠物转移" />
+      <BackHeader title={t("宠物转移", "Pet Transfers")} />
       <Page>
         <PageTitle
-          eyebrow="宠物归属"
-          title="转移请求"
-          description="只有目标家庭的圈主接受后，所有权才会变更。"
+          eyebrow={t("宠物归属", "Pet Ownership")}
+          title={t("转移请求", "Transfer Requests")}
+          description={t(
+            "只有目标家庭的圈主接受后，所有权才会变更。",
+            "Ownership changes only once the destination family's owner accepts.",
+          )}
         />
         <div className="segmented">
           <button
             className={direction === "incoming" ? "selected" : ""}
             onClick={() => setDirection("incoming")}
           >
-            收到的
+            {t("收到的", "Received")}
           </button>
           <button
             className={direction === "outgoing" ? "selected" : ""}
             onClick={() => setDirection("outgoing")}
           >
-            发出的
+            {t("发出的", "Sent")}
           </button>
         </div>
         {transfers.length === 0 ? (
           <EmptyState
-            title="暂无转移请求"
-            description="这个家庭收到的待处理请求会显示在这里。"
+            title={t("暂无转移请求", "No Transfer Requests")}
+            description={t(
+              "这个家庭收到的待处理请求会显示在这里。",
+              "Pending requests this family receives will appear here.",
+            )}
           />
         ) : (
           <div className="stack">
@@ -339,7 +365,7 @@ export function FamilyTransfersPage() {
                   <div>
                     <strong>{transfer.pet_name || transfer.pet_id}</strong>
                     <small>
-                      {transferStatus(transfer.status)} ·{" "}
+                      {transferStatusLabel(transfer.status)} ·{" "}
                       {new Date(transfer.created_at).toLocaleString("zh-CN")}
                     </small>
                   </div>
@@ -351,14 +377,14 @@ export function FamilyTransfersPage() {
                           disabled={busyTransferId === transfer.id}
                           onClick={() => void act(transfer, "accept")}
                         >
-                          接受
+                          {t("接受", "Accept")}
                         </button>
                         <button
                           className="button ghost"
                           disabled={busyTransferId === transfer.id}
                           onClick={() => void act(transfer, "decline")}
                         >
-                          婉拒
+                          {t("婉拒", "Decline")}
                         </button>
                       </div>
                     ) : (
@@ -366,7 +392,7 @@ export function FamilyTransfersPage() {
                         className="button ghost"
                         onClick={() => setTransferToCancel(transfer)}
                       >
-                        取消请求
+                        {t("取消请求", "Cancel Request")}
                       </button>
                     ))}
                 </div>
@@ -377,9 +403,15 @@ export function FamilyTransfersPage() {
         {error && <p className="form-error">{error}</p>}
         {transferToCancel && (
           <ConfirmDialog
-            title={`取消 ${transferToCancel.pet_name || "这只宠物"} 的转移？`}
-            consequence="目标家庭将无法再接受这条请求。"
-            confirmLabel="取消转移"
+            title={t(
+              `取消 ${transferToCancel.pet_name || "这只宠物"} 的转移？`,
+              `Cancel the transfer of ${transferToCancel.pet_name || "this pet"}?`,
+            )}
+            consequence={t(
+              "目标家庭将无法再接受这条请求。",
+              "The destination family will no longer be able to accept this request.",
+            )}
+            confirmLabel={t("取消转移", "Cancel Transfer")}
             onCancel={() => setTransferToCancel(null)}
             onConfirm={async () => {
               await act(transferToCancel, "cancel");
@@ -410,6 +442,7 @@ export function MedicationForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const commandId = useRef(createCommandId());
+  const t = useT();
   async function save() {
     setBusy(true);
     try {
@@ -436,13 +469,13 @@ export function MedicationForm({
   return (
     <div className="modal-backdrop">
       <section className="modal">
-        <button className="modal-close" onClick={onClose} aria-label="关闭">
+        <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
           <X size={18} />
         </button>
-        <span className="eyebrow">用药</span>
-        <h2>{initial ? `编辑 ${initial.name}` : "添加药物"}</h2>
+        <span className="eyebrow">{t("用药", "Medication")}</span>
+        <h2>{initial ? t(`编辑 ${initial.name}`, `Edit ${initial.name}`) : t("添加药物", "Add Medication")}</h2>
         <label className="form-field">
-          <span>药名</span>
+          <span>{t("药名", "Medication Name")}</span>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -450,23 +483,23 @@ export function MedicationForm({
           />
         </label>
         <label className="form-field">
-          <span>剂量</span>
+          <span>{t("剂量", "Dose")}</span>
           <input
             value={dose}
             onChange={(event) => setDose(event.target.value)}
-            placeholder="1 片 / 5 ml"
+            placeholder={t("1 片 / 5 ml", "1 tablet / 5 ml")}
           />
         </label>
         <label className="form-field">
-          <span>频率</span>
+          <span>{t("频率", "Frequency")}</span>
           <input
             value={schedule}
             onChange={(event) => setSchedule(event.target.value)}
-            placeholder="每日 2 次 · 随餐"
+            placeholder={t("每日 2 次 · 随餐", "Twice daily · with food")}
           />
         </label>
         <label className="form-field">
-          <span>备注</span>
+          <span>{t("备注", "Notes")}</span>
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
@@ -479,10 +512,10 @@ export function MedicationForm({
         )}
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton className="button primary" busy={busy} onClick={save}>
-            {initial ? "保存修改" : "添加药物"}
+            {initial ? t("保存修改", "Save Changes") : t("添加药物", "Add Medication")}
           </BusyButton>
         </div>
       </section>
@@ -507,6 +540,7 @@ export function Sharing({ pet }: { pet: Pet }) {
   const [confirm, setConfirm] = useState<Share | null>(null);
   const [grantConfirm, setGrantConfirm] = useState<AccessGrant | null>(null);
   const invalidate = useInvalidate();
+  const t = useT();
   if (query.isLoading) return <PageSkeleton />;
   if (query.error)
     return (
@@ -536,12 +570,12 @@ export function Sharing({ pet }: { pet: Pet }) {
     <section className="subpage">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">私密链接</span>
-          <h2>谨慎分享</h2>
+          <span className="eyebrow">{t("私密链接", "Private Link")}</span>
+          <h2>{t("谨慎分享", "Share Carefully")}</h2>
         </div>
         {!pet.archived_at && (
           <button className="button primary" onClick={() => setShow(true)}>
-            <Plus size={16} /> 创建分享
+            <Plus size={16} /> {t("创建分享", "Create Share")}
           </button>
         )}
       </div>
@@ -550,8 +584,8 @@ export function Sharing({ pet }: { pet: Pet }) {
         <Card className="success">
           <Check size={18} />
           <div>
-            <strong>链接已复制，请尽快发给对方</strong>
-            <p>明文 token 只显示这一次。</p>
+            <strong>{t("链接已复制，请尽快发给对方", "Link copied — send it to them soon")}</strong>
+            <p>{t("这条安全密钥只显示一次，请现在复制保存。", "This secure key is shown only once — copy and save it now.")}</p>
             <button
               className="copy-link"
               onClick={() => void navigator.clipboard?.writeText(created)}
@@ -564,8 +598,11 @@ export function Sharing({ pet }: { pet: Pet }) {
       )}
       {(query.data?.shares ?? []).length === 0 ? (
         <EmptyState
-          title="没有进行中的分享"
-          description="可以为信任的人创建一条临时、只读的照护卡片或健康摘要。"
+          title={t("没有进行中的分享", "No Active Shares")}
+          description={t(
+            "可以为信任的人创建一条临时、只读的照护卡片或健康摘要。",
+            "Create a temporary, read-only care card or health summary for someone you trust.",
+          )}
         />
       ) : (
         <div className="stack">
@@ -573,19 +610,25 @@ export function Sharing({ pet }: { pet: Pet }) {
             <Card key={share.id}>
               <div className="row-between">
                 <div>
-                  <span className="eyebrow">{share.kind === "care_card" ? "照护卡片" : share.kind === "summary" ? "健康摘要" : share.kind}</span>
-                  <h3>私密分享</h3>
+                  <span className="eyebrow">{share.kind === "care_card" ? t("照护卡片", "Care Card") : share.kind === "summary" ? t("健康摘要", "Health Summary") : share.kind}</span>
+                  <h3>{t("私密分享", "Private Share")}</h3>
                   <p>
                     {isPermanentExpiry(share.expires_at)
-                      ? "永久有效"
-                      : `${new Date(share.expires_at).toLocaleString("zh-CN")} 过期`}{" "}
-                    · 已被查看 {share.view_count} 次
+                      ? t("永久有效", "Never expires")
+                      : t(
+                          `${new Date(share.expires_at).toLocaleString("zh-CN")} 过期`,
+                          `Expires ${new Date(share.expires_at).toLocaleString("zh-CN")}`,
+                        )}{" "}
+                    {t(
+                      `· 已被查看 ${share.view_count} 次`,
+                      `· Viewed ${share.view_count} times`,
+                    )}
                   </p>
                 </div>
                 <button
                   className="icon-button subtle"
                   onClick={() => setConfirm(share)}
-                  aria-label="撤销分享"
+                  aria-label={t("撤销分享", "Revoke Share")}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -610,9 +653,12 @@ export function Sharing({ pet }: { pet: Pet }) {
       )}
       {confirm && (
         <ConfirmDialog
-          title="撤销这条分享？"
-          consequence="任何拿到链接的人都会立即失去只读访问。"
-          confirmLabel="撤销分享"
+          title={t("撤销这条分享？", "Revoke this share?")}
+          consequence={t(
+            "任何拿到链接的人都会立即失去只读访问。",
+            "Anyone with the link will immediately lose read-only access.",
+          )}
+          confirmLabel={t("撤销分享", "Revoke Share")}
           onCancel={() => setConfirm(null)}
           onConfirm={revoke}
         />
@@ -620,12 +666,12 @@ export function Sharing({ pet }: { pet: Pet }) {
       <Card>
         <div className="section-heading">
           <div>
-            <span className="eyebrow">直接授权</span>
-            <h2>受托照护人</h2>
+            <span className="eyebrow">{t("直接授权", "Direct Grants")}</span>
+            <h2>{t("受托照护人", "Trusted Caregivers")}</h2>
           </div>
           {!pet.archived_at && (
             <button className="button ghost" onClick={() => setShowGrant(true)}>
-              <UserPlus size={15} /> 添加授权
+              <UserPlus size={15} /> {t("添加授权", "Add Grant")}
             </button>
           )}
         </div>
@@ -636,7 +682,10 @@ export function Sharing({ pet }: { pet: Pet }) {
           />
         ) : (grants.data?.grants ?? []).length === 0 ? (
           <p className="muted-copy">
-            还没有直接授权；家庭可见性是另一条独立通道。
+            {t(
+              "还没有直接授权；家庭可见性是另一条独立通道。",
+              "No direct grants yet; family visibility is a separate channel.",
+            )}
           </p>
         ) : (
           (grants.data?.grants ?? []).map((grant) => (
@@ -648,15 +697,15 @@ export function Sharing({ pet }: { pet: Pet }) {
                 <strong>{grant.user_id}</strong>
                 <small>
                   {grant.expires_at
-                    ? `${grant.expires_at} 到期`
-                    : "永久有效"}
+                    ? t(`${grant.expires_at} 到期`, `Expires ${grant.expires_at}`)
+                    : t("永久有效", "Never expires")}
                 </small>
               </div>
               <span className="role-pill">{roleLabel(grant.role)}</span>
               <button
                 className="icon-button subtle"
                 onClick={() => setGrantConfirm(grant)}
-                aria-label="撤销授权"
+                aria-label={t("撤销授权", "Revoke Grant")}
               >
                 <Trash2 size={16} />
               </button>
@@ -676,19 +725,25 @@ export function Sharing({ pet }: { pet: Pet }) {
       )}
       {grantConfirm && (
         <ConfirmDialog
-          title={`撤销这位用户的授权？`}
-          consequence="对方会立即失去对这只宠物的直接访问。"
-          confirmLabel="撤销授权"
+          title={t(`撤销这位用户的授权？`, "Revoke this user's grant?")}
+          consequence={t(
+            "对方会立即失去对这只宠物的直接访问。",
+            "They will immediately lose direct access to this pet.",
+          )}
+          confirmLabel={t("撤销授权", "Revoke Grant")}
           onCancel={() => setGrantConfirm(null)}
           onConfirm={revokeGrant}
         />
       )}
       {!pet.archived_at && (
-        <MoreGroup label="归属治理">
+        <MoreGroup label={t("归属治理", "Ownership")}>
           <MoreRow
             icon={<Users size={19} />}
-            title="转移所有权"
-            sub="把这只宠物转给另一个家庭，需对方圈主接受"
+            title={t("转移所有权", "Transfer Ownership")}
+            sub={t(
+              "把这只宠物转给另一个家庭，需对方圈主接受",
+              "Move this pet to another family; their owner must accept",
+            )}
             to={`/pets/${pet.id}/transfer`}
           />
         </MoreGroup>
@@ -711,9 +766,10 @@ export function GrantForm({
   const [expires, setExpires] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const t = useT();
   async function save() {
     if (!userId.trim()) {
-      setError("先填用户 ID。");
+      setError(t("先填用户 ID。", "Enter a user ID first."));
       return;
     }
     setBusy(true);
@@ -733,14 +789,14 @@ export function GrantForm({
   return (
     <div className="modal-backdrop">
       <section className="modal">
-        <button className="modal-close" onClick={onClose} aria-label="关闭">
+        <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
           <X size={18} />
         </button>
-        <span className="eyebrow">直接授权</span>
-        <h2>授权访问这只宠物</h2>
-        <p>当前契约按用户 ID 授权，不支持按邮箱查找。</p>
+        <span className="eyebrow">{t("直接授权", "Direct Grants")}</span>
+        <h2>{t("授权访问这只宠物", "Grant Access to This Pet")}</h2>
+        <p>{t("请填写对方的 Planet 用户 ID；当前暂不支持按邮箱查找。", "Enter the person's Planet user ID; email lookup isn't supported yet.")}</p>
         <label className="form-field">
-          <span>用户 ID</span>
+          <span>{t("Planet 用户 ID", "Planet User ID")}</span>
           <input
             value={userId}
             onChange={(event) => setUserId(event.target.value)}
@@ -748,18 +804,18 @@ export function GrantForm({
           />
         </label>
         <label className="form-field">
-          <span>角色</span>
+          <span>{t("角色", "Role")}</span>
           <select
             value={role}
             onChange={(event) => setRole(event.target.value)}
           >
-            <option value="editor">可编辑</option>
-            <option value="viewer">可查看</option>
-            <option value="read_only">只读</option>
+            <option value="editor">{t("可编辑", "Can edit")}</option>
+            <option value="viewer">{t("可查看", "Can view")}</option>
+            <option value="read_only">{t("只读", "Read-only")}</option>
           </select>
         </label>
         <label className="form-field">
-          <span>过期时间（选填）</span>
+          <span>{t("过期时间（选填）", "Expiry (optional)")}</span>
           <input
             type="datetime-local"
             value={expires}
@@ -771,7 +827,7 @@ export function GrantForm({
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton
             className="button primary"
@@ -779,7 +835,7 @@ export function GrantForm({
             disabled={!userId.trim()}
             onClick={save}
           >
-            授予访问
+            {t("授予访问", "Grant Access")}
           </BusyButton>
         </div>
       </section>
@@ -800,6 +856,7 @@ export function ShareForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const commandId = useRef(createCommandId());
+  const t = useT();
   async function save() {
     setBusy(true);
     try {
@@ -819,42 +876,45 @@ export function ShareForm({
   return (
     <div className="modal-backdrop">
       <section className="modal">
-        <button className="modal-close" onClick={onClose} aria-label="关闭">
+        <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
           <X size={18} />
         </button>
-        <span className="eyebrow">临时访问</span>
-        <h2>创建私密分享</h2>
+        <span className="eyebrow">{t("临时访问", "Temporary Access")}</span>
+        <h2>{t("创建私密分享", "Create Private Share")}</h2>
         <label className="form-field">
-          <span>内容视图</span>
+          <span>{t("内容视图", "Content View")}</span>
           <select
             value={kind}
             onChange={(event) => setKind(event.target.value)}
           >
-            <option value="care_card">照护卡片(今日行动)</option>
-            <option value="summary">健康摘要</option>
+            <option value="care_card">{t("照护卡片(今日行动)", "Care Card (Today's actions)")}</option>
+            <option value="summary">{t("健康摘要", "Health Summary")}</option>
           </select>
         </label>
         <label className="form-field">
-          <span>有效期</span>
+          <span>{t("有效期", "Valid For")}</span>
           <select value={ttl} onChange={(event) => setTtl(event.target.value)}>
-            <option value="24">24 小时</option>
-            <option value="72">3 天</option>
-            <option value="168">7 天</option>
-            <option value="720">30 天</option>
-            <option value="2160">90 天</option>
-            <option value="8760">1 年</option>
-            <option value="876000">永久</option>
+            <option value="24">{t("24 小时", "24 hours")}</option>
+            <option value="72">{t("3 天", "3 days")}</option>
+            <option value="168">{t("7 天", "7 days")}</option>
+            <option value="720">{t("30 天", "30 days")}</option>
+            <option value="2160">{t("90 天", "90 days")}</option>
+            <option value="8760">{t("1 年", "1 year")}</option>
+            <option value="876000">{t("永久", "Forever")}</option>
           </select>
           <p className="field-help">
-            这是公开只读链接：任何人无需注册即可查看；到期或撤销后立即失效，可随时撤销。
+            {t(
+              "这是公开只读链接：任何人无需注册即可查看；到期或撤销后立即失效，可随时撤销。",
+              "This is a public read-only link: anyone can view it without signing up. It stops working as soon as it expires or is revoked, and you can revoke it anytime.",
+            )}
           </p>
         </label>
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton className="button primary" busy={busy} onClick={save}>
-            创建链接
+            {t("创建链接", "Create Link")}
           </BusyButton>
         </div>
         {error && <p className="form-error" role="alert">{error}</p>}
@@ -869,6 +929,7 @@ export function FamiliesPage() {
   const [deleted, setDeleted] = useState(false);
   const [toast, setToast] = useState("");
   const invalidate = useInvalidate();
+  const t = useT();
   if (families.isLoading)
     return (
       <Page>
@@ -888,53 +949,59 @@ export function FamiliesPage() {
     return (
       <Page className="families-page">
         <PageTitle
-          eyebrow="共同的家"
-          title="把大家放进同一个照护空间"
-          description="家庭把人、宠物和日常流程连在一起；你可以同时属于多个家庭。"
+          eyebrow={t("共同的家", "A Shared Home")}
+          title={t("把大家放进同一个照护空间", "Bring Everyone Into One Care Space")}
+          description={t(
+            "家庭把人、宠物和日常流程连在一起；你可以同时属于多个家庭。",
+            "Families connect people, pets, and daily routines — you can belong to several at once.",
+          )}
         />
         <section className="family-onboarding">
           <div className="family-onboarding-art">
-            <span className="eyebrow">为什么先建家庭</span>
-            <p>当每个人都看到同一份计划、知道谁做了什么、交接不再靠群聊，照顾才可靠。</p>
+            <span className="eyebrow">{t("为什么先建家庭", "Why start with a family")}</span>
+            <p>{t("当每个人都看到同一份计划、知道谁做了什么、交接不再靠群聊，照顾才可靠。", "Care gets reliable when everyone sees the same plan, knows who did what, and handoffs no longer live in group chats.")}</p>
           </div>
           <div className="family-onboarding-actions">
             <Link to="/families/new">
               <span className="family-icon"><Home size={21} /></span>
-              <span><strong>新建一个家庭</strong><small>你会成为圈主，接着可以添加宠物和邀请家人。</small></span>
+              <span><strong>{t("新建一个家庭", "Create a New Family")}</strong><small>{t("你会成为圈主，接着可以添加宠物和邀请家人。", "You'll be the owner, then add pets and invite family.")}</small></span>
               <ChevronRight size={19} />
             </Link>
             <Link to="/families/join">
               <span className="family-icon coral"><Users size={21} /></span>
-              <span><strong>用邀请码加入</strong><small>连上别人已经建好的家庭。</small></span>
+              <span><strong>{t("用邀请码加入", "Join with an Invite Code")}</strong><small>{t("连上别人已经建好的家庭。", "Connect to a family someone else has set up.")}</small></span>
               <ChevronRight size={19} />
             </Link>
-            <div className="privacy-note"><ShieldCheck size={17} /><span><strong>你们的记录保持私密。</strong><small>访问权限跟随家庭角色，圈主随时可以收回。</small></span></div>
+            <div className="privacy-note"><ShieldCheck size={17} /><span><strong>{t("你们的记录保持私密。", "Your records stay private.")}</strong><small>{t("访问权限跟随家庭角色，圈主随时可以收回。", "Access follows family roles, and the owner can revoke it anytime.")}</small></span></div>
           </div>
         </section>
       </Page>
     );
   return (
-    <Page>
+    <Page className="more-page families-page">
       <PageTitle
-        eyebrow="每个家，一个视角"
-        title="你的家庭"
-        description="在家庭之间切换，不丢失任何一只宠物的完整图景。"
+        eyebrow={t("每个家，一个视角", "One Home, One View")}
+        title={t("你的家庭", "Your Families")}
+        description={t(
+          "在家庭之间切换，不丢失任何一只宠物的完整图景。",
+          "Switch between families without losing the full picture for any pet.",
+        )}
         action={
           <button className="button primary" onClick={() => setMode("create")}>
-            <Plus size={16} /> 新建家庭
+            <Plus size={16} /> {t("新建家庭", "New Family")}
           </button>
         }
       />
       <div className="family-actions">
         <button onClick={() => setMode("create")}>
           <Home size={20} />
-          <strong>创建家庭</strong>
-          <small>开始一个新的共享小家</small>
+          <strong>{t("创建家庭", "Create Family")}</strong>
+          <small>{t("开始一个新的共享小家", "Start a new shared home")}</small>
         </button>
         <button onClick={() => setMode("join")}>
           <Users size={20} />
-          <strong>邀请码加入</strong>
-          <small>连接已有的家</small>
+          <strong>{t("邀请码加入", "Join with Code")}</strong>
+          <small>{t("连接已有的家", "Connect to an existing home")}</small>
         </button>
       </div>
       <div className="stack">
@@ -946,12 +1013,12 @@ export function FamiliesPage() {
         className="text-button"
         onClick={() => setDeleted((value) => !value)}
       >
-        {deleted ? "收起已删除的家庭" : "查看已删除的家庭"}
+        {deleted ? t("收起已删除的家庭", "Hide Deleted Families") : t("查看已删除的家庭", "View Deleted Families")}
       </button>
       {deleted && (
         <DeletedFamilies
           onRestored={() => {
-            setToast("家庭已恢复。");
+            setToast(t("家庭已恢复。", "Family restored."));
             invalidate();
           }}
         />
@@ -982,6 +1049,7 @@ export function FamilyCard({ family }: { family: Family }) {
     queryKey: ["family-pets", family.id],
     queryFn: () => api.get<{ pets: Pet[] }>(`/families/${family.id}/pets`),
   });
+  const t = useT();
   return (
     <Link className="family-card" to={`/families/${family.id}`}>
       <span className="family-icon">
@@ -993,10 +1061,13 @@ export function FamilyCard({ family }: { family: Family }) {
         <p>{timezoneCity(family.timezone)}</p>
         <small>
           {detail.isLoading || pets.isLoading
-            ? "统计加载中…"
+            ? t("统计加载中…", "Loading stats…")
             : detail.error || pets.error
-              ? "统计暂不可用"
-              : `${detail.data?.members.length ?? 0} 位成员 · ${pets.data?.pets.length ?? 0} 只宠物`}
+              ? t("统计暂不可用", "Stats unavailable")
+              : t(
+                  `${detail.data?.members.length ?? 0} 位成员 · ${pets.data?.pets.length ?? 0} 只宠物`,
+                  `${detail.data?.members.length ?? 0} members · ${pets.data?.pets.length ?? 0} pets`,
+                )}
         </small>
       </div>
       <ChevronRight size={19} />
@@ -1025,6 +1096,7 @@ export function FamilyForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const commandId = useRef(createCommandId());
+  const t = useT();
   async function previewInvite() {
     setBusy(true);
     try {
@@ -1049,7 +1121,10 @@ export function FamilyForm({
           { idempotencyKey: commandId.current },
         );
         commandId.current = createCommandId();
-        onSaved(`家庭已创建。邀请码：${result.invite_code}`);
+        onSaved(t(
+          `家庭已创建。邀请码：${result.invite_code}`,
+          `Family created. Invite code: ${result.invite_code}`,
+        ));
         navigate(`/families/${result.family.id}`);
       } else {
         const result = await api.post<{ family: Family }>(
@@ -1058,7 +1133,7 @@ export function FamilyForm({
           { idempotencyKey: commandId.current },
         );
         commandId.current = createCommandId();
-        onSaved(`已加入「${result.family.name}」。`);
+        onSaved(t(`已加入「${result.family.name}」。`, `Joined "${result.family.name}".`));
         navigate(`/families/${result.family.id}`);
       }
     } catch (e) {
@@ -1071,18 +1146,18 @@ export function FamilyForm({
     <div className={`modal-backdrop ${pageVariant ? "page-variant" : ""}`} onMouseDown={pageVariant ? undefined : (event) => event.target === event.currentTarget && onClose()}>
       <section className={`modal ${pageVariant ? "page-variant" : ""}`}>
         {!pageVariant && (
-          <button className="modal-close" onClick={onClose} aria-label="关闭">
+          <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
             <X size={18} />
           </button>
         )}
         <span className="eyebrow">
-          {mode === "create" ? "一个新的共享小家" : "你收到邀请了"}
+          {mode === "create" ? t("一个新的共享小家", "A New Shared Home") : t("你收到邀请了", "You've Been Invited")}
         </span>
-        <h2>{mode === "create" ? "创建家庭" : "加入家庭"}</h2>
+        <h2>{mode === "create" ? t("创建家庭", "Create Family") : t("加入家庭", "Join Family")}</h2>
         {mode === "create" ? (
           <>
             <label className="form-field">
-              <span>名称</span>
+              <span>{t("名称", "Name")}</span>
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -1090,28 +1165,28 @@ export function FamilyForm({
               />
             </label>
             <label className="form-field">
-              <span>时区（默认跟随本机）</span>
+              <span>{t("时区（默认跟随本机）", "Time Zone (defaults to this device)")}</span>
               <select
                 value={timezone}
                 onChange={(event) => setTimezone(event.target.value)}
               >
                 {timezoneOptions(timezone).map((tz) => (
                   <option key={tz} value={tz}>
-                    {tz === timezone ? `${timezoneLabel(tz)} · 本机` : timezoneLabel(tz)}
+                    {tz === timezone ? t(`${timezoneLabel(tz)} · 本机`, `${timezoneLabel(tz)} · This device`) : timezoneLabel(tz)}
                   </option>
                 ))}
               </select>
-              <small className="field-help">家庭时区决定「今天」从几点算起。</small>
+              <small className="field-help">{t("家庭时区决定「今天」从几点算起。", "The family time zone decides when “Today” begins.")}</small>
             </label>
           </>
         ) : (
           <>
             <label className="form-field">
-              <span>邀请码</span>
+              <span>{t("邀请码", "Invite Code")}</span>
               <input
                 value={code}
                 onChange={(event) => setCode(event.target.value.toUpperCase())}
-                placeholder="如 ABCD-1234"
+                placeholder={t("如 ABCD-1234", "e.g. ABCD-1234")}
                 autoFocus
               />
             </label>
@@ -1119,10 +1194,13 @@ export function FamilyForm({
               <Card className="preview">
                 <strong>
                   {preview.inviter_name
-                    ? `${String(preview.inviter_name)} 邀请你一起照顾 ${String(preview.pet_name ?? "他们的宠物")}`
-                    : "家庭邀请"}
+                    ? t(
+                        `${String(preview.inviter_name)} 邀请你一起照顾 ${String(preview.pet_name ?? "他们的宠物")}`,
+                        `${String(preview.inviter_name)} invited you to help care for ${String(preview.pet_name ?? "their pet")}`,
+                      )
+                    : t("家庭邀请", "Family Invite")}
                 </strong>
-                <p>确认上面的信息，再点击加入。</p>
+                <p>{t("确认上面的信息，再点击加入。", "Confirm the details above, then tap Join.")}</p>
               </Card>
             )}
             <button
@@ -1130,17 +1208,17 @@ export function FamilyForm({
               disabled={!code.trim() || busy}
               onClick={() => void previewInvite()}
             >
-              预览邀请
+              {t("预览邀请", "Preview Invite")}
             </button>
           </>
         )}
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton className="button primary" busy={busy} onClick={save}>
-            {mode === "create" ? "创建家庭" : "加入"}
+            {mode === "create" ? t("创建家庭", "Create Family") : t("加入", "Join")}
           </BusyButton>
         </div>
       </section>
@@ -1156,6 +1234,7 @@ export function DeletedFamilies({ onRestored }: { onRestored: () => void }) {
       }>("/families/deleted"),
   });
   const [error, setError] = useState("");
+  const t = useT();
   if (query.isLoading) return <PageSkeleton />;
   return (
     <div className="stack compact">
@@ -1165,7 +1244,7 @@ export function DeletedFamilies({ onRestored }: { onRestored: () => void }) {
             <div>
               <strong>{family.name}</strong>
               <small>
-                删除于 {new Date(family.deleted_at).toLocaleDateString("zh-CN")}
+                {t("删除于", "Deleted on")} {new Date(family.deleted_at).toLocaleDateString("zh-CN")}
               </small>
             </div>
             <button
@@ -1180,7 +1259,7 @@ export function DeletedFamilies({ onRestored }: { onRestored: () => void }) {
                 }
               }}
             >
-              恢复
+              {t("恢复", "Restore")}
             </button>
           </div>
         </Card>
@@ -1212,6 +1291,7 @@ export function FamilyPage() {
   const [error, setError] = useState("");
   const invalidate = useInvalidate();
   const navigate = useNavigate();
+  const t = useT();
   if (query.isLoading || pets.isLoading)
     return (
       <Page>
@@ -1221,7 +1301,7 @@ export function FamilyPage() {
   if (query.error || !query.data)
     return (
       <Page>
-        <InlineError error={query.error ?? new Error("这个家庭不存在或对你不可见")} />
+        <InlineError error={query.error ?? new Error(t("这个家庭不存在或对你不可见", "This family doesn't exist or isn't visible to you"))} />
       </Page>
     );
   const { family, members } = query.data;
@@ -1256,7 +1336,7 @@ export function FamilyPage() {
   return (
     <div className="detail-view">
       <BackHeader title={family.name} />
-      <Page>
+      <Page className="more-page">
         {error && <p className="form-error" role="alert">{error}</p>}
         <section className="family-hero">
           <span className="family-icon" aria-hidden>
@@ -1265,25 +1345,28 @@ export function FamilyPage() {
           <div>
             <h1>{family.name}</h1>
             <p>
-              {timezoneLabel(family.timezone)} · {members.length} 位成员 ·{" "}
-              {pets.data?.pets.length ?? 0} 只宠物
+              {timezoneLabel(family.timezone)} ·{" "}
+              {t(
+                `${members.length} 位成员 · ${pets.data?.pets.length ?? 0} 只宠物`,
+                `${members.length} members · ${pets.data?.pets.length ?? 0} pets`,
+              )}
             </p>
           </div>
           <span className="role-pill">{roleLabel(family.role)}</span>
         </section>
         {invite && (
           <Card className="invite-card">
-            <span className="eyebrow">邀请码</span>
+            <span className="eyebrow">{t("邀请码", "Invite Code")}</span>
             <strong>{invite}</strong>
             <button
               className="copy-link"
               onClick={() => void navigator.clipboard?.writeText(invite)}
             >
-              <Copy size={15} /> 复制
+              <Copy size={15} /> {t("复制", "Copy")}
             </button>
           </Card>
         )}
-        <MoreGroup label={`成员 · ${members.length}`}>
+        <MoreGroup label={t(`成员 · ${members.length}`, `Members · ${members.length}`)}>
           {members.map((member) => (
             <div className="more-row member-row-in-card" key={member.user_id}>
               <span className="avatar-dot" aria-hidden>
@@ -1298,7 +1381,7 @@ export function FamilyPage() {
                 <button
                   className="icon-button subtle"
                   onClick={() => setConfirm(member)}
-                  aria-label={`移除 ${member.display_name}`}
+                  aria-label={t(`移除 ${member.display_name}`, `Remove ${member.display_name}`)}
                 >
                   <UserMinus size={16} />
                 </button>
@@ -1308,13 +1391,13 @@ export function FamilyPage() {
           {isOwner && (
             <MoreRow
               icon={<UserPlus size={19} />}
-              title="邀请加入"
-              sub="生成新的邀请码，分享给要一起照顾的人"
+              title={t("邀请加入", "Invite People")}
+              sub={t("生成新的邀请码，分享给要一起照顾的人", "Generate a new invite code to share with the people who'll care together")}
               onClick={() => void refreshInvite()}
             />
           )}
         </MoreGroup>
-        <MoreGroup label={`宠物 · ${pets.data?.pets.length ?? 0}`}>
+        <MoreGroup label={t(`宠物 · ${pets.data?.pets.length ?? 0}`, `Pets · ${pets.data?.pets.length ?? 0}`)}>
           {(pets.data?.pets ?? []).map((pet) => (
             <MoreRow
               key={pet.id}
@@ -1327,35 +1410,35 @@ export function FamilyPage() {
             />
           ))}
           {(pets.data?.pets ?? []).length === 0 && (
-            <p className="scope-sheet-empty">这个家庭还没有宠物</p>
+            <p className="scope-sheet-empty">{t("这个家庭还没有宠物", "This family has no pets yet")}</p>
           )}
           <MoreRow
             icon={<PawPrint size={19} />}
-            title="管理宠物"
-            sub="档案、照护提醒、健康趋势"
+            title={t("管理宠物", "Manage Pets")}
+            sub={t("档案、照护提醒、健康趋势", "Profiles, care reminders, health trends")}
             to="/pets"
           />
         </MoreGroup>
-        <MoreGroup label="设置">
+        <MoreGroup label={t("设置", "Settings")}>
           <MoreRow
             icon={<Pencil size={19} />}
-            title="家庭信息"
-            sub={isOwner ? "名称与时区" : "只有圈主可以修改"}
+            title={t("家庭信息", "Family Info")}
+            sub={isOwner ? t("名称与时区", "Name and time zone") : t("只有圈主可以修改", "Only the owner can change this")}
             onClick={isOwner ? () => setEdit(true) : undefined}
-            right={isOwner ? undefined : <span className="role-pill">仅圈主</span>}
+            right={isOwner ? undefined : <span className="role-pill">{t("仅圈主", "Owner only")}</span>}
           />
           {isOwner && (
             <MoreRow
               icon={<Users size={19} />}
-              title="转让圈主"
-              sub="选择一位成员接任，你会变成照护者"
+              title={t("转让圈主", "Transfer Ownership")}
+              sub={t("选择一位成员接任，你会变成照护者", "Pick a member to take over; you'll become a caregiver")}
               onClick={() => setTransferOpen(true)}
             />
           )}
           <MoreRow
             icon={<Undo2 size={19} />}
-            title="宠物转移请求"
-            sub="转入与转出的记录，待处理需在此响应"
+            title={t("宠物转移请求", "Pet Transfer Requests")}
+            sub={t("转入与转出的记录，待处理需在此响应", "Incoming and outgoing transfers; respond to pending ones here")}
             to={`/families/${family.id}/transfers`}
           />
         </MoreGroup>
@@ -1364,7 +1447,7 @@ export function FamilyPage() {
             className="danger-link"
             onClick={() => setConfirm(isOwner ? "delete" : "leave")}
           >
-            <Trash2 size={16} /> {isOwner ? "删除家庭" : "退出家庭"}
+            <Trash2 size={16} /> {isOwner ? t("删除家庭", "Delete Family") : t("退出家庭", "Leave Family")}
           </button>
         </div>
         {edit && (
@@ -1393,22 +1476,25 @@ export function FamilyPage() {
           <ConfirmDialog
             title={
               confirm === "delete"
-                ? `删除「${family.name}」？`
+                ? t(`删除「${family.name}」？`, `Delete "${family.name}"?`)
                 : confirm === "leave"
-                  ? `退出「${family.name}」？`
-                  : `移除 ${confirm!.display_name}？`
+                  ? t(`退出「${family.name}」？`, `Leave "${family.name}"?`)
+                  : t(`移除 ${confirm!.display_name}？`, `Remove ${confirm!.display_name}?`)
             }
             consequence={
               confirm === "delete"
-                ? "成员关系立即结束；已链接的宠物和历史依然受保护保留。"
-                : "你的访问会立即结束；已有历史不受影响。"
+                ? t(
+                    "成员关系立即结束；已链接的宠物和历史依然受保护保留。",
+                    "Membership ends immediately; linked pets and history stay protected.",
+                  )
+                : t("你的访问会立即结束；已有历史不受影响。", "Your access ends immediately; existing history is unaffected.")
             }
             confirmLabel={
               confirm === "delete"
-                ? "删除家庭"
+                ? t("删除家庭", "Delete Family")
                 : confirm === "leave"
-                  ? "退出家庭"
-                  : "移除成员"
+                  ? t("退出家庭", "Leave Family")
+                  : t("移除成员", "Remove Member")
             }
             requireText={confirm === "delete" ? family.name : undefined}
             onCancel={() => setConfirm(null)}
@@ -1433,6 +1519,7 @@ export function FamilyEdit({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const commandId = useRef(createCommandId());
+  const t = useT();
   async function save() {
     setError("");
     setBusy(true);
@@ -1453,13 +1540,13 @@ export function FamilyEdit({
   return (
     <div className="modal-backdrop">
       <section className="modal">
-        <button className="modal-close" onClick={onClose} aria-label="关闭">
+        <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
           <X size={18} />
         </button>
-        <span className="eyebrow">家庭设置</span>
-        <h2>编辑家庭</h2>
+        <span className="eyebrow">{t("家庭设置", "Family Settings")}</span>
+        <h2>{t("编辑家庭", "Edit Family")}</h2>
         <label className="form-field">
-          <span>名称</span>
+          <span>{t("名称", "Name")}</span>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -1467,7 +1554,7 @@ export function FamilyEdit({
         </label>
         {error && <p className="form-error" role="alert">{error}</p>}
         <label className="form-field">
-          <span>时区</span>
+          <span>{t("时区", "Time Zone")}</span>
           <select
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
@@ -1478,14 +1565,14 @@ export function FamilyEdit({
               </option>
             ))}
           </select>
-          <small className="field-help">改动会影响家庭「今天」的边界与提醒时间。</small>
+          <small className="field-help">{t("改动会影响家庭「今天」的边界与提醒时间。", "Changes affect the family's “Today” boundary and reminder times.")}</small>
         </label>
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton className="button primary" busy={busy} onClick={save}>
-            保存修改
+            {t("保存修改", "Save Changes")}
           </BusyButton>
         </div>
       </section>
@@ -1507,9 +1594,10 @@ export function TransferOwner({
   const [userId, setUserId] = useState(members[0]?.user_id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const t = useT();
   async function transfer() {
     if (!userId) {
-      setError("请选择一位家庭成员。");
+      setError(t("请选择一位家庭成员。", "Please choose a family member."));
       return;
     }
     setBusy(true);
@@ -1529,16 +1617,16 @@ export function TransferOwner({
   return (
     <div className="modal-backdrop">
       <section className="modal">
-        <button className="modal-close" onClick={onClose} aria-label="关闭">
+        <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
           <X size={18} />
         </button>
-        <span className="eyebrow">家庭治理</span>
-        <h2>转让圈主</h2>
+        <span className="eyebrow">{t("家庭治理", "Family Governance")}</span>
+        <h2>{t("转让圈主", "Transfer Ownership")}</h2>
         <p>
-          服务端确认后，你会变成普通照护者。
+          {t("服务端确认后，你会变成普通照护者。", "Once the server confirms, you'll become a regular caregiver.")}
         </p>
         <label className="form-field">
-          <span>新圈主</span>
+          <span>{t("新圈主", "New Owner")}</span>
           <select
             value={userId}
             onChange={(event) => setUserId(event.target.value)}
@@ -1553,10 +1641,10 @@ export function TransferOwner({
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton className="button primary" busy={busy} onClick={transfer}>
-            确认转让
+            {t("确认转让", "Confirm Transfer")}
           </BusyButton>
         </div>
       </section>
@@ -1572,6 +1660,6 @@ function ageShort(birthDate: string | undefined): string {
   const months =
     (now.getFullYear() - birth.getFullYear()) * 12 +
     (now.getMonth() - birth.getMonth());
-  if (months < 12) return "未满岁";
-  return `${Math.floor(months / 12)} 岁`;
+  if (months < 12) return tt("未满岁", "Under 1 yr");
+  return tt(`${Math.floor(months / 12)} 岁`, `${Math.floor(months / 12)} yr`);
 }

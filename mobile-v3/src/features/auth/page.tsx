@@ -7,8 +7,10 @@ import { useSession } from "../../core/auth/session-context";
 import { BusyButton } from "../../core/ui";
 import { Brand } from "../../app/shared";
 import { safeStorage } from "../../core/storage";
+import { useT } from "../../core/i18n";
 
 export function AuthPage() {
+  const t = useT();
   const { token, signIn } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,7 +56,7 @@ export function AuthPage() {
     setError("");
     const parsed = z.string().trim().email().safeParse(email);
     if (!parsed.success) {
-      setError("请输入有效的邮箱地址。");
+      setError(t("请输入有效的邮箱地址。", "Please enter a valid email address."));
       return;
     }
     setBusy(true);
@@ -81,7 +83,7 @@ export function AuthPage() {
   }
   async function verify() {
     if (code.length !== 6) {
-      setError("请输入 6 位验证码。");
+      setError(t("请输入 6 位验证码。", "Please enter the 6-digit verification code."));
       return;
     }
     setBusy(true);
@@ -112,12 +114,12 @@ export function AuthPage() {
       </div>
       <section className="auth-card">
         <Brand />
-        <span className="eyebrow">欢迎回家</span>
-        <h1>{step === "email" ? "照护，从这里开始" : "查看你的邮箱"}</h1>
+        <span className="eyebrow">{t("欢迎回家", "Welcome home")}</span>
+        <h1>{step === "email" ? t("照护，从这里开始", "Care starts here") : t("查看你的邮箱", "Check your email")}</h1>
         <p>
           {step === "email"
-            ? "登录后，每个人、每只宠物、每次照护都保持同步。"
-            : `我们已把 6 位验证码发送到 ${email}。`}
+            ? t("登录后，每个人、每只宠物、每次照护都保持同步。", "After you sign in, every person, every pet, and every bit of care stays in sync.")
+            : t(`我们已把 6 位验证码发送到 ${email}。`, `We've sent a 6-digit verification code to ${email}.`)}
         </p>
         <form
           noValidate
@@ -129,7 +131,7 @@ export function AuthPage() {
         >
         <label className="form-field">
           <span>
-            {step === "email" ? "邮箱地址" : "验证码"}
+            {step === "email" ? t("邮箱地址", "Email address") : t("验证码", "Verification code")}
           </span>
           <input
             type={step === "email" ? "email" : "text"}
@@ -146,7 +148,7 @@ export function AuthPage() {
         </label>
         {devCode && (import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_AUTH_CODE === "true") && (
           <div className="dev-code">
-            开发码：<strong>{devCode}</strong>（已自动填入）
+            {t("开发码：", "Dev code: ")}<strong>{devCode}</strong>{t("（已自动填入）", " (auto-filled)")}
           </div>
         )}
         {error && (
@@ -160,10 +162,10 @@ export function AuthPage() {
           busy={busy || retryAfter > 0}
         >
           {retryAfter > 0
-            ? `${retryAfter}s 后重试`
+            ? t(`${retryAfter}s 后重试`, `Retry in ${retryAfter}s`)
             : step === "email"
-              ? "继续"
-              : "验证并登录"}
+              ? t("继续", "Continue")
+              : t("验证并登录", "Verify and sign in")}
         </BusyButton>
         </form>
         {step === "code" && (
@@ -176,11 +178,11 @@ export function AuthPage() {
               setError("");
             }}
           >
-            换个邮箱
+            {t("换个邮箱", "Use a different email")}
           </button>
         )}
       </section>
-      <p className="auth-note">所有照顾它的人，共用一个安心的地方。</p>
+      <p className="auth-note">{t("所有照顾它的人，共用一个安心的地方。", "Everyone who cares for them shares one reassuring place.")}</p>
     </div>
   );
 }

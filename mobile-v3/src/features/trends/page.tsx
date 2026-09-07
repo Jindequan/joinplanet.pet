@@ -3,10 +3,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../core/api/client";
 import { InlineError, PageSkeleton, EmptyState } from "../../core/ui";
-import { Page, useFamilies, usePets, useScope, type Event } from "../../app/shared";
+import { Page, ScopeCascade, useFamilies, usePets, useScope, type Event } from "../../app/shared";
 import { PetAvatar } from "../../ui/pet-avatar";
 import { WeightChart, type WeightPoint } from "../../ui/weight-chart";
 import { speciesLabel } from "../../core/display";
+import { useT } from "../../core/i18n";
 
 function civilFromDays(days: number): string {
   const date = new Date();
@@ -31,6 +32,14 @@ const RANGES = [
 ] as const;
 
 type RangeKey = (typeof RANGES)[number]["key"];
+
+// RANGES 的 label 保留中文原文（zh 模式零回归），英文在渲染时按 key 取。
+const RANGE_LABELS_EN: Record<RangeKey, string> = {
+  "1m": "Past Month",
+  "3m": "3 Months",
+  "6m": "6 Months",
+  "1y": "1 Year",
+};
 
 /** 分页抓取时间区间内的事件（后端游标上限 200/页）。 */
 async function fetchEventsInRange(
@@ -61,6 +70,7 @@ async function fetchEventsInRange(
 }
 
 export function TrendsPage() {
+  const t = useT();
   const { scope } = useScope();
   const pets = usePets();
   const families = useFamilies();
@@ -90,10 +100,10 @@ export function TrendsPage() {
       ? allPets.filter((pet) => !pet.archived_at && pet.family_ids.includes(scope.id))
       : allPets.filter((pet) => !pet.archived_at);
   const scopeText = scope.type === "all"
-    ? "全部宠物"
+    ? t("全部宠物", "All pets")
     : scope.type === "family"
-      ? familyList.find((family) => family.id === scope.id)?.name ?? "家庭"
-      : allPets.find((pet) => pet.id === scope.id)?.name ?? "宠物";
+      ? familyList.find((family) => family.id === scope.id)?.name ?? t("家庭", "Family")
+      : allPets.find((pet) => pet.id === scope.id)?.name ?? t("宠物", "Pet");
 
   if (pets.isLoading || families.isLoading || eventsQuery.isLoading)
     return (
@@ -127,57 +137,68 @@ export function TrendsPage() {
     <Page className="design-page trends-page">
       <section className="trends-head">
         <div>
-          <span className="eyebrow">趋势 · 长期监测</span>
+          <span className="eyebrow">{t("趋势 · 长期监测", "Trends · Long-term tracking")}</span>
           <h1>{scopeText}</h1>
         </div>
-        <div className="trends-ranges" role="group" aria-label="统计时间区间">
-          {RANGES.map((item) => (
-            <button
-              key={item.key}
-              className={`trends-range ${rangeKey === item.key ? "selected" : ""}`}
-              onClick={() => setRangeKey(item.key)}
-              aria-pressed={rangeKey === item.key}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="trends-head-tools">
+          <ScopeCascade variant="page" />
+          <div className="trends-ranges" role="group" aria-label={t("统计时间区间", "Stats time range")}>
+            {RANGES.map((item) => (
+              <button
+                key={item.key}
+                className={`trends-range ${rangeKey === item.key ? "selected" : ""}`}
+                onClick={() => setRangeKey(item.key)}
+                aria-pressed={rangeKey === item.key}
+              >
+                {t(item.label, RANGE_LABELS_EN[item.key])}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="trends-summary">
-        {statsQuery.data && (
+        {statsQuery.isLoading ? (
+          <p className="muted-copy">{t("正在汇总照护统计…", "Summing up care stats…")}</p>
+        ) : statsQuery.error ? (
+          <InlineError error={statsQuery.error} onRetry={() => void statsQuery.refetch()} />
+        ) : (
           <>
+            {statsQuery.data && (
+              <>
+                <div>
+                  <strong>
+                    {statsQuery.data.rate === null
+                      ? "—"
+                      : `${statsQuery.data.rate}%`}
+                  </strong>
+                  <span>{t("按时完成率", "On-time completion rate")}</span>
+                </div>
+                <i />
+                <div>
+                  <strong>{statsQuery.data.completed}</strong>
+                  <span>{t("完成", "Completed")}</span>
+                </div>
+                <i />
+                <div>
+                  <strong>{statsQuery.data.missed}</strong>
+                  <span>{t("该做未做", "Missed")}</span>
+                </div>
+                <i />
+              </>
+            )}
             <div>
-              <strong>
-                {statsQuery.data.rate === null
-                  ? "—"
-                  : `${statsQuery.data.rate}%`}
-              </strong>
-              <span>按时完成率</span>
-            </div>
-            <i />
-            <div>
-              <strong>{statsQuery.data.completed}</strong>
-              <span>完成</span>
-            </div>
-            <i />
-            <div>
-              <strong>{statsQuery.data.missed}</strong>
-              <span>该做未做</span>
+              <strong>{events.length}</strong>
+              <span>{t("条动态记录", "Timeline records")}</span>
             </div>
           </>
         )}
-        <i />
-        <div>
-          <strong>{events.length}</strong>
-          <span>条动态记录</span>
-        </div>
       </section>
 
       {petsInScope.length === 0 ? (
         <EmptyState
-          title="这个范围还没有活跃的宠物"
-          description="去「更多 → 宠物管理」创建，或回今天页切换范围。"
+          title={t("这个范围还没有活跃的宠物", "No active pets in this scope yet")}
+          description={t("去「更多 → 宠物管理」创建，或回今天页切换范围。", "Create one under More → Pet Management, or switch the scope on the Today page.")}
         />
       ) : (
         <div className="trend-pet-list">
@@ -207,6 +228,7 @@ function TrendPetCard({
   species?: string;
   events: Event[];
 }) {
+  const t = useT();
   const weights: WeightPoint[] = events
     .filter((event) => event.type === "weight" && typeof event.payload?.weight_g === "number")
     .map((event) => {
@@ -247,7 +269,7 @@ function TrendPetCard({
         </div>
         {weightDelta !== null && weightDelta !== 0 && (
           <span className={`trend-delta ${weightDelta > 0 ? "up" : "down"}`}>
-            体重 {weightDelta > 0 ? "↗" : "↘"} {Math.abs(weightDelta)} kg
+            {t("体重", "Weight")} {weightDelta > 0 ? "↗" : "↘"} {Math.abs(weightDelta)} kg
           </span>
         )}
       </header>
@@ -256,22 +278,22 @@ function TrendPetCard({
       ) : (
         <p className="trend-hint">
           {weights.length === 1
-            ? `本区间只记了 1 次体重（${weights[0].kg} kg），再记一次就能看到曲线。`
-            : "这段时间没有体重记录。"}
+            ? t(`本区间只记了 1 次体重（${weights[0].kg} kg），再记一次就能看到曲线。`, `Only 1 weight was recorded in this period (${weights[0].kg} kg). Add one more to see the curve.`)
+            : t("这段时间没有体重记录。", "No weight records in this period.")}
         </p>
       )}
       <dl className="trend-stats">
         <div>
-          <dt>照护</dt>
-          <dd>{completed} 完成 · {skipped} 跳过</dd>
+          <dt>{t("照护", "Care")}</dt>
+          <dd>{t(`${completed} 完成 · ${skipped} 跳过`, `${completed} completed · ${skipped} skipped`)}</dd>
         </div>
         <div>
-          <dt>健康事件</dt>
-          <dd>{symptoms} 症状 · {visits} 就诊 · {vaccines} 疫苗</dd>
+          <dt>{t("健康事件", "Health events")}</dt>
+          <dd>{t(`${symptoms} 症状 · ${visits} 就诊 · ${vaccines} 疫苗`, `${symptoms} symptoms · ${visits} vet visits · ${vaccines} vaccines`)}</dd>
         </div>
         <div>
-          <dt>笔记</dt>
-          <dd>{notes} 条</dd>
+          <dt>{t("笔记", "Notes")}</dt>
+          <dd>{t(`${notes} 条`, `${notes} entries`)}</dd>
         </div>
       </dl>
     </article>

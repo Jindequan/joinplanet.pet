@@ -1,22 +1,23 @@
 // 展示助手：所有服务端枚举 → 用户可见中文文案的唯一映射位置。
 // 页面不得内联第二套同类翻译，避免同一字段在不同页面叫法不一致。
+import { tt } from "./i18n";
 
 export function roleLabel(role: string | undefined): string {
   switch (role) {
     case "owner":
-      return "圈主";
+      return tt("圈主", "Owner");
     case "caregiver":
-      return "照护者";
+      return tt("照护者", "Caregiver");
     case "editor":
-      return "可编辑";
+      return tt("可编辑", "Can edit");
     case "viewer":
-      return "可查看";
+      return tt("可查看", "Can view");
     case "read_only":
-      return "只读";
+      return tt("只读", "Read-only");
     case "helper":
-      return "协助人";
+      return tt("协助人", "Helper");
     default:
-      return role || "成员";
+      return role || tt("成员", "Member");
   }
 }
 
@@ -29,6 +30,7 @@ export type CareSchedule = {
 };
 
 const WEEKDAY_ZH = ["一", "二", "三", "四", "五", "六", "日"];
+const WEEKDAY_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /** 把 care rule 的结构化 schedule 转成人话，例如「每周 一 · 09:00」。 */
 export function ruleText(
@@ -38,39 +40,45 @@ export function ruleText(
   const schedule: CareSchedule =
     raw && typeof raw === "object" ? (raw as CareSchedule) : {};
   const kind = typeof schedule.kind === "string" ? schedule.kind : "";
+  const weekdays = tt("zh", "en") === "en" ? WEEKDAY_EN : WEEKDAY_ZH;
+  const joiner = tt("、", ", ");
   let cadence: string;
-  if (kind === "daily") cadence = "每天";
-  else if (kind === "weekly")
-    cadence = `每周 ${
+  if (kind === "daily") cadence = tt("每天", "Daily");
+  else if (kind === "weekly") {
+    const dayNames =
       schedule.days
-        ?.map((day) => WEEKDAY_ZH[Math.min(Math.max(day - 1, 0), 6)])
-        .join("、") || "—"
-    }`;
-  else if (kind === "monthly") cadence = `每月 ${schedule.day ?? "?"} 日`;
-  else if (kind === "interval")
-    cadence = `每 ${
-      typeof schedule.interval === "number" ? schedule.interval : schedule.every_n
-    } 天`;
-  else cadence = kind || "自定义";
+        ?.map((day) => weekdays[Math.min(Math.max(day - 1, 0), 6)])
+        .join(joiner) || "—";
+    cadence = tt(`每周 ${dayNames}`, `Weekly on ${dayNames}`);
+  } else if (kind === "monthly")
+    cadence = tt(
+      `每月 ${schedule.day ?? "?"} 日`,
+      `Monthly on day ${schedule.day ?? "?"}`,
+    );
+  else if (kind === "interval") {
+    const days =
+      typeof schedule.interval === "number" ? schedule.interval : schedule.every_n;
+    cadence = tt(`每 ${days} 天`, `Every ${days} days`);
+  } else cadence = kind || tt("自定义", "Custom");
   return [cadence, timeOfDay].filter(Boolean).join(" · ");
 }
 
 export function carePlanTypeLabel(type: string | undefined): string {
   switch (type) {
     case "custom":
-      return "自定义";
+      return tt("自定义", "Custom");
     case "feeding":
-      return "饮食";
+      return tt("饮食", "Feeding");
     case "health":
-      return "健康";
+      return tt("健康", "Health");
     case "grooming":
-      return "清洁";
+      return tt("清洁", "Grooming");
     case "exercise":
-      return "运动";
+      return tt("运动", "Exercise");
     case "medication":
-      return "用药";
+      return tt("用药", "Medication");
     default:
-      return type || "自定义";
+      return type || tt("自定义", "Custom");
   }
 }
 
@@ -102,22 +110,22 @@ export function petAvatarStyle(petId: string, species?: string) {
 export function speciesLabel(species: string | undefined): string {
   switch ((species ?? "").toLowerCase()) {
     case "dog":
-      return "狗";
+      return tt("狗", "Dog");
     case "cat":
-      return "猫";
+      return tt("猫", "Cat");
     default:
-      return species || "未设置";
+      return species || tt("未设置", "Not set");
   }
 }
 
 export function sexLabel(sex: string | undefined): string {
   switch (sex) {
     case "female":
-      return "母";
+      return tt("母", "Female");
     case "male":
-      return "公";
+      return tt("公", "Male");
     default:
-      return "未设置";
+      return tt("未设置", "Not set");
   }
 }
 
@@ -131,9 +139,9 @@ export function ageText(birthDate: string | undefined): string {
     (now.getFullYear() - birth.getFullYear()) * 12 +
     (now.getMonth() - birth.getMonth());
   if (now.getDate() < birth.getDate()) months -= 1;
-  if (months < 1) return "未满月";
-  if (months < 12) return `${months} 个月`;
-  return `${Math.floor(months / 12)} 岁`;
+  if (months < 1) return tt("未满月", "Under 1 month");
+  if (months < 12) return tt(`${months} 个月`, `${months} mo`);
+  return tt(`${Math.floor(months / 12)} 岁`, `${Math.floor(months / 12)} yr`);
 }
 
 export function weightKg(grams: number | undefined | null): string {
@@ -154,26 +162,51 @@ export function humanBytes(bytes: number | undefined): string {
   return `${Math.round(value * 10) / 10} ${units[unit]}`;
 }
 
-export const USAGE_RESOURCE_LABELS: Record<string, string> = {
-  ai_monthly: "AI 用量（每月）",
-  pets_created: "已创建宠物",
-  storage_bytes: "存储空间",
-};
+/** Record 映射改为取值函数：tt() 在调用时求值，语言切换即时生效（导入期冻结会卡死旧语言）。 */
+export function usageResourceLabel(key: string): string {
+  switch (key) {
+    case "ai_monthly":
+      return tt("AI 用量（每月）", "AI Usage (Monthly)");
+    case "pets_created":
+      return tt("已创建宠物", "Pets Created");
+    case "storage_bytes":
+      return tt("存储空间", "Storage");
+    default:
+      return key.replaceAll("_", " ");
+  }
+}
 
-export const TRANSFER_STATUS_LABELS: Record<string, string> = {
-  pending: "待处理",
-  accepted: "已接受",
-  declined: "已婉拒",
-  cancelled: "已取消",
-};
+export function transferStatusLabel(status: string): string {
+  switch (status) {
+    case "pending":
+      return tt("待处理", "Pending");
+    case "accepted":
+      return tt("已接受", "Accepted");
+    case "declined":
+      return tt("已婉拒", "Declined");
+    case "cancelled":
+      return tt("已取消", "Cancelled");
+    default:
+      return status;
+  }
+}
 
-export const TASK_STATUS_LABELS: Record<string, string> = {
-  pending: "待完成",
-  completed: "已完成",
-  done: "已完成",
-  skipped: "已跳过",
-  missed: "已过期",
-};
+export function taskStatusLabel(status: string): string {
+  switch (status) {
+    case "pending":
+      return tt("待完成", "To do");
+    case "completed":
+      return tt("已完成", "Done");
+    case "done":
+      return tt("已完成", "Done");
+    case "skipped":
+      return tt("已跳过", "Skipped");
+    case "missed":
+      return tt("已过期", "Missed");
+    default:
+      return status;
+  }
+}
 
 // ---------- 时区：用户不该手打 IANA 字符串 ----------
 
@@ -228,7 +261,7 @@ export function timezoneOffset(tz: string): string | null {
 export function timezoneLabel(tz: string | undefined): string {
   if (!tz) return "";
   const offset = timezoneOffset(tz);
-  return offset ? `${tz}（${offset}）` : tz;
+  return offset ? tt(`${tz}（${offset}）`, `${tz} (${offset})`) : tz;
 }
 
 /** 城市短名：Asia/Shanghai → Shanghai（下划线转空格）。 */

@@ -1,17 +1,23 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Keep E2E isolated from other Vite previews commonly using 4173 in this
+// workspace. Override in CI when the runner allocates its own port.
+const e2ePort = Number(process.env.PLANET_E2E_PORT ?? 43917);
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   reporter: "line",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${e2ePort}`,
     trace: "retain-on-failure",
+    // UI 语言默认跟随浏览器;e2e 断言中文文案,固定 zh。
+    locale: "zh-CN",
   },
   webServer: {
-    command: "npm run build && npm run preview -- --port 4173",
-    url: "http://127.0.0.1:4173/auth",
-    reuseExistingServer: true,
+    command: `npm run build && npm run preview -- --port ${e2ePort}`,
+    url: `http://127.0.0.1:${e2ePort}/auth`,
+    reuseExistingServer: false,
   },
   projects: [
     {

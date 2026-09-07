@@ -1,5 +1,6 @@
 import { ApiError } from "./errors";
 import { safeStorage } from "../storage";
+import { tt } from "../i18n";
 
 const API_URL =
   (import.meta.env.VITE_PLANET_API_URL as string | undefined)?.replace(
@@ -102,13 +103,13 @@ export async function request<T>(
       throw new ApiError({
         status: 0,
         code: "NETWORK_TIMEOUT",
-        message: "请求超时了,请重试。",
+        message: tt("请求超时了,请重试。", "The request timed out. Please try again."),
       });
     if (error instanceof TypeError)
       throw new ApiError({
         status: 0,
         code: "NETWORK_OFFLINE",
-        message: "当前网络不可用,改动不会丢失。",
+        message: tt("当前网络不可用,改动不会丢失。", "You're offline. Your changes won't be lost."),
       });
     throw error;
   } finally {

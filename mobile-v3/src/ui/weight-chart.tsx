@@ -1,7 +1,10 @@
 /* 体重曲线：无第三方库的 SVG 面积折线图，供档案页与趋势页复用。 */
+import { useT } from "../core/i18n";
+
 export type WeightPoint = { at: number; kg: number; label: string };
 
 export function WeightChart({ points }: { points: WeightPoint[] }) {
+  const t = useT();
   const W = 320;
   const H = 110;
   const PAD_X = 10;
@@ -23,7 +26,7 @@ export function WeightChart({ points }: { points: WeightPoint[] }) {
       className="weight-chart"
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label={`体重变化曲线，从 ${points[0].kg} 公斤到 ${points[last].kg} 公斤`}
+      aria-label={t(`体重变化曲线，从 ${points[0].kg} 公斤到 ${points[last].kg} 公斤`, `Weight trend from ${points[0].kg} kg to ${points[last].kg} kg`)}
     >
       <defs>
         <linearGradient id="weight-area" x1="0" y1="0" x2="0" y2="1">

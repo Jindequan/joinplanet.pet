@@ -43,3 +43,6 @@ planet-lemon-webhook
 /mobile/
 /www.joinplanet.pet/
 /planet-api/
+
+# Expo runtime
+**/.expo/

@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../../core/api/client";
 import { errorMessage } from "../../core/api/errors";
+import { useT } from "../../core/i18n";
 import { ConfirmDialog, EmptyState, InlineError, PageSkeleton, Toast, BusyButton } from "../../core/ui";
 import { createCommandId } from "../../core/api/idempotency";
 import {
@@ -16,11 +17,12 @@ import {
 import { createPortal } from "react-dom";
 import { PetAvatar } from "../../ui/pet-avatar";
 import {
-  Event, Page, useFamilies, useInvalidate, usePets, useScope,
+  Event, Page, ScopeCascade, useFamilies, useInvalidate, usePets, useScope,
   dateTimeLocalInTimezone, formatInTimeZoneSafe, instantFromCivilDateTime,
 } from "../../app/shared";
 
 export function TimelinePage() {
+  const t = useT();
   const { scope } = useScope();
   const [composerOpen, setComposerOpen] = useState(false);
   // 页面内的「看谁的记录」过滤：只影响本页查询，不改全局 scope
@@ -104,7 +106,7 @@ export function TimelinePage() {
         idempotencyKey: createCommandId(),
       });
       setEventToDelete(null);
-      setToast("记录已删除。");
+      setToast(t("记录已删除。", "Record deleted."));
       invalidate();
     } catch (e) {
       setToast(errorMessage(e));
@@ -135,12 +137,15 @@ export function TimelinePage() {
   const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const yesterdayKey = formatInTimeZoneSafe(yesterdayDate, timezone, "yyyy-MM-dd");
   function groupHeading(key: string) {
-    if (key === todayKey) return "今天";
-    if (key === yesterdayKey) return "昨天";
+    if (key === todayKey) return t("今天", "Today");
+    if (key === yesterdayKey) return t("昨天", "Yesterday");
     const parsed = new Date(`${key}T00:00:00`);
     return Number.isNaN(parsed.getTime())
       ? key
-      : `${parsed.getMonth() + 1}月${parsed.getDate()}日`;
+      : t(
+          `${parsed.getMonth() + 1}月${parsed.getDate()}日`,
+          `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][parsed.getMonth()]} ${parsed.getDate()}`,
+        );
   }
   const eventGroups = Array.from(
     events.reduce((groups, event) => {
@@ -153,12 +158,22 @@ export function TimelinePage() {
   );
   return (
     <Page className={`design-page design-timeline-page ${petId ? "timeline-pet-page" : "timeline-aggregate-page"}`}>
+      <section className="timeline-titlebar">
+        <div>
+          <span className="eyebrow">{t("健康与照护历史", "Health & Care History")}</span>
+          <h1>{t("时间线", "Timeline")}</h1>
+          <p>{events.length
+            ? t(`已加载 ${events.length} 条记录`, `${events.length} records loaded`)
+            : t("把零散的照护变成可靠的一生记录", "Turn scattered care moments into a reliable life record")}</p>
+        </div>
+        {!routeForcedPetId && <ScopeCascade variant="page" />}
+      </section>
       <section className="timeline-head">
         {timelineScope.type === "family" && (
-          <p className="timeline-head-scope">{familyName ?? "家庭"}</p>
+          <p className="timeline-head-scope">{familyName ?? t("家庭", "Family")}</p>
         )}
         {timelineScope.type === "all" && (
-          <p className="timeline-head-scope">全部宠物</p>
+          <p className="timeline-head-scope">{t("全部宠物", "All Pets")}</p>
         )}
         <div className="timeline-head-strip">
           {scopePets.map((pet) => {
@@ -190,7 +205,7 @@ export function TimelinePage() {
               defaultPetId={activePetId || scopePets[0]?.id || ""}
               onSaved={() => {
                 setComposerOpen(false);
-                setToast("已记录。");
+                setToast(t("已记录。", "Recorded."));
                 invalidate();
               }}
             />
@@ -201,10 +216,11 @@ export function TimelinePage() {
         <button
           className={`timeline-fab ${composerOpen ? "open" : ""}`}
           onClick={() => setComposerOpen((value) => !value)}
-          aria-label={composerOpen ? "收起记录" : "记一笔"}
+          aria-label={composerOpen ? t("收起记录", "Collapse composer") : t("记一笔", "Add a record")}
           aria-expanded={composerOpen}
         >
           <Plus size={24} />
+          <span>{composerOpen ? t("收起", "Close") : t("记一笔", "Add a record")}</span>
         </button>
       )}
         </>,
@@ -214,8 +230,8 @@ export function TimelinePage() {
         {events.length === 0 ? (
           <EmptyState
             image="/backgrounds/today-1.webp"
-            title="还没有记录"
-            description="点右下角的 +，记一条笔记、症状、体重、就诊或疫苗，让照护历史可追溯。"
+            title={t("还没有记录", "No Records Yet")}
+            description={t("点右下角的 +，记一条笔记、症状、体重、就诊或疫苗，让照护历史可追溯。", "Tap the + in the bottom corner to add a note, symptom, weight, vet visit, or vaccine — and keep your care history traceable.")}
           />
         ) : (
           eventGroups.map(([dateKey, group]) => (
@@ -241,7 +257,7 @@ export function TimelinePage() {
           onClick={() => void query.fetchNextPage()}
           disabled={query.isFetchingNextPage}
         >
-          {query.isFetchingNextPage ? "加载更早的记录…" : "查看更早的记录"}
+          {query.isFetchingNextPage ? t("加载更早的记录…", "Loading earlier records…") : t("查看更早的记录", "Load Earlier Records")}
         </button>
       )}
       {eventToEdit && (eventToEdit.pet_id ? eventToEdit.pet_id : petId) && (
@@ -252,16 +268,19 @@ export function TimelinePage() {
           onClose={() => setEventToEdit(null)}
           onSaved={() => {
             setEventToEdit(null);
-            setToast("记录已更新。");
+            setToast(t("记录已更新。", "Record updated."));
             invalidate();
           }}
         />
       )}
       {eventToDelete && (
         <ConfirmDialog
-          title={`删除这条${describeEvent(eventToDelete.type, eventToDelete.payload).category}记录？`}
-          consequence="只删除这条手动记录。系统自动产生的照护历史不能在这里删除。"
-          confirmLabel="删除记录"
+          title={t(
+            `删除这条${describeEvent(eventToDelete.type, eventToDelete.payload).category}记录？`,
+            `Delete this ${describeEvent(eventToDelete.type, eventToDelete.payload).category} record?`,
+          )}
+          consequence={t("只删除这条手动记录。系统自动产生的照护历史不能在这里删除。", "Only this manual record is deleted. Automatically generated care history can't be deleted here.")}
+          confirmLabel={t("删除记录", "Delete Record")}
           onCancel={() => setEventToDelete(null)}
           onConfirm={() => remove(eventToDelete)}
         />
@@ -305,6 +324,7 @@ export function EventCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const description = describeEvent(event.type, event.payload);
   const manual = isManualEvent(event.source);
   const timeText = new Date(event.occurred_at).toLocaleTimeString("zh-CN", {
@@ -332,21 +352,21 @@ export function EventCard({
             {description.detail && <p className="design-event-detail">{description.detail}</p>}
           </>
         )}
-        <small>{event.recorded_by_name ?? "Planet 系统"}</small>
+        <small>{event.recorded_by_name ?? t("Planet 系统", "Planet")}</small>
       </div>
       {manual && (
         <div className="row-actions">
           <button
             className="icon-button subtle"
             onClick={onEdit}
-            aria-label="编辑记录"
+            aria-label={t("编辑记录", "Edit Record")}
           >
             <PenLine size={16} />
           </button>
           <button
             className="icon-button subtle"
             onClick={onDelete}
-            aria-label="删除记录"
+            aria-label={t("删除记录", "Delete Record")}
           >
             <X size={16} />
           </button>
@@ -364,6 +384,13 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
   vet_visit: "就诊",
   vaccine: "疫苗",
 };
+const EVENT_TYPE_LABELS_EN: Record<EventType, string> = {
+  note: "Note",
+  symptom: "Symptom",
+  weight: "Weight",
+  vet_visit: "Vet Visit",
+  vaccine: "Vaccine",
+};
 
 export function EventForm({
   petId,
@@ -378,6 +405,7 @@ export function EventForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useT();
   const [type, setType] = useState<EventType>(
     (initial?.type as EventType) in EVENT_TYPE_LABELS
       ? (initial!.type as EventType)
@@ -428,10 +456,22 @@ export function EventForm({
     vet_visit: "就诊事项",
     vaccine: "疫苗名称",
   };
+  const PRIMARY_LABELS_EN: Record<EventType, string> = {
+    note: "Note",
+    symptom: "Symptom",
+    weight: "",
+    vet_visit: "Visit Details",
+    vaccine: "Vaccine Name",
+  };
   const SECONDARY_LABELS: Partial<Record<EventType, string>> = {
     symptom: "补充说明",
     vet_visit: "小结（诊所 / 结论）",
     weight: "备注（选填）",
+  };
+  const SECONDARY_LABELS_EN: Partial<Record<EventType, string>> = {
+    symptom: "More Details",
+    vet_visit: "Summary (clinic / outcome)",
+    weight: "Note (optional)",
   };
   async function save() {
     const detailText = secondary.trim();
@@ -450,7 +490,7 @@ export function EventForm({
         ? !primaryFieldValid()
         : !primary.trim();
     if (parseEventPayload(type, payload).kind === "unknown" || manualCheck) {
-      setError(type === "weight" ? "请输入大于 0 的体重。" : "请填写必填内容。");
+      setError(type === "weight" ? t("请输入大于 0 的体重。", "Enter a weight greater than 0.") : t("请填写必填内容。", "Please fill in the required field."));
       return;
     }
     setBusy(true);
@@ -481,13 +521,13 @@ export function EventForm({
   return (
     <div className="modal-backdrop">
       <section className="modal">
-        <button className="modal-close" onClick={onClose} aria-label="关闭">
+        <button className="modal-close" onClick={onClose} aria-label={t("关闭", "Close")}>
           <X size={18} />
         </button>
-        <span className="eyebrow">{initial ? "编辑记录" : "新记录"}</span>
-        <h2>{initial ? "编辑这条记录" : "发生了什么？"}</h2>
+        <span className="eyebrow">{initial ? t("编辑记录", "Edit Record") : t("新记录", "New Record")}</span>
+        <h2>{initial ? t("编辑这条记录", "Edit This Record") : t("发生了什么？", "What happened?")}</h2>
         <label className="form-field">
-          <span>类型</span>
+          <span>{t("类型", "Type")}</span>
           <select
             value={type}
             onChange={(event) => setType(event.target.value as EventType)}
@@ -495,13 +535,13 @@ export function EventForm({
           >
             {(Object.keys(EVENT_TYPE_LABELS) as EventType[]).map((value) => (
               <option key={value} value={value}>
-                {EVENT_TYPE_LABELS[value]}
+                {t(EVENT_TYPE_LABELS[value], EVENT_TYPE_LABELS_EN[value])}
               </option>
             ))}
           </select>
         </label>
         <label className="form-field">
-          <span>发生时间{timezone ? `（${timezone}）` : ""}</span>
+          <span>{t("发生时间", "When")}{timezone ? t(`（${timezone}）`, ` (${timezone})`) : ""}</span>
           <input
             type="datetime-local"
             value={occurredAt}
@@ -510,7 +550,7 @@ export function EventForm({
         </label>
         {type === "weight" && (
           <label className="form-field">
-            <span>体重（kg）</span>
+            <span>{t("体重（kg）", "Weight (kg)")}</span>
             <input
               type="number"
               min="0"
@@ -522,7 +562,7 @@ export function EventForm({
         )}
         {PRIMARY_LABELS[type] && (
           <label className="form-field">
-            <span>{PRIMARY_LABELS[type]}</span>
+            <span>{t(PRIMARY_LABELS[type], PRIMARY_LABELS_EN[type])}</span>
             <textarea
               value={primary}
               onChange={(event) => setPrimary(event.target.value)}
@@ -531,7 +571,7 @@ export function EventForm({
         )}
         {SECONDARY_LABELS[type] && (
           <label className="form-field">
-            <span>{SECONDARY_LABELS[type]}</span>
+            <span>{t(SECONDARY_LABELS[type] ?? "", SECONDARY_LABELS_EN[type] ?? "")}</span>
             <textarea
               value={secondary}
               onChange={(event) => setSecondary(event.target.value)}
@@ -545,10 +585,10 @@ export function EventForm({
         )}
         <div className="modal-actions">
           <button className="button secondary" onClick={onClose}>
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton className="button primary" busy={busy} onClick={save}>
-            保存记录
+            {t("保存记录", "Save Record")}
           </BusyButton>
         </div>
       </section>
@@ -566,6 +606,7 @@ function EventComposer({
   defaultPetId: string;
   onSaved: () => void;
 }) {
+  const t = useT();
   const [chosenPetId, setChosenPetId] = useState("");
   const targetPetId = chosenPetId || defaultPetId;
   const [type, setType] = useState<EventType>("note");
@@ -583,11 +624,24 @@ function EventComposer({
     vet_visit: "就诊事项，如 年度体检",
     vaccine: "疫苗名称，如 狂犬疫苗",
   };
+  const PLACEHOLDERS_EN: Record<EventType, string> = {
+    note: "Add a record… how are they today?",
+    symptom: "Symptom, e.g. soft stool",
+    weight: "How much do they weigh?",
+    vet_visit: "Vet visit, e.g. annual checkup",
+    vaccine: "Vaccine name, e.g. rabies shot",
+  };
   const EXTRA_LABELS: Partial<Record<EventType, string>> = {
     symptom: "补充说明（选填）",
     vet_visit: "小结（诊所 / 结论，选填）",
     vaccine: "备注（选填）",
     weight: "备注（选填）",
+  };
+  const EXTRA_LABELS_EN: Partial<Record<EventType, string>> = {
+    symptom: "More details (optional)",
+    vet_visit: "Summary (clinic / outcome, optional)",
+    vaccine: "Note (optional)",
+    weight: "Note (optional)",
   };
 
   async function save() {
@@ -596,12 +650,12 @@ function EventComposer({
     if (type === "weight") {
       const grams = Math.round(Number(weight) * 1000);
       if (!(grams > 0)) {
-        setError("先填一个大于 0 的体重");
+        setError(t("先填一个大于 0 的体重", "Enter a weight greater than 0 first"));
         return;
       }
       payload = { weight_g: grams, note: extra.trim() };
     } else if (!text.trim()) {
-      setError("写一句再记");
+      setError(t("写一句再记", "Write something first"));
       return;
     } else if (type === "symptom") payload = { title: text.trim(), detail: extra.trim() };
     else if (type === "vaccine") payload = { name: text.trim(), ...(extra.trim() ? { text: extra.trim() } : {}) };
@@ -641,19 +695,19 @@ function EventComposer({
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.nativeEvent.isComposing && type !== "weight") void save();
           }}
-          placeholder={PLACEHOLDERS[type]}
-          aria-label="快速记录"
+          placeholder={t(PLACEHOLDERS[type], PLACEHOLDERS_EN[type])}
+          aria-label={t("快速记录", "Quick Record")}
           type={type === "weight" ? "number" : "text"}
           min={type === "weight" ? "0" : undefined}
           step={type === "weight" ? "0.01" : undefined}
         />
         <BusyButton className="composer-send" busy={busy} onClick={() => void save()}>
-          记下
+          {t("记下", "Log")}
         </BusyButton>
       </div>
       <>
           {petOptions.length > 1 && (
-            <div className="composer-pets" role="group" aria-label="记录归属宠物">
+            <div className="composer-pets" role="group" aria-label={t("记录归属宠物", "Pet This Record Is For")}>
               {petOptions.map((pet) => (
                 <button
                   key={pet.id}
@@ -667,7 +721,7 @@ function EventComposer({
               ))}
             </div>
           )}
-          <div className="composer-types" role="tablist" aria-label="记录类型">
+          <div className="composer-types" role="tablist" aria-label={t("记录类型", "Record Type")}>
             {(Object.keys(EVENT_TYPE_LABELS) as EventType[]).map((value) => (
               <button
                 key={value}
@@ -675,7 +729,7 @@ function EventComposer({
                 onClick={() => setType(value)}
                 aria-pressed={type === value}
               >
-                {EVENT_TYPE_LABELS[value]}
+                {t(EVENT_TYPE_LABELS[value], EVENT_TYPE_LABELS_EN[value])}
               </button>
             ))}
           </div>
@@ -684,8 +738,8 @@ function EventComposer({
               className="composer-extra"
               value={extra}
               onChange={(event) => setExtra(event.target.value)}
-              placeholder={EXTRA_LABELS[type] ?? ""}
-              aria-label={EXTRA_LABELS[type] ?? "备注"}
+              placeholder={EXTRA_LABELS[type] ? t(EXTRA_LABELS[type], EXTRA_LABELS_EN[type] ?? "") : ""}
+              aria-label={EXTRA_LABELS[type] ? t(EXTRA_LABELS[type], EXTRA_LABELS_EN[type] ?? "") : t("备注", "Note")}
             />
           )}
           {error && (

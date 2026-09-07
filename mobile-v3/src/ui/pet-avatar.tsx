@@ -3,6 +3,7 @@
  * 它是明确的插画形象，不冒充用户上传的照片。 */
 /* eslint-disable react-refresh/only-export-components -- 同文件导出配色助手，供英雄区背景复用 */
 import "./pet-avatar.css";
+import { useT } from "../core/i18n";
 
 type Fur = {
   fur: string;
@@ -65,6 +66,7 @@ export function PetAvatar({
   /** 纯装饰场景（如英雄区水印）不向读屏暴露。 */
   decorative?: boolean;
 }) {
+  const t = useT();
   const { kind, index } = paletteFor(petId, species);
   const blob =
     kind === "dog"
@@ -77,7 +79,7 @@ export function PetAvatar({
       className={`pet-mascot ${className}`}
       style={{ width: size, height: size, background: `radial-gradient(120% 120% at 30% 18%, #ffffffd9 0%, ${blob} 62%)` }}
       role={decorative ? undefined : "img"}
-      aria-label={decorative ? undefined : "宠物头像"}
+      aria-label={decorative ? undefined : t("宠物头像", "Pet avatar")}
       aria-hidden={decorative || undefined}
     >
       <svg width={size * 0.78} height={size * 0.78} viewBox="0 0 48 48" aria-hidden>

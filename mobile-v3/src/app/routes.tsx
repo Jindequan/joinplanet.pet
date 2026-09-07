@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Navigate, Route, Routes, Link } from "react-router-dom";
 import { EmptyState } from "../core/ui";
+import { useT, tt } from "../core/i18n";
 import { AppLayout, Brand } from "./shared";
 import { AuthPage } from "../features/auth/page";
 import { TodayPage } from "../features/today/page";
@@ -26,15 +27,16 @@ import {
 } from "../features/account/page";
 
 function AccountDeletedPage() {
+  const t = useT();
   return (
     <main className="center-page">
       <Brand />
       <EmptyState
-        title="Your account is deleted"
-        description="Your Planet account and access have been removed. You can start again with a new sign-in if you change your mind."
+        title={t("账户已删除", "Account Deleted")}
+        description={t("你的 Planet 账户和相关访问权限已移除。如果以后改变主意，可以重新登录并创建新账户。", "Your Planet account and its access have been removed. If you ever change your mind, you can sign in again and create a new account.")}
         action={
           <Link className="button primary" to="/auth">
-            Return to sign in
+            {t("返回登录", "Back to Sign In")}
           </Link>
         }
       />
@@ -57,14 +59,14 @@ export class AppErrorBoundary extends React.Component<
       return (
         <main className="center-page">
           <EmptyState
-            title="Planet needs a refresh"
-            description="This screen failed to render. Refresh and try again."
+            title={tt("页面需要刷新", "This Page Needs a Refresh")}
+            description={tt("这次页面没有正确显示。刷新后即可重新尝试，已保存的数据不会受影响。", "This page didn't display correctly. Refresh to try again — any saved data is unaffected.")}
             action={
               <button
                 className="button primary"
                 onClick={() => window.location.reload()}
               >
-                Refresh
+                {tt("刷新页面", "Refresh Page")}
               </button>
             }
           />

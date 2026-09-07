@@ -7,13 +7,14 @@ import { useSession } from "../core/auth/session-context";
 import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { api } from "../core/api/client";
-import { humanBytes, USAGE_RESOURCE_LABELS } from "../core/display";
+import { humanBytes, usageResourceLabel } from "../core/display";
 import { safeStorage } from "../core/storage";
 import { InlineError, PageSkeleton } from "../core/ui";
 import { queryKeys } from "../core/query/keys";
 import type { Scope } from "../core/scope/scope";
 import { ArrowLeft, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Home, LayoutGrid, MoreHorizontal, PawPrint, TrendingUp, Users } from "lucide-react";
 import { PetAvatar } from "../ui/pet-avatar";
+import { useT } from "../core/i18n";
 
 export type Family = {
   id: string;
@@ -176,9 +177,6 @@ export type SharedViewResponse = {
 };
 export type ScopeContextValue = { scope: Scope; setScope: (scope: Scope) => void };
 
-function usageResourceLabel(key: string) {
-  return USAGE_RESOURCE_LABELS[key] ?? key.replaceAll("_", " ");
-}
 function formatUsageValue(key: string, value: number | undefined) {
   if (key === "storage_bytes") return humanBytes(value);
   return value ?? 0;
@@ -193,6 +191,7 @@ export function useScope() {
 
 /** 范围级联选择器：按钮是当前范围摘要（图标+名称+箭头），弹层分步选择 全部→家庭→宠物。 */
 export function ScopeCascade({ variant = "header" }: { variant?: "header" | "page" }) {
+  const t = useT();
   const { scope, setScope } = useScope();
   const families = useFamilies();
   const pets = usePets();
@@ -209,14 +208,14 @@ export function ScopeCascade({ variant = "header" }: { variant?: "header" | "pag
 
   const current =
     scope.type === "all"
-      ? { label: "全部宠物", icon: <LayoutGrid size={16} /> }
+      ? { label: t("全部宠物", "All pets"), icon: <LayoutGrid size={16} /> }
       : scope.type === "family"
         ? {
-            label: familyList.find((family) => family.id === scope.id)?.name ?? "家庭",
+            label: familyList.find((family) => family.id === scope.id)?.name ?? t("家庭", "Family"),
             icon: <Home size={16} />,
           }
         : {
-            label: petList.find((pet) => pet.id === scope.id)?.name ?? "宠物",
+            label: petList.find((pet) => pet.id === scope.id)?.name ?? t("宠物", "Pet"),
             icon: (
               <PetAvatar
                 petId={scope.id}
@@ -234,6 +233,14 @@ export function ScopeCascade({ variant = "header" }: { variant?: "header" | "pag
   }
 
   const ready = !families.isLoading && !pets.isLoading;
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
   return (
     <div className={`scope-cascade-wrap scope-cascade-${variant}`}>
       <button
@@ -249,19 +256,19 @@ export function ScopeCascade({ variant = "header" }: { variant?: "header" | "pag
       </button>
       {open && createPortal(
         <div className="modal-backdrop scope-sheet-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-          <section className="modal scope-sheet" role="dialog" aria-modal="true" aria-label="选择查看范围">
+          <section className="modal scope-sheet" role="dialog" aria-modal="true" aria-label={t("选择查看范围", "Choose scope")}>
             <div className="scope-sheet-head">
               {stepFamily ? (
-                <button className="scope-sheet-back" onClick={() => setStepFamilyId(null)} aria-label="返回">
+                <button className="scope-sheet-back" onClick={() => setStepFamilyId(null)} aria-label={t("返回", "Back")}>
                   <ChevronLeft size={18} />
                 </button>
               ) : (
                 <span className="scope-sheet-title-ghost" aria-hidden />
               )}
-              <strong>{stepFamily ? stepFamily.name : "选择查看范围"}</strong>
+              <strong>{stepFamily ? stepFamily.name : t("选择查看范围", "Choose scope")}</strong>
               {scope.type !== "all" ? (
                 <button className="scope-sheet-reset" onClick={() => pick({ type: "all" })}>
-                  回到全部
+                  {t("回到全部", "Back to all")}
                 </button>
               ) : (
                 <span className="scope-sheet-title-ghost" aria-hidden />
@@ -274,7 +281,7 @@ export function ScopeCascade({ variant = "header" }: { variant?: "header" | "pag
                   onClick={() => pick({ type: "all" })}
                 >
                   <span className="scope-row-icon all" aria-hidden><LayoutGrid size={18} /></span>
-                  <span className="scope-row-label">全部宠物</span>
+                  <span className="scope-row-label">{t("全部宠物", "All pets")}</span>
                   {scope.type === "all" && <Check size={17} className="scope-row-check" aria-hidden />}
                 </button>
                 {familyList.map((family) => (
@@ -296,7 +303,7 @@ export function ScopeCascade({ variant = "header" }: { variant?: "header" | "pag
                   onClick={() => pick({ type: "family", id: stepFamily.id })}
                 >
                   <span className="scope-row-icon" aria-hidden><Home size={17} /></span>
-                  <span className="scope-row-label">整个{stepFamily.name}</span>
+                  <span className="scope-row-label">{t(`整个${stepFamily.name}`, `All of ${stepFamily.name}`)}</span>
                   {scope.type === "family" && scope.id === stepFamily.id && (
                     <Check size={17} className="scope-row-check" aria-hidden />
                   )}
@@ -315,7 +322,7 @@ export function ScopeCascade({ variant = "header" }: { variant?: "header" | "pag
                   </button>
                 ))}
                 {stepPets.length === 0 && (
-                  <p className="scope-sheet-empty">这个家庭还没有宠物</p>
+                  <p className="scope-sheet-empty">{t("这个家庭还没有宠物", "This family doesn't have any pets yet.")}</p>
                 )}
               </div>
             )}
@@ -488,13 +495,14 @@ export function BackHeader({
   title: string;
   action?: React.ReactNode;
 }) {
+  const t = useT();
   const navigate = useNavigate();
   return (
     <header className="detail-header">
       <button
         className="icon-button"
         onClick={() => navigate(-1)}
-        aria-label="返回"
+        aria-label={t("返回", "Back")}
       >
         <ArrowLeft size={20} />
       </button>
@@ -505,22 +513,24 @@ export function BackHeader({
 }
 
 export function DesktopNav() {
+  const t = useT();
   const location = useLocation();
   const items = [
-    ["/today", "今天", HomeIcon, "现在需要照护什么"],
-    ["/timeline", "时间线", CalendarDays, "健康与照护历史"],
-    ["/trends", "趋势", TrendingUp, "长期监测与统计"],
-    ["/pets", "宠物", PawPrint, "档案与照护计划"],
-    ["/families", "家庭", Users, "成员、圈子和访问"],
+    ["/today", t("今天", "Today"), HomeIcon, t("现在需要照护什么", "What needs care right now")],
+    ["/timeline", t("时间线", "Timeline"), CalendarDays, t("健康与照护历史", "Health and care history")],
+    ["/trends", t("趋势", "Trends"), TrendingUp, t("长期监测与统计", "Long-term tracking and stats")],
+    ["/pets", t("宠物", "Pets"), PawPrint, t("档案与照护计划", "Profiles and care plans")],
+    ["/families", t("家庭", "Family"), Users, t("成员、圈子和访问", "Members, circles, and access")],
   ] as const;
   return (
-    <nav className="desktop-nav" aria-label="工作区导航">
-      <span className="nav-label">工作区</span>
+    <nav className="desktop-nav" aria-label={t("工作区导航", "Workspace navigation")}>
+      <span className="nav-label">{t("工作区", "Workspace")}</span>
       {items.map(([path, label, Icon, description]) => (
         <Link
           className={location.pathname.startsWith(path) ? "active" : ""}
           to={path}
           key={path}
+          aria-current={location.pathname.startsWith(path) ? "page" : undefined}
         >
           <span className="nav-icon"><Icon size={19} /></span>
           <span><strong>{label}</strong><small>{description}</small></span>
@@ -530,25 +540,36 @@ export function DesktopNav() {
   );
 }
 export function BottomNav() {
+  const t = useT();
   const location = useLocation();
   const items = [
-    ["/today", "今天", HomeIcon],
-    ["/timeline", "时间线", CalendarDays],
-    ["/trends", "趋势", TrendingUp],
-    ["/account", "更多", MoreHorizontal],
+    ["/today", t("今天", "Today"), HomeIcon],
+    ["/timeline", t("时间线", "Timeline"), CalendarDays],
+    ["/pets", t("宠物", "Pets"), PawPrint],
+    ["/account", t("更多", "More"), MoreHorizontal],
   ] as const;
+  const activeFor = (path: string) =>
+    path === "/account"
+      ? ["/account", "/families", "/settings", "/trends"].some((prefix) =>
+          location.pathname.startsWith(prefix),
+        )
+      : location.pathname.startsWith(path);
   return (
-    <nav className="bottom-nav" aria-label="主导航">
-      {items.map(([path, label, Icon]) => (
-        <Link
-          className={location.pathname.startsWith(path) ? "active" : ""}
-          to={path}
-          key={path}
-        >
-          <Icon size={21} />
-          <span>{label}</span>
-        </Link>
-      ))}
+    <nav className="bottom-nav" aria-label={t("主导航", "Main navigation")}>
+      {items.map(([path, label, Icon]) => {
+        const active = activeFor(path);
+        return (
+          <Link
+            className={active ? "active" : ""}
+            to={path}
+            key={path}
+            aria-current={active ? "page" : undefined}
+          >
+            <Icon size={21} />
+            <span>{label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -556,16 +577,44 @@ export function HomeIcon(props: React.ComponentProps<typeof Home>) {
   return <Home {...props} />;
 }
 
+function MobileHeader({ displayName }: { displayName: string }) {
+  const t = useT();
+  const location = useLocation();
+  const labels: Array<[string, string]> = [
+    ["/today", t("今天", "Today")],
+    ["/timeline", t("时间线", "Timeline")],
+    ["/trends", t("趋势", "Trends")],
+    ["/pets", t("宠物", "Pets")],
+    ["/families", t("家庭", "Family")],
+    ["/settings", t("设置", "Settings")],
+    ["/account", t("更多", "More")],
+  ];
+  const label = labels.find(([path]) => location.pathname.startsWith(path))?.[1] ?? "PLANET";
+  const initial = (displayName || "?").slice(0, 1).toUpperCase();
+  return (
+    <header className="mobile-header">
+      <Link className="mobile-brand" to="/today" aria-label={t("PLANET 首页", "PLANET home")}>
+        <span className="brand-orbit" aria-hidden><i /></span>
+      </Link>
+      <span className="mobile-header-label">{label}</span>
+      <Link className="mobile-account" to="/account" aria-label={t("账户与设置", "Account and settings")}>
+        {initial}
+      </Link>
+    </header>
+  );
+}
+
 export function UsageSummary({ usage }: { usage: UsageSnapshot }) {
+  const t = useT();
   const resources = Object.entries(usage.resources ?? {});
   return (
     <div className="usage-summary">
       <div className="row-between">
-        <span className="eyebrow">{usage.period ?? "当前套餐"}</span>
-        <span className="role-pill">{usage.plan === "free" || !usage.plan ? "免费版" : usage.plan}</span>
+        <span className="eyebrow">{usage.period ?? t("当前套餐", "Current plan")}</span>
+        <span className="role-pill">{usage.plan === "free" || !usage.plan ? t("免费版", "Free") : usage.plan}</span>
       </div>
       {resources.length === 0 ? (
-        <p className="muted-copy">用量信息暂时不可用。</p>
+        <p className="muted-copy">{t("用量信息暂时不可用。", "Usage info isn't available right now.")}</p>
       ) : (
         <div className="usage-metrics">
           {resources.map(([key, value]) => (
@@ -586,6 +635,7 @@ export function UsageSummary({ usage }: { usage: UsageSnapshot }) {
 }
 
 export function AppLayout() {
+  const t = useT();
   const { token, user, isLoading, meError, retryMe } = useSession();
   const navigate = useNavigate();
   const families = useFamilies(Boolean(token));
@@ -678,18 +728,19 @@ export function AppLayout() {
           <Brand />
           <DesktopNav />
           <div className="rail-note">
-            <span className="eyebrow">共养</span>
-            <p>每个帮忙照顾它的人，都看同一份可靠的记录。</p>
+            <span className="eyebrow">{t("共养", "Shared care")}</span>
+            <p>{t("每个帮忙照顾它的人，都看同一份可靠的记录。", "Everyone who helps care for them sees the same reliable record.")}</p>
           </div>
           <Link className="rail-account" to="/account">
             <span className="avatar-dot">
               {(user.display_name || "?").slice(0, 1).toUpperCase()}
             </span>
-            <span><strong>{user.display_name}</strong><small>账户与设置</small></span>
+            <span><strong>{user.display_name}</strong><small>{t("账户与设置", "Account and settings")}</small></span>
             <ChevronRight size={16} />
           </Link>
         </aside>
         <div className="app-shell">
+          <MobileHeader displayName={user.display_name} />
           <Outlet />
         </div>
         <BottomNav />

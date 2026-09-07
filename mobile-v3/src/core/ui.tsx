@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { AlertTriangle, Check, LoaderCircle, RefreshCw, X } from "lucide-react";
 import { errorMessage } from "./api/errors";
+import { useT } from "./i18n";
 
 export function PageSkeleton() {
+  const t = useT();
   return (
-    <div className="skeleton-page" aria-label="加载中">
+    <div className="skeleton-page" aria-label={t("加载中", "Loading")}>
       <span />
       <span />
       <span />
@@ -20,15 +22,16 @@ export function InlineError({
   error: unknown;
   onRetry?: () => void;
 }) {
+  const t = useT();
   return (
     <div className="inline-error" role="alert">
       <AlertTriangle size={18} />
       <div>
-        <strong>暂时没有加载出来</strong>
+        <strong>{t("暂时没有加载出来", "Couldn't load this right now")}</strong>
         <p>{errorMessage(error)}</p>
       </div>
       {onRetry && (
-        <button onClick={onRetry} aria-label="重试">
+        <button onClick={onRetry} aria-label={t("重试", "Retry")}>
           <RefreshCw size={17} />
         </button>
       )}
@@ -74,6 +77,7 @@ export function Toast({
   /** error 变体换警示图标/配色并按 alert 播报。 */
   variant?: "success" | "error";
 }) {
+  const t = useT();
   // 自动消失：不打断操作流；手动关闭仍可用。onClose 走 ref，父组件重渲染不重置计时。
   const closeRef = useRef(onClose);
   useEffect(() => {
@@ -91,7 +95,7 @@ export function Toast({
     >
       {variant === "error" ? <AlertTriangle size={17} /> : <Check size={17} />}
       <span>{message}</span>
-      <button onClick={onClose} aria-label="关闭">
+      <button onClick={onClose} aria-label={t("关闭", "Close")}>
         <X size={14} />
       </button>
     </div>
@@ -126,6 +130,7 @@ export function ConfirmDialog({
   onCancel: () => void;
   onConfirm: () => Promise<void> | void;
 }) {
+  const t = useT();
   const [busy, setBusy] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [error, setError] = React.useState("");
@@ -160,12 +165,12 @@ export function ConfirmDialog({
         <div className="danger-icon">
           <AlertTriangle size={23} />
         </div>
-        <span className="eyebrow">请再次确认</span>
+        <span className="eyebrow">{t("请再次确认", "Please confirm again")}</span>
         <h2>{title}</h2>
         <p>{consequence}</p>
         {requireText && (
           <label className="form-field">
-            <span>输入 “{requireText}” 以继续</span>
+            <span>{t(`输入 “${requireText}” 以继续`, `Type “${requireText}” to continue`)}</span>
             <input
               value={value}
               onChange={(event) => setValue(event.target.value)}
@@ -184,7 +189,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={busy}
           >
-            取消
+            {t("取消", "Cancel")}
           </button>
           <BusyButton
             className="button danger"

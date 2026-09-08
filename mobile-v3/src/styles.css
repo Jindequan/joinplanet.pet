@@ -5534,3 +5534,154 @@ body:has(.modal-backdrop:not(.page-variant)) {
   font-size:11px;
   font-weight:700;
   font-variant-numeric:tabular-nums}
+
+/* ---- 家庭页共养引导卡（家里还少时的品牌说明 + 补住下半页空） ---- */
+.family-guide-card {
+  display:grid;
+  grid-template-columns:minmax(96px,150px) 1fr;
+  gap:18px;
+  align-items:center;
+  background:var(--sage-soft);
+  border:1px solid var(--line);
+  border-radius:var(--radius-xl);
+  padding:18px;
+  margin-top:18px}
+.family-guide-card>img {
+  width:100%;
+  border-radius:var(--radius-md);
+  object-fit:cover}
+.family-guide-card .eyebrow {
+  color:var(--forest-2)}
+.family-guide-card ul {
+  margin:10px 0 0;
+  padding:0;
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap:12px}
+.family-guide-card li {
+  display:flex;
+  gap:10px;
+  align-items:flex-start}
+.family-guide-card li strong {
+  display:block;
+  font-size:13.5px;
+  color:var(--ink)}
+.family-guide-card li small {
+  display:block;
+  font-size:12.5px;
+  line-height:1.5;
+  color:var(--muted)}
+.family-guide-icon {
+  flex:none;
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:var(--paper-strong);
+  border:1px solid var(--line);
+  color:var(--forest-2)}
+@media (width<=560px) {
+  .family-guide-card {
+  grid-template-columns:1fr}
+  .family-guide-card>img {
+  max-height:130px}
+}
+
+/* ---- 趋势页·多宠对比卡(多序列体重图 + 紧凑对比行;追加区,不改动上方规则) ---- */
+.trend-compare-card {
+  border:1px solid var(--line);
+  background:var(--paper-strong);
+  box-shadow:var(--shadow-sm);
+  border-radius:var(--radius-xl);
+  margin-bottom:16px;
+  padding:16px}
+.trend-compare-head {
+  margin-bottom:10px}
+.trend-compare-head .eyebrow {
+  color:var(--forest-2)}
+.multi-weight {
+  max-width:640px}
+.multi-weight-chart {
+  display:block;
+  width:100%;
+  height:auto}
+.multi-weight-grid {
+  stroke:var(--line)}
+.multi-weight-axis {
+  fill:var(--soft);
+  font-size:9.5px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums}
+.multi-weight-legend {
+  flex-wrap:wrap;
+  gap:6px 14px;
+  margin:8px 0 4px;
+  display:flex}
+.multi-weight-legend-item {
+  align-items:center;
+  gap:6px;
+  color:var(--ink);
+  font-size:12.5px;
+  font-weight:700;
+  display:inline-flex}
+.multi-weight-legend-item i {
+  border-radius:50%;
+  width:9px;
+  height:9px;
+  flex:none;
+  box-shadow:0 0 0 2px var(--paper-strong)}
+.trend-compare-rows {
+  list-style:none;
+  margin:10px 0 0;
+  padding:0}
+.trend-compare-row {
+  align-items:center;
+  gap:10px;
+  border-top:1px dashed var(--line);
+  padding:9px 0 8px;
+  display:flex;
+  font-variant-numeric:tabular-nums}
+.trend-compare-rowhead {
+  border-top:0;
+  padding:0 0 2px}
+.trend-compare-rowhead span {
+  color:var(--soft);
+  font-size:11px;
+  font-weight:800}
+.trend-compare-id {
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  flex:1;
+  display:flex}
+.trend-compare-name {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--ink);
+  font-size:13px;
+  font-weight:800}
+.trend-compare-swatch {
+  border-radius:50%;
+  width:8px;
+  height:8px;
+  flex:none}
+.trend-compare-row>span:not(.trend-compare-id) {
+  flex:none;
+  color:var(--muted);
+  text-align:right;
+  white-space:nowrap;
+  font-size:12.5px;
+  font-weight:700}
+.trend-compare-rate {
+  min-width:46px}
+.trend-compare-delta {
+  min-width:80px}
+.trend-compare-count {
+  min-width:44px}
+.trend-compare-delta.up {
+  color:#a8552f}
+.trend-compare-delta.down {
+  color:#47775f}

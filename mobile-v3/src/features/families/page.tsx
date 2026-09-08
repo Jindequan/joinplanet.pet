@@ -1020,6 +1020,7 @@ export function FamiliesPage() {
           <FamilyCard family={family} key={family.id} />
         ))}
       </div>
+      {(families.data?.families ?? []).length < 3 && <FamiliesGuideCard />}
       <button
         className="text-button"
         onClick={() => setDeleted((value) => !value)}
@@ -1047,6 +1048,36 @@ export function FamiliesPage() {
       )}
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </Page>
+  );
+}
+
+/** 家庭列表下方的品牌引导卡：家里还少时把「共养怎么运转」讲清楚，
+ * 顺便接住单卡片时下半页的空（评审 P1-11）。 */
+function FamiliesGuideCard() {
+  const t = useT();
+  const rows = [
+    { icon: <PawPrint size={18} />, title: t("同一份记录", "One shared record"), sub: t("谁记了什么，家人实时可见，不用再对暗号。", "Whatever anyone logs, the family sees instantly.") },
+    { icon: <Users size={18} />, title: t("值班不撞车", "Duty without collisions"), sub: t("谁在盯哪只宠物一目了然，提醒只找该找的人。", "See who's on duty for which pet; nudges reach the right person.") },
+    { icon: <ShieldCheck size={18} />, title: t("权限清楚", "Clear permissions"), sub: t("圈主管理成员、分享与转移，随时可收回。", "The owner manages members, sharing, and transfers — revocable anytime.") },
+  ];
+  return (
+    <section className="family-guide-card">
+      <img src="/backgrounds/family-2.webp" alt="" aria-hidden loading="lazy" />
+      <div>
+        <span className="eyebrow">{t("共养是怎么运转的", "How co-care works")}</span>
+        <ul>
+          {rows.map((row) => (
+            <li key={row.title}>
+              <span className="family-guide-icon" aria-hidden>{row.icon}</span>
+              <span>
+                <strong>{row.title}</strong>
+                <small>{row.sub}</small>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -1102,7 +1133,10 @@ export function FamilyForm({
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   );
-  const [code, setCode] = useState("");
+  // 邀请深链（landing /invite/{code} → /families/join?code=…）直接预填。
+  const [code, setCode] = useState(
+    () => new URLSearchParams(window.location.search).get("code")?.toUpperCase() ?? "",
+  );
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

@@ -6,6 +6,7 @@ import { InlineError, PageSkeleton, EmptyState } from "../../core/ui";
 import { Page, ScopeCascade, useFamilies, usePets, useScope, civilDateInTimezone, civilDaysBefore, type Event } from "../../app/shared";
 import { PetAvatar } from "../../ui/pet-avatar";
 import { WeightChart, type WeightPoint } from "../../ui/weight-chart";
+import { MultiWeightChart, type MultiWeightSeries } from "../../ui/multi-weight-chart";
 import { speciesLabel } from "../../core/display";
 import { useT } from "../../core/i18n";
 
@@ -30,6 +31,9 @@ const RANGES = [
   { key: "6m", label: "六个月", days: 180 },
   { key: "1y", label: "一年", days: 365 },
 ] as const;
+
+// 多宠对比序列色:品牌四色(forest/coral-dark/amber-deep/mint-strong)按宠物序循环。
+const COMPARE_COLORS = ["#2e5747", "#b85b41", "#7a5c1e", "#6f9675"];
 
 type RangeKey = (typeof RANGES)[number]["key"];
 
@@ -141,6 +145,30 @@ export function TrendsPage() {
     eventsByPet.set(event.pet_id, list);
   }
 
+  // 多宠对比:仅「全部宠物」scope 参与;每只取体重序列(与单宠卡同口径),
+  // ≥2 只各有 ≥1 条记录才成区,单宠/家庭 scope 一律不渲染。
+  const compareEntries: Array<{ pet: (typeof petsInScope)[number]; color: string; points: MultiWeightSeries["points"] }> =
+    scope.type === "all"
+      ? petsInScope
+          .map((pet, index) => ({
+            pet,
+            color: COMPARE_COLORS[index % COMPARE_COLORS.length],
+            points: (eventsByPet.get(pet.id) ?? [])
+              .filter(
+                (event) => event.type === "weight" && typeof event.payload?.weight_g === "number",
+              )
+              .map((event) => ({
+                at: new Date(event.occurred_at).getTime(),
+                kg: Math.round((event.payload.weight_g as number) / 100) / 10,
+              }))
+              .sort((a, b) => a.at - b.at),
+          }))
+          .filter((entry) => entry.points.length > 0)
+      : [];
+  const perPetRate = new Map(
+    (statsQuery.data?.per_pet ?? []).map((row) => [row.pet_id, row.rate] as const),
+  );
+
   return (
     <Page className="design-page trends-page">
       <section className="trends-head">
@@ -202,6 +230,57 @@ export function TrendsPage() {
           </>
         )}
       </section>
+
+      {compareEntries.length >= 2 && (
+        <section className="trend-compare-card" aria-label={t("多宠对比", "Multi-pet comparison")}>
+          <header className="trend-compare-head">
+            <span className="eyebrow">{t("多宠对比 · 一眼看全", "Compare · All pets at a glance")}</span>
+          </header>
+          <MultiWeightChart
+            series={compareEntries.map(({ pet, color, points }) => ({
+              petId: pet.id,
+              name: pet.name,
+              color,
+              points,
+            }))}
+          />
+          <ul className="trend-compare-rows">
+            <li className="trend-compare-row trend-compare-rowhead">
+              <span className="trend-compare-id" />
+              <span className="trend-compare-rate">{t("完成率", "Rate")}</span>
+              <span className="trend-compare-delta">{t("体重Δ", "Weight Δ")}</span>
+              <span className="trend-compare-count">{t("记录", "Recs")}</span>
+            </li>
+            {compareEntries.map(({ pet, color, points }) => {
+              const rate = perPetRate.get(pet.id) ?? null;
+              const delta =
+                points.length >= 2
+                  ? Math.round((points[points.length - 1].kg - points[0].kg) * 100) / 100
+                  : null;
+              const deltaTone =
+                delta === null || delta === 0 ? "" : delta > 0 ? "up" : "down";
+              return (
+                <li key={pet.id} className="trend-compare-row">
+                  <span className="trend-compare-id">
+                    <PetAvatar petId={pet.id} species={pet.species} size={26} decorative />
+                    <i className="trend-compare-swatch" style={{ background: color }} />
+                    <span className="trend-compare-name">{pet.name}</span>
+                  </span>
+                  <span className="trend-compare-rate">{rate === null ? "—" : `${rate}%`}</span>
+                  <span className={`trend-compare-delta${deltaTone ? ` ${deltaTone}` : ""}`}>
+                    {delta === null
+                      ? "—"
+                      : `${delta > 0 ? "↗" : delta < 0 ? "↘" : "±"} ${Math.abs(delta)} kg`}
+                  </span>
+                  <span className="trend-compare-count">
+                    {t(`${points.length} 条`, `${points.length} recs`)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {petsInScope.length === 0 ? (
         <EmptyState

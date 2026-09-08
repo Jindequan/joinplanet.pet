@@ -5,6 +5,21 @@
 
 ---
 
+## 执行状态
+
+| 目标帖 | 状态 |
+|---|---|
+| r/EpilepsyDogs 1w4uund(忘记是否喂过苯巴比妥) | ✅ **09-06 已发布**回复(u/Devinjin1992,old.reddit 通道):安全边界解释→急诊热线→记录系统→产品披露。待观察点赞/回复 |
+| r/rescuedogs 1vneb3i(新领养犬疫苗/用药/就诊怎么整理) | ✅ **09-07 已发布**回复:认可楼内日历/药盒/TODY 方案→指出"第二个人参与+数月后回溯"才是墙→PLANET 披露。楼内无人推过宠物专用 app,空位清晰。注意:该 sub 版规要求 user flair,评论有被手动清理的可能,日报持续观察是否存活 |
+| r/DogAdvice 1s1suu0(App 求推荐) | ⬇️ **降级**:评论区已出现 Zetrix 团队自推,4 个月老帖再回复像跟风炒作,放弃 |
+| r/EpilepsyDogs 1vwb405 | ❌ 非目标:**竞品发布帖**(Compaw,安卓,15 天前,25 赞 26 评论,社区对诚实创始人帖宽容)。情报:① epilepsy 家庭=强需求人群被再次验证;② 该社区接受"我为我朋友的狗做了一个"式真诚创始人帖——英文版就绪后可自建同类帖 |
+| r/Pets 月帖 1vi0qcf 招募评论 | ⏳ 在线,尚无回复(09-07 检查) |
+| 收件箱 / Chat | 空(仅 8 月中旬 r/SideProject 旧 modmail,不再追) |
+
+**发送纪律**:Reddit 频率限制约 8-10 分钟一条;old.reddit 的 `textarea[name="text"]` + 坐标点击 save 是已验证的稳定发送通道(新版 UI 对本账号不渲染评论框)。
+
+---
+
 ## Tier 1 — 立即回复(新鲜 + 痛点正中)
 
 ### 1. r/EpilepsyDogs · "What to do if you can't remember if a dose was given?"(几天内,活帖)

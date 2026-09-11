@@ -7,21 +7,25 @@
 
 ## 执行状态
 
+**09-09:Reddit 对本账号静默限流——低 karma 账号的提交被无提示丢弃(时间线:09-06 一条成功、09-07 两条成功、09-09 全部静默失败,无报错)。今日停止发帖;已写好的两条回复存在 Tier 1(#0)和 Tier 1.5,明日恢复(限流窗口通常 24-48h 自然解除)。触点:月帖/评论回复/收件箱/Chat 全部无新回复。**
+
 | 目标帖 | 状态 |
 |---|---|
 | r/EpilepsyDogs 1w4uund(忘记是否喂过苯巴比妥) | ✅ **09-06 已发布,存活**(带链接也过了)。待观察点赞/回复 |
-| r/Pets 月帖 1vi0qcf 招募评论 | ✅ 存活,尚无回复(09-08 检查) |
+| r/Pets 月帖 1vi0qcf 招募评论 | ✅ 存活,尚无回复(09-09 检查) |
 | r/rescuedogs 1vneb3i(新领养整理) | ❌ **09-07 发布后被 AutoMod 删除**(该 sub 强制 user flair)。09-08 设 flair 失败(弹窗不开)、无链接版重发也提交失败(疑似该帖已对本账号进影子限制)。**放弃此帖**,教训记入下方 |
-| r/Dogowners 1w3esdj(老年犬健康事务) | ⚠️ **09-08 发布后疑似被秒删**(评论数未增、页面无痕迹;低 karma+裸链接触发过滤)。**明日重试:无链接版**(只提"PLANET,链接在我主页"),发前先 join 该 sub |
+| r/Dogowners 1w3esdj(老年犬健康事务) | ⚠️ **09-08 发布后疑似被秒删**(评论数未增、页面无痕迹;低 karma+裸链接触发过滤)。**无链接版已备好(Tier 1 #0),限流解除后发** |
+| r/seniordogs 1wct7il(关节炎换药困境,09-10 发帖,0 评论) | 📝 **09-09 写好纯帮助版回复(Tier 1.5,零产品露出,攒账号信用用),待发** |
 | r/DogAdvice 1s1suu0(App 求推荐) | ⬇️ 放弃(已有 Zetrix 自推,4 个月老帖) |
 | r/EpilepsyDogs 1vwb405 | 竞品发布帖(Compaw),不回;该社区对真诚创始人帖宽容——英文版稳定后可自建帖 |
-| 收件箱 / Chat | 空 |
+| 收件箱 / Chat | 空(仅 8 月中旬 r/SideProject 旧 modmail,不再追) |
 
-**关键教训(09-08,两连删后确认)**:
+**关键教训(09-08/09-09)**:
 1. **低 karma 账号 + 评论内裸链接 = 多数 sub 秒删**。EpilepsyDogs 幸存是例外。此后默认发**无链接版**:只写"it's called PLANET — free, link's on my profile",URL 靠 profile → 月帖评论承接(那里已有链接)。
-2. 发帖前先 **join 该 sub**(old.reddit 侧栏 join 按钮可用);有 flair 要求的 sub 先设 flair(old.reddit 的 flair edit 弹窗在本环境打不开——rescuedogs 因此卡死,直接绕开此类 sub)。
-3. 发后必须验证:文本框清空=提交成功;提交后还需回访确认评论树里可见(被秒删时自己仍可见或直接消失,且评论数不变)。
-4. old.reddit 通道本身可靠;单帖重复提交失败=该帖已对账号不友好,立即换目标,不硬磕。
+2. **限流是静默的**:提交后文本框不清空 = 没提交成功,无任何报错。被限流期换帖、换时间都没用,只能等(24-48h);连续重试只会加重。
+3. 发帖前先 **join 该 sub**(old.reddit 侧栏 join 按钮可用);有 flair 要求的 sub 先设 flair(old.reddit 的 flair edit 弹窗在本环境打不开——rescuedogs 因此卡死,直接绕开此类 sub)。
+4. 发后必须验证:文本框清空=提交成功;提交后还需回访确认评论树里可见(被秒删时自己仍可见或直接消失,且评论数不变)。
+5. old.reddit 通道本身可靠;单帖重复提交失败=该帖已对账号不友好,立即换目标,不硬磕。
 
 ---
 
@@ -36,6 +40,18 @@ https://old.reddit.com/r/Dogowners/comments/1w3esdj/anyone_else_struggle_to_keep
 > The wall we hit with notes + reminders was that everything lived in one person's head: my notes said WHAT to do, but nobody else could see what was already done that day, and I'd second-guess whether I'd actually done it yet. With a senior dog there's also just more of it — meds, joints, teeth, weight — and it matters over months, not days.
 >
 > That's exactly why I ended up building PLANET: one shared timeline where every check-off is visible to everyone caring for her, and routines that repeat on their own schedule. Solo dev, my own dog is on daily meds; free for the families helping me shape it — link's on my profile. That teeth-brushing ritual is still the best hack in this thread though :)
+
+### 1.5 待发:r/seniordogs 1wct7il(关节炎换药连环失败,09-10 发帖,0 评论)——纯帮助版,零产品
+https://old.reddit.com/r/seniordogs/comments/1wct7il/senior_dog_with_hip_dysplasia_and_arthritis/
+楼主:10 岁救援犬,carprofen 因肝指标停药,换 pregabalin 后站不稳,试过 Librela。**健康求助帖,回复里不提产品**,目的是攒账号信用:
+
+> The med rollercoaster you're describing is really common with senior arthritis, and the wobbliness on pregabalin is worth a call to your vet today rather than waiting — wobbliness (ataxia) often means the dose needs adjusting, and they'd much rather hear from you early than have you wait it out.
+>
+> Questions worth asking in that call: whether gabapentin (alone or paired) fits her given the liver numbers, whether bloodwork can be rechecked sooner after the vomiting episode, and how long they'd want to give Librela before judging whether it's working — some dogs respond well, some not at all, and there are other options (adequan, targeted joint supplements alongside whatever pain protocol she tolerates).
+>
+> One thing that helps when meds keep changing: keep a simple daily log — med + time given, appetite, gait/wobbliness on a 0-3, anything odd. It turns vet calls from "I think she seemed worse" into "wobbly since Tuesday's dose, eating about half" — vets can make much better calls with that, and it's how we caught a bad reaction early with our own senior dog.
+>
+> Hope she steadies up soon.
 
 ### 1. r/EpilepsyDogs · "What to do if you can't remember if a dose was given?"(几天内,活帖)
 https://www.reddit.com/r/EpilepsyDogs/comments/1w4uund/what_to_do_if_you_cant_remember_if_a_dose_was/

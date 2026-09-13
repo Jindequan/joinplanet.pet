@@ -32,6 +32,15 @@ yarn-debug.log*
 
 # ZCode local
 .zcode/
+.dev/
 
 # Go local build artifacts
 planet-lemon-webhook
+.alma-snapshots
+.local-backups/
+
+# Legacy workspace checkout (kept out of the monorepo)
+/mobile/
+
+# Expo runtime
+**/.expo/

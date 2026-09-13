@@ -1,7 +1,7 @@
 # PLANET 叙事型主页设计方向
 
-> 日期：2026-08-13  
-> 定位：产品宣言 + 价值展览 + 共创入口  
+> 日期：2026-08-13
+> 定位：产品宣言 + 价值展览 + 共创入口
 > 核心目标：让用户看见自己、相信这个未来，并主动希望 PLANET 被做出来
 
 ---
@@ -384,7 +384,7 @@ sitter 或家人打开链接，无需下载 App，直接看到饮食、药物、
 
 正确：
 
-> Breakfast · completed by Alex at 8:12  
+> Breakfast · completed by Alex at 8:12
 > Medication · next dose in 7 hours
 
 用户从产品状态自己得出“它能减少沟通”。

@@ -80,5 +80,5 @@ jobs:
           cache-dependency-path: www.joinplanet.pet/package-lock.json
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
-      - run: npm test
+      - run: NEXT_TELEMETRY_DISABLED=1 NEXT_PRIVATE_BUILD_WORKER=1 npm test
       - run: npm run lint

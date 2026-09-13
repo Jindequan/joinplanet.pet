@@ -48,7 +48,10 @@ jobs:
           cache-dependency-path: APP/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      # The Expo web dev server is shared by the browser projects. Serializing
+      # CI workers avoids concurrent hot-reload/navigation races that do not
+      # occur in the production bundle and otherwise make the gate flaky.
+      - run: npm run test:e2e -- --workers=1
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run doctor

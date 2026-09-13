@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run export:web:production",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -398,9 +398,11 @@ test('object workspaces keep an accessible heading, return path, and mobile-safe
 
   for (const path of pages) {
     // SPA readiness is asserted below; waiting for every dev-server asset to
-    // finish the `load` event makes this structural check sensitive to HMR
-    // noise in CI. DOMContentLoaded is sufficient for the route assertion.
-    await page.goto(path, { waitUntil: 'domcontentloaded' })
+    // This is a client routed SPA: the response commit is enough to start the
+    // route, and the assertions below verify that the screen actually hydrates.
+    // Waiting for DOMContentLoaded/load makes the check sensitive to dev-server
+    // HMR noise in CI.
+    await page.goto(path, { waitUntil: 'commit' })
     await expect(page.locator('[role="heading"]').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: '返回' })).toHaveCount(1)
     const unnamedButtons = await page.locator('button').evaluateAll((nodes) =>

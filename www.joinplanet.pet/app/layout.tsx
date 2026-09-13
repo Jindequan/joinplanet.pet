@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { AnalyticsEvents } from "./components/analytics-events";
 import "./globals.css";
+import "./ui-refresh.css";
 
 export const metadata: Metadata = {
-  title: "PLANET — A thousand small acts become a life together.",
+  title: "PLANET — Pet care reminders your whole family can trust",
   description:
-    "A shared place for the daily care, health changes, memories, people, and handoffs that make up a pet's whole life.",
+    "PLANET watches your pet's care schedule so you don't have to: medicine and deworming reminders, confirmation that care actually got done, and one shared view for everyone who loves them. For dogs and cats. Pilot families joining now.",
   metadataBase: new URL("https://www.joinplanet.pet"),
   alternates: {
     canonical: "/",
@@ -14,13 +15,15 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "PLANET",
-    title: "PLANET — Their whole world. One place.",
-    description: "A thousand small acts become a life together. See what PLANET could become.",
+    title: "PLANET — watches the schedule so you don't have to",
+    description:
+      "Medicines, monthly preventives, vet dates: reminded on time, confirmed done, shared with the whole family. A thousand small acts become a life together.",
   },
   twitter: {
     card: "summary",
-    title: "PLANET — Their whole world. One place.",
-    description: "A thousand small acts become a life together. See what PLANET could become.",
+    title: "PLANET — watches the schedule so you don't have to",
+    description:
+      "Medicines, monthly preventives, vet dates: reminded on time, confirmed done, shared with the whole family. A thousand small acts become a life together.",
   },
   icons: {
     icon: "/favicon.svg",
@@ -39,13 +42,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Caveat: a warm handwriting font used by the Pet Card Polaroid
-            template. We load it from Google Fonts so it renders consistently
-            across macOS/Windows/Linux/Android — the old fallback chain
-            (Bradley Hand → Comic Sans) looked broken on non-Apple devices. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&display=swap" rel="stylesheet" />
         {GA_ID ? (
           <>
             <script

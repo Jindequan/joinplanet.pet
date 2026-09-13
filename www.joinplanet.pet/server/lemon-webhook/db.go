@@ -190,25 +190,25 @@ func markWebhookProcessed(ctx context.Context, q pgxQuerier, eventID string, las
 	return err
 }
 
-func insertPetIntake(ctx context.Context, q pgxQuerier, email, emailHash, want, orderID, source string) error {
+func insertPetIntake(ctx context.Context, q pgxQuerier, email, emailHash, want, orderID, source, utm string) error {
 	var oid any
 	if orderID != "" {
 		oid = orderID
 	}
 	_, err := q.Exec(ctx,
-		`INSERT INTO pet_intake (email, email_hash, want, order_id, source, updated_at)
-		 VALUES ($1,$2,$3,$4,$5,now())`,
-		email, emailHash, want, oid, source,
+		`INSERT INTO pet_intake (email, email_hash, want, order_id, source, utm, updated_at)
+		 VALUES ($1,$2,$3,$4,$5,NULLIF($6,''),now())`,
+		email, emailHash, want, oid, source, utm,
 	)
 	return err
 }
 
 // insertEmailCapture is idempotent via the email_hash unique index.
-func insertEmailCapture(ctx context.Context, q pgxQuerier, email, emailHash, source string) (bool, error) {
+func insertEmailCapture(ctx context.Context, q pgxQuerier, email, emailHash, source, utm string) (bool, error) {
 	tag, err := q.Exec(ctx,
-		`INSERT INTO email_captures (email, email_hash, source) VALUES ($1,$2,$3)
+		`INSERT INTO email_captures (email, email_hash, source, utm) VALUES ($1,$2,$3,NULLIF($4,''))
 		 ON CONFLICT (email_hash) DO NOTHING`,
-		email, emailHash, source,
+		email, emailHash, source, utm,
 	)
 	if err != nil {
 		return false, err

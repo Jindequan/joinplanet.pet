@@ -50,12 +50,13 @@ export function EmailCapture() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@home.com"
             aria-label="Your email"
+            maxLength={254}
             required
           />
           <button className="button button-primary" type="submit" disabled={status === "submitting"}>
             {status === "submitting" ? "Saving…" : "Notify me"}
           </button>
-          {status === "error" ? <p className="email-capture-error">Something went wrong. Please try again.</p> : null}
+          {status === "error" ? <p className="email-capture-error" role="alert">Something went wrong. Please try again.</p> : null}
         </div>
       )}
     </form>

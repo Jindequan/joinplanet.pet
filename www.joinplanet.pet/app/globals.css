@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/caveat-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/caveat-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/caveat-700.ttf") format("truetype");
+}
+
 :root { --ink: #1b2b27; --muted: #66736d; --paper: #f7f8f3; --cream: #f3efe6; --line: #dce2da; --green: #245348; --mint: #d5e8d9; --yellow: #e7c94c; --coral: #f28b68; --white: #fffefa; }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -800,6 +824,8 @@ main { display: flex; flex-direction: column; }main > .nav { order: 1; }main > .
 .founder-copy > p:not(.narrative-eyebrow) { max-width: 590px; color: #66766e; font-size: 16px; line-height: 1.8; }
 .founder-copy a { display: inline-flex; gap: 9px; align-items: center; margin-top: 22px; padding-bottom: 6px; border-bottom: 1px solid currentColor; font-size: 11px; font-weight: 800; }
 .founder-copy a span { color: var(--n-clay); }
+.founder-sign { margin-top: 24px; font-family: "Caveat", cursive; font-size: 32px; line-height: 1.05; color: var(--n-ink); transform: rotate(-1.2deg); }
+.founder-sign small { display: block; margin-top: 4px; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .13em; color: #8b958f; text-transform: uppercase; }
 
 .invitation-section { padding: 150px 0; background: var(--n-dark); color: #f7f1e7; }
 .invitation-layout { display: grid; grid-template-columns: .82fr 1.18fr; gap: 100px; align-items: start; }

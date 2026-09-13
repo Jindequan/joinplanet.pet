@@ -12,8 +12,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,7 +45,8 @@ type app struct {
 }
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 	cfg := loadConfig()
 	if cfg.databaseURL == "" {
 		fmt.Fprintln(os.Stderr, "DATABASE_URL is required")
@@ -81,9 +84,25 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 	fmt.Printf("PLANET backend listening on %s\n", address)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.ListenAndServe() }()
+	select {
+	case err := <-serveErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			fmt.Fprintln(os.Stderr, "graceful shutdown failed:", err)
+			os.Exit(1)
+		}
+		if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -472,6 +491,7 @@ func (a *app) intake(w http.ResponseWriter, req *http.Request) {
 		Want    string `json:"want"`
 		OrderID string `json:"order_id"`
 		Source  string `json:"source"`
+		Utm     string `json:"utm"`
 	}
 	if err := decodeJSON(req, &body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))
@@ -487,7 +507,7 @@ func (a *app) intake(w http.ResponseWriter, req *http.Request) {
 	if source == "" {
 		source = "post_payment"
 	}
-	if err := insertPetIntake(req.Context(), a.pool, email, digest([]byte(email)), truncate(want, 1000), strings.TrimSpace(body.OrderID), source); err != nil {
+	if err := insertPetIntake(req.Context(), a.pool, email, digest([]byte(email)), truncate(want, 1000), strings.TrimSpace(body.OrderID), source, truncate(strings.TrimSpace(body.Utm), 300)); err != nil {
 		jsonResponse(w, http.StatusInternalServerError, errBody("intake submission failed"))
 		return
 	}
@@ -502,6 +522,7 @@ func (a *app) emailCapture(w http.ResponseWriter, req *http.Request) {
 	var body struct {
 		Email  string `json:"email"`
 		Source string `json:"source"`
+		Utm    string `json:"utm"`
 	}
 	if err := decodeJSON(req, &body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))
@@ -516,7 +537,7 @@ func (a *app) emailCapture(w http.ResponseWriter, req *http.Request) {
 	if source == "" {
 		source = "waitlist"
 	}
-	created, err := insertEmailCapture(req.Context(), a.pool, email, digest([]byte(email)), source)
+	created, err := insertEmailCapture(req.Context(), a.pool, email, digest([]byte(email)), source, truncate(strings.TrimSpace(body.Utm), 300))
 	if err != nil {
 		jsonResponse(w, http.StatusInternalServerError, errBody("email capture failed"))
 		return

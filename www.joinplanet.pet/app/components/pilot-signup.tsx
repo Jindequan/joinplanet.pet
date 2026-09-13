@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiUrl } from "../lib/api-base";
 import { FoundingProgress } from "./founding-progress";
+import { utmPayload } from "../lib/utm";
 
 type Status = "idle" | "submitting" | "done" | "error";
 
@@ -24,7 +25,7 @@ export function PilotSignup() {
         mode: "cors",
         credentials: "omit",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: "home_pilot" }),
+        body: JSON.stringify({ email, source: "home_pilot", utm: utmPayload() }),
       });
       if (!response.ok) throw new Error("pilot signup failed");
       setStatus("done");
@@ -41,6 +42,7 @@ export function PilotSignup() {
           <div>
             <p className="pilot-success-title">You&apos;re on the pilot list.</p>
             <p>We&apos;ll email you when the first working version is ready to test. No payment is needed to take part.</p>
+            <p className="pilot-success-app"><a className="narrative-button narrative-button-ghost" href="https://app.joinplanet.pet/auth" data-event="open_app_cta" data-event-category="app_link" data-event-label="pilot_success">Start using it now <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></p>
           </div>
         </div>
       ) : (
@@ -51,6 +53,7 @@ export function PilotSignup() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@home.com"
             aria-label="Email address"
+            maxLength={254}
             required
           />
           <button
@@ -70,7 +73,7 @@ export function PilotSignup() {
             <small>We&apos;ll publish the first version, scope and optional founding terms before asking anyone to pay.</small>
           </div>
           {status === "error" ? (
-            <p className="pilot-error">We couldn&apos;t save this just now. Please try again or email support@joinplanet.pet.</p>
+            <p className="pilot-error" role="alert">We couldn&apos;t save this just now. Please try again or email support@joinplanet.pet.</p>
           ) : null}
         </form>
       )}

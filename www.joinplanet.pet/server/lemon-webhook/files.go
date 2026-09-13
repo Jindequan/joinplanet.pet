@@ -55,6 +55,10 @@ func init() {
 // ---- POST /pets/{petID}/attachments -----------------------------------------
 
 func (a *app) handleAttachmentUpload(w http.ResponseWriter, req *http.Request, userID, petID int64, _ string) {
+	// Archived pets are read-only — no new attachments (or avatar updates).
+	if !a.ensurePetNotArchived(w, req.Context(), petID) {
+		return
+	}
 	req.Body = http.MaxBytesReader(w, req.Body, maxUploadBytes+(2<<20)) // file + multipart overhead
 	if err := req.ParseMultipartForm(1 << 20); err != nil {
 		var tooLarge *http.MaxBytesError

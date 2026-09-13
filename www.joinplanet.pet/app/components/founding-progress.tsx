@@ -96,10 +96,14 @@ export function FoundingProgress({ compact = false, mode = "auto" }: { compact?:
           <span>/ {capacity} founding members</span>
         </div>
         <div className="meter-status">
-          {data == null ? (
-            <span className="meter-pill meter-pill-syncing">Confirming live count…</span>
-          ) : isSoldOut ? (
+          {/* No pill until real data arrives — a fake "confirming" state
+              reads as dishonest, and an empty meter needs no drama. */}
+          {data == null ? null : isSoldOut ? (
             <span className="meter-pill meter-pill-soldout">Sold out</span>
+          ) : paid === 0 ? (
+            <span className="meter-pill meter-pill-open">
+              <span className="pulse" /> First seats open
+            </span>
           ) : (
             <span className="meter-pill meter-pill-open">
               <span className="pulse" /> {capacity - paid} places left
@@ -158,10 +162,10 @@ export function FoundingProgress({ compact = false, mode = "auto" }: { compact?:
       {/* Footer line */}
       <p className="meter-footnote">
         {data == null
-          ? "Your place is confirmed after Lemon payment and webhook settlement."
+          ? "Seats update as founding members join."
           : isSoldOut
             ? "The first 100 lifetime places are sold out. New members will subscribe."
-            : <>You would be founding member <strong>#{paid + 1}</strong> at <strong>{currentTier.price}</strong>. Price rises as each tier fills. <span className="meter-live">● live</span></>}
+            : <>You would be founding member <strong>#{paid + 1}</strong> at <strong>{currentTier.price}</strong>. Price rises as each tier fills.{paid > 0 ? <> <span className="meter-live">● live count</span></> : null}</>}
         {syncedAt ? <span className="meter-synced"> · checked {syncedAt.toLocaleTimeString()}</span> : null}
       </p>
     </div>

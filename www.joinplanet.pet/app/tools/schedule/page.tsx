@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ToolNav } from "../components/tool-nav";
 import { useMemo, useRef, useState } from "react";
 
 // UTF-8 safe base64 — btoa() crashes on any non-Latin1 character (Chinese,
@@ -250,16 +251,7 @@ export default function SchedulePage() {
 
   return (
     <main>
-      <nav className="nav shell">
-        <Link className="brand" href="/" aria-label="PLANET home">
-          <span className="brand-mark" aria-hidden="true" />
-          PLANET
-        </Link>
-        <div className="nav-links">
-          <Link href="/tools">All tools</Link>
-          <Link href="/#pricing">Pricing</Link>
-        </div>
-      </nav>
+      <ToolNav action="" />
 
       <section className="shell sched-hero">
         <p className="kicker"><span className="pulse" /> Care Schedule · shared with family</p>
@@ -292,7 +284,7 @@ export default function SchedulePage() {
           </div>
           <div className="sched-progress-meta">
             <span>{stats.doneAll} of {stats.totalAll} done</span>
-            <em>{view.petName ? `${view.petName}&apos;s family` : "Your family"} stays on top of it.</em>
+            <em>{view.petName ? `${view.petName}'s family` : "Your family"} stays on top of it.</em>
           </div>
         </section>
       ) : null}
@@ -369,7 +361,7 @@ export default function SchedulePage() {
 
         <div className="sched-list-side" id="sched-print">
           <div className="sched-list-head">
-            <h2>{data.petName ? `${data.petName}&apos;s schedule` : "Schedule"}</h2>
+            <h2>{data.petName ? `${data.petName}'s schedule` : "Schedule"}</h2>
             <span className="sched-count">{data.reminders.length} reminder{data.reminders.length === 1 ? "" : "s"}</span>
           </div>
 
@@ -618,16 +610,7 @@ function SharedScheduleView({ data }: { data: Schedule }) {
 
   return (
     <main>
-      <nav className="nav shell">
-        <Link className="brand" href="/" aria-label="PLANET home">
-          <span className="brand-mark" aria-hidden="true" />
-          PLANET
-        </Link>
-        <div className="nav-links">
-          <Link href="/tools/schedule">Make your own</Link>
-          <Link href="/">Learn more</Link>
-        </div>
-      </nav>
+      <ToolNav action="Make your own" />
       <section className="shell cardtool-shared">
         <div className="cardtool-shared-banner">
           <span className="icon icon-share" aria-hidden="true" />

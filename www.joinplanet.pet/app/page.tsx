@@ -2,12 +2,13 @@ import { CoCreateForm } from "./components/co-create-form";
 import { PilotSignup } from "./components/pilot-signup";
 import { PrototypeTabs } from "./components/prototype-tabs";
 import { QuickDemo } from "./components/quick-demo";
+import Image from "next/image";
 
 const careMoments = [
   { time: "07:42", title: "Breakfast", detail: "Remembered before the first call of the day", tone: "sage" },
   { time: "08:12", title: "Morning medicine", detail: "Done by someone who loves him too", tone: "clay" },
   { time: "12:06", title: "A small change", detail: "He left half his lunch. Worth remembering.", tone: "gold" },
-  { time: "19:34", title: "The long way home", detail: "A slow walk, a good mood, one new photo", tone: "sage" },
+  { time: "19:34", title: "The long way home", detail: "A slow walk, a good mood, one new note", tone: "sage" },
 ];
 
 export default function Home() {
@@ -21,22 +22,31 @@ export default function Home() {
           <a href="#making">In the making</a>
           <a className="narrative-nav-invite" href="#quick-demo">Try the demo <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
         </div>
+        <details className="narrative-mobile-menu">
+          <summary aria-label="Open navigation menu"><span aria-hidden="true">☰</span><span className="sr-only">Menu</span></summary>
+          <div className="narrative-mobile-menu-panel">
+            <a href="#story">The idea</a>
+            <a href="#inside">Inside PLANET</a>
+            <a href="#making">In the making</a>
+            <a href="#quick-demo">Try the demo <span className="icon icon-arrow-up-right" aria-hidden="true" /></a>
+          </div>
+        </details>
       </nav>
 
       <section className="narrative-hero narrative-shell" id="top">
         <div className="narrative-hero-copy">
           <p className="narrative-eyebrow">For the life you are already building together</p>
           <h1>A thousand small acts<br /><em>become a life together.</em></h1>
-          <p className="narrative-lead">PLANET turns messages, photos, medicines and vet notes into one care view your whole family can use today.</p>
-          <div className="narrative-hero-actions"><a className="narrative-button narrative-button-dark" href="#quick-demo" data-event="quick_demo_cta" data-event-category="quick_demo" data-event-label="hero">Try the 30-second care view <span className="icon icon-arrow-right" aria-hidden="true" /></a><a className="narrative-scroll" href="#story">See the idea behind it <span className="icon icon-chevron-down" aria-hidden="true" /></a></div>
+          <p className="narrative-lead">PLANET watches the schedule so you don&apos;t have to—the medicines, the monthly preventive, the vet dates—reminds the right person, and confirms it actually got done.</p>
+          <div className="narrative-hero-actions"><a className="narrative-button narrative-button-dark" href="#quick-demo" data-event="quick_demo_cta" data-event-category="quick_demo" data-event-label="hero">Try the 30-second care view <span className="icon icon-arrow-right" aria-hidden="true" /></a><a className="narrative-button narrative-button-ghost" href="https://app.joinplanet.pet/auth" data-event="open_app_cta" data-event-category="app_link" data-event-label="hero">Open the app <span className="icon icon-arrow-up-right" aria-hidden="true" /></a><a className="narrative-scroll" href="#story">See the idea behind it <span className="icon icon-chevron-down" aria-hidden="true" /></a></div>
         </div>
         <div className="narrative-hero-stage" aria-label="A real dog and the small moments of care that make up a life together">
           <div className="narrative-photo-frame">
-            <img src="/mydog.JPG" alt="The dog who inspired PLANET resting at home" />
+            <Image src="/mydog.JPG" alt="The dog who inspired PLANET resting at home" width={5712} height={4284} priority />
             <div className="hero-photo-wash" />
           </div>
           <div className="care-trace care-trace-one"><span className="trace-icon"><span className="icon icon-check" aria-hidden="true" /></span><div><strong>Breakfast</strong><small>done by Devin · 8:12</small></div></div>
-          <div className="care-trace care-trace-two"><span className="trace-icon trace-icon-warm"><span className="icon icon-circle-dot" aria-hidden="true" /></span><div><strong>Quiet morning</strong><small>one photo kept</small></div></div>
+          <div className="care-trace care-trace-two"><span className="trace-icon trace-icon-warm"><span className="icon icon-circle-dot" aria-hidden="true" /></span><div><strong>Quiet morning</strong><small>one note kept</small></div></div>
           <div className="care-trace care-trace-three"><span className="trace-icon trace-icon-gold"><span className="icon icon-arrow-up-right" aria-hidden="true" /></span><div><strong>5.2 kg</strong><small>a small change over time</small></div></div>
           <p className="hero-photo-note">Today is already becoming their story.</p>
         </div>
@@ -68,10 +78,10 @@ export default function Home() {
           <h2>Their story ends up<br /><em>everywhere.</em></h2>
           <p>The information exists. It just doesn&apos;t stay together.</p>
         </div>
-        <div className="fragments-stage" aria-label="Pet care information scattered between messages, photos, paper records, and memory">
-          <article className="fragment fragment-chat"><span>Family chat · 8:14</span><p>gave him the tablet<br />with breakfast <span className="icon icon-check" aria-hidden="true" /></p></article>
-          <article className="fragment fragment-photo"><img src="/mydog.JPG" alt="The dog after a visit" /><span>IMG_4821 · after the appointment</span></article>
-          <article className="fragment fragment-record"><span>SPRINGFIELD VET · MAY 04</span><h3>Bloodwork</h3><p>Report attached to an old email</p><i>PDF</i></article>
+        <div className="fragments-stage" aria-label="Pet care information scattered between messages, paper records, and memory">
+          <article className="fragment fragment-chat"><span>Family chat · 9:41 PM</span><p>did you already give him<br />his tablet today?</p></article>
+          <article className="fragment fragment-photo"><Image src="/mydog.JPG" alt="The dog after a visit" width={5712} height={4284} /><span>AFTER THE VISIT · family note</span></article>
+          <article className="fragment fragment-record"><span>SPRINGFIELD VET · MAY 04</span><h3>Bloodwork</h3><p>Report noted in an old email</p><i>NOTE</i></article>
           <article className="fragment fragment-note"><p>“Eating less<br />since maybe<br />last Tuesday?”</p><span>something you meant to remember</span></article>
           <div className="fragment-memory">somewhere<br />in memory</div>
         </div>
@@ -80,13 +90,13 @@ export default function Home() {
       <section className="question-section">
         <div className="narrative-shell question-layout">
           <div className="question-mark" aria-hidden="true">“</div>
-          <div className="question-copy"><p className="narrative-eyebrow">The moment it matters</p><h2>When did it start?</h2><p>You know the answer is somewhere—in a photo, a message, a receipt, a memory. But the appointment has already begun.</p></div>
+          <div className="question-copy"><p className="narrative-eyebrow">The moment it matters</p><h2>When did it start?</h2><p>You know the answer is somewhere—in a message, a receipt, a memory. But the appointment has already begun.</p></div>
           <div className="question-answer"><span>What you wish you had</span><strong>One clear story.<br />Already in order.</strong></div>
         </div>
       </section>
 
       <section className="reveal-section" id="inside">
-        <div className="narrative-shell reveal-heading"><p className="narrative-eyebrow narrative-eyebrow-light">Imagine one continuous place</p><h2>What if their whole story<br /><em>could stay connected?</em></h2><p>PLANET is a shared place for the life you are already caring for—daily routines, health changes, records, people, and every important handoff.</p></div>
+        <div className="narrative-shell reveal-heading"><p className="narrative-eyebrow narrative-eyebrow-light">Imagine one continuous place</p><h2>What if their whole story<br /><em>could stay connected?</em></h2><p>PLANET is a shared place where care is watched over, not just written down—routines that remind themselves, doses someone actually confirmed, and everyone who loves him looking at the same page.</p></div>
         <PrototypeTabs />
       </section>
 
@@ -94,8 +104,8 @@ export default function Home() {
         <div className="living-scenes-heading"><p className="narrative-eyebrow">One life, four moments</p><h2>Useful on an ordinary day.<br /><em>Ready when the day is not ordinary.</em></h2></div>
 
         <article className="living-scene scene-change">
-          <div className="scene-copy"><span className="scene-number">01</span><p className="narrative-eyebrow">A small change</p><h3>Small moments have somewhere<br />to become a pattern.</h3><p>Appetite, weight, photos, medication and notes stay connected over time—so changes are easier to see and explain.</p></div>
-          <div className="timeline-visual"><div className="timeline-line" /><article><time>JUL 24</time><span /><div><strong>Weight · 5.4 kg</strong><p>Normal appetite</p></div></article><article><time>AUG 02</time><span /><div><strong>New medication</strong><p>16 mg with breakfast</p></div></article><article><time>AUG 13</time><span /><div><strong>Ate half of lunch</strong><p>Photo and note from Devin</p></div></article></div>
+          <div className="scene-copy"><span className="scene-number">01</span><p className="narrative-eyebrow">A small change</p><h3>Small moments have somewhere<br />to become a pattern.</h3><p>Appetite, weight, medication and notes stay connected over time—so changes are easier to see and explain.</p></div>
+          <div className="timeline-visual"><div className="timeline-line" /><article><time>JUL 24</time><span /><div><strong>Weight · 5.4 kg</strong><p>Normal appetite</p></div></article><article><time>AUG 02</time><span /><div><strong>New medication</strong><p>16 mg with breakfast</p></div></article><article><time>AUG 13</time><span /><div><strong>Ate half of lunch</strong><p>Note from Devin</p></div></article></div>
         </article>
 
         <article className="living-scene scene-vet">
@@ -105,14 +115,14 @@ export default function Home() {
 
         <article className="living-scene scene-handoff">
           <div className="scene-copy"><span className="scene-number">03</span><p className="narrative-eyebrow">Someone else cares</p><h3>Share exactly what they need.<br />Nothing more.</h3><p>Your partner, sitter or family member opens one calm view of today&apos;s routine, medicines, warning signs and emergency contacts—without learning a new system first.</p></div>
-          <div className="handoff-phone"><div className="handoff-status">SHARED BY DEVIN · EXPIRES SUNDAY</div><div className="handoff-pet"><img src="/mydog2.jpg" alt="Milo" /><div><strong>Caring for Milo</strong><span>Everything you need for today</span></div></div><div className="handoff-row"><span>08:00</span><div><strong>Breakfast + medicine</strong><small>½ cup · tablet with food</small></div><i><span className="icon icon-check" aria-hidden="true" /></i></div><div className="handoff-row"><span>18:30</span><div><strong>Evening walk</strong><small>Keep it gentle today</small></div><i><span className="icon icon-circle-dot" aria-hidden="true" /></i></div><div className="handoff-emergency"><span>If something feels wrong</span><strong>Call Devin first · then Greenwoods Vet</strong></div></div>
+          <div className="handoff-phone"><div className="handoff-status">SHARED BY DEVIN · EXPIRES SUNDAY</div><div className="handoff-pet"><Image src="/mydog2.jpg" alt="Milo" width={2796} height={2061} /><div><strong>Caring for Milo</strong><span>Everything you need for today</span></div></div><div className="handoff-row"><span>08:00</span><div><strong>Breakfast + medicine</strong><small>½ cup · tablet with food</small></div><i><span className="icon icon-check" aria-hidden="true" /></i></div><div className="handoff-row"><span>18:30</span><div><strong>Evening walk</strong><small>Keep it gentle today</small></div><i><span className="icon icon-circle-dot" aria-hidden="true" /></i></div><div className="handoff-emergency"><span>If something feels wrong</span><strong>Call Devin first · then Greenwoods Vet</strong></div></div>
         </article>
       </section>
 
       <section className="whole-life-section">
         <div className="narrative-shell whole-life-layout">
           <div className="whole-life-copy"><p className="narrative-eyebrow narrative-eyebrow-light">Their whole life</p><h2>Not just a record<br />of what went wrong.<br /><em>A memory of who they are.</em></h2><p>Health and life were never separate to them. The first day home, the familiar park, the medicine that helped, the way they changed, and every person who cared—all part of one story.</p></div>
-          <div className="memory-film"><figure className="memory memory-one"><img src="/mydog2.jpg" alt="A quiet day at home" /><figcaption>2021 · the look that always worked</figcaption></figure><figure className="memory memory-two"><img src="/mydog.JPG" alt="After a grooming visit" /><figcaption>2026 · brave at the appointment</figcaption></figure><div className="memory-note"><span>A LIFE IN PROGRESS</span><p>Still changing.<br />Still deeply known.</p></div></div>
+          <div className="memory-film"><figure className="memory memory-one"><Image src="/mydog2.jpg" alt="A quiet day at home" width={2796} height={2061} /><figcaption>2021 · the look that always worked</figcaption></figure><figure className="memory memory-two"><Image src="/mydog.JPG" alt="After a grooming visit" width={5712} height={4284} /><figcaption>2026 · brave at the appointment</figcaption></figure><div className="memory-note"><span>A LIFE IN PROGRESS</span><p>Still changing.<br />Still deeply known.</p></div></div>
         </div>
       </section>
 
@@ -126,8 +136,8 @@ export default function Home() {
       </section>
 
       <section className="founder-section narrative-shell">
-        <div className="founder-photo"><img src="/mydog.JPG" alt="The real dog behind PLANET" /><span>THE REAL DOG BEHIND PLANET</span></div>
-        <div className="founder-copy"><p className="narrative-eyebrow">One dog and a question</p><h2>I didn&apos;t want another pet app.</h2><p>His life was already everywhere—photos, receipts, messages, appointments, and the things only I remembered. I wanted one place that could hold the practical work of caring for him and the life we were building together. So I started making PLANET.</p><a href="mailto:support@joinplanet.pet">Talk to me directly <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></div>
+        <div className="founder-photo"><Image src="/mydog.JPG" alt="The real dog behind PLANET" width={5712} height={4284} /><span>THE REAL DOG BEHIND PLANET</span></div>
+        <div className="founder-copy"><p className="narrative-eyebrow">One dog and a question</p><h2>I didn&apos;t want another pet app.</h2><p>His life was already everywhere—receipts, messages, appointments, and the things only I remembered. I wanted one place that could hold the practical work of caring for him and the life we were building together. So I started making PLANET.</p><p>I&apos;m Devin—engineer, and Milo&apos;s human. The working version already runs our real days. The first pilot families are being recruited now, and the build happens in the open—updates, missteps and all.</p><div className="founder-sign">— Devin &amp; Milo<small>Founder · PLANET</small></div><a href="mailto:support@joinplanet.pet">Talk to me directly <span className="icon icon-arrow-up-right" aria-hidden="true" /></a></div>
       </section>
 
       <section className="support-section" id="support">

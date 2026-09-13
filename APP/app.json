@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "PLANET",
+    "slug": "planet-app",
+    "version": "0.1.0",
+    "scheme": "planet",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAFAF9"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      [
+          "expo-image-picker",
+        {
+          "photosPermission": "允许 PLANET 选择宠物照片，记录在家庭时间线中。",
+          "cameraPermission": "允许 PLANET 拍摄宠物照片，记录在家庭时间线中。",
+          "microphonePermission": false
+        }
+      ],
+      "./plugins/with-ios-deployment-target"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "pet.joinplanet.app"
+    },
+    "android": {
+      "package": "pet.joinplanet.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FAFAF9"
+      },
+      "predictiveBackGestureEnabled": true
+    }
+  }
+}

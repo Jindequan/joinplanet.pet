@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1242" height="2436" viewBox="0 0 1242 2436">
+  <rect width="1242" height="2436" fill="#FAFAF9"/>
+  <g transform="translate(621 1090)">
+    <circle r="190" fill="#C2410C"/>
+    <ellipse rx="232" ry="124" transform="rotate(-24)" fill="none" stroke="#FFEDD5" stroke-width="16" opacity=".95"/>
+    <circle cx="170" cy="-95" r="20" fill="#F97316"/>
+    <circle cy="28" r="55" fill="#FAFAF9"/>
+    <circle cx="-57" cy="-48" r="25" fill="#FAFAF9"/>
+    <circle cx="-16" cy="-70" r="28" fill="#FAFAF9"/>
+    <circle cx="30" cy="-70" r="28" fill="#FAFAF9"/>
+    <circle cx="71" cy="-48" r="25" fill="#FAFAF9"/>
+  </g>
+  <text x="621" y="1435" text-anchor="middle" font-family="Arial, sans-serif" font-size="62" font-weight="700" letter-spacing="12" fill="#C2410C">PLANET</text>
+</svg>

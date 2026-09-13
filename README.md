@@ -31,6 +31,8 @@ joinplanet.pet/
     └── lemon-webhook/           7 个 API（checkout/progress/intake/email-capture/webhook/claim/healthz）
 ```
 
+Vercel 发布根目录固定为：Landing 使用 `www.joinplanet.pet`，App 使用 `APP`；两个项目从同一仓库分别构建。
+
 - 前端只持有公共变量，所有支付与数据逻辑在 Go 后端。
 - 部署：前端 → Vercel；后端 → 任意主机（二进制 + Postgres）；数据库初始化 → `psql -f server/lemon-webhook/schema.sql`。
 - 详见 [Lemon Squeezy 收款方案](docs/commerce/LEMON-SQUEEZY.md#部署与初始化)。

@@ -1,0 +1,2 @@
+-- Keep existing users' family relationships intact on rollback. The previous
+-- limit cannot be safely restored without invalidating already-created data.

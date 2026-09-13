@@ -1,0 +1,27 @@
+# /etc/systemd/system/planet-api.service
+[Unit]
+Description=PLANET APP API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=planet
+Group=planet
+WorkingDirectory=/opt/planet-api
+EnvironmentFile=/etc/planet-api.env
+ExecStart=/opt/planet-api/bin/planet-api
+Restart=always
+RestartSec=3
+# 1G 服务器内存预算（BACKEND-DESIGN §12.1）
+MemoryMax=160M
+GOMEMLIMIT=128MiB
+LimitNOFILE=8192
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=
+
+[Install]
+WantedBy=multi-user.target

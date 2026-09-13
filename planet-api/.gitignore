@@ -1,0 +1,7 @@
+/planet-api
+/planet-cli
+/bin/
+*.test
+*.out
+.env
+.DS_Store

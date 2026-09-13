@@ -1,0 +1,10 @@
+# /etc/systemd/system/planet-cli-purge.timer
+[Unit]
+Description=Purge soft-deleted PLANET families every 6 hours
+
+[Timer]
+OnCalendar=*-*-* 00/6:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,16 @@
+# /etc/caddy/Caddyfile（api.joinplanet.pet 段）
+# Caddy 自动管理 TLS；两个后端只监听本机回环：
+#   8081 = App planet-api（/api/v1/*、/healthz、/readyz）
+#   8080 = Landing lemon-webhook（/checkout、/progress、/webhook 等其余路径）
+api.joinplanet.pet {
+	@app_api path /api/v1 /api/v1/* /healthz /readyz
+	handle @app_api {
+		reverse_proxy 127.0.0.1:8081
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8080
+	}
+	request_body {
+		max_size 2MB
+	}
+}

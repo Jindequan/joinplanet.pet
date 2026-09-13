@@ -2,8 +2,8 @@
 
 > **状态：已被新版叙事方向取代。** 本文保留作为商业验证、定价与研究依据；首页创意与信息结构请以 [`LANDING-PAGE-NARRATIVE-DIRECTION.md`](./LANDING-PAGE-NARRATIVE-DIRECTION.md) 为准。PLANET 首页不是传统收费 Landing Page，也不以说服付款为首要目标。
 
-> 日期：2026-08-13  
-> 范围：产品定位、用户心理、营销转化、商业模式、页面结构、英文文案、视觉方向、数据验证  
+> 日期：2026-08-13
+> 范围：产品定位、用户心理、营销转化、商业模式、页面结构、英文文案、视觉方向、数据验证
 > 结论性质：研究与设计方案，不包含本轮页面实现
 
 ---
@@ -14,7 +14,7 @@
 
 PLANET 不再先卖“宠物一生的全能操作系统”，而先占据一个具体、紧急、可交付的用户任务：
 
-> **Turn scattered pet records into one clear vet-ready summary.**  
+> **Turn scattered pet records into one clear vet-ready summary.**
 > 在就诊前几分钟，把散落的宠物资料整理成一份清楚、可核对、可打印、可分享的摘要。
 
 家庭协作是第二层价值；长期时间线与数据所有权是留存和品牌价值；“专业宠物模型”和长期陪伴愿景只放在路线图，不参与首屏转化。
@@ -98,11 +98,11 @@ PLANET 不再先卖“宠物一生的全能操作系统”，而先占据一个�
 
 ### 3.1 推荐定位
 
-**类别：** owner-controlled pet care handoff / vet visit preparation tool  
-**不是：** 宠物社交、宠物诊断、诊所门户、通用家庭任务工具、宠物版 Notion  
-**核心任务：** 把散落信息变成可供下一位照护者快速使用的结果  
-**第一接收者：** 兽医  
-**第二接收者：** 伴侣、家人、sitter、寄养方  
+**类别：** owner-controlled pet care handoff / vet visit preparation tool
+**不是：** 宠物社交、宠物诊断、诊所门户、通用家庭任务工具、宠物版 Notion
+**核心任务：** 把散落信息变成可供下一位照护者快速使用的结果
+**第一接收者：** 兽医
+**第二接收者：** 伴侣、家人、sitter、寄养方
 
 推荐定位句：
 
@@ -372,11 +372,11 @@ PLANET 不再先卖“宠物一生的全能操作系统”，而先占据一个�
 
 三张结果卡：
 
-1. **Walk into the visit prepared**  
+1. **Walk into the visit prepared**
    用最少翻找，清楚说明本次主诉和近期变化。
-2. **Give a sitter one clear handoff**  
+2. **Give a sitter one clear handoff**
    只分享饮食、用药、日常、警示和紧急联系人。
-3. **Keep a copy across clinics**  
+3. **Keep a copy across clinics**
    搬家、转诊或换设备时依然能导出完整副本。
 
 ### 6.7 Data Control：数据与分享

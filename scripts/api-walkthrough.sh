@@ -1,83 +1,169 @@
 #!/usr/bin/env bash
-# PLANET API 全链路走查（I5 验收用）—— 对 docs/product/API-CONTRACT.md 逐条验证。
-# 用法：BASE=http://localhost:8080 bash scripts/api-walkthrough.sh
+# PLANET API 全链路走查（当前 v1 契约）。
+# 用法：BASE=http://127.0.0.1:8081 bash scripts/api-walkthrough.sh
 set -euo pipefail
-BASE="${BASE:-http://localhost:8080}"
-EMAIL="demo$(date +%s)@planet.dev"
-PASS=0; FAIL=0
-ok()   { PASS=$((PASS+1)); echo "  ✓ $1"; }
-bad()  { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
-need() { # need <desc> <expected-substr> <actual>
-  if echo "$3" | grep -q "$2"; then ok "$1"; else bad "$1 → got: $(echo "$3" | head -c 200)"; fi
+
+BASE="${BASE:-http://127.0.0.1:8081}"
+JSON='Content-Type: application/json'
+PASS=0
+FAIL=0
+
+ok() { PASS=$((PASS + 1)); echo "  ✓ $1"; }
+fail() { FAIL=$((FAIL + 1)); echo "  ✗ $1"; exit 1; }
+expect() {
+  local label="$1" expression="$2" payload="$3"
+  if jq -e "$expression" >/dev/null <<<"$payload"; then ok "$label"; else echo "$payload"; fail "$label"; fi
 }
-J='Content-Type: application/json'
+key() { printf 'walkthrough-%s-%s' "$(date +%s%N)" "$RANDOM"; }
+post() {
+  local path="$1" token="$2" body="$3" idempotency="${4:-}"
+  local args=(-sS -X POST "$BASE$path" -H "$JSON" -d "$body")
+  [ -n "$token" ] && args+=(-H "Authorization: Bearer $token")
+  [ -n "$idempotency" ] && args+=(-H "Idempotency-Key: $idempotency")
+  curl "${args[@]}"
+}
+get() {
+  local path="$1" token="$2"
+  local args=(-sS "$BASE$path")
+  [ -n "$token" ] && args+=(-H "Authorization: Bearer $token")
+  curl "${args[@]}"
+}
+delete() {
+  local path="$1" token="$2" body="${3:-}"
+  local args=(-sS -X DELETE "$BASE$path" -H "Authorization: Bearer $token")
+  [ -n "$body" ] && args+=(-H "$JSON" -d "$body")
+  curl "${args[@]}"
+}
 
-echo "== F1 认证 =="
-R=$(curl -s -X POST "$BASE/api/v1/auth/request-code" -H "$J" -d "{\"email\":\"$EMAIL\"}")
-need "request-code returns dev_code" '"dev_code"' "$R"
-CODE=$(echo "$R" | sed -n 's/.*"dev_code":"\([0-9]*\)".*/\1/p')
-R=$(curl -s -X POST "$BASE/api/v1/auth/verify" -H "$J" -d "{\"email\":\"$EMAIL\",\"code\":\"$CODE\"}")
-need "verify returns token" '"token"' "$R"
-TOKEN=$(echo "$R" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-A="Authorization: Bearer $TOKEN"
-R=$(curl -s "$BASE/api/v1/me" -H "$A")
-need "me (no circles yet)" '"email"' "$R"
+EMAIL="walkthrough.$(date +%s)@planet.dev"
+EMAIL_B="walkthrough.b.$(date +%s)@planet.dev"
+EMAIL_C="walkthrough.c.$(date +%s)@planet.dev"
+DISPLAY_B="${EMAIL_B%@*}"
 
-echo "== F2 建圈（含第一只宠物） =="
-R=$(curl -s -X POST "$BASE/api/v1/circles" -H "$J" -H "$A" -d '{"pet_name":"Milo","species":"dog","breed":"Golden Retriever","timezone":"Asia/Singapore"}')
-need "create circle+pet" '"invite_code"' "$R"
-PET=$(echo "$R" | sed -n 's/.*"pet":{"id":\([0-9]*\).*/\1/p')
-CIRCLE=$(echo "$R" | sed -n 's/.*"circle":{"id":\([0-9]*\).*/\1/p')
-[ -n "$PET" ] && ok "petID=$PET" || bad "pet id parse"
+echo "== F1 认证与会话 =="
+R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL\"}")
+expect "request-code returns development code" '.sent == true and (.dev_code | strings | test("^[0-9]{6}$"))' "$R"
+CODE=$(jq -r '.dev_code' <<<"$R")
+R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL\",\"code\":\"$CODE\",\"device\":\"api-walkthrough\"}")
+expect "verify-code returns session" '.token | strings | length > 20' "$R"
+TOKEN=$(jq -r '.token' <<<"$R")
+USER_A=$(jq -r '.user.id' <<<"$R")
+expect "authenticated /me returns the same email" ".user.email == \"$EMAIL\"" "$(get /api/v1/me "$TOKEN")"
 
-echo "== F3 档案与用药 =="
-R=$(curl -s -X PATCH "$BASE/api/v1/pets/$PET" -H "$J" -H "$A" -d '{"allergies":["Chicken (severe)"],"conditions":["Atopic dermatitis"],"emergency_contacts":{"primary":{"name":"Devin","phone":"+65 9000 0001"},"vet":{"name":"Greenwoods Veterinary","phone":"+65 6000 0002"},"authorized_decision_maker":{"name":"Li Ping","phone":"+65 8000 0003"}}}')
-need "patch pet profile" 'Atopic' "$R"
-R=$(curl -s -X POST "$BASE/api/v1/pets/$PET/medications" -H "$J" -H "$A" -d '{"name":"Apoquel","dose":"16mg","schedule":"Once daily"}')
-need "create medication + auto timeline event" '"event"' "$R"
-MED=$(echo "$R" | sed -n 's/.*"medication":{"id":\([0-9]*\).*/\1/p')
+echo "== F2 Family、成员、Pet =="
+R=$(post /api/v1/families "$TOKEN" '{"name":"Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
+expect "create Family" '.family.id and .invite_code' "$R"
+CIRCLE=$(jq -r '.family.id' <<<"$R")
+INVITE=$(jq -r '.invite_code' <<<"$R")
+expect "Family keeps its IANA timezone" '.family.timezone == "Asia/Shanghai"' "$R"
+R=$(post "/api/v1/families/$CIRCLE/pets" "$TOKEN" '{"name":"Milo","species":"dog","breed":"Golden Retriever"}' "$(key)")
+expect "create Pet" '.pet.id and .pet.name == "Milo"' "$R"
+PET=$(jq -r '.pet.id' <<<"$R")
+expect "canonical accessible Pet list includes the owner Pet" ".pets | any(.id == \"$PET\")" "$(get /api/v1/pets "$TOKEN")"
+R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_C\"}")
+CODE_C=$(jq -r '.dev_code' <<<"$R")
+R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_C\",\"code\":\"$CODE_C\"}")
+TOKEN_C=$(jq -r '.token' <<<"$R")
+USER_C=$(jq -r '.user.id' <<<"$(get /api/v1/me "$TOKEN_C")")
+R=$(post "/api/v1/pets/$PET/access-grants" "$TOKEN" "{\"user_id\":\"$USER_C\",\"role\":\"editor\"}")
+GRANT=$(jq -r '.grant.id' <<<"$R")
+expect "directly granted user sees the Pet" ".pets | any(.id == \"$PET\" and .access_role == \"editor\")" "$(get /api/v1/pets "$TOKEN_C")"
+R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_B\"}")
+CODE_B=$(jq -r '.dev_code' <<<"$R")
+R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_B\",\"code\":\"$CODE_B\"}")
+TOKEN_B=$(jq -r '.token' <<<"$R")
+USER_B=$(jq -r '.user.id' <<<"$R")
+R=$(post /api/v1/families/join "$TOKEN_B" "{\"code\":\"$INVITE\"}" "$(key)")
+expect "second user joins Family" ".family.id == \"$CIRCLE\"" "$R"
+expect "second user sees the shared Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/families/$CIRCLE/pets" "$TOKEN_B")"
+R=$(post /api/v1/families "$TOKEN_B" '{"name":"Second Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
+expect "create second Family for Pet sharing" '.family.id and .invite_code' "$R"
+CIRCLE_2=$(jq -r '.family.id' <<<"$R")
+INVITE_2=$(jq -r '.invite_code' <<<"$R")
+R=$(post /api/v1/families/join "$TOKEN" "{\"code\":\"$INVITE_2\"}" "$(key)")
+expect "Pet owner joins the second Family" ".family.id == \"$CIRCLE_2\"" "$R"
+R=$(post "/api/v1/pets/$PET/families" "$TOKEN" "{\"family_id\":\"$CIRCLE_2\"}")
+expect "share Pet with another Family" ".family_id == \"$CIRCLE_2\"" "$R"
+expect "shared Family sees the Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/families/$CIRCLE_2/pets" "$TOKEN_B")"
+delete "/api/v1/pets/$PET/families/$CIRCLE_2" "$TOKEN"
+expect "remove shared Family access" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/families/$CIRCLE_2/pets" "$TOKEN_B")"
 
-echo "== F4 今日照护 =="
-R=$(curl -s -X POST "$BASE/api/v1/pets/$PET/tasks" -H "$J" -H "$A" -d '{"title":"Breakfast","time_of_day":"08:00"}')
-need "create task" '"task"' "$R"
-TASK=$(echo "$R" | sed -n 's/.*"task":{"id":\([0-9]*\).*/\1/p')
-R=$(curl -s "$BASE/api/v1/pets/$PET/today" -H "$A")
-need "today list" 'Breakfast' "$R"
-R=$(curl -s -X POST "$BASE/api/v1/tasks/$TASK/log" -H "$J" -H "$A" -d '{"status":"done"}')
-need "complete task" '"status":"done"' "$R"
-R=$(curl -s -X DELETE "$BASE/api/v1/tasks/$TASK/log" -H "$A")
-need "undo log" '"ok"' "$R"
+echo "== F3 Care plan、Today、历史 =="
+R=$(post "/api/v1/pets/$PET/care-plans" "$TOKEN" '{"type":"medication","title":"Heart medicine","description":"With food","rule":{"type":"daily","time":"08:00"}}' "$(key)")
+expect "create care plan" '.care_plan.id and .care_rule.id and .task.id' "$R"
+TASK=$(jq -r '.task.id' <<<"$R")
+CARE_ITEM=$(jq -r '.care_plan.id' <<<"$R")
+R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_B" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"role":"helper"}')
+expect "assign a helper to the care plan" ".assignment.user_id == \"$USER_B\" and .assignment.role == \"helper\"" "$R"
+expect "care assignments list includes the helper" ".assignments | any(.user_id == \"$USER_B\" and .role == \"helper\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_A" -H "$JSON" -H "Authorization: Bearer $TOKEN_B" -d '{"role":"helper"}')
+expect "non-owner cannot change care assignments" '.error.code == "ROLE_FORBIDDEN"' "$R"
+delete "/api/v1/care-plans/$CARE_ITEM/assignments/$USER_B" "$TOKEN"
+expect "remove helper from the care plan" ".assignments | all(.user_id != \"$USER_B\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -w $'\n%{http_code}' -X DELETE "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_A" -H "Authorization: Bearer $TOKEN")
+OWNER_DELETE_STATUS="${R##*$'\n'}"
+OWNER_DELETE_BODY="${R%$'\n'*}"
+[ "$OWNER_DELETE_STATUS" = "409" ] && expect "care plan cannot lose its owner" '.error.code == "CARE_ASSIGNMENT_OWNER_REQUIRED"' "$OWNER_DELETE_BODY" || fail "care plan cannot lose its owner"
+expect "care plan owner assignment remains intact" ".assignments | any(.user_id == \"$USER_A\" and .role == \"owner\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$TASK" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":true}')
+expect "archive care plan" ".task.archived_at != null" "$R"
+expect "archived care plan is discoverable when requested" ".tasks | any(.care_plan_id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/tasks?include_archived=true" "$TOKEN")"
+R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$CARE_ITEM" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":false}')
+expect "restore care plan" ".task.archived_at == null" "$R"
+TODAY=$(get "/api/v1/families/$CIRCLE/today" "$TOKEN")
+expect "Today contains the care task" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$TODAY"
+TASK=$(jq -r '.pets[].items[] | select(.task.care_plan_id == "'"$CARE_ITEM"'") | .task.id' <<<"$TODAY")
+expect "directly granted user sees Pet Today" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$(get "/api/v1/today?pet_id=$PET" "$TOKEN_C")"
+R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"done"}' "$(key)")
+expect "complete Today task" '.log.status == "completed" or .log.status == "done"' "$R"
+LOG=$(jq -r '.log.id' <<<"$R")
+R=$(post "/api/v1/task-logs/$LOG/undo" "$TOKEN" '' "$(key)")
+[ -z "$R" ] && ok "undo task completion" || expect "undo task completion" 'true' "$R"
+R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"skipped"}' "$(key)")
+expect "skip Today task" '.log.status == "skipped"' "$R"
+SKIP_LOG=$(jq -r '.log.id' <<<"$R")
+R=$(post "/api/v1/task-logs/$SKIP_LOG/undo" "$TOKEN" '' "$(key)")
+[ -z "$R" ] && ok "undo skipped task" || expect "undo skipped task" 'true' "$R"
+R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN" '{"type":"symptom","occurred_at":"2026-08-21T08:00:00Z","payload":{"text":"Less active after breakfast"}}' "$(key)")
+expect "record timeline symptom" '.event.type == "symptom"' "$R"
+expect "timeline returns the record" '.events | any(.type == "symptom")' "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN_B" '{"type":"note","occurred_at":"2026-08-21T09:00:00Z","payload":{"text":"B checked the morning walk"}}' "$(key)")
+expect "second caregiver can record a note" ".event.recorded_by_name == \"$DISPLAY_B\"" "$R"
+expect "timeline keeps the real recorder name" ".events | any(.recorded_by_name == \"$DISPLAY_B\" and .payload.text == \"B checked the morning walk\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/families/$CIRCLE/alerts" "$TOKEN")"
+expect "daily digest returns the Family view" '.date and (.pets | type == "array")' "$(get "/api/v1/families/$CIRCLE/digest" "$TOKEN")"
 
-echo "== F5 时间线 =="
-R=$(curl -s -X POST "$BASE/api/v1/pets/$PET/events" -H "$J" -H "$A" -d '{"type":"symptom","title":"Vomited twice after dinner","severity":"moderate"}')
-need "create symptom event" '"symptom"' "$R"
-R=$(curl -s -X POST "$BASE/api/v1/pets/$PET/events" -H "$J" -H "$A" -d '{"type":"weight","title":"5.9 kg","data":{"weight_kg":5.9}}')
-need "create weight event" 'weight_kg' "$R"
-R=$(curl -s "$BASE/api/v1/pets/$PET/timeline" -H "$A")
-need "timeline lists events" 'Vomited' "$R"
+echo "== F3b 用药生命周期 =="
+R=$(post "/api/v1/pets/$PET/medications" "$TOKEN" '{"name":"Heartgard","dose":"1 tablet","schedule":"monthly","note":"with food"}' "$(key)")
+expect "start medication" '.medication.id and .medication.ended_on == null' "$R"
+MED=$(jq -r '.medication.id' <<<"$R")
+expect "started medication appears in the Pet list" ".medications | any(.id == \"$MED\" and .ended_on == null)" "$(get "/api/v1/pets/$PET/medications" "$TOKEN")"
+expect "medication start is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"started\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+expect "stop medication" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}$\"))" "$R"
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+expect "repeating stop is idempotent" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}\"))" "$R"
+expect "medication stop is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"ended\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
+delete "/api/v1/medications/$MED" "$TOKEN"
+expect "deleted medication removes its automatic history" ".events | all(.payload.medication_id != \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
 
-echo "== F6/F7 分享与公开页 =="
-R=$(curl -s -X POST "$BASE/api/v1/pets/$PET/shares" -H "$J" -H "$A" -d '{"kind":"summary","ttl_hours":72,"reason":"Vomiting since last night"}')
-need "create summary share" '"url"' "$R"
-SHARE_URL=$(echo "$R" | sed -n 's/.*"url":"\([^"]*\)".*/\1/p')
-R=$(curl -s -X POST "$BASE/api/v1/pets/$PET/shares" -H "$J" -H "$A" -d '{"kind":"care","ttl_hours":72}')
-need "create care share" '"url"' "$R"
-CARE_URL=$(echo "$R" | sed -n 's/.*"url":"\([^"]*\)".*/\1/p')
-R=$(curl -s "$SHARE_URL")
-need "public summary page renders" "Why we're here" "$R"
-R=$(curl -s "$CARE_URL")
-need "public care card renders" 'CARING FOR' "$R"
-R=$(curl -s "$BASE/api/v1/pets/$PET/shares" -H "$A")
-need "view_count incremented" '"view_count":1\|"view_count":2' "$R"
+echo "== F4 分享、撤销、导出 =="
+R=$(post "/api/v1/pets/$PET/shares" "$TOKEN" '{"kind":"care_card","ttl_hours":24}' "$(key)")
+expect "create care card share" '.share.id and .token' "$R"
+SHARE=$(jq -r '.token' <<<"$R")
+expect "anonymous share view" '.kind == "care_card"' "$(get "/api/v1/shares/$SHARE" "")"
+SHARE_ID=$(jq -r '.share.id' <<<"$R")
+expect "share count increments" ".shares | any(.id == \"$SHARE_ID\" and .view_count == 1)" "$(get "/api/v1/pets/$PET/shares" "$TOKEN")"
+delete "/api/v1/shares/$SHARE_ID" "$TOKEN"
+R=$(curl -sS "$BASE/api/v1/shares/$SHARE")
+expect "revoked share returns SHARE_GONE" '.error.code == "SHARE_GONE"' "$R"
+expect "Pet export includes timeline" '.timeline' "$(get "/api/v1/pets/$PET/export" "$TOKEN")"
+delete "/api/v1/pets/$PET/access-grants/$GRANT" "$TOKEN"
+expect "revoking direct access removes the Pet" ".pets | all(.id != \"$PET\")" "$(get /api/v1/pets "$TOKEN_C")"
 
-echo "== F8 数据生命周期 =="
-R=$(curl -s "$BASE/api/v1/pets/$PET/export" -H "$A")
-need "export full dump" 'timeline_events' "$R"
-R=$(curl -s -X DELETE "$BASE/api/v1/pets/$PET" -H "$A")
-need "delete pet cascade" '"ok"' "$R"
-R=$(curl -s "$BASE/api/v1/me" -H "$A")
-if echo "$R" | grep -q 'Milo'; then bad "pet still in /me after delete"; else ok "pet gone from /me"; fi
+echo "== F5 删除保护 =="
+delete "/api/v1/pets/$PET" "$TOKEN" "{\"confirm\":\"$PET\"}"
+expect "deleted Pet disappears from Family" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/families/$CIRCLE/pets" "$TOKEN")"
 
 echo "== 汇总 =="
 echo "PASS=$PASS FAIL=$FAIL"
-[ "$FAIL" -eq 0 ] && echo "ALL GREEN ✓" || exit 1

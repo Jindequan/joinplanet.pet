@@ -368,6 +368,10 @@ test('secondary management pages keep one heading and a stable return surface', 
 })
 
 test('object workspaces keep an accessible heading, return path, and mobile-safe width', async ({ page }) => {
+  // The first deep link can trigger a cold Expo web bundle compile in CI.
+  // Keep the structural assertions strict while allowing that one-time build
+  // to complete on a constrained runner.
+  test.setTimeout(120_000)
   await seedSession(page)
   await mockApi(page)
   await page.route('**/api/v1/me/activation-summary', async (route) => {

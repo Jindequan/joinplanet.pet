@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { EmailCapture } from "../app/components/email-capture";
 import { FoundingProgress } from "../app/components/founding-progress";
 
@@ -50,7 +51,7 @@ export default function Home() {
         </div>
 
         <div className="story-hero-visual" aria-label="The dog behind PLANET">
-          <img src="/mydog.JPG" alt="The dog who inspired PLANET, after a grooming visit" />
+          <Image src="/mydog.JPG" width={5712} height={4284} alt="The dog who inspired PLANET, after a grooming visit" />
           <div className="story-hero-note"><span className="note-icon"><span className="icon icon-heart-pulse" aria-hidden="true" /></span><div><strong>This is why</strong><small>Every product decision starts here</small></div></div>
         </div>
       </section>
@@ -71,12 +72,12 @@ export default function Home() {
           <p>That is the beautiful part of living with a pet: a thousand small acts that quietly become a shared life.</p>
           <div className="story-quote"><span className="icon icon-heart-pulse" aria-hidden="true" /><span>Then they turn five, or seven, and the questions change.</span></div>
         </div>
-        <figure className="story-image story-image-portrait"><img src="/mydog2.jpg" alt="A dog enjoying a quiet moment outdoors" /><figcaption>The ordinary days are the ones worth keeping.</figcaption></figure>
+        <figure className="story-image story-image-portrait"><Image src="/mydog2.jpg" width={2796} height={2061} alt="A dog enjoying a quiet moment outdoors" /><figcaption>The ordinary days are the ones worth keeping.</figcaption></figure>
       </section>
 
       {/* ③ FRAGMENTS — 转向 you,痛点 */}
       <section className="story-section shell story-split story-fragments">
-        <figure className="story-image story-image-wide"><img src="/cover3.png" alt="Pet records scattered across chats, photos, drawers, and memory" /><figcaption>Where does the whole story live right now?</figcaption></figure>
+        <figure className="story-image story-image-wide"><Image src="/cover3.png" width={1448} height={1086} alt="Pet records scattered across chats, photos, drawers, and memory" /><figcaption>Where does the whole story live right now?</figcaption></figure>
         <div className="story-copy">
           <p className="section-label">Then the fragments begin to pile up</p>
           <h2>Your pet&apos;s life<br /><em>lives in a dozen places.</em></h2>
@@ -94,12 +95,12 @@ export default function Home() {
           <p>Then it turns that history into something useful — patterns to notice, questions to ask, and a clear one-page summary to bring to the vet. <a href="/tools" style={{ borderBottom: "1px solid currentColor" }}>Browse the free tools</a> — no account needed.</p>
           <p className="story-disclaimer">PLANET organizes and prepares. It does not diagnose and does not replace a licensed veterinarian.</p>
         </div>
-        <figure className="story-image story-image-wide"><img src="/cover1.png" alt="PLANET health timeline showing daily care, weight, medication, and vet visits in one place" /><figcaption>One living record for everyday care and health.</figcaption></figure>
+        <figure className="story-image story-image-wide"><Image src="/cover1.png" width={1448} height={1086} alt="PLANET health timeline showing daily care, weight, medication, and vet visits in one place" /><figcaption>One living record for everyday care and health.</figcaption></figure>
       </section>
 
       {/* ⑤ AI COMPANION — 情感价值,差异化 */}
       <section className="story-section shell story-split story-companion">
-        <figure className="story-image story-image-wide"><img src="/1.png" alt="PLANET pet intelligence concept — a living profile that grows with them" /><figcaption>From a health tool into a companion.</figcaption></figure>
+        <figure className="story-image story-image-wide"><Image src="/1.png" width={1672} height={941} alt="PLANET pet intelligence concept — a living profile that grows with them" /><figcaption>From a health tool into a companion.</figcaption></figure>
         <div className="story-copy">
           <p className="section-label">More than a tool — a presence</p>
           <h2>It remembers who they are.<br /><em>Not just what happened.</em></h2>
@@ -110,7 +111,7 @@ export default function Home() {
 
       {/* ⑥ FAMILY — 协作价值,第二人称 */}
       <section className="story-section shell story-split story-family">
-        <figure className="story-image story-image-wide"><img src="/cover4.png" alt="A pet profile shared with family, sitters, and vets — the right view for each person" /><figcaption>One record. The right view for each person.</figcaption></figure>
+        <figure className="story-image story-image-wide"><Image src="/cover4.png" width={1448} height={1086} alt="A pet profile shared with family, sitters, and vets — the right view for each person" /><figcaption>One record. The right view for each person.</figcaption></figure>
         <div className="story-copy">
           <p className="section-label">Because care is never one person&apos;s job</p>
           <h2>Care is a shared verb.<br /><em>Not another group chat.</em></h2>

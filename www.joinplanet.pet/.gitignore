@@ -39,3 +39,9 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
+
+# Go build artifacts
+server/lemon-webhook/planet-lemon-webhook
+
+# server runtime uploads
+server/uploads/

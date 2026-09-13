@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiUrl } from "../lib/api-base";
+import { utmPayload } from "../lib/utm";
 
 const USE_CASES = [
   { id: "vet", label: "Vet visit", detail: "Get the recent changes in order." },
@@ -29,7 +30,7 @@ export function QuickDemo() {
         mode: "cors",
         credentials: "omit",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, want: `quick-demo:${useCase}`, source: "home_quick_demo" }),
+        body: JSON.stringify({ email, want: `quick-demo:${useCase}`, source: "home_quick_demo", utm: utmPayload() }),
       });
       if (!response.ok) throw new Error("vote failed");
       setVoteStatus("done");
@@ -78,8 +79,8 @@ export function QuickDemo() {
               <p className="quick-demo-result-foot">Organized for review. You stay in control before anything is shared.</p>
               <form className="quick-demo-vote" onSubmit={submitVote}>
                 <label htmlFor="quick-demo-email">Want the first real version for {displayName}?</label>
-                <div><input id="quick-demo-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@home.com" required /><button className="narrative-button narrative-button-light" type="submit" disabled={voteStatus === "sending" || voteStatus === "done"}>{voteStatus === "done" ? "You're on the list" : voteStatus === "sending" ? "Saving…" : "Join the pilot"}</button></div>
-                <small>{voteStatus === "error" ? "We couldn&apos;t save that. Please try again or email support@joinplanet.pet." : "No sales sequence. We&apos;ll only write when there is something real to try."}</small>
+                <div><input id="quick-demo-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@home.com" maxLength={254} required /><button className="narrative-button narrative-button-light" type="submit" disabled={voteStatus === "sending" || voteStatus === "done"}>{voteStatus === "done" ? "You're on the list" : voteStatus === "sending" ? "Saving…" : "Join the pilot"}</button></div>
+                <small role={voteStatus === "error" ? "alert" : undefined}>{voteStatus === "error" ? "We couldn't save that. Please try again or email support@joinplanet.pet." : "No sales sequence. We'll only write when there is something real to try."}</small>
               </form>
             </div>
           )}

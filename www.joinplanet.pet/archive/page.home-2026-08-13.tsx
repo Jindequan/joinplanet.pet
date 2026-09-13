@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { EmailCapture } from "../app/components/email-capture";
 import { FoundingProgress } from "../app/components/founding-progress";
 
@@ -37,13 +38,13 @@ export default function Home() {
         </div>
 
         <div className="story-hero-visual" aria-label="PLANET keeps your pet's whole story in one place">
-          <img src="/cover1.png" alt="PLANET health timeline — daily care, weight, medication, and vet visits in one place" />
+          <Image src="/cover1.png" width={1448} height={1086} alt="PLANET health timeline — daily care, weight, medication, and vet visits in one place" />
         </div>
       </section>
 
       {/* ② 痛点 — 金句 + 视觉,砍掉长段落 */}
       <section className="story-section shell story-split story-fragments">
-        <figure className="story-image story-image-wide"><img src="/cover3.png" alt="Pet records scattered across chats, photos, and drawers" /><figcaption>Where does the whole story live right now?</figcaption></figure>
+        <figure className="story-image story-image-wide"><Image src="/cover3.png" width={1448} height={1086} alt="Pet records scattered across chats, photos, and drawers" /><figcaption>Where does the whole story live right now?</figcaption></figure>
         <div className="story-copy">
           <p className="section-label">Sound familiar?</p>
           <h2>Every vet visit,<br /><em>you rebuild it from memory.</em></h2>
@@ -63,12 +64,12 @@ export default function Home() {
           <p>Upload what you have. Add what you remember. Hand the vet one clear page — not a pile of photos.</p>
           <p className="story-disclaimer">PLANET organizes and prepares. It does not diagnose or replace a licensed veterinarian.</p>
         </div>
-        <figure className="story-image story-image-wide"><img src="/cover4.png" alt="A vet-ready summary shared from PLANET in one tap" /><figcaption>One page. The right context for the vet.</figcaption></figure>
+        <figure className="story-image story-image-wide"><Image src="/cover4.png" width={1448} height={1086} alt="A vet-ready summary shared from PLANET in one tap" /><figcaption>One page. The right context for the vet.</figcaption></figure>
       </section>
 
       {/* ④ 价值 2 — 家庭协作,截图 + 一句话 */}
       <section className="story-section shell story-split story-family">
-        <figure className="story-image story-image-wide"><img src="/1.png" alt="A pet profile shared with family, sitters, and the vet" /><figcaption>One record. The right view for each person.</figcaption></figure>
+        <figure className="story-image story-image-wide"><Image src="/1.png" width={1672} height={941} alt="A pet profile shared with family, sitters, and the vet" /><figcaption>One record. The right view for each person.</figcaption></figure>
         <div className="story-copy">
           <p className="section-label">Care is shared</p>
           <h2>Everyone knows<br /><em>who did what today.</em></h2>
@@ -110,7 +111,7 @@ export default function Home() {
           <p>I kept losing track — every meal, every check-up, every walk. Then he turned five, and the hard part was coming. So I started building.</p>
           <a className="text-link" href="mailto:hello@joinplanet.pet">Talk to me directly <span className="icon icon-arrow-right" aria-hidden="true" /></a>
         </div>
-        <figure className="story-image story-image-portrait"><img src="/mydog.JPG" alt="The dog who inspired PLANET" /><figcaption>Every product decision starts here.</figcaption></figure>
+        <figure className="story-image story-image-portrait"><Image src="/mydog.JPG" width={5712} height={4284} alt="The dog who inspired PLANET" /><figcaption>Every product decision starts here.</figcaption></figure>
       </section>
 
       {/* ⑧ PRICING — 奖励早期框架,退款前置 */}

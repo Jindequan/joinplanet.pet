@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { captureUtm, utmPayload } from "../lib/utm";
 
 // Delegates clicks on any element carrying `data-event` to gtag. This keeps
 // the marketing landing page a Server Component while still emitting GA4
@@ -8,6 +9,9 @@ import { useEffect } from "react";
 // no-op and this component simply does nothing.
 export function AnalyticsEvents() {
   useEffect(() => {
+    // Persist utm params so later signups can carry their channel with them.
+    captureUtm();
+
     function handleClick(event: MouseEvent) {
       const target = event.target as Element | null;
       const el = target?.closest?.("[data-event]") as HTMLElement | null;
@@ -18,11 +22,13 @@ export function AnalyticsEvents() {
       const label = el.getAttribute("data-event-label") ?? undefined;
       const valueRaw = el.getAttribute("data-event-value");
       const value = valueRaw ? Number(valueRaw) : undefined;
+      const utmSource = utmPayload();
       const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
       gtag?.("event", eventName, {
         event_category: category,
         ...(label ? { event_label: label } : {}),
         ...(Number.isFinite(value) ? { value } : {}),
+        ...(utmSource ? { utm_attribution: utmSource } : {}),
       });
     }
     document.addEventListener("click", handleClick);

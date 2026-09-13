@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 const tabs = ["Today", "Timeline", "Health", "People", "Memories"] as const;
 type Tab = (typeof tabs)[number];
@@ -11,7 +12,7 @@ export function PrototypeTabs() {
   return (
     <div className="planet-stage narrative-shell" data-prototype-tab={tab.toLowerCase()}>
       <aside className="planet-profile">
-        <div className="planet-pet"><img src="/mydog2.jpg" alt="Milo" /><div><strong>Milo</strong><span>5 years · very much himself</span></div></div>
+        <div className="planet-pet"><Image src="/mydog2.jpg" alt="Milo" width={2796} height={2061} /><div><strong>Milo</strong><span>5 years · very much himself</span></div></div>
         <nav aria-label="PLANET interactive prototype sections">
           {tabs.map((item) => <button className={item === tab ? "active" : ""} key={item} type="button" onClick={() => setTab(item)} data-event="prototype_tab" data-event-category="prototype" data-event-label={item.toLowerCase()}>{item}</button>)}
         </nav>
@@ -33,7 +34,7 @@ function TodayView() {
 }
 
 function TimelineView() {
-  return <div className="planet-today prototype-timeline-view"><div className="planet-date"><span>HEALTH TIMELINE · MILO</span><strong>The small things, connected.</strong><p>Every note keeps its date and its source.</p></div><div className="prototype-event-list"><article><time>JUL 24</time><div><strong>Weight · 5.4 kg</strong><small>Normal appetite · recorded by Devin</small></div></article><article><time>AUG 02</time><div><strong>New medication</strong><small>Apoquel · 16 mg with breakfast</small></div></article><article className="prototype-event-active"><time>AUG 13</time><div><strong>Ate half of lunch</strong><small>Photo and note · recorded by Devin</small></div></article></div><a className="prototype-inline-action" href="#quick-demo" data-event="prototype_add_moment" data-event-category="prototype" data-event-label="timeline"> <span className="icon icon-plus" aria-hidden="true" /> Add a moment</a></div>;
+  return <div className="planet-today prototype-timeline-view"><div className="planet-date"><span>HEALTH TIMELINE · MILO</span><strong>The small things, connected.</strong><p>Every note keeps its date and its source.</p></div><div className="prototype-event-list"><article><time>JUL 24</time><div><strong>Weight · 5.4 kg</strong><small>Normal appetite · recorded by Devin</small></div></article><article><time>AUG 02</time><div><strong>New medication</strong><small>Apoquel · 16 mg with breakfast</small></div></article><article className="prototype-event-active"><time>AUG 13</time><div><strong>Ate half of lunch</strong><small>Note · recorded by Devin</small></div></article></div><a className="prototype-inline-action" href="#quick-demo" data-event="prototype_add_moment" data-event-category="prototype" data-event-label="timeline"> <span className="icon icon-plus" aria-hidden="true" /> Add a moment</a></div>;
 }
 
 function HealthView() {
@@ -45,5 +46,5 @@ function PeopleView() {
 }
 
 function MemoriesView() {
-  return <div className="planet-today prototype-memories-view"><div className="planet-date"><span>MEMORIES · MILO&apos;S LIFE</span><strong>The parts no spreadsheet can hold.</strong><p>Small details become a living sense of who they are.</p></div><div className="memory-preview-grid"><figure><img src="/mydog2.jpg" alt="Milo at home" /><figcaption>That look he gives when the walk is late.</figcaption></figure><figure><img src="/mydog.JPG" alt="Milo after an appointment" /><figcaption>Brave at the appointment · Aug 13</figcaption></figure></div></div>;
+  return <div className="planet-today prototype-memories-view"><div className="planet-date"><span>MEMORIES · MILO&apos;S LIFE</span><strong>The parts no spreadsheet can hold.</strong><p>Small details become a living sense of who they are.</p></div><div className="memory-preview-grid"><figure><Image src="/mydog2.jpg" alt="Milo at home" width={2796} height={2061} /><figcaption>That look he gives when the walk is late.</figcaption></figure><figure><Image src="/mydog.JPG" alt="Milo after an appointment" width={5712} height={4284} /><figcaption>Brave at the appointment · Aug 13</figcaption></figure></div></div>;
 }

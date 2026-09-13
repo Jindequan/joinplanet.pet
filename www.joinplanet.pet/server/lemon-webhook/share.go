@@ -15,7 +15,8 @@ import (
 
 func init() {
 	apiModules = append(apiModules, func(mux *http.ServeMux, a *app) {
-		mux.HandleFunc("POST /pets/{petID}/shares", a.requirePetMember(a.handleCreateShare))
+		// 权限表（APP-DESIGN §6）：生成与撤销分享链接都是 Owner-only。
+		mux.HandleFunc("POST /pets/{petID}/shares", a.requirePetOwner(a.handleCreateShare))
 		mux.HandleFunc("GET /pets/{petID}/shares", a.requirePetMember(a.handleListShares))
 		mux.HandleFunc("DELETE /shares/{shareID}", a.requireShareOwner(a.handleRevokeShare))
 	})
@@ -90,7 +91,7 @@ type shareListItem struct {
 
 // ---- handlers ---------------------------------------------------------------
 
-func (a *app) handleCreateShare(w http.ResponseWriter, req *http.Request, userID, petID int64, _ string) {
+func (a *app) handleCreateShare(w http.ResponseWriter, req *http.Request, userID, petID int64) {
 	var body createShareRequest
 	if err := readJSON(req, &body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, errBody("invalid request body"))

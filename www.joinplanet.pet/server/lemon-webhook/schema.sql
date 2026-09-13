@@ -54,6 +54,13 @@ CREATE TABLE IF NOT EXISTS email_captures (
   email      TEXT NOT NULL,
   email_hash TEXT NOT NULL,
   source     TEXT NOT NULL,
+  utm        TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS email_captures_email_hash_unique ON email_captures (email_hash);
+
+-- 5. Marketing attribution (2026-09): compact utm string carried from the
+-- landing page through each signup. Nullable — organic visits store null.
+-- ALTER (not CREATE) so databases provisioned before this date upgrade in place.
+ALTER TABLE pet_intake    ADD COLUMN IF NOT EXISTS utm TEXT;
+ALTER TABLE email_captures ADD COLUMN IF NOT EXISTS utm TEXT;

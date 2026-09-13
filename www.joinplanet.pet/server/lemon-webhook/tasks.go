@@ -73,6 +73,11 @@ func (a *app) resolveTask(w http.ResponseWriter, req *http.Request, userID int64
 		jsonResponse(w, http.StatusNotFound, errBody("task not found"))
 		return 0, 0, "", false
 	}
+	// Archived pets are read-only: their care tasks cannot be created, edited,
+	// deleted, or logged against.
+	if !a.ensurePetNotArchived(w, req.Context(), petID) {
+		return 0, 0, "", false
+	}
 	return taskID, petID, role, true
 }
 
@@ -170,6 +175,9 @@ func taskLogFromRow(status *string, byUserID *int64, byName, logNote *string, at
 // ---- POST /pets/{petID}/tasks -----------------------------------------------
 
 func (a *app) handleTaskCreate(w http.ResponseWriter, req *http.Request, userID, petID int64, _ string) {
+	if !a.ensurePetNotArchived(w, req.Context(), petID) {
+		return
+	}
 	var body struct {
 		Title        string `json:"title"`
 		TimeOfDay    string `json:"time_of_day"`

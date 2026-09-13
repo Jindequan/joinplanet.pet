@@ -78,7 +78,7 @@ export function CheckoutRedirect({ variant }: Props) {
   }, [variant]);
 
   return (
-    <div className="checkout-state">
+    <div className="checkout-state" role="status" aria-live="polite">
       {state === "loading" ? <div className="checkout-spinner" aria-hidden="true" /> : null}
       <p className="section-label">PLANET · Checkout</p>
       {state === "loading" ? (
@@ -93,7 +93,7 @@ export function CheckoutRedirect({ variant }: Props) {
         </>
       ) : (
         <>
-          <h1>Something went wrong</h1>
+          <h1 role="alert">Something went wrong</h1>
           <p>{message}</p>
         </>
       )}

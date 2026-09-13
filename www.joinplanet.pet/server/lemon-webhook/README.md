@@ -20,6 +20,11 @@ https://your-server.example.com/webhook
 
 程序验证 `X-Signature`、按 webhook id 去重，并把最新状态追加到 JSONL 文件。`MAX_MEMBERSHIPS` 默认是 `100`，也可以通过环境变量调整。
 
+生产环境的 `api.joinplanet.pet` 与 App API 共用一个域名：Landing 服务监听 `127.0.0.1:8080`，
+由 Caddy 将 `/progress`、`/checkout`、`/intake`、`/email-capture`、`/webhook` 和
+`/membership/claim` 等路径转发到这里；`/api/v1/*`、`/readyz` 和 App `/healthz` 必须保留给
+`planet-api:8081`。不要把整个域名反代到 8080。
+
 landing page 可以把 `NEXT_PUBLIC_PROGRESS_API_URL` 设置为 `https://your-server.example.com/progress`，页面会展示已付款人数、下一位会员序号和剩余名额。
 
 如果暂时不启用 webhook，仍然可以从 Lemon 导出订单做人工导入；但自动兑付、退款同步和实时名额控制必须依赖 webhook 或一次性导入程序。

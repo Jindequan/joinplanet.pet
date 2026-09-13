@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiUrl } from "../lib/api-base";
+import { utmPayload } from "../lib/utm";
 
 export function CoCreateForm() {
   const [petName, setPetName] = useState("");
@@ -20,7 +21,7 @@ export function CoCreateForm() {
           mode: "cors",
           credentials: "omit",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, source: "home_cocreate" }),
+          body: JSON.stringify({ email, source: "home_cocreate", utm: utmPayload() }),
         }),
         fetch(apiUrl("/intake"), {
           method: "POST",
@@ -31,6 +32,7 @@ export function CoCreateForm() {
             email,
             want: `${petName.trim()}: ${wish.trim()}`,
             source: "home_cocreate",
+            utm: utmPayload(),
           }),
         }),
       ]);
@@ -58,15 +60,15 @@ export function CoCreateForm() {
     <form className="cocreate-form" onSubmit={handleSubmit} aria-label="Help shape PLANET">
       <label>
         <span>What is your pet&apos;s name?</span>
-        <input value={petName} onChange={(event) => setPetName(event.target.value)} placeholder="Milo" required />
+        <input value={petName} onChange={(event) => setPetName(event.target.value)} placeholder="Milo" maxLength={40} required />
       </label>
       <label className="cocreate-wide">
         <span>What do you wish everyone caring for them always knew?</span>
-        <textarea value={wish} onChange={(event) => setWish(event.target.value)} placeholder="The routine, small change, medicine, or piece of their story that matters most…" required />
+        <textarea value={wish} onChange={(event) => setWish(event.target.value)} placeholder="The routine, small change, medicine, or piece of their story that matters most…" maxLength={1000} required />
       </label>
       <label>
         <span>Where should we send your invitation?</span>
-        <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@home.com" required />
+        <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@home.com" maxLength={254} required />
       </label>
       <div className="cocreate-submit cocreate-wide">
         <button className="narrative-button narrative-button-light" type="submit" disabled={status === "submitting"}>
@@ -74,7 +76,7 @@ export function CoCreateForm() {
           <span className="icon icon-arrow-up-right" aria-hidden="true" />
         </button>
         <p>One thoughtful note from us when there is something real to see. No sales sequence.</p>
-        {status === "error" ? <p className="cocreate-error">We couldn&apos;t save this just now. Please try again or email support@joinplanet.pet.</p> : null}
+        {status === "error" ? <p className="cocreate-error" role="alert">We couldn&apos;t save this just now. Please try again or email support@joinplanet.pet.</p> : null}
       </div>
     </form>
   );

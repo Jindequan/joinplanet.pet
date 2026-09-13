@@ -223,6 +223,9 @@ func (a *app) attachFiles(ctx context.Context, req *http.Request, events []event
 // ---- POST /pets/{petID}/events -------------------------------------------------
 
 func (a *app) handleEventCreate(w http.ResponseWriter, req *http.Request, userID, petID int64, _ string) {
+	if !a.ensurePetNotArchived(w, req.Context(), petID) {
+		return
+	}
 	var body struct {
 		Type       string          `json:"type"`
 		Title      string          `json:"title"`
@@ -349,6 +352,10 @@ func (a *app) eventRecorderOrOwner(w http.ResponseWriter, req *http.Request, use
 	}
 	if recordedBy != userID && role != "owner" {
 		jsonResponse(w, http.StatusForbidden, errBody("only the recorder or owner can modify this event"))
+		return 0, false
+	}
+	// Archived pets are read-only: their timeline events cannot be edited or deleted.
+	if !a.ensurePetNotArchived(w, req.Context(), petID) {
 		return 0, false
 	}
 	return eventID, true

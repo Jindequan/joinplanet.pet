@@ -51,6 +51,7 @@ export function IntakeForm({ orderId }: Props) {
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         placeholder="you@home.com"
+        maxLength={254}
         required
       />
       <label htmlFor="intake-want">What would you most want PLANET to solve first?</label>
@@ -59,12 +60,13 @@ export function IntakeForm({ orderId }: Props) {
         value={want}
         onChange={(event) => setWant(event.target.value)}
         placeholder="One sentence is enough — e.g. &quot;remember who fed the dog today&quot; or &quot;get my pet&apos;s history ready for the vet in one click.&quot;"
+        maxLength={1000}
         required
       />
       <button className="button button-primary" type="submit" disabled={status === "submitting"}>
         {status === "submitting" ? "Sending…" : "Send it"}
       </button>
-      {status === "error" ? <p className="modal-footnote">Something went wrong. Try again, or email us directly.</p> : <p className="modal-footnote">No account needed. We only use this to build what you actually asked for.</p>}
+      {status === "error" ? <p className="modal-footnote" role="alert">Something went wrong. Try again, or email us directly.</p> : <p className="modal-footnote">No account needed. We only use this to build what you actually asked for.</p>}
     </form>
   );
 }

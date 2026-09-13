@@ -73,6 +73,10 @@ CREATE TABLE IF NOT EXISTS pets (
 );
 CREATE INDEX IF NOT EXISTS pets_circle_idx ON pets(circle_id);
 
+-- V1.5 archived pets: soft "archive" flag (deceased pets are permanently
+-- viewable + exportable, read-only, and never count against the pet-slot quota).
+ALTER TABLE pets ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
 -- Redundancy ledger R2 (APP-DESIGN §3.4): medications is normalized (lifecycle),
 -- tasks carry both FKs because permission checks root at circle.
 CREATE TABLE IF NOT EXISTS medications (

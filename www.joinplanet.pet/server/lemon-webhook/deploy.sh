@@ -152,9 +152,13 @@ CADDY
     systemctl reload caddy 2>/dev/null || systemctl restart caddy
     echo "✓ Caddy reloaded. HTTPS will be ready once DNS for api.joinplanet.pet points here."
   else
-    echo "api.joinplanet.pet {
+    cat > /etc/caddy/Caddyfile <<'CADDY'
+# Landing-only bootstrap. planet-api/deploy/deploy.sh replaces this with the
+# shared path split once the App API is installed.
+api.joinplanet.pet {
   reverse_proxy 127.0.0.1:8080
-}" > /etc/caddy/Caddyfile
+}
+CADDY
     systemctl enable caddy >/dev/null 2>&1 || true
     systemctl restart caddy
     echo "✓ Created Caddyfile + restarted Caddy."
@@ -162,7 +166,7 @@ CADDY
 else
   echo "Caddy not installed. Install it: https://caddyserver.com/docs/install"
   echo "Then add this to /etc/caddy/Caddyfile:"
-  echo "  api.joinplanet.pet { reverse_proxy 127.0.0.1:8080 }"
+  echo "  api.joinplanet.pet { reverse_proxy 127.0.0.1:8080 } (bootstrap; App deploy later installs the shared path split)"
 fi
 
 echo ""
@@ -171,5 +175,5 @@ echo "Next steps:"
 echo "  1. EDIT $INSTALL_DIR/.env — set the real PG password + Lemon secrets + LEMON_STORE_ID"
 echo "  2. systemctl restart planet-backend"
 echo "  3. Point DNS: api.joinplanet.pet A record -> this server IP"
-echo "  4. Verify: curl https://api.joinplanet.pet/healthz"
+echo "  4. Verify Landing: curl http://127.0.0.1:8080/healthz (public /healthz belongs to planet-api after the shared split)"
 echo "  5. In Lemon Squeezy: add webhook https://api.joinplanet.pet/webhook (filter by product 1278282)"

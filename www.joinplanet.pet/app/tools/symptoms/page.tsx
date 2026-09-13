@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ToolNav } from "../components/tool-nav";
 import { useMemo, useState } from "react";
 
 /**
@@ -95,7 +96,7 @@ const ENTRIES: Entry[] = [
     watchFor: "Frequency, stool consistency, straining, vocalizing, appetite.",
     whenToCallVet: "No stool >2 days, straining without producing anything, vomiting, or blood." },
   { id: "hair-loss", symptom: "Hair loss / thinning coat", species: ["Dog","Cat"], category: "Skin", severity: "Monitor",
-    whatItMightMean: "Allergies, fleas, mites, hormonal imbalance (hypothyroid, Cushing&apos;s), stress, or seasonal shedding.",
+    whatItMightMean: "Allergies, fleas, mites, hormonal imbalance (hypothyroid, Cushing's), stress, or seasonal shedding.",
     watchFor: "Pattern (symmetrical? patches?), itching, skin redness, seasonality.",
     whenToCallVet: "Symmetrical hair loss, red/inflamed skin, spreading, or with other symptoms." },
   { id: "gum-color", symptom: "Red or pale gums", species: ["Dog","Cat"], category: "Behavior", severity: "Emergency",
@@ -153,13 +154,7 @@ export default function SymptomPage() {
 
   return (
     <main>
-      <nav className="nav shell">
-        <Link className="brand" href="/" aria-label="PLANET home"><span className="brand-mark" aria-hidden="true" />PLANET</Link>
-        <div className="nav-links">
-          <Link href="/tools">All tools</Link>
-          <Link href="/#pricing">Pricing</Link>
-        </div>
-      </nav>
+      <ToolNav action="" />
 
       {/* Emergency banner — always visible */}
       <div className={`sym-emergency-banner ${active ? "sym-emergency-banner-hidden" : ""}`}>

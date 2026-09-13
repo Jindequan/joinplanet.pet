@@ -40,8 +40,10 @@ test("server-renders the PLANET narrative home", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>PLANET — A thousand small acts become a life together\.<\/title>/i);
+  assert.match(html, /<title>PLANET — Pet care reminders your whole family can trust<\/title>/i);
   assert.match(html, /A thousand small acts/);
+  assert.match(html, /watches the schedule so you don&#x27;t have to/);
+  assert.match(html, /did you already give him/);
   assert.match(html, /The information exists\. It just doesn&#x27;t stay together\./);
   assert.match(html, /What if their whole story/);
   assert.match(html, /Walk in with the story/);
@@ -81,10 +83,12 @@ test("policy pages render and keep the support contact visible", async () => {
 });
 
 test("the page is no longer coupled to the starter preview", async () => {
-  const [page, layout, packageJson] = await Promise.all([
+  const [page, layout, packageJson, globals, caveatFont] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../public/fonts/caveat-400.ttf", import.meta.url)),
   ]);
 
   assert.match(page, /CoCreateForm/);
@@ -92,6 +96,36 @@ test("the page is no longer coupled to the starter preview", async () => {
   assert.match(page, /A thousand small acts/);
   assert.doesNotMatch(page, /checkoutUrl|Lifetime Membership/);
   assert.doesNotMatch(page, /SkeletonPreview|_sites-preview/);
-  assert.match(layout, /title: "PLANET — A thousand small acts become a life together\."/);
+  assert.match(layout, /title: "PLANET — Pet care reminders your whole family can trust"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+  assert.match(globals, /@font-face[\s\S]*caveat-400\.ttf/);
+  assert.ok(caveatFont.byteLength > 1000, "self-hosted Caveat font must be present");
+});
+
+test("interactive intake paths bound user input and announce recoverable errors", async () => {
+  const [quickDemo, pilot, coCreate, intake, schedule, checkout] = await Promise.all([
+    readFile(new URL("../app/components/quick-demo.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/pilot-signup.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/co-create-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/intake-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/tools/schedule/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/checkout-redirect.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(quickDemo, /maxLength=\{254\}/);
+  assert.match(quickDemo, /role=\{voteStatus === "error" \? "alert"/);
+  assert.match(pilot, /maxLength=\{254\}/);
+  assert.match(pilot, /className="pilot-error" role="alert"/);
+  assert.match(coCreate, /maxLength=\{1000\}/);
+  assert.match(coCreate, /className="cocreate-error" role="alert"/);
+  assert.match(intake, /maxLength=\{1000\}/);
+  assert.match(intake, /className="modal-footnote" role="alert"/);
+  assert.doesNotMatch(schedule, /\$\{(?:view|data)\.petName\}&apos;s/);
+  assert.match(checkout, /className="checkout-state" role="status" aria-live="polite"/);
+});
+
+test("the public checkout service shuts down without dropping in-flight work", async () => {
+  const main = await readFile(new URL("../server/lemon-webhook/main.go", import.meta.url), "utf8");
+  assert.match(main, /signal\.NotifyContext/);
+  assert.match(main, /server\.Shutdown\(shutdownCtx\)/);
+  assert.match(main, /WithTimeout\(context\.Background\(\), 10\*time\.Second\)/);
 });

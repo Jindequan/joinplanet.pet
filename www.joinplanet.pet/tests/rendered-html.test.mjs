@@ -8,7 +8,10 @@ import test from "node:test";
 const PORT = String(4321 + (process.pid % 1000));
 
 async function startServer() {
-  const child = spawn("npx", ["next", "start", "-p", PORT], {
+  // Use the installed binary directly. `npx` may perform a registry lookup on
+  // a clean CI runner even though Next is already present, delaying the local
+  // render smoke test indefinitely.
+  const child = spawn("./node_modules/.bin/next", ["start", "-p", PORT], {
     stdio: ["ignore", "pipe", "pipe"],
   });
   const origin = `http://localhost:${PORT}`;

@@ -7,20 +7,21 @@
 
 ## 执行状态
 
-**09-09/09-10:静默限流持续(>48h)。提交仍被无提示丢弃,继续停发。此后每日简报只尝试 1 次发帖(任一队列头部目标);若限流到 09-12 仍未解除,降级为隔日一试。触点方面月帖/评论回复/收件箱/Chat 至今全部静默(09-10 检查)。**
+**09-09/10/11:静默限流连续第三天(提交无提示丢弃)。按协议:09-12 做最后一次每日尝试,仍失败则降级为隔日一试。触点:月帖/评论回复/收件箱/Chat 至今全部静默(09-11 检查,月帖所在帖子评论数仍在增长=有流量经过)。**
 
 | 目标帖 | 状态 |
 |---|---|
-| r/Dogowners 1w3esdj(老年犬健康事务) | 📝 **队列 #1**:无链接版已备好(Tier 1 #0),限流解除即发 |
-| r/seniordogs 1wct7il(关节炎换药困境,09-10 发帖,0 评论) | 📝 **队列 #2**:纯帮助版已备好(Tier 1.5,零产品,攒账号信用) |
-| r/PetAdvice 1syvzq1(宠物医疗记录怎么管) | 📝 **队列 #3**(09-10 新发现,近期帖):draft = 自家记录系统演变(便签→表格→自建 app,家人共享视角),一句披露 |
-| r/dogs 1nz5dwx(狗狗喂食/就诊信息怎么交给照护人) | 📝 **队列 #4**(09-10 新发现,8 月下旬帖,handoff 痛点):r/dogs 严格——无链接+纯帮助,先回答"交接单该写什么"再一句披露 |
+| r/Dogowners 1w3esdj(老年犬健康事务) | 📝 **队列 #1**:无链接版已备好(Tier 1 #0),限流解除即发。该帖评论数 13→14(有真实流量) |
+| r/seniordogs 1wct7il(关节炎换药困境) | 📝 **队列 #2**:纯帮助版已备好(Tier 1.5) |
+| r/PetAdvice 1syvzq1(宠物医疗记录怎么管) | 📝 **队列 #3** |
+| r/dogs 1nz5dwx(照护交接信息) | 📝 **队列 #4**(无链接+纯帮助) |
+| r/RoverPetSitting 1te02dh(保姆如何接药,09-11 新发现) | 📝 **队列 #5**:不pitch,参与讨论学语言——保姆/寄养=handoff 细分人群,为将来 sitter 场景铺路 |
 | r/EpilepsyDogs 1w4uund | ✅ 存活(09-06 发),无新回复 |
-| r/Pets 月帖 1vi0qcf | ✅ 存活(招募评论),无新回复(09-10 检查) |
+| r/Pets 月帖 1vi0qcf | ✅ 存活(招募评论),无新回复(09-11 检查) |
 | r/rescuedogs 1vneb3i | ❌ 已删,弃 |
-| r/DogAdvice 1s1suu0 | ⬇️ 放弃 |
-| r/EpilepsyDogs 1vwb405 | 竞品帖(Compaw)不回;英文版稳定后可在此社区自建"built this for my dog"帖 |
-| 收件箱 / Chat | 空(仅 8 月 r/SideProject 旧 modmail) |
+| 收件箱 / Chat | 空 |
+
+**文案弹药库(09-11 新增,老帖不回只取语言)**:三条独立老帖确认多人协调痛点密度——[r/dogs 伴侣差点混药](https://www.reddit.com/r/dogs/comments/1scavqj/my_partner_and_i_almost_mixed_up_our_dogs_meds/)、[r/dogs 只让一个人负责](https://www.reddit.com/r/dogs/comments/1setjxk/do_most_people_just_make_one_person_responsible/)、[r/Pets 夫妻沟通失败](https://www.reddit.com/r/Pets/comments/1tah3so/spouse_and_i_keep_miscommunicating_about_our_pets/)。社区自创解法:冰箱白板磁贴每日挪动、周日补充的药盒、指定唯一负责人——全部是"人肉版 PLANET",文案可直接引用这些形态。
 
 **关键教训(09-08/09-09)**:
 1. **低 karma 账号 + 评论内裸链接 = 多数 sub 秒删**。EpilepsyDogs 幸存是例外。此后默认发**无链接版**:只写"it's called PLANET — free, link's on my profile",URL 靠 profile → 月帖评论承接(那里已有链接)。

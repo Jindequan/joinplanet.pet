@@ -58,6 +58,8 @@ jobs:
       - run: npm run lint
       - run: npm run doctor
       - run: npm run export:web:production
+      - name: Install ripgrep for contract checks
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
       - run: npm run verify:frontend
       - run: npm audit --omit=dev --audit-level=high
       - run: ../scripts/verify-notification-contract.sh

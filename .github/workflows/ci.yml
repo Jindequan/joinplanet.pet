@@ -1,7 +1,9 @@
 name: verify
 
 on:
+  # PRs run once here; branch pushes are checked after they land on main.
   push:
+    branches: [main]
   pull_request:
 
 jobs:

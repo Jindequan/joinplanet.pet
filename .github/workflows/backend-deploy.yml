@@ -59,6 +59,9 @@ jobs:
             fi
           done
           if command -v caddy >/dev/null 2>&1; then echo "caddy=installed"; else echo "caddy=missing"; fi
+          if [ -f /opt/planet-backend/.env ]; then
+            awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/{print "legacy_env_key=" $1}' /opt/planet-backend/.env | sort
+          fi
           REMOTE
 
       - name: Deploy current backend

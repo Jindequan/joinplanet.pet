@@ -64,6 +64,47 @@ jobs:
           fi
           REMOTE
 
+      - name: Configure production runtime environment
+        env:
+          PLANET_SSH_USER: ${{ secrets.PLANET_SSH_USER }}
+          PLANET_SSH_HOST: ${{ secrets.PLANET_SSH_HOST }}
+          PLANET_APP_DATABASE_URL: ${{ secrets.PLANET_APP_DATABASE_URL }}
+          PLANET_OWNER_PASSWORD: ${{ secrets.PLANET_OWNER_PASSWORD }}
+          PLANET_RESEND_API_KEY: ${{ secrets.PLANET_RESEND_API_KEY }}
+          PLANET_BACKUP_DIR: ${{ secrets.PLANET_BACKUP_DIR }}
+          PLANET_BACKUP_S3_URI: ${{ secrets.PLANET_BACKUP_S3_URI }}
+        run: |
+          missing=()
+          for name in PLANET_APP_DATABASE_URL PLANET_OWNER_PASSWORD PLANET_RESEND_API_KEY PLANET_BACKUP_DIR PLANET_BACKUP_S3_URI; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing production deployment secrets: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+          ssh "$PLANET_SSH_USER@$PLANET_SSH_HOST" 'bash -s' <<REMOTE
+          set -eu
+          umask 077
+          cat > /etc/planet-api.env <<ENV
+          PLANET_ENV=prod
+          BIND=127.0.0.1:8081
+          DATABASE_URL=$PLANET_APP_DATABASE_URL
+          RESEND_API_KEY=$PLANET_RESEND_API_KEY
+          MAIL_FROM=PLANET <code@mail.joinplanet.pet>
+          BASE_URL=https://api.joinplanet.pet
+          LOG_LEVEL=info
+          PLANET_SCHEDULER=1
+          CORS_ORIGINS=https://www.joinplanet.pet,https://app.joinplanet.pet
+          BACKUP_DIR=$PLANET_BACKUP_DIR
+          BACKUP_S3_URI=$PLANET_BACKUP_S3_URI
+          ENV
+          cat > /etc/planet-api-owner.env <<ENV
+          PLANET_OWNER_PASSWORD=$PLANET_OWNER_PASSWORD
+          ENV
+          chown root:root /etc/planet-api.env /etc/planet-api-owner.env
+          chmod 600 /etc/planet-api.env /etc/planet-api-owner.env
+          REMOTE
+
       - name: Deploy current backend
         working-directory: planet-api
         env:

@@ -38,6 +38,29 @@ jobs:
           EOF
           chmod 600 "$HOME/.ssh/config"
 
+      - name: Inspect remote deployment prerequisites
+        env:
+          PLANET_SSH_USER: ${{ secrets.PLANET_SSH_USER }}
+          PLANET_SSH_HOST: ${{ secrets.PLANET_SSH_HOST }}
+        run: |
+          test -n "$PLANET_SSH_USER"
+          ssh "$PLANET_SSH_USER@$PLANET_SSH_HOST" 'bash -s' <<'REMOTE'
+          set -eu
+          echo "remote_arch=$(uname -m)"
+          for path in /etc/planet-api-owner.env /etc/planet-api.env /opt/planet-backend/.env /opt/planet-api/.env; do
+            if [ -f "$path" ]; then echo "env_file=$path"; else echo "env_file_missing=$path"; fi
+          done
+          for service in planet-api planet-backend; do
+            if systemctl list-unit-files "$service.service" --no-legend 2>/dev/null | grep -q "$service.service"; then
+              echo "service_unit=$service"
+              systemctl is-active "$service.service" 2>/dev/null || true
+            else
+              echo "service_unit_missing=$service"
+            fi
+          done
+          if command -v caddy >/dev/null 2>&1; then echo "caddy=installed"; else echo "caddy=missing"; fi
+          REMOTE
+
       - name: Deploy current backend
         working-directory: planet-api
         env:

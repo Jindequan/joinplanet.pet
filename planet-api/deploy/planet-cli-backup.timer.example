@@ -1,0 +1,10 @@
+# 与 planet-cli-backup.service.example 配套；启用前先完成 S3/R2 生命周期与恢复演练。
+[Unit]
+Description=Daily PLANET backup at 04:00
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

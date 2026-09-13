@@ -1,0 +1,2 @@
+-- Keep existing users and their valid pets intact when rolling back code.
+-- Quota changes are intentionally not destructive.

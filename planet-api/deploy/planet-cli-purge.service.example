@@ -1,0 +1,10 @@
+# /etc/systemd/system/planet-cli-purge.service（+ .timer，每 6 小时）
+# 软删除超过 30 天恢复窗的家庭硬删（B10 治理闭环）
+[Unit]
+Description=PLANET purge soft-deleted families
+
+[Service]
+Type=oneshot
+User=planet
+EnvironmentFile=/etc/planet-api.env
+ExecStart=/opt/planet-api/bin/planet-cli purge-deleted --url ${DATABASE_URL}

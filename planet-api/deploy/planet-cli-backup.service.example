@@ -1,0 +1,11 @@
+# 去掉 .example 后缀安装。DATABASE_URL 使用最小权限的备份角色，
+# BACKUP_S3_URI 指向异地 S3/R2 bucket；未配置时命令会明确告警并只保留本地副本。
+# 运行节点必须安装 PostgreSQL client（pg_dump、pg_restore）与 aws CLI。
+[Unit]
+Description=PLANET pg_dump backup to R2
+
+[Service]
+Type=oneshot
+User=planet
+EnvironmentFile=/etc/planet-api.env
+ExecStart=/opt/planet-api/bin/planet-cli backup --url ${DATABASE_URL} --output-dir /var/lib/planet-api/backups --s3-uri ${BACKUP_S3_URI} --retention-days 14

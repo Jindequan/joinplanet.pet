@@ -1,0 +1,4 @@
+-- `once` is part of the clean baseline as well as the forward migration. Keep
+-- the constraints in place on rollback so existing one-time care history is
+-- not rewritten or deleted. A fresh database rebuilt from 0001 has the same
+-- contract.

@@ -397,7 +397,10 @@ test('object workspaces keep an accessible heading, return path, and mobile-safe
   ]
 
   for (const path of pages) {
-    await page.goto(path)
+    // SPA readiness is asserted below; waiting for every dev-server asset to
+    // finish the `load` event makes this structural check sensitive to HMR
+    // noise in CI. DOMContentLoaded is sufficient for the route assertion.
+    await page.goto(path, { waitUntil: 'domcontentloaded' })
     await expect(page.locator('[role="heading"]').first()).toBeVisible()
     await expect(page.getByRole('button', { name: '返回' })).toHaveCount(1)
     const unnamedButtons = await page.locator('button').evaluateAll((nodes) =>

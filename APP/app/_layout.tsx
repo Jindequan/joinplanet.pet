@@ -23,11 +23,12 @@ function RootNavigator() {
   const { width } = useWindowDimensions();
   const pathname = usePathname();
   const publicShareRoute = pathname === '/share' || pathname.startsWith('/share/');
+  const publicInviteRoute = pathname === '/invite' || pathname.startsWith('/invite/');
 
   // Public share snapshots do not need a session. Let the recipient read the
   // link immediately instead of making an unauthenticated visitor wait for
   // SecureStore/session restoration before the public route can render.
-  if (status === 'loading' && !publicShareRoute) {
+  if (status === 'loading' && !publicShareRoute && !publicInviteRoute) {
     return (
       <View
         style={{
@@ -79,6 +80,7 @@ function RootNavigator() {
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="share/[token]" />
+          <Stack.Screen name="invite/[code]" />
           <Stack.Screen name="account/deleted" />
           <Stack.Protected guard={authenticated}>
             <Stack.Screen name="activation/index" />

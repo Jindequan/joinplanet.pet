@@ -22,6 +22,15 @@ else
   fail "family invites do not provide a usable preview link and fallback"
 fi
 
+if rg -q '<Stack.Screen name="invite/\[code\]"' "$ROOT/APP/app/_layout.tsx" && \
+   rg -q 'publicInviteRoute' "$ROOT/APP/app/_layout.tsx" && \
+   rg -q 'inviteHref' "$APP/features/auth/screen.tsx" && \
+   rg -q "status !== 'authenticated'" "$APP/features/families/form-screen.tsx"; then
+  pass "public invite previews preserve the code through authentication"
+else
+  fail "public invite previews can lose the code at the auth boundary"
+fi
+
 if rg -q 'useLocalSearchParams' "$APP/features/families/form-screen.tsx" && \
    rg -q 'inviteCodeParam' "$APP/features/families/form-screen.tsx"; then
   pass "invite deep links seed the join form"

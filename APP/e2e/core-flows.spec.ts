@@ -97,6 +97,12 @@ async function mockApi(page: Page) {
       route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
     if (path === '/me') return json({ user, entitlements: [] })
+    if (path === '/auth/request-code' && request.method() === 'POST') {
+      return json({ dev_code: '123456' }, 202)
+    }
+    if (path === '/auth/verify-code' && request.method() === 'POST') {
+      return json({ token: 'e2e-token', user })
+    }
     if (path === '/me/preferences') return json({ preferences: {} })
     if (path === '/me/activation-summary') {
       return json({ families: 1, active_pets: 1, pets_with_active_plans: 1, has_today_items: true })
@@ -169,6 +175,19 @@ test('invite deep link pre-fills and previews the join form', async ({ page }) =
   await page.goto('/families/join?code=abc1234567')
   await expect(page.getByLabel('邀请码')).toHaveValue('ABC1234567')
   await expect(page.getByText(/E2E 用户\s+邀请你加入/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /加入 E2E 用户.*家庭/ })).toBeEnabled()
+})
+
+test('public invite preview preserves the code through authentication', async ({ page }) => {
+  await mockApi(page)
+  await page.goto('/invite/abc1234567')
+  await expect(page.getByLabel('邀请码')).toHaveValue('ABC1234567')
+  await expect(page.getByRole('button', { name: '登录后加入' })).toBeEnabled()
+  await page.getByRole('button', { name: '登录后加入' }).click()
+  await expect(page).toHaveURL(/\/auth\?invite=ABC1234567$/)
+  await page.getByLabel('邮箱地址').fill('invitee@example.com')
+  await page.getByRole('button', { name: '继续' }).click()
+  await expect(page).toHaveURL(/\/families\/join\?code=ABC1234567$/)
   await expect(page.getByRole('button', { name: /加入 E2E 用户.*家庭/ })).toBeEnabled()
 })
 

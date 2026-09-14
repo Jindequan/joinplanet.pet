@@ -9,6 +9,7 @@ import { invalidateAfterFamilyChange } from '../../core/foundation'
 import { useTheme } from '../../core/providers/theme-provider'
 import { useToast } from '../../core/providers/toast-provider'
 import { useScope } from '../../core/providers/scope-provider'
+import { useSession } from '../../core/providers/session-provider'
 import { AppText } from '../../ui/components/app-text'
 import { BackHeader } from '../../ui/components/back-header'
 import { Button } from '../../ui/components/button'
@@ -21,8 +22,8 @@ import { setCachedInvite } from './invite-cache'
 
 type Mode = 'create' | 'join'
 
-export function FamilyFormScreen({ mode }: { mode: Mode }) {
-  return mode === 'create' ? <CreateFamilyScreen /> : <JoinFamilyScreen />
+export function FamilyFormScreen({ mode, initialCode }: { mode: Mode; initialCode?: string }) {
+  return mode === 'create' ? <CreateFamilyScreen /> : <JoinFamilyScreen initialCode={initialCode} />
 }
 
 function CreateFamilyScreen() {
@@ -115,12 +116,13 @@ function CreateFamilyScreen() {
   )
 }
 
-function JoinFamilyScreen() {
+function JoinFamilyScreen({ initialCode }: { initialCode?: string }) {
   const { theme } = useTheme()
   const { showToast } = useToast()
   const client = useQueryClient()
+  const { status } = useSession()
   const { code: inviteCodeParam } = useLocalSearchParams<{ code?: string | string[] }>()
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(initialCode?.toUpperCase() ?? '')
   const [preview, setPreview] = useState<{
     role: 'caregiver' | 'viewer'
     petName: string | null
@@ -188,6 +190,10 @@ function JoinFamilyScreen() {
     }
     if (!preview) {
       setError(previewError || '请先确认邀请码有效。')
+      return
+    }
+    if (status !== 'authenticated') {
+      router.replace(`/auth?invite=${encodeURIComponent(normalized)}` as never)
       return
     }
     setBusy(true)
@@ -265,7 +271,9 @@ function JoinFamilyScreen() {
 
           <Button
             label={
-              preview?.inviterName ? `加入 ${preview.inviterName} 的家庭` : '加入家庭'
+              status === 'authenticated'
+                ? preview?.inviterName ? `加入 ${preview.inviterName} 的家庭` : '加入家庭'
+                : '登录后加入'
             }
             full
             busy={busy}

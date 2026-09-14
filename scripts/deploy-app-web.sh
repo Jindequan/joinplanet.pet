@@ -22,5 +22,8 @@ trap restore_root_directory EXIT
 echo "app-web-deploy: temporarily clearing Vercel rootDirectory for APP upload"
 (cd "$ROOT_DIR" && npx vercel project update "$PROJECT" --auto-detect=root-directory --json --yes >/dev/null)
 
-(cd "$APP_DIR" && npx vercel deploy --prod --yes --archive=tgz)
+# Pass the project explicitly so a clean worktree never derives a new project
+# name from its temporary directory path. This keeps deployment independent of
+# a local .vercel link created by a previous checkout.
+(cd "$APP_DIR" && npx vercel deploy --project "$PROJECT" --prod --yes --archive=tgz)
 echo "app-web-deploy: production deployment finished"

@@ -484,6 +484,73 @@ test('care handoff composer exposes a retry when the member lookup fails', async
   await expect.poll(() => attempts).toBeGreaterThanOrEqual(2)
 })
 
+test('batch decline continuation exposes a retry when the refreshed batch is unavailable', async ({ page }) => {
+  await seedSession(page)
+  await page.addInitScript(() => {
+    localStorage.setItem('planet.pending.care-actions.e2e-user', JSON.stringify([{
+      userId: 'e2e-user',
+      commandId: 'batch-decline-retry',
+      kind: 'batch-decline',
+      batchId: 'e2e-batch',
+      occurrenceIds: ['e2e-task'],
+      followUp: 'reassign',
+    }]))
+  })
+  await mockApi(page)
+  const batch = {
+    id: 'e2e-batch',
+    family_id: family.id,
+    family_timezone: family.timezone,
+    from_user_id: 'other-user',
+    from_user_name: '家人',
+    target_user_id: user.id,
+    target_user_name: user.display_name,
+    message: '今天麻烦帮忙',
+    created_at: '2026-09-01T00:00:00Z',
+    requests: [{
+      id: 'e2e-batch-request',
+      family_id: family.id,
+      family_timezone: family.timezone,
+      pet_id: pet.id,
+      occurrence_id: 'e2e-task',
+      from_user_id: 'other-user',
+      from_user_name: '家人',
+      target_user_id: user.id,
+      target_user_name: user.display_name,
+      state: 'declined',
+      pet_name: pet.name,
+      occurrence_title: '早餐',
+      occurrence_type: 'feeding',
+      occurrence_status: 'pending',
+      due_date: e2eToday,
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:00:00Z',
+    }],
+    total_count: 1,
+    open_count: 0,
+    accepted_count: 0,
+    declined_count: 1,
+    resolved_count: 0,
+  }
+  await page.route('**/api/v1/care-handoff-batches/inbox', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ batches: [batch] }) })
+  })
+  await page.route('**/api/v1/care-handoff-batches/e2e-batch', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '批次暂时不可用' } }),
+    })
+  })
+  await page.route('**/api/v1/care-handoff-batches/e2e-batch/decline', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+  })
+  await page.goto('/requests')
+  await expect(page.getByRole('alert')).toContainText('已保存批量拒绝，但暂时无法打开继续安排。')
+  await expect(page.getByRole('button', { name: '重试打开继续安排' })).toBeVisible()
+})
+
 test('primary tabs expose a single readable page heading', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)

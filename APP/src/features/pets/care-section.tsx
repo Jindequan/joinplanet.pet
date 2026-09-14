@@ -597,7 +597,7 @@ function scheduleFromFields(
   const schedule: Record<string, unknown> = { v: 1, kind: rule }
   if (rule === 'weekly') schedule.days = days
   if (rule === 'monthly') schedule.day = Number(day)
-  if (rule === 'interval') schedule.interval = Number(interval)
+  if (rule === 'interval') schedule.every_n = Number(interval)
   return schedule
 }
 

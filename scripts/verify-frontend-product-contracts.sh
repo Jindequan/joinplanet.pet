@@ -313,6 +313,12 @@ else
   fail "family detail can silently hide incoming transfer requests on failure"
 fi
 
+if rg -q 'if \(rule === '\''interval'\''\) schedule\.every_n = Number\(interval\)' "$APP/features/pets/care-section.tsx"; then
+  pass "care plan interval edits use the backend every_n schedule contract"
+else
+  fail "care plan interval edits can send an unsupported interval schedule key"
+fi
+
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
    rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
    rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx"; then

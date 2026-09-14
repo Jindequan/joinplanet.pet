@@ -434,6 +434,55 @@ test('care plan owner lookup exposes an inline retry', async ({ page }) => {
   await expect.poll(() => assignmentAttempts).toBe(4)
 })
 
+test('editing an interval care plan sends the backend every_n schedule key', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  let scheduleActionBody: Record<string, unknown> | undefined
+  await page.route('**/api/v1/pets/e2e-pet/care-plans*', async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/assignments')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ assignments: [] }) })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ care_plans: [{
+        id: 'e2e-interval-plan',
+        pet_id: pet.id,
+        family_id: family.id,
+        type: 'custom',
+        title: '每隔几天梳毛',
+        description: '',
+        schedule: { v: 1, kind: 'daily' },
+        timezone: family.timezone,
+        time_of_day: '08:00',
+        due_date: e2eToday,
+        status: 'active',
+      }] }),
+    })
+  })
+  await page.route('**/api/v1/care-schedule/actions', async (route) => {
+    scheduleActionBody = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ care_rule: {} }) })
+  })
+
+  await page.goto('/pets/e2e-pet/care?familyId=e2e-family')
+  await expect(page.getByText('每隔几天梳毛')).toBeVisible()
+  await page.getByRole('button', { name: '编辑计划' }).click()
+  await page.getByRole('radio', { name: '重复规则：每隔 N 天' }).click()
+  await page.getByLabel('间隔天数（≥1）').fill('3')
+  await page.getByRole('button', { name: '保存修改' }).click()
+
+  await expect.poll(() => scheduleActionBody).toBeDefined()
+  expect((scheduleActionBody?.payload as Record<string, unknown>)?.schedule).toMatchObject({
+    v: 1,
+    kind: 'interval',
+    every_n: 3,
+  })
+  expect((scheduleActionBody?.payload as Record<string, unknown>)?.schedule).not.toHaveProperty('interval')
+})
+
 test('Today adds a temporary care item from the collapsed tools', async ({ page }) => {
   await seedSession(page)
   const { calls } = await mockApi(page)

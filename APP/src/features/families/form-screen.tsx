@@ -153,14 +153,14 @@ function JoinFamilyScreen({
   const [previewAttempt, setPreviewAttempt] = useState(0)
   const commandId = useRef(createIdempotencyKey())
   const previewSeq = useRef(0)
+  const incomingCode = Array.isArray(inviteCodeParam) ? inviteCodeParam[0] : inviteCodeParam
 
   // Web invite links arrive as /families/join?code=... after login. Seed the
   // form once so the user lands directly on the preview step instead of
   // having to copy the code a second time.
   useEffect(() => {
-    const incoming = Array.isArray(inviteCodeParam) ? inviteCodeParam[0] : inviteCodeParam
-    if (incoming && !code) setCode(incoming.toUpperCase())
-  }, [code, inviteCodeParam])
+    if (incomingCode && !code) setCode(incomingCode.toUpperCase())
+  }, [code, incomingCode])
 
   // 服务端邀请码固定 10 位；粘贴可能带空格/连字符，先归一化。
   const normalized = code.replace(/[\s-]/g, '').toUpperCase()
@@ -253,7 +253,9 @@ function JoinFamilyScreen({
             placeholder="10 位邀请码"
             autoCapitalize="characters"
             autoCorrect={false}
-            autoFocus={!publicEntry || !initialCode}
+            // A link already supplies the code; keep the preview and CTA visible
+            // until the user explicitly chooses to edit it.
+            autoFocus={!incomingCode && !initialCode}
           />
 
           {checking ? (

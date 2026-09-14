@@ -189,6 +189,7 @@ test('public invite preview preserves the code through authentication', async ({
   await page.getByLabel('邮箱地址').fill('invitee@example.com')
   await page.getByRole('button', { name: '继续' }).click()
   await expect(page).toHaveURL(/\/families\/join\?code=ABC1234567$/)
+  await expect(page.getByLabel('邀请码')).not.toBeFocused()
   await expect(page.getByRole('button', { name: /加入 E2E 用户.*家庭/ })).toBeEnabled()
 })
 

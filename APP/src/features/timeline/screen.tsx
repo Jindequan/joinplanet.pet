@@ -427,7 +427,7 @@ export function TimelineScreen({ petId: routePetId = '', familyId: routeFamilyId
               title="记录"
               subtitle={timelineSubtitle}
               trailing={
-                composerPets.length > 0 ? (
+                composerPets.length > 0 && (recordStats.total > 0 || composerOpen) ? (
                   <Button
                     label={composerOpen ? '收起' : '记一笔'}
                     onPress={() => setComposerOpen((value) => !value)}

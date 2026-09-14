@@ -315,6 +315,49 @@ test('medication care plans require and persist a medication link', async ({ pag
   await expect.poll(() => createBody?.medication_id).toBe('e2e-medication')
 })
 
+test('care plan owner lookup exposes an inline retry', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  let assignmentAttempts = 0
+  await page.route('**/api/v1/care-plans/e2e-plan/assignments*', async (route) => {
+    assignmentAttempts += 1
+    if (assignmentAttempts <= 3) {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEMPORARY_FAILURE', message: 'temporary' } }) })
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ assignments: [{ care_plan_id: 'e2e-plan', user_id: user.id, user_name: user.display_name, role: 'owner', priority: 0 }] }),
+      })
+    }
+  })
+  await page.route('**/api/v1/pets/e2e-pet/care-plans*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ care_plans: [{
+        id: 'e2e-plan',
+        pet_id: pet.id,
+        family_id: family.id,
+        type: 'feeding',
+        title: '早餐',
+        description: '',
+        schedule: { kind: 'daily' },
+        timezone: family.timezone,
+        time_of_day: '08:00',
+        due_date: e2eToday,
+        status: 'active',
+      }] }),
+    })
+  })
+
+  await page.goto('/pets/e2e-pet/care')
+  await expect(page.getByText('负责人暂时无法加载')).toBeVisible()
+  await page.getByRole('button', { name: '重试负责人' }).click()
+  await expect(page.getByText(`固定负责人 · ${user.display_name}`)).toBeVisible()
+  await expect.poll(() => assignmentAttempts).toBe(4)
+})
+
 test('Today adds a temporary care item from the collapsed tools', async ({ page }) => {
   await seedSession(page)
   const { calls } = await mockApi(page)

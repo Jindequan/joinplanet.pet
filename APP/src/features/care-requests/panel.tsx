@@ -572,7 +572,11 @@ export function CareRequestInbox({
     const pendingDecline = pendingActions.find(
       (item) => item.kind === 'decline' && item.followUp === 'reassign' && item.requestId,
     )
-    if (!pendingDecline || pendingContinuation) return
+    if (!pendingDecline) {
+      if (!pendingContinuation) setContinuationError('')
+      return
+    }
+    if (pendingContinuation) return
     const request =
       scopedInboxRequests.find((item) => item.id === pendingDecline.requestId) ??
       (pendingDecline.requestId === requestedIdValue ? requestedRequest.data?.care_request : undefined)
@@ -606,8 +610,9 @@ export function CareRequestInbox({
         if (care_request.state === 'declined') {
           setComposer({ kind: 'reassign', request: care_request, currentUserId })
         } else {
-      showToast({ message: '这件事已经有别的处理结果，不再重复打开' })
+          showToast({ message: '这件事已经有别的处理结果，不再重复打开' })
         }
+        setContinuationError('')
         setPendingContinuation(null)
       })
     }).catch((error) => {

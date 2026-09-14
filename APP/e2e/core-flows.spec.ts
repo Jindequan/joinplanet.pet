@@ -104,6 +104,7 @@ async function mockApi(page: Page) {
       return json({ token: 'e2e-token', user })
     }
     if (path === '/me/preferences') return json({ preferences: {} })
+    if (path === '/me/capabilities') return json({ export_json: true, export_pdf: false, push: false, i18n: false })
     if (path === '/me/activation-summary') {
       return json({ families: 1, active_pets: 1, pets_with_active_plans: 1, has_today_items: true })
     }
@@ -113,6 +114,7 @@ async function mockApi(page: Page) {
     if (path === `/pets/${pet.id}`) {
       return json({ pet, profile: { allergies: [], conditions: [], emergency_contacts: [], notes: '' } })
     }
+    if (path === `/pets/${pet.id}/export`) return json({ pet, profile: { allergies: [], conditions: [], emergency_contacts: [], notes: '' }, timeline: [] })
     if (path === '/today') return json(todayResponse(completed))
     if (path === '/care-requests/inbox') return json({ care_requests: [] })
     if (path === '/care-handoff-batches/inbox') return json({ batches: [] })
@@ -324,6 +326,15 @@ test('summary sharing captures the visit reason in the snapshot options', async 
   await page.getByRole('button', { name: '创建链接' }).click()
   await expect.poll(() => createBody).toBeDefined()
   expect((createBody?.options as Record<string, unknown>)?.reason).toBe('最近两天反复呕吐，想确认是否需要检查')
+})
+
+test('pet JSON export produces a downloadable file on web', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  await page.goto(`/pets/${pet.id}`)
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: /导出数据/ }).click()
+  await expect((await download).suggestedFilename()).toMatch(/planet-export\.json$/)
 })
 
 test('Today completes a task and reflects the persisted state', async ({ page }) => {

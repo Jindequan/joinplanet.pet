@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard'
 import { Copy } from 'phosphor-react-native'
 import { createIdempotencyKey, planetApi } from '../../core/api/planet-api'
 import { errorMessage } from '../../core/api/errors'
+import { appConfig } from '../../core/config'
 import { useTheme } from '../../core/providers/theme-provider'
 import { useToast } from '../../core/providers/toast-provider'
 import { AppText } from '../../ui/components/app-text'
@@ -69,7 +70,11 @@ export function InviteSheet({
     }
   }, [visible, familyId, role])
 
-  const inviteMessage = `加入「${familyName}」的 PLANET 家庭，${role === 'viewer' ? '可以查看所有宠物和照护记录' : '可以一起完成宠物照护'}。打开 PLANET，选择「用邀请码加入」，输入：${code}`
+  // 先发公开落地页，让被邀请人不用安装 App 或猜下一步；落地页会
+  // 预览家庭/宠物并把邀请码带入加入流程。邀请码保留为兜底，兼容
+  // 链接被聊天工具截断或接收方暂时无法打开网页的情况。
+  const inviteLink = `${appConfig.publicWebBaseUrl}/invite/${encodeURIComponent(code)}`
+  const inviteMessage = `加入「${familyName}」的 PLANET 家庭，${role === 'viewer' ? '可以查看所有宠物和照护记录' : '可以一起完成宠物照护'}。打开邀请链接：${inviteLink}\n如果链接未自动打开，也可在 PLANET 里选择「用邀请码加入」，输入：${code}`
 
   async function shareInvite() {
     const browserCanShare =

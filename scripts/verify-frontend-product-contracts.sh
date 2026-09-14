@@ -15,6 +15,13 @@ else
   fail "public share links drifted from the web /s/:token route"
 fi
 
+if rg -q 'publicWebBaseUrl}/invite/' "$APP/features/families/invite-sheet.tsx" && \
+   rg -q '用邀请码加入' "$APP/features/families/invite-sheet.tsx"; then
+  pass "family invites share a preview link with a manual-code fallback"
+else
+  fail "family invites do not provide a usable preview link and fallback"
+fi
+
 if rg -q 'useLocalSearchParams' "$APP/features/families/form-screen.tsx" && \
    rg -q 'inviteCodeParam' "$APP/features/families/form-screen.tsx"; then
   pass "invite deep links seed the join form"

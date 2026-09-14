@@ -577,6 +577,7 @@ export function CareRequestInbox({
       return
     }
     if (pendingContinuation) return
+    setContinuationError('')
     const request =
       scopedInboxRequests.find((item) => item.id === pendingDecline.requestId) ??
       (pendingDecline.requestId === requestedIdValue ? requestedRequest.data?.care_request : undefined)

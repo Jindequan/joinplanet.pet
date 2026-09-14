@@ -49,7 +49,7 @@ export type Profile = {
   med_decision_maker?: unknown;
   notes: string;
 };
-export type Task = { id: string; pet_id: string; family_id?: string; care_plan_id?: string; care_rule_id?: string; type?: string; title: string; description?: string; schedule: Record<string, unknown>; time_of_day?: string; timezone: string; due_at?: string; due_date?: string; status?: 'pending' | 'completed' | 'skipped' | 'missed'; assigned_to_user_id?: string; assigned_to_name?: string; completed_by_user_id?: string; completed_at?: string; archived_at?: string | null; created_at: string };
+export type Task = { id: string; pet_id: string; family_id?: string; care_plan_id?: string; care_rule_id?: string; medication_id?: string; type?: string; title: string; description?: string; schedule: Record<string, unknown>; time_of_day?: string; timezone: string; due_at?: string; due_date?: string; status?: 'pending' | 'completed' | 'skipped' | 'missed'; assigned_to_user_id?: string; assigned_to_name?: string; completed_by_user_id?: string; completed_at?: string; archived_at?: string | null; created_at: string };
 /** A CarePlan projected with its current rule and next executable occurrence. */
 export type CarePlanSummary = Task;
 export type TaskLog = { id: string; task_id: string; log_date: string; status: 'done' | 'completed' | 'skipped'; done_by: string; done_at: string; note: string; done_by_name?: string };
@@ -67,7 +67,7 @@ export type TodayCareRequestSummary = {
 export type TodayItem = { task: Task; log: TaskLog | null; care_request?: TodayCareRequestSummary | null };
 export type TodayPet = { pet_id: string; pet_name: string; items: TodayItem[] };
 export type Today = { date: string; pets: TodayPet[] };
-export type CarePlan = { id: string; pet_id: string; type: 'medication' | 'feeding' | 'health' | 'grooming' | 'exercise' | 'custom'; title: string; description: string; status: 'active' | 'paused' | 'archived'; created_by_user_id?: string; created_at: string; updated_at: string };
+export type CarePlan = { id: string; pet_id: string; medication_id?: string; type: 'medication' | 'feeding' | 'health' | 'grooming' | 'exercise' | 'custom'; title: string; description: string; status: 'active' | 'paused' | 'archived'; created_by_user_id?: string; created_at: string; updated_at: string };
 export type CareRule = { id: string; care_plan_id: string; frequency: { v: 1; kind: 'daily' | 'weekly' | 'monthly' | 'interval' | 'once'; days?: number[]; day?: number; every_n?: number; date?: string }; start_date: string; end_date?: string; time_of_day?: string; timezone: string; created_at: string; updated_at: string };
 export type ScheduleOverride = {
   id: string;

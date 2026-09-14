@@ -36,6 +36,7 @@ type CarePlan struct {
 	ID              string     `json:"id"`
 	PetID           string     `json:"pet_id"`
 	FamilyID        string     `json:"family_id,omitempty"`
+	MedicationID    string     `json:"medication_id,omitempty"`
 	Type            string     `json:"type"`
 	Title           string     `json:"title"`
 	Description     string     `json:"description"`
@@ -76,6 +77,7 @@ type Task struct {
 	FamilyID        string     `json:"family_id,omitempty"`
 	CarePlanID      string     `json:"care_plan_id"`
 	CareRuleID      string     `json:"care_rule_id"`
+	MedicationID    string     `json:"medication_id,omitempty"`
 	Type            string     `json:"type"`
 	Title           string     `json:"title"`
 	Description     string     `json:"description,omitempty"`
@@ -130,14 +132,14 @@ const selectedRuleCivilToday = `((CURRENT_TIMESTAMP AT TIME ZONE COALESCE(NULLIF
 // rule (so a scheduled plan does not return an empty/default rule before its
 // start date), and finally the most recent expired rule for historical reads.
 const currentRuleJoin = `LEFT JOIN LATERAL (SELECT r.* FROM care_rules r WHERE r.care_plan_id=ci.id AND r.deleted_at IS NULL ORDER BY CASE WHEN r.effective_from<=` + ruleCivilToday + ` AND (r.effective_to IS NULL OR r.effective_to>=` + ruleCivilToday + `) THEN 0 WHEN r.effective_from>` + ruleCivilToday + ` THEN 1 ELSE 2 END, CASE WHEN r.effective_from>` + ruleCivilToday + ` THEN r.effective_from END ASC, r.effective_from DESC,r.created_at DESC LIMIT 1) cr ON true`
-const planCols = `ci.id,ci.pet_id,COALESCE(ci.family_id::text,''),ci.type,ci.title,ci.description,ci.status,COALESCE(cr.schedule,'{}'::jsonb),COALESCE(cr.effective_from,` + selectedRuleCivilToday + `),cr.effective_to,cr.local_time,COALESCE(NULLIF(cr.timezone,''),'UTC'),COALESCE(ci.created_by_user_id::text,''),ci.created_at,ci.updated_at`
+const planCols = `ci.id,ci.pet_id,COALESCE(ci.family_id::text,''),COALESCE(ci.medication_id::text,''),ci.type,ci.title,ci.description,ci.status,COALESCE(cr.schedule,'{}'::jsonb),COALESCE(cr.effective_from,` + selectedRuleCivilToday + `),cr.effective_to,cr.local_time,COALESCE(NULLIF(cr.timezone,''),'UTC'),COALESCE(ci.created_by_user_id::text,''),ci.created_at,ci.updated_at`
 const ruleCols = `r.id,r.care_plan_id,r.schedule,r.effective_from,r.effective_to,r.local_time,r.timezone,r.created_at,r.updated_at`
 const ruleReturnCols = `id,care_plan_id,schedule,effective_from,effective_to,local_time,timezone,created_at,updated_at`
-const occurrenceCols = `co.id,co.pet_id,COALESCE(ci.family_id::text,''),co.care_plan_id,co.care_rule_id,COALESCE(NULLIF(co.type_snapshot,''),ci.type),COALESCE(NULLIF(co.title_snapshot,''),ci.title),COALESCE(NULLIF(co.description_snapshot,''),ci.description),COALESCE(co.frequency_snapshot,cr.schedule),co.local_time,co.timezone,COALESCE(ci.created_by_user_id::text,''),CASE WHEN ci.status='archived' THEN ci.updated_at ELSE NULL END,ci.created_at,co.due_at,co.due_date,co.status,co.assigned_to_user_id,co.completed_by_user_id,co.completed_at`
+const occurrenceCols = `co.id,co.pet_id,COALESCE(ci.family_id::text,''),co.care_plan_id,co.care_rule_id,COALESCE(ci.medication_id::text,''),COALESCE(NULLIF(co.type_snapshot,''),ci.type),COALESCE(NULLIF(co.title_snapshot,''),ci.title),COALESCE(NULLIF(co.description_snapshot,''),ci.description),COALESCE(co.frequency_snapshot,cr.schedule),co.local_time,co.timezone,COALESCE(ci.created_by_user_id::text,''),CASE WHEN ci.status='archived' THEN ci.updated_at ELSE NULL END,ci.created_at,co.due_at,co.due_date,co.status,co.assigned_to_user_id,co.completed_by_user_id,co.completed_at`
 
 func scanItem(row pgx.Row) (CarePlan, error) {
 	var v CarePlan
-	err := row.Scan(&v.ID, &v.PetID, &v.FamilyID, &v.Type, &v.Title, &v.Description, &v.Status, &v.Frequency, &v.StartDate, &v.EndDate, &v.TimeOfDay, &v.Timezone, &v.CreatedByUserID, &v.CreatedAt, &v.UpdatedAt)
+	err := row.Scan(&v.ID, &v.PetID, &v.FamilyID, &v.MedicationID, &v.Type, &v.Title, &v.Description, &v.Status, &v.Frequency, &v.StartDate, &v.EndDate, &v.TimeOfDay, &v.Timezone, &v.CreatedByUserID, &v.CreatedAt, &v.UpdatedAt)
 	if v.Status == "archived" {
 		v.ArchivedAt = &v.UpdatedAt
 	}
@@ -150,7 +152,7 @@ func scanRule(row pgx.Row) (CareRule, error) {
 }
 func scanTask(row rowScanner) (Task, error) {
 	var v Task
-	err := row.Scan(&v.ID, &v.PetID, &v.FamilyID, &v.CarePlanID, &v.CareRuleID, &v.Type, &v.Title, &v.Description, &v.Schedule, &v.TimeOfDay, &v.Timezone, &v.CreatedByUserID, &v.ArchivedAt, &v.CreatedAt, &v.DueAt, &v.DueDate, &v.Status, &v.AssignedTo, &v.CompletedBy, &v.CompletedAt)
+	err := row.Scan(&v.ID, &v.PetID, &v.FamilyID, &v.CarePlanID, &v.CareRuleID, &v.MedicationID, &v.Type, &v.Title, &v.Description, &v.Schedule, &v.TimeOfDay, &v.Timezone, &v.CreatedByUserID, &v.ArchivedAt, &v.CreatedAt, &v.DueAt, &v.DueDate, &v.Status, &v.AssignedTo, &v.CompletedBy, &v.CompletedAt)
 	return v, err
 }
 func scanPlanQuery(q db.Q, ctx context.Context, sql string, args ...any) (CarePlan, error) {
@@ -393,7 +395,7 @@ func planTaskSelect() string {
 	// recurring rule. The service materializes a short preview window before
 	// this query, so this remains a cheap indexed lookup and also respects
 	// completed/ skipped occurrences.
-	return `SELECT ci.id,ci.pet_id,COALESCE(ci.family_id::text,''),ci.id,COALESCE(cr.id::text,''),ci.type,ci.title,ci.description,COALESCE(cr.schedule,'{}'::jsonb),cr.local_time,COALESCE(NULLIF(cr.timezone,''),'UTC'),COALESCE(ci.created_by_user_id::text,''),CASE WHEN ci.status='archived' THEN ci.updated_at ELSE NULL END,ci.created_at,next.due_at,next.due_date,ci.status,next.assigned_to_user_id,NULL::uuid,NULL::timestamptz`
+	return `SELECT ci.id,ci.pet_id,COALESCE(ci.family_id::text,''),ci.id,COALESCE(cr.id::text,''),COALESCE(ci.medication_id::text,''),ci.type,ci.title,ci.description,COALESCE(cr.schedule,'{}'::jsonb),cr.local_time,COALESCE(NULLIF(cr.timezone,''),'UTC'),COALESCE(ci.created_by_user_id::text,''),CASE WHEN ci.status='archived' THEN ci.updated_at ELSE NULL END,ci.created_at,next.due_at,next.due_date,ci.status,next.assigned_to_user_id,NULL::uuid,NULL::timestamptz`
 }
 func (r *Repo) ListByPet(ctx context.Context, q db.Q, petID, familyID string, includeArchived bool) ([]Task, error) {
 	filter := "ci.deleted_at IS NULL AND ci.status<>'archived'"
@@ -566,7 +568,7 @@ func scanTodayRows(rows pgx.Rows) ([]TodayRow, error) {
 		var requestUpdatedAt *time.Time
 		var id, tid, status, done, note, name *string
 		var date, at *time.Time
-		if err := rows.Scan(&v.ID, &v.PetID, &v.FamilyID, &v.CarePlanID, &v.CareRuleID, &v.Type, &v.Title, &v.Description, &v.Schedule, &v.TimeOfDay, &v.Timezone, &v.CreatedByUserID, &v.ArchivedAt, &v.CreatedAt, &v.DueAt, &v.DueDate, &v.Status, &v.AssignedTo, &v.CompletedBy, &v.CompletedAt, &requestID, &requestState, &requestFromID, &requestFromName, &requestTargetID, &requestTargetName, &requestUpdatedAt, &requestNextTargetID, &requestNextTargetName, &v.PetName, &v.AssignedToName, &id, &tid, &date, &status, &done, &at, &note, &name); err != nil {
+		if err := rows.Scan(&v.ID, &v.PetID, &v.FamilyID, &v.CarePlanID, &v.CareRuleID, &v.MedicationID, &v.Type, &v.Title, &v.Description, &v.Schedule, &v.TimeOfDay, &v.Timezone, &v.CreatedByUserID, &v.ArchivedAt, &v.CreatedAt, &v.DueAt, &v.DueDate, &v.Status, &v.AssignedTo, &v.CompletedBy, &v.CompletedAt, &requestID, &requestState, &requestFromID, &requestFromName, &requestTargetID, &requestTargetName, &requestUpdatedAt, &requestNextTargetID, &requestNextTargetName, &v.PetName, &v.AssignedToName, &id, &tid, &date, &status, &done, &at, &note, &name); err != nil {
 			return nil, err
 		}
 		if requestID != nil && requestState != nil && requestFromID != nil && requestFromName != nil && requestTargetID != nil && requestTargetName != nil && requestUpdatedAt != nil {
@@ -686,7 +688,7 @@ func (r *Repo) UpdateLegacy(ctx context.Context, q db.Q, itemID, title string, f
 	return r.compatibilityItemTask(ctx, q, item, rule)
 }
 func (r *Repo) compatibilityItemTask(ctx context.Context, q db.Q, item CarePlan, rule CareRule) (Task, error) {
-	return scanTask(q.QueryRow(ctx, `SELECT ci.id,ci.pet_id,COALESCE(ci.family_id::text,''),ci.id,cr.id,ci.type,ci.title,ci.description,cr.schedule,cr.local_time,cr.timezone,COALESCE(ci.created_by_user_id::text,''),CASE WHEN ci.status='archived' THEN ci.updated_at ELSE NULL END,ci.created_at,NULL::timestamptz,NULL::date,ci.status,NULL::uuid,NULL::uuid,NULL::timestamptz FROM care_plans ci JOIN care_rules cr ON cr.id=$2 WHERE ci.id=$1`, item.ID, rule.ID))
+	return scanTask(q.QueryRow(ctx, `SELECT ci.id,ci.pet_id,COALESCE(ci.family_id::text,''),ci.id,cr.id,COALESCE(ci.medication_id::text,''),ci.type,ci.title,ci.description,cr.schedule,cr.local_time,cr.timezone,COALESCE(ci.created_by_user_id::text,''),CASE WHEN ci.status='archived' THEN ci.updated_at ELSE NULL END,ci.created_at,NULL::timestamptz,NULL::date,ci.status,NULL::uuid,NULL::uuid,NULL::timestamptz FROM care_plans ci JOIN care_rules cr ON cr.id=$2 WHERE ci.id=$1`, item.ID, rule.ID))
 }
 
 // CareStatsDay 是单个宠物单日的照护执行汇总(服务端事实,missed 含分母)。

@@ -569,6 +569,9 @@ func taskDTO(t Task) map[string]any {
 	if t.FamilyID != "" {
 		m["family_id"] = t.FamilyID
 	}
+	if t.MedicationID != "" {
+		m["medication_id"] = t.MedicationID
+	}
 	if t.TimeOfDay != nil {
 		m["time_of_day"] = t.TimeOfDay.Format("15:04")
 	}
@@ -610,6 +613,9 @@ func carePlanDTO(item CarePlan) map[string]any {
 	}
 	if item.FamilyID != "" {
 		m["family_id"] = item.FamilyID
+	}
+	if item.MedicationID != "" {
+		m["medication_id"] = item.MedicationID
 	}
 	if item.TimeOfDay != nil {
 		m["time_of_day"] = item.TimeOfDay.Format("15:04")

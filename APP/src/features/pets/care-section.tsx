@@ -525,6 +525,7 @@ function PlanResponsibility({
     data?: { assignments: CareAssignment[] }
     isLoading: boolean
     isError: boolean
+    refetch?: () => unknown
   }
 }) {
   if (!query) return null
@@ -532,7 +533,17 @@ function PlanResponsibility({
   const owner = assignments.find((assignment) => assignment.role === 'owner')
   const helperCount = assignments.filter((assignment) => assignment.role === 'helper').length
   if (query.isLoading) return <AppText variant="caption" muted>正在加载负责人…</AppText>
-  if (query.isError) return <AppText accessibilityRole="alert" variant="caption" muted>负责人暂时无法加载</AppText>
+  if (query.isError) {
+    const refetch = query.refetch
+    return (
+      <View style={styles.inlineRecovery}>
+        <AppText accessibilityRole="alert" variant="caption" muted>负责人暂时无法加载</AppText>
+        {refetch ? (
+          <Button label="重试负责人" variant="ghost" onPress={() => void refetch()} />
+        ) : null}
+      </View>
+    )
+  }
   if (!owner) return <AppText variant="caption" color="#8A4B2A">还没有固定负责人</AppText>
   return (
     <AppText variant="caption" muted>
@@ -1089,5 +1100,6 @@ const styles = StyleSheet.create({
   iconActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   assignmentButton: { minHeight: 44, paddingHorizontal: 10 },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  inlineRecovery: { gap: 4, alignItems: 'flex-start' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 8 },
 })

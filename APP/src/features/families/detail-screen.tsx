@@ -746,7 +746,8 @@ function FamilyGovernanceCard({
   canDelete: boolean
 }) {
   const { theme } = useTheme()
-  const memberReady = memberCount === 1
+  const additionalMemberCount = Math.max(0, memberCount - 1)
+  const memberReady = additionalMemberCount === 0
   const petsReady = petCount === 0
   return (
     <Card style={styles.governanceCard}>
@@ -769,7 +770,7 @@ function FamilyGovernanceCard({
         <GovernanceRow
           ready={memberReady}
           label="其他成员"
-          detail={memberReady ? '已清空' : `还剩 ${memberCount - 1} 位，需要先移除`}
+          detail={memberReady ? '已清空' : `还剩 ${additionalMemberCount} 位，需要先移除`}
         />
         <GovernanceRow
           ready={petsReady}

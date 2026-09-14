@@ -1059,6 +1059,7 @@ test('family detail exposes a retry when incoming transfer requests are unavaila
   })
 
   await page.goto('/families/e2e-family')
+  await expect(page.getByText(/还剩 -\d+ 位/)).toHaveCount(0)
   await expect(page.getByText('转移请求暂时无法加载')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('alert')).toContainText('未能确认收到的宠物转移请求')
   const beforeRetry = attempts

@@ -21,7 +21,9 @@ type Transfer struct {
 	PetName         string     `json:"pet_name"`
 	PetArchived     bool       `json:"pet_archived"`
 	FromFamilyID    string     `json:"from_family_id"`
+	FromFamilyName  string     `json:"from_family_name"`
 	ToFamilyID      string     `json:"to_family_id"`
+	ToFamilyName    string     `json:"to_family_name"`
 	Status          string     `json:"status"`
 	CreatedByUserID *string    `json:"created_by_user_id,omitempty"`
 	DecidedByUserID *string    `json:"decided_by_user_id,omitempty"`
@@ -37,17 +39,21 @@ var (
 
 // transferCols 用于带 JOIN 的 SELECT（别名合法）。pet_archived 让接受方
 // 在列表里直接识别纪念档案转移，无需二次拉取宠物。
-const transferCols = `t.id, t.pet_id, p.name, (p.status = 'archived'), COALESCE(t.from_family_id::text,''), COALESCE(t.to_family_id::text,''), t.status,
+const transferCols = `t.id, t.pet_id, p.name, (p.status = 'archived'), COALESCE(t.from_family_id::text,''),
+	COALESCE((SELECT name FROM families WHERE id = t.from_family_id AND deleted_at IS NULL), ''),
+	COALESCE(t.to_family_id::text,''), COALESCE((SELECT name FROM families WHERE id = t.to_family_id AND deleted_at IS NULL), ''), t.status,
 	t.created_by_user_id, t.decided_by_user_id, t.created_at, t.decided_at`
 
 // returningCols 用于 INSERT/UPDATE 的 RETURNING：不能用别名；宠物名与归档态用标量子查询。
 const returningCols = `id, pet_id, (SELECT name FROM pets WHERE id = pet_transfers.pet_id),
 	EXISTS(SELECT 1 FROM pets WHERE id = pet_transfers.pet_id AND status = 'archived'),
-	COALESCE(from_family_id::text,''), COALESCE(to_family_id::text,''), status, created_by_user_id, decided_by_user_id, created_at, decided_at`
+	COALESCE(from_family_id::text,''), COALESCE((SELECT name FROM families WHERE id = pet_transfers.from_family_id AND deleted_at IS NULL), ''),
+	COALESCE(to_family_id::text,''), COALESCE((SELECT name FROM families WHERE id = pet_transfers.to_family_id AND deleted_at IS NULL), ''), status,
+	created_by_user_id, decided_by_user_id, created_at, decided_at`
 
 func scanTransfer(scan func(dest ...any) error) (Transfer, error) {
 	var t Transfer
-	err := scan(&t.ID, &t.PetID, &t.PetName, &t.PetArchived, &t.FromFamilyID, &t.ToFamilyID, &t.Status,
+	err := scan(&t.ID, &t.PetID, &t.PetName, &t.PetArchived, &t.FromFamilyID, &t.FromFamilyName, &t.ToFamilyID, &t.ToFamilyName, &t.Status,
 		&t.CreatedByUserID, &t.DecidedByUserID, &t.CreatedAt, &t.DecidedAt)
 	return t, err
 }

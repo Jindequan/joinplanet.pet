@@ -23,6 +23,12 @@ function transferStatus(status: string) {
   return TRANSFER_STATUS_LABELS[status] ?? status
 }
 
+function relatedFamilyLabel(transfer: Transfer, direction: 'incoming' | 'outgoing') {
+  const name = direction === 'incoming' ? transfer.from_family_name : transfer.to_family_name
+  const id = direction === 'incoming' ? transfer.from_family_id : transfer.to_family_id
+  return name || (id ? `家庭 ${id.slice(0, 8)}` : '未知家庭')
+}
+
 export function FamilyTransfersScreen({ familyId }: { familyId: string }) {
   const { theme } = useTheme()
   const { showToast } = useToast()
@@ -156,6 +162,9 @@ export function FamilyTransfersScreen({ familyId }: { familyId: string }) {
               <View style={{ flex: 1, gap: 4 }}>
                 <AppText variant="heading">
                   {transfer.pet_name || transfer.pet_id}
+                </AppText>
+                <AppText variant="caption" muted numberOfLines={1}>
+                  {direction === 'incoming' ? '来自' : '转往'}「{relatedFamilyLabel(transfer, direction)}」
                 </AppText>
                 <AppText variant="caption" muted>
                   {transferStatus(transfer.status)} ·{' '}

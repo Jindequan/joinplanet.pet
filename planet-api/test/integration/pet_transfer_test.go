@@ -116,6 +116,10 @@ func TestPetTransferFlow(t *testing.T) {
 		t.Fatalf("initiate: %d %v", tr.Status, tr.Body)
 	}
 	transferID := tr.Body["transfer"].(map[string]any)["id"].(string)
+	createdTransfer := tr.Body["transfer"].(map[string]any)
+	if createdTransfer["from_family_name"] != "pt圈" || createdTransfer["to_family_name"] != "pt-b圈" {
+		t.Fatalf("transfer must include both family names: %v", createdTransfer)
+	}
 
 	// 同一宠物重复发起 → 409
 	if r := e.Do("POST", "/api/v1/pets/"+petID+"/transfer", aTok,
@@ -127,6 +131,10 @@ func TestPetTransferFlow(t *testing.T) {
 	inb := e.Do("GET", "/api/v1/families/"+bFamily+"/transfers", bTok, nil)
 	if inb.Status != http.StatusOK || len(inb.Body["transfers"].([]any)) != 1 {
 		t.Fatalf("incoming list: %d %v", inb.Status, inb.Body)
+	}
+	incomingTransfer := inb.Body["transfers"].([]any)[0].(map[string]any)
+	if incomingTransfer["from_family_name"] != "pt圈" || incomingTransfer["to_family_name"] != "pt-b圈" {
+		t.Fatalf("incoming transfer must include source and target family names: %v", incomingTransfer)
 	}
 	outa := e.Do("GET", "/api/v1/families/"+aFamily+"/transfers?direction=outgoing", aTok, nil)
 	if len(outa.Body["transfers"].([]any)) != 1 {

@@ -103,7 +103,8 @@ func transferDTO(t Transfer) map[string]any {
 	m := map[string]any{
 		"id": t.ID, "pet_id": t.PetID, "pet_name": t.PetName,
 		"pet_archived":   t.PetArchived,
-		"from_family_id": t.FromFamilyID, "to_family_id": t.ToFamilyID,
+		"from_family_id": t.FromFamilyID, "from_family_name": t.FromFamilyName,
+		"to_family_id": t.ToFamilyID, "to_family_name": t.ToFamilyName,
 		"status": t.Status, "created_by_user_id": t.CreatedByUserID, "created_at": t.CreatedAt,
 	}
 	if t.DecidedByUserID != nil {

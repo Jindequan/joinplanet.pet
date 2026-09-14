@@ -1043,6 +1043,36 @@ test('pet transfer blocks duplicate requests when existing transfer status canno
   await expect(page.getByRole('button', { name: /发送转移请求/ })).toHaveCount(0)
 })
 
+test('transfer list identifies the counterpart family for both directions', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  await page.route('**/api/v1/families/e2e-family/transfers*', async (route) => {
+    const direction = new URL(route.request().url()).searchParams.get('direction')
+    const incoming = direction !== 'outgoing'
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        transfers: [{
+          id: incoming ? 'e2e-incoming-transfer' : 'e2e-outgoing-transfer',
+          pet_id: pet.id,
+          pet_name: pet.name,
+          from_family_id: incoming ? 'source-family' : family.id,
+          from_family_name: incoming ? '源家庭' : family.name,
+          to_family_id: incoming ? family.id : 'target-family',
+          to_family_name: incoming ? family.name : '目标家庭',
+          status: 'pending',
+          created_at: '2026-09-01T00:00:00Z',
+        }],
+      }),
+    })
+  })
+  await page.goto('/families/e2e-family/transfers')
+  await expect(page.getByText('来自「源家庭」')).toBeVisible()
+  await page.getByRole('tab', { name: '发出的' }).click()
+  await expect(page.getByText('转往「目标家庭」')).toBeVisible()
+})
+
 test('family detail exposes a retry when incoming transfer requests are unavailable', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)

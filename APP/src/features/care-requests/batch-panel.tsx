@@ -364,23 +364,34 @@ export function CareHandoffBatchInbox({
   }
   if (permissionError && detailOnly && !focusedBatch && !delegateBatch) {
     return (
-      <QueryErrorState
-        error={permissionError}
-        message="暂时无法确认你的照护权限，请重试后再打开这批安排。"
-        onRetry={retryBatchDependencies}
-      />
+      <View style={{ gap: 10 }}>
+        {continuationRecovery}
+        <QueryErrorState
+          error={permissionError}
+          message="暂时无法确认你的照护权限，请重试后再打开这批安排。"
+          onRetry={retryBatchDependencies}
+        />
+      </View>
     )
   }
   if (batches.isError && !focusedBatch && !delegateBatch) {
     return (
-      <QueryErrorState
-        message="批量照护安排暂时无法更新"
-        onRetry={() => void batches.refetch()}
-      />
+      <View style={{ gap: 10 }}>
+        {continuationRecovery}
+        <QueryErrorState
+          message="批量照护安排暂时无法更新"
+          onRetry={() => void batches.refetch()}
+        />
+      </View>
     )
   }
   if ((batches.isLoading && !focusedBatch) || (scopedBatchList.length === 0 && !delegateBatch && !focusedBatch)) {
-    return detailOnly ? <AppText muted>正在加载这批事项…</AppText> : null
+    return (
+      <View style={{ gap: 10 }}>
+        {continuationRecovery}
+        {detailOnly ? <AppText muted>正在加载这批事项…</AppText> : null}
+      </View>
+    )
   }
   const batchList = scopedBatchList
   const focusedOpenBatch = detailOnly

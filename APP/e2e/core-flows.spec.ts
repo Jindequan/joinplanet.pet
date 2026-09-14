@@ -303,6 +303,30 @@ test('summary share exposes a print or save PDF action', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __planetPrints?: number }).__planetPrints ?? 0)).toBe(1)
 })
 
+test('summary share only renders the selected privacy sections', async ({ page }) => {
+  await mockApi(page)
+  await page.route('**/api/v1/shares/e2e-summary-medications-only', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'summary',
+        expires_at: '2026-09-22T00:00:00Z',
+        created_at: '2026-09-15T00:00:00Z',
+        data: {
+          pet: { name: pet.name, species: pet.species, breed: pet.breed },
+          medications: [{ name: '关节营养', dose: '1 片', schedule: '每日一次' }],
+        },
+      }),
+    })
+  })
+  await page.goto('/share/e2e-summary-medications-only')
+  await expect(page.getByText('用药', { exact: true })).toBeVisible()
+  await expect(page.getByText('关节营养')).toBeVisible()
+  await expect(page.getByText('过敏与既往病史', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('最近记录', { exact: true })).toHaveCount(0)
+})
+
 test('care card exposes the medical decision maker to the caregiver', async ({ page }) => {
   await mockApi(page)
   await page.route('**/api/v1/shares/e2e-care', async (route) => {

@@ -6,7 +6,7 @@ import {
 } from 'react-native'
 import { FlashList } from '@shopify/flash-list'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { Plus } from 'phosphor-react-native'
+import { ClockCounterClockwise, Plus } from 'phosphor-react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import {
   planetApi,
@@ -577,6 +577,7 @@ export function TimelineScreen({ petId: routePetId = '', familyId: routeFamilyId
           ListFooterComponent={listFooter}
           ListEmptyComponent={
             <EmptyState
+              icon={ClockCounterClockwise}
               title="暂无记录"
               description="完成照护、记录体重或症状后，记录会按时间显示在这里。"
               action={

@@ -15,6 +15,7 @@ import {
   CaretUp,
   CalendarBlank,
   CheckCircle,
+  ClockCounterClockwise,
   Plus,
   WarningCircle,
 } from 'phosphor-react-native'
@@ -1099,12 +1100,14 @@ export function TodayScreen() {
           />
         ) : viewingHistory ? (
           <EmptyState
+            icon={ClockCounterClockwise}
             title="这一天没有照护记录"
             description="只能补记最近 7 天。选一个有安排的日子，或回到今天。"
             action={<Button label="回到今天" onPress={() => setSelectedDate('')} />}
           />
         ) : (
           <EmptyState
+            icon={CalendarBlank}
             title="今天没有照护安排"
             description={
               familyWithoutPets
@@ -1135,6 +1138,7 @@ export function TodayScreen() {
         )
       ) : displayedItems.length === 0 ? (
         <EmptyState
+          icon={CheckCircle}
           title={taskFilter === 'open' ? '今天已经没有待处理事项' : '还没有已处理事项'}
           description={
             taskFilter === 'open'

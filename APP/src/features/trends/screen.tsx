@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { ChartLineUp } from 'phosphor-react-native';
 import { type TimelineEvent } from '../../core/api/planet-api';
 import { errorMessage } from '../../core/api/errors';
 import { extensionReaders } from '../../core/extension';
@@ -169,6 +170,7 @@ export function TrendsScreen() {
 
       {petsInScope.length === 0 ? (
         <EmptyState
+          icon={ChartLineUp}
           title="这个范围还没有活跃的宠物"
           description="去「宠物」页添加，或切换上方范围。"
         />

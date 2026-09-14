@@ -1,7 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme-provider';
+import { useReducedMotion } from '../../ui/motion/reduced-motion';
 
 type ToastOptions = { message: string; actionLabel?: string; onAction?: () => void };
 type ToastContextValue = { showToast: (options: ToastOptions) => void; hideToast: () => void };
@@ -11,14 +13,49 @@ export function ToastProvider({ children }: React.PropsWithChildren) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastOptions | null>(null);
-  const showToast = useCallback((next: ToastOptions) => setToast(next), []);
-  const hideToast = useCallback(() => setToast(null), []);
+  const reduceMotion = useReducedMotion();
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(8);
+
+  const clearToast = useCallback(() => {
+    setToast(null);
+  }, []);
+
+  const hideToast = useCallback(() => {
+    if (!toast) return;
+    if (reduceMotion) {
+      clearToast();
+      return;
+    }
+    opacity.value = withTiming(0, { duration: theme.motion.fast }, (finished) => {
+      if (finished) runOnJS(clearToast)();
+    });
+    translateY.value = withTiming(4, { duration: theme.motion.fast });
+  }, [clearToast, opacity, reduceMotion, theme.motion.fast, toast, translateY]);
+
+  const showToast = useCallback((next: ToastOptions) => {
+    setToast(next);
+    if (reduceMotion) {
+      opacity.value = 1;
+      translateY.value = 0;
+      return;
+    }
+    opacity.value = 0;
+    translateY.value = 8;
+    opacity.value = withTiming(1, { duration: theme.motion.fast });
+    translateY.value = withTiming(0, { duration: theme.motion.fast });
+  }, [opacity, reduceMotion, theme.motion.fast, translateY]);
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), toast.actionLabel ? 5200 : 3600);
+    const timer = setTimeout(hideToast, toast.actionLabel ? 5200 : 3600);
     return () => clearTimeout(timer);
-  }, [toast]);
+  }, [hideToast, toast]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
 
   const value = useMemo(() => ({ showToast, hideToast }), [hideToast, showToast]);
 
@@ -26,7 +63,7 @@ export function ToastProvider({ children }: React.PropsWithChildren) {
     <ToastContext.Provider value={value}>
       {children}
       {toast ? (
-        <View style={[styles.host, { bottom: Math.max(insets.bottom, 12) + 88 }]}>
+        <Animated.View style={[styles.host, { bottom: Math.max(insets.bottom, 12) + 88 }, animatedStyle]}>
           <View
             style={[
               styles.toast,
@@ -58,7 +95,7 @@ export function ToastProvider({ children }: React.PropsWithChildren) {
               </Pressable>
             ) : null}
           </View>
-        </View>
+        </Animated.View>
       ) : null}
     </ToastContext.Provider>
   );

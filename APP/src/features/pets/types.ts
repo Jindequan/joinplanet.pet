@@ -2,6 +2,7 @@
 export type CarePlanRow = {
   id: string
   family_id?: string
+  medication_id?: string
   care_rule_id?: string
   title: string
   type?: string

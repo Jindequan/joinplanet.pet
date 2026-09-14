@@ -157,7 +157,7 @@ func compatibilityTaskResult(result CarePlanResult, err error) (Task, error) {
 	if result.FirstTask != nil {
 		return *result.FirstTask, nil
 	}
-	return Task{ID: result.Item.ID, PetID: result.Item.PetID, CarePlanID: result.Item.ID, CareRuleID: result.Rule.ID,
+	return Task{ID: result.Item.ID, PetID: result.Item.PetID, FamilyID: result.Item.FamilyID, MedicationID: result.Item.MedicationID, CarePlanID: result.Item.ID, CareRuleID: result.Rule.ID,
 		Type: result.Item.Type, Title: result.Item.Title, Description: result.Item.Description, Schedule: result.Rule.Frequency,
 		TimeOfDay: result.Rule.TimeOfDay, Timezone: result.Rule.Timezone, CreatedByUserID: result.Item.CreatedByUserID, CreatedAt: result.Item.CreatedAt,
 		Status: result.Item.Status}, nil

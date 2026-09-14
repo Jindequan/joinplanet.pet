@@ -191,3 +191,4 @@ cd ../planet-api && TEST_DATABASE_URL=postgres:///postgres go test ./...
 - 2026-09-15 Simulator 启动脚本修复：旧 API 进程以相对路径启动时，`ios.sh` 现在按进程名识别并重启它，避免健康端口实际指向另一份 checkout；本地复核确认 API 与 Metro 均来自同一整改 worktree，端口仍固定为 8081/8082。
 - 2026-09-15 Care Card 信息补齐：公开照护卡现在展示宠物档案中的医疗决定人及联系方式，并说明何时联系；桌面/移动公开分享回归 2/2，前端契约守门新增对应检查。
 - 2026-09-15 公开摘要隐私一致性补强：Web 分享页按快照中实际存在的 `allergies`、`medications`、`events` 字段决定渲染模块；创建时未选择的档案、用药或近期记录不会再显示标题或“未记录”占位。Landing 生产构建、渲染测试 7/7 与 lint 通过。
+- 2026-09-15 原生公开摘要信息补齐：原生只读摘要现在展示分享范围内的过敏、慢性病/既往史，并按快照字段存在性控制档案、用药和近期记录区块；未选择的区块不会被默认空值补回。桌面/移动摘要回归 2/2、TypeScript、Lint 与 PlanetBuildCheck Simulator Debug 构建/启动通过。

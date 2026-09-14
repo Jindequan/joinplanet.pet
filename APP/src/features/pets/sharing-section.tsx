@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Share as RnShare, StyleSheet, Switch, View } from 'react-native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Clipboard from 'expo-clipboard'
@@ -32,7 +32,15 @@ function formatShareExpiry(iso: string): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日过期`
 }
 
-export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?: boolean }) {
+export function SharingSection({
+  pet,
+  readOnly = false,
+  openSummarySignal = 0,
+}: {
+  pet: Pet
+  readOnly?: boolean
+  openSummarySignal?: number
+}) {
   const { theme } = useTheme()
   const { showToast } = useToast()
   const client = useQueryClient()
@@ -42,12 +50,19 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
     enabled: !readOnly,
   })
   const [show, setShow] = useState(false)
+  const [showKind, setShowKind] = useState<'care_card' | 'summary'>('care_card')
   const [created, setCreated] = useState('')
   const [confirm, setConfirm] = useState<Share | null>(null)
 
   function invalidate() {
     invalidateAfterShareChange(client, pet.id)
   }
+
+  useEffect(() => {
+    if (readOnly || openSummarySignal <= 0) return
+    setShowKind('summary')
+    setShow(true)
+  }, [openSummarySignal, readOnly])
 
   if (readOnly) {
     return (
@@ -111,7 +126,14 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
           <AppText muted>给寄养、朋友或兽医一条临时只读链接；不含完整病史，到期后自动失效。</AppText>
         </View>
         {!pet.archived_at && !readOnly ? (
-          <Button label="创建分享" onPress={() => setShow(true)} style={{ paddingHorizontal: 12 }} />
+          <Button
+            label="创建分享"
+            onPress={() => {
+              setShowKind('care_card')
+              setShow(true)
+            }}
+            style={{ paddingHorizontal: 12 }}
+          />
         ) : null}
       </View>
 
@@ -184,6 +206,7 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
         <ShareForm
           visible={show}
           petId={pet.id}
+          initialKind={showKind}
           onClose={() => setShow(false)}
           onSaved={async (token) => {
             // The public web app owns the /s/:token route. Keep generated
@@ -220,16 +243,18 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
 function ShareForm({
   visible,
   petId,
+  initialKind,
   onClose,
   onSaved,
 }: {
   visible: boolean
   petId: string
+  initialKind: 'care_card' | 'summary'
   onClose: () => void
   onSaved: (token: string) => void
 }) {
   const { theme } = useTheme()
-  const [kind, setKind] = useState<'care_card' | 'summary'>('care_card')
+  const [kind, setKind] = useState<'care_card' | 'summary'>(initialKind)
   const [ttl, setTtl] = useState('168')
   const [days, setDays] = useState('90')
   const [reason, setReason] = useState('')
@@ -237,6 +262,10 @@ function ShareForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const commandId = useRef(createIdempotencyKey())
+
+  useEffect(() => {
+    if (visible) setKind(initialKind)
+  }, [initialKind, visible])
 
   const ttlOptions = [
     ['24', '24 小时'],

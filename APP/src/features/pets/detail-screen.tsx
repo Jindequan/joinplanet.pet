@@ -18,6 +18,7 @@ import {
   House,
   Info,
   ShareNetwork,
+  Stethoscope,
   Trash,
   Users,
   WarningCircle,
@@ -82,6 +83,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
   const { userId } = useSession()
   const client = useQueryClient()
   const [confirm, setConfirm] = useState<'delete' | 'archive' | null>(null)
+  const [vetSummarySignal, setVetSummarySignal] = useState(0)
 
   const petQuery = useQuery({
     queryKey: queryKeys.pet(petId),
@@ -310,6 +312,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
         readOnly={readOnly}
         familySelectionRequired={todayFamilySelectionRequired}
         canManagePlans={canManagePlans}
+        canManageShares={canManagePet}
         writesLocked={writesLocked}
         onToday={() => {
           setScope({ type: 'pet', id: pet.id, ...(todayFamilyId ? { familyId: todayFamilyId } : {}) })
@@ -320,6 +323,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
           setScope({ type: 'pet', id: pet.id, ...(todayFamilyId ? { familyId: todayFamilyId } : {}) })
           router.push(`/pets/${pet.id}/timeline?compose=note${todayFamilyId ? `&familyId=${encodeURIComponent(todayFamilyId)}` : ''}` as never)
         }}
+        onPrepareVet={() => setVetSummarySignal((value) => value + 1)}
       />
       </FadeInView>
 
@@ -413,6 +417,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
           transferFamilyId={todayFamilyId}
           canManageLifecycle={canManageLifecycle}
           canRestoreLifecycle={canRestoreLifecycle}
+          openSummarySignal={vetSummarySignal}
         />
       ) : null}
       {tab === 'care' ? (
@@ -487,6 +492,7 @@ function OverviewTab({
   transferFamilyId,
   canManageLifecycle,
   canRestoreLifecycle,
+  openSummarySignal,
 }: {
   pet: Pet
   profile: Profile
@@ -510,6 +516,7 @@ function OverviewTab({
   transferFamilyId?: string
   canManageLifecycle: boolean
   canRestoreLifecycle: boolean
+  openSummarySignal: number
 }) {
   const { theme } = useTheme()
   const { showToast } = useToast()
@@ -621,7 +628,11 @@ function OverviewTab({
           <ShareNetwork size={18} color={theme.colors.forest2} />
           <AppText variant="heading">分享给别人</AppText>
         </View>
-        <SharingSection pet={pet} readOnly={!canManagePet} />
+        <SharingSection
+          pet={pet}
+          readOnly={!canManagePet}
+          openSummarySignal={openSummarySignal}
+        />
       </View>
 
       {canManageLifecycle ? (
@@ -655,10 +666,12 @@ function PetWorkspaceHero({
   readOnly,
   familySelectionRequired,
   canManagePlans,
+  canManageShares,
   writesLocked,
   onToday,
   onCare,
   onRecord,
+  onPrepareVet,
 }: {
   pet: Pet
   familyName?: string
@@ -666,10 +679,12 @@ function PetWorkspaceHero({
   readOnly: boolean
   familySelectionRequired: boolean
   canManagePlans: boolean
+  canManageShares: boolean
   writesLocked: boolean
   onToday: () => void
   onCare: () => void
   onRecord: () => void
+  onPrepareVet: () => void
 }) {
   const { theme } = useTheme()
   const { width } = useWindowDimensions()
@@ -740,6 +755,16 @@ function PetWorkspaceHero({
           </View>
           <CaretRight size={15} color={theme.colors.onBrandMuted} weight="bold" />
         </PressableScale>
+        {canManageShares ? (
+          <PressableScale accessibilityRole="button" onPress={onPrepareVet} style={styles.workspaceLink}>
+            <Stethoscope size={17} color={theme.colors.mint} weight="bold" />
+            <View style={styles.workspaceLinkCopy}>
+              <AppText variant="label" color={theme.colors.onBrand}>准备就诊</AppText>
+              <AppText variant="caption" color={theme.colors.onBrandMuted}>生成健康摘要 PDF</AppText>
+            </View>
+            <CaretRight size={15} color={theme.colors.onBrandMuted} weight="bold" />
+          </PressableScale>
+        ) : null}
       </View>
     </View>
   )

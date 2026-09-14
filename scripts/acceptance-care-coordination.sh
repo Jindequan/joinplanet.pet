@@ -125,7 +125,17 @@ request GET /families "$TOKEN_A"
 expect_status 200 "refresh family list after member joins"
 expect_json "any(item.get('id') == '$FAMILY_ID' and item.get('member_count') == 2 for item in d['families'])" "family reports two members"
 
-RISK_TIME="$(TZ=Asia/Shanghai date -v+20M +%H:%M)"
+# Keep the acceptance portable across macOS and Ubuntu runners. Python is
+# already required by the JSON assertions below, and avoids GNU/BSD date
+# flag differences.
+RISK_TIME="$(python3 - <<'PY'
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(second=0, microsecond=0)
+print((now + timedelta(minutes=20)).strftime("%H:%M"))
+PY
+)"
 request POST "/pets/$PET_ID/care-plans" "$TOKEN_A" \
   "{\"type\":\"exercise\",\"title\":\"风险回流时区验收\",\"rule\":{\"type\":\"daily\",\"time\":\"$RISK_TIME\"}}" "$RUN-risk-plan"
 expect_status 201 "create imminent risk item"

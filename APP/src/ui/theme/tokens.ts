@@ -41,7 +41,9 @@ export const lightTheme = {
   colors: {
     ink: '#252b26',
     muted: '#5c665f',
-    soft: '#7c877f',
+    // Secondary copy still needs to survive small caption sizes on a warm
+    // paper surface. The previous value was decorative-only contrast.
+    soft: '#66736a',
     paper: '#fbfaf5',
     paperStrong: '#fffdf9',
     canvas: '#e9e8e1',
@@ -106,20 +108,22 @@ export const lightTheme = {
     display: { fontSize: 34, lineHeight: 40, fontWeight: '800' as const, letterSpacing: -0.8 },
     title: { fontSize: 28, lineHeight: 34, fontWeight: '800' as const, letterSpacing: -0.5 },
     heading: { fontSize: 18, lineHeight: 25, fontWeight: '700' as const, letterSpacing: -0.15 },
-    body: { fontSize: 15, lineHeight: 22, fontWeight: '500' as const },
+    body: { fontSize: 15, lineHeight: 22, fontWeight: '400' as const },
     label: { fontSize: 14, lineHeight: 19, fontWeight: '700' as const },
-    caption: { fontSize: 12.5, lineHeight: 17, fontWeight: '600' as const },
+    caption: { fontSize: 12.5, lineHeight: 17, fontWeight: '500' as const },
     eyebrow: { fontSize: 11.5, lineHeight: 15, fontWeight: '800' as const, letterSpacing: 1.2 },
   } satisfies Record<string, TextStyle>,
   motion: {
     pressOpacity: 0.78,
     disabledOpacity: 0.5,
-    fast: 140,
-    normal: 220,
+    pressIn: 110,
+    pressOut: 190,
+    fast: 110,
+    normal: 240,
     /** Vertical offset for enter transitions (px). */
-    enterOffset: 8,
+    enterOffset: 6,
     /** Delay between staggered list items (ms). */
-    stagger: 40,
+    stagger: 24,
     /** Spring for progress / emphasis (damping/stiffness). */
     spring: { damping: 18, stiffness: 180 },
   },

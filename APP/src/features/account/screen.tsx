@@ -30,7 +30,6 @@ import { FadeInView } from '../../ui/motion'
 
 const LOCALES = [
   { value: 'zh-CN', label: '简体中文' },
-  { value: 'en', label: 'English（英语）' },
 ] as const
 
 export function AccountScreen() {
@@ -187,7 +186,7 @@ export function AccountScreen() {
   return (
     <Screen>
       <BackHeader title="账户与安全" fallbackHref="/more" />
-      <FadeInView animate={false}>
+      <FadeInView>
         <View style={[styles.identity, theme.shadow.card, { backgroundColor: theme.colors.paperStrong, borderColor: theme.colors.line, borderRadius: theme.radius.xl }]}>
           <View style={[styles.avatar, { backgroundColor: theme.colors.sageSoft, borderColor: theme.colors.lineStrong }]}>
             <AppText variant="heading" color={theme.colors.forest2}>{user.display_name.slice(0, 1).toUpperCase()}</AppText>

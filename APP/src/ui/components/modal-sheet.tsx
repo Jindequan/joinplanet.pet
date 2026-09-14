@@ -23,7 +23,7 @@ type Props = React.PropsWithChildren<{
   contentStyle?: StyleProp<ViewStyle>
 }>
 
-/** Centered modal backdrop + card shell for forms and dialogs. */
+/** Bottom-attached modal surface for forms and task-focused actions. */
 export function ModalSheet({
   visible,
   onClose,
@@ -65,6 +65,11 @@ export function ModalSheet({
             style={[styles.center, { maxWidth: theme.layout.contentMax }, styles.pointerEventsNone]}
           >
             <Card style={[styles.card, contentStyle]}>
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+                style={[styles.handle, { backgroundColor: theme.colors.lineStrong }]}
+              />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="关闭"
@@ -101,12 +106,12 @@ export function ModalSheet({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'flex-end',
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 0,
   },
   keyboard: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
   },
   center: {
     width: '100%',
@@ -121,6 +126,19 @@ const styles = StyleSheet.create({
     maxHeight: '88%',
     padding: 0,
     position: 'relative',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  handle: {
+    position: 'absolute',
+    top: 8,
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 999,
+    zIndex: 2,
   },
   closeButton: {
     position: 'absolute',

@@ -6,6 +6,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '../../core/providers/theme-provider';
+import { useReducedMotion } from './reduced-motion';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -26,10 +27,11 @@ export function PressableScale({
   ...rest
 }: Props) {
   const { theme } = useTheme();
+  const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: reduceMotion ? 1 : scale.value }],
     opacity: disabled ? theme.motion.disabledOpacity : 1,
   }));
 
@@ -39,11 +41,11 @@ export function PressableScale({
       accessibilityRole={rest.accessibilityRole ?? 'button'}
       disabled={disabled}
       onPressIn={(e) => {
-        scale.value = withTiming(pressedScale, { duration: theme.motion.fast });
+        if (!reduceMotion) scale.value = withTiming(pressedScale, { duration: theme.motion.pressIn });
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        scale.value = withTiming(1, { duration: theme.motion.fast });
+        if (!reduceMotion) scale.value = withTiming(1, { duration: theme.motion.pressOut });
         onPressOut?.(e);
       }}
       style={[style, animatedStyle]}

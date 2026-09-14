@@ -79,7 +79,7 @@ export function MoreScreen() {
         label="正在更新家庭信息"
       />
 
-      <FadeInView index={0} animate={false}>
+      <FadeInView index={0}>
       <View
         style={[styles.identity, theme.shadow.card, { backgroundColor: theme.colors.paperStrong, borderColor: theme.colors.line, borderRadius: theme.radius.xl }]}
       >
@@ -107,7 +107,7 @@ export function MoreScreen() {
       </View>
       </FadeInView>
 
-      <FadeInView index={1} animate={false}>
+      <FadeInView index={1}>
       <MoreGroup label="管理">
         <MoreRow
           icon={<House size={19} color={theme.colors.forest2} weight="duotone" />}
@@ -137,7 +137,7 @@ export function MoreScreen() {
       </MoreGroup>
       </FadeInView>
 
-      <FadeInView index={2} animate={false}>
+      <FadeInView index={2}>
         <MoreGroup label="账户">
           <MoreRow
             icon={<UserCircle size={19} color={theme.colors.forest2} weight="duotone" />}

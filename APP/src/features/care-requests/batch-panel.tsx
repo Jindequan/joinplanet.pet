@@ -666,6 +666,8 @@ function CareHandoffBatchDelegateComposer({
       queryFn: () => planetApi.careRequests.chain(requestId),
     })),
   })
+  const assignmentError = assignmentQueries.find((query) => query.isError)?.error
+  const chainError = chainQueries.find((query) => query.isError)?.error
   const candidateMeta = useMemo(() => {
     const meta = new Map<string, { coverage: number; bestRank: number; bestLabel: string }>()
     assignmentQueries.forEach((query) => {
@@ -750,6 +752,12 @@ function CareHandoffBatchDelegateComposer({
   const blockedForTarget = blockedOccurrenceIdsByUser.get(targetUserId) ?? new Set<string>()
   const effectiveOccurrenceIds = occurrenceIds.filter((occurrenceId) => !blockedForTarget.has(occurrenceId))
   const chainLoading = selectedRequestIds.length > 0 && chainQueries.some((query) => query.isLoading)
+  const retryAssignments = () => {
+    void Promise.all(assignmentQueries.map((query) => query.refetch()))
+  }
+  const retryChains = () => {
+    void Promise.all(chainQueries.map((query) => query.refetch()))
+  }
   const delegate = useMutation({
     mutationFn: (commandId: string) => mode === 'reassign'
       ? planetApi.careHandoffBatches.reassign(batch.id, targetUserId, effectiveOccurrenceIds, message.trim(), commandId)
@@ -800,6 +808,27 @@ function CareHandoffBatchDelegateComposer({
         {family.isLoading ? <AppText muted>正在加载家庭成员…</AppText> : null}
         {selectedPlanIds.length > 0 && assignmentQueries.some((query) => query.isLoading) ? <AppText muted>正在准备成员名单…</AppText> : null}
         {chainLoading ? <AppText muted>正在查看之前找过谁…</AppText> : null}
+        {family.isError ? (
+          <QueryErrorState
+            embedded
+            message="家庭成员暂时无法加载，不能安全地转交这些事。"
+            onRetry={() => void family.refetch()}
+          />
+        ) : null}
+        {assignmentError ? (
+          <QueryErrorState
+            embedded
+            message="成员的常用照护安排暂时无法加载；可以继续选择成员，重试后会恢复排序提示。"
+            onRetry={retryAssignments}
+          />
+        ) : null}
+        {chainError ? (
+          <QueryErrorState
+            embedded
+            message="之前的转交记录暂时无法加载，请重试后再继续，避免重复发起请求。"
+            onRetry={retryChains}
+          />
+        ) : null}
         {targetUserId && blockedForTarget.size > 0 ? (
           <AppText variant="caption" color={theme.colors.coralDark}>
             {members.find((member) => member.user_id === targetUserId)?.display_name ?? '这位成员'}之前没有接手这 {blockedForTarget.size} 件事，这次不会再发给他。
@@ -840,7 +869,7 @@ function CareHandoffBatchDelegateComposer({
             这些成员之前没有接手：{previouslyUnavailableMembers.map((member) => member.display_name).join('、')}
           </AppText>
         ) : null}
-        {!family.isLoading && members.length === 0 ? (
+        {!family.isLoading && !family.isError && members.length === 0 ? (
           <View style={styles.emptyMembers}>
             <AppText muted>
               {previouslyUnavailableMembers.length > 0
@@ -876,7 +905,7 @@ function CareHandoffBatchDelegateComposer({
         <Button
           label={`发给其他人${effectiveOccurrenceIds.length > 0 ? ` ${effectiveOccurrenceIds.length} 件` : ''}`}
           busy={delegate.isPending}
-          disabled={!targetUserId || members.length === 0 || effectiveOccurrenceIds.length === 0 || chainLoading}
+          disabled={!targetUserId || members.length === 0 || effectiveOccurrenceIds.length === 0 || chainLoading || Boolean(chainError) || family.isError}
           onPress={() => delegate.mutate(createIdempotencyKey())}
           style={{ flex: 1 }}
         />

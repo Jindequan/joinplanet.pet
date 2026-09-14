@@ -114,6 +114,9 @@ async function mockApi(page: Page) {
     if (path === `/invite/ABC1234567`) {
       return json({ role: 'caregiver', pet_name: pet.name, inviter_name: user.display_name })
     }
+    if (path === `/families/${family.id}/invite/refresh` && request.method() === 'POST') {
+      return json({ invite_code: 'ABC1234567' })
+    }
     if (path === '/shares/expired') {
       return json({ error: { code: 'SHARE_EXPIRED', message: 'share expired' } }, 410)
     }
@@ -175,6 +178,31 @@ test('invite form blocks malformed codes before submission', async ({ page }) =>
   await page.goto('/families/join')
   await page.getByLabel('邀请码').fill('abc123')
   await expect(page.getByRole('button', { name: '加入家庭' })).toBeDisabled()
+})
+
+test('family invite sharing includes a preview link and manual-code fallback', async ({ page }) => {
+  await seedSession(page)
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (payload: { text?: string }) => {
+        ;(window as typeof window & { __planetShared?: { text?: string } }).__planetShared = payload
+      },
+    })
+  })
+  await mockApi(page)
+  await page.goto(`/families/${family.id}`)
+  await page.getByRole('button', { name: '邀请成员' }).click()
+  await page.getByRole('button', { name: '生成邀请码' }).click()
+  await expect(page.getByLabel(/邀请码 ABC1234567/)).toBeVisible()
+  await page.getByRole('button', { name: '发给成员' }).click()
+
+  await expect.poll(async () =>
+    page.evaluate(() => (window as typeof window & { __planetShared?: { text?: string } }).__planetShared?.text ?? ''),
+  ).toContain('https://www.joinplanet.pet/invite/ABC1234567')
+  await expect.poll(async () =>
+    page.evaluate(() => (window as typeof window & { __planetShared?: { text?: string } }).__planetShared?.text ?? ''),
+  ).toContain('用邀请码加入')
 })
 
 test('expired public shares expose a recoverable explanation', async ({ page }) => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -28,10 +28,14 @@ export function PressableScale({
 }: Props) {
   const { theme } = useTheme();
   const reduceMotion = useReducedMotion();
+  // RN Web measures the transformed hit target before dispatching a click.
+  // Keeping the browser target geometrically stable prevents long click waits
+  // while a Reanimated frame is in flight; native keeps the tactile scale.
+  const isWeb = Platform.OS === 'web';
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: reduceMotion ? 1 : scale.value }],
+    transform: [{ scale: reduceMotion || isWeb ? 1 : scale.value }],
     opacity: disabled ? theme.motion.disabledOpacity : 1,
   }));
 
@@ -41,11 +45,11 @@ export function PressableScale({
       accessibilityRole={rest.accessibilityRole ?? 'button'}
       disabled={disabled}
       onPressIn={(e) => {
-        if (!reduceMotion) scale.value = withTiming(pressedScale, { duration: theme.motion.pressIn });
+        if (!reduceMotion && !isWeb) scale.value = withTiming(pressedScale, { duration: theme.motion.pressIn });
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        if (!reduceMotion) scale.value = withTiming(1, { duration: theme.motion.pressOut });
+        if (!reduceMotion && !isWeb) scale.value = withTiming(1, { duration: theme.motion.pressOut });
         onPressOut?.(e);
       }}
       style={[style, animatedStyle]}

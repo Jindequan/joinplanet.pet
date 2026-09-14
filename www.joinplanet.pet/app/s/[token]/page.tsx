@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PrintSummaryButton } from "./print-summary-button";
 
 // 社交预览卡片：宠物名 + 一句定位。token 本身不可猜测，noindex 保持私密性，
 // 元数据只用于聊天工具内的链接预览（默认值即失败兜底）。
@@ -40,6 +41,7 @@ type CareData = {
 };
 type SummaryData = {
   pet: Pet;
+  reason?: string;
   allergies?: unknown;
   conditions?: unknown;
   notes?: string;
@@ -115,7 +117,7 @@ function SummaryCard({ value }: { value: ShareResponse }) {
     <>
       <ShareHeader pet={data.pet} expiresAt={value.expires_at} eyebrow="Vet-ready summary" />
       <main className="share-main">
-        <section className="share-intro"><span className="share-label">Prepared health context</span><h2>A clear starting point for the next conversation.</h2><p>Organized from the family’s records. Review with a veterinarian before making care decisions.</p></section>
+        <section className="share-intro"><span className="share-label">Prepared health context</span><h2>A clear starting point for the next conversation.</h2><p>Organized from the family’s records. Review with a veterinarian before making care decisions.</p>{data.reason ? <div className="share-info-card share-reason-card"><span className="share-label">Why now</span><p>{data.reason}</p></div> : null}<PrintSummaryButton /></section>
         <section className="share-grid share-summary-grid">
           <InfoCard label="Allergies" value={data.allergies} /><InfoCard label="Conditions" value={data.conditions} />
           <InfoCard label="Current notes" value={data.notes} />

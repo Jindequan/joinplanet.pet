@@ -23,6 +23,7 @@ import { ConfirmDialog } from '../../ui/components/confirm-dialog'
 import { EmptyState } from '../../ui/components/empty-state'
 import { LoadingState } from '../../ui/components/loading-state'
 import { ModalSheet } from '../../ui/components/modal-sheet'
+import { TextField } from '../../ui/components/text-field'
 import { FadeInView } from '../../ui/motion'
 
 function formatShareExpiry(iso: string): string {
@@ -231,6 +232,7 @@ function ShareForm({
   const [kind, setKind] = useState<'care_card' | 'summary'>('care_card')
   const [ttl, setTtl] = useState('168')
   const [days, setDays] = useState('90')
+  const [reason, setReason] = useState('')
   const [includePhotos, setIncludePhotos] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -257,7 +259,9 @@ function ShareForm({
         petId,
         kind,
         ttlHours: Number(ttl),
-        options: kind === 'summary' ? { days: Number(days), include_photos: includePhotos } : {},
+        options: kind === 'summary'
+          ? { days: Number(days), include_photos: includePhotos, ...(reason.trim() ? { reason: reason.trim() } : {}) }
+          : {},
         idempotencyKey: commandId.current,
       })
       commandId.current = createIdempotencyKey()
@@ -286,6 +290,15 @@ function ShareForm({
       />
       {kind === 'summary' ? (
         <View style={{ gap: 12 }}>
+          <TextField
+            label="本次就诊主诉 / Why now"
+            value={reason}
+            onChangeText={setReason}
+            placeholder="这次最想和兽医讨论什么？"
+            maxLength={300}
+            multiline
+            style={{ minHeight: 72, textAlignVertical: 'top' }}
+          />
           <ChoiceChips
             label="摘要范围"
             options={rangeOptions.map(([value, label]) => ({ value: value!, label: label! }))}

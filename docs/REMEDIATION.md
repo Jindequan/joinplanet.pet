@@ -182,3 +182,4 @@ cd ../planet-api && TEST_DATABASE_URL=postgres:///postgres go test ./...
 -  2026-09-15 家庭治理边界修复：成员列表异常为空时，家庭治理卡不再渲染“还剩 -1 位”；成员数按非负附加成员数展示，桌面/移动回归场景通过。
 -  2026-09-15 全量 App 回归：邀请码重试测试故障模型修正为“首次服务失败、用户手动重试后恢复”，避免把手动请求误按 React Query 自动重试计算；桌面/移动全量 E2E 80/80、TypeScript、Lint、前端契约检查均通过。
 -  2026-09-15 照护计划间隔编辑修复：编辑器现在按后端排程契约发送 `every_n`，不再把“每隔 N 天”写成服务端拒绝的 `interval`；桌面/移动定向回归 2/2、全量 E2E 84/84、TypeScript、Lint、前端契约与 Go 全量测试通过。
+-  2026-09-15 Vet-ready Summary 闭环补齐：摘要分享新增“本次就诊主诉”字段，服务端限制 300 字并持久化到只读快照；摘要页新增打印/保存 PDF 入口，原生使用 Expo Print/Sharing，Web 使用浏览器打印；A4 模板包含宠物基本信息、过敏/病史、用药、近期事件、备注、照片和隐私提示。全量 App E2E 88/88、Web export、TypeScript、Lint、前端契约、Go 全量测试，以及 PlanetBuildCheck Simulator 构建/安装/启动通过。

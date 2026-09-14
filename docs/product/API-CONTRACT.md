@@ -50,7 +50,7 @@
 
 ## F6/F7 分享与就诊
 
-- `POST /pets/{petID}/shares` `{kind:"summary"|"care", ttl_hours:24|72|168, reason?, includes?:{profile,allergies,medications,events,weight,visits}}` → `{share:{id,kind,token,url,expires_at,view_count}}`
+- `POST /pets/{petID}/shares` `{kind:"summary"|"care_card", ttl_hours:24|72|168, options?:{days:30|90|180|365, reason?:string(max 300), include_photos?:boolean}}` → `{share:{id,kind,token,url,expires_at,view_count}}`
 - `GET /pets/{petID}/shares` → `{shares:[{id,kind,url,expires_at,revoked_at,view_count,status:"active"|"expired"|"revoked"}]}`
 - `DELETE /shares/{shareID}` → revoke（owner）
 - `GET /s/{token}` **公开 Web 页**（无 JSON API）：summary=就诊摘要 HTML（打印友好），care=Care Card（今日任务+紧急联系+医疗决定人，"Health history stays private."）；过期/撤销显示中性提示；每次有效访问 view_count+1

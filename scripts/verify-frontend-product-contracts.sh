@@ -319,6 +319,15 @@ else
   fail "care plan interval edits can send an unsupported interval schedule key"
 fi
 
+if rg -q "from 'expo-print'" "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q "from 'expo-sharing'" "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q 'label="打印 / 保存 PDF"' "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q 'buildSummaryPdfHtml' "$APP/features/settings/summary-pdf.ts"; then
+  pass "Vet-ready summaries expose a native and web PDF output path"
+else
+  fail "Vet-ready summaries have no complete PDF output path"
+fi
+
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
    rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
    rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx"; then

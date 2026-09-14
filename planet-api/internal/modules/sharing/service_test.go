@@ -33,3 +33,20 @@ func TestSharedEventPayloadFailsClosedOnInvalidPayload(t *testing.T) {
 		t.Fatalf("invalid payload should fail closed, got %s", got)
 	}
 }
+
+func TestSummaryOptionsKeepTheVisitReasonBounded(t *testing.T) {
+	options, err := parseSummaryOptions(json.RawMessage(`{"reason":"反复呕吐，今天精神明显变差","days":90}`))
+	if err != nil {
+		t.Fatalf("valid visit reason rejected: %v", err)
+	}
+	if options.ChiefComplaint != "反复呕吐，今天精神明显变差" {
+		t.Fatalf("visit reason was not preserved: %q", options.ChiefComplaint)
+	}
+	tooLong := make([]rune, 301)
+	for i := range tooLong {
+		tooLong[i] = '病'
+	}
+	if _, err := parseSummaryOptions(json.RawMessage(`{"reason":"` + string(tooLong) + `"}`)); err == nil {
+		t.Fatal("overlong visit reason should be rejected")
+	}
+}

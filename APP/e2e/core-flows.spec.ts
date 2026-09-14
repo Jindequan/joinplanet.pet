@@ -260,6 +260,72 @@ test('expired public shares expose a recoverable explanation', async ({ page }) 
   await expect(page.getByText('链接已失效或被管理员撤销。')).toBeVisible()
 })
 
+test('summary share exposes a print or save PDF action', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as typeof window & { __planetPrints?: number }).__planetPrints = 0
+    Object.defineProperty(window, 'print', {
+      configurable: true,
+      value: () => {
+        const current = (window as typeof window & { __planetPrints?: number }).__planetPrints ?? 0
+        ;(window as typeof window & { __planetPrints?: number }).__planetPrints = current + 1
+      },
+    })
+  })
+  await mockApi(page)
+  await page.route('**/api/v1/shares/e2e-summary', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'summary',
+        expires_at: '2026-09-22T00:00:00Z',
+        created_at: '2026-09-15T00:00:00Z',
+        data: {
+          pet: { name: pet.name, species: pet.species, breed: pet.breed },
+          allergies: ['鸡肉'],
+          conditions: ['关节护理'],
+          notes: '就诊前观察走路状态',
+          medications: [{ name: '关节营养', dose: '1 片', schedule: '每日一次' }],
+          events: [{ type: 'symptom', occurred_at: '2026-09-14T09:00:00Z', payload: { summary: '偶尔跛行' } }],
+          event_days: 90,
+        },
+      }),
+    })
+  })
+  await page.goto('/share/e2e-summary')
+  await expect(page.getByText('带去就诊')).toBeVisible()
+  await page.getByRole('button', { name: '打印 / 保存 PDF' }).click()
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __planetPrints?: number }).__planetPrints ?? 0)).toBe(1)
+})
+
+test('summary sharing captures the visit reason in the snapshot options', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  let createBody: Record<string, unknown> | undefined
+  await page.route('**/api/v1/pets/e2e-pet/shares', async (route) => {
+    if (route.request().method() === 'POST') {
+      createBody = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          share: { id: 'e2e-share', pet_id: pet.id, kind: 'summary', expires_at: '2026-09-22T00:00:00Z', view_count: 0, created_at: '2026-09-15T00:00:00Z' },
+          token: 'e2e-summary-token',
+        }),
+      })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ shares: [] }) })
+  })
+  await page.goto(`/pets/${pet.id}`)
+  await page.getByRole('button', { name: /创建分享/ }).click()
+  await page.getByRole('radio', { name: '内容视图：健康摘要' }).click()
+  await page.getByLabel('本次就诊主诉 / Why now').fill('最近两天反复呕吐，想确认是否需要检查')
+  await page.getByRole('button', { name: '创建链接' }).click()
+  await expect.poll(() => createBody).toBeDefined()
+  expect((createBody?.options as Record<string, unknown>)?.reason).toBe('最近两天反复呕吐，想确认是否需要检查')
+})
+
 test('Today completes a task and reflects the persisted state', async ({ page }) => {
   await seedSession(page)
   const { calls } = await mockApi(page)

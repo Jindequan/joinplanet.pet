@@ -1,7 +1,9 @@
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { type ShareViewResponse } from '../../core/api/planet-api';
 import { extensionReaders } from '../../core/extension';
 import { errorMessage, isApiError } from '../../core/api/errors';
@@ -17,6 +19,7 @@ import { PetAvatar } from '../../ui/components/pet-avatar';
 import { Screen } from '../../ui/components/screen';
 import { FadeInView } from '../../ui/motion';
 import { describeEvent } from '../timeline/registry';
+import { buildSummaryPdfHtml } from './summary-pdf';
 
 function speciesShort(species: unknown): string {
   return speciesLabel(typeof species === 'string' ? species : undefined);
@@ -59,7 +62,19 @@ function formatEventDate(iso: unknown): string {
   });
 }
 
-function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string }) {
+function SharedViewCard({
+  view,
+  seed,
+  pdfBusy,
+  pdfError,
+  onPrintSummary,
+}: {
+  view: ShareViewResponse;
+  seed: string;
+  pdfBusy: boolean;
+  pdfError: string;
+  onPrintSummary: () => void;
+}) {
   const { theme } = useTheme();
   const pet =
     view.data.pet && typeof view.data.pet === 'object'
@@ -85,6 +100,8 @@ function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string 
     : [];
   const notes =
     typeof view.data.notes === 'string' && view.data.notes ? view.data.notes : '';
+  const reason =
+    typeof view.data.reason === 'string' && view.data.reason ? view.data.reason : '';
   const events = Array.isArray(view.data.events)
     ? view.data.events.filter(
         (item): item is Record<string, unknown> =>
@@ -139,6 +156,15 @@ function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string 
           ) : (
             <AppText muted>今天没有安排照护。</AppText>
           )}
+        </Card>
+      ) : null}
+
+      {view.kind === 'summary' ? (
+        <Card style={{ gap: 8 }}>
+          <AppText variant="eyebrow" soft>
+            本次就诊主诉 / Why now
+          </AppText>
+          <AppText>{reason || '未填写；请在就诊前补充最想和兽医讨论的问题。'}</AppText>
         </Card>
       ) : null}
 
@@ -223,6 +249,28 @@ function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string 
         </Card>
       ) : null}
 
+      {view.kind === 'summary' ? (
+        <Card style={{ gap: 8 }}>
+          <AppText variant="eyebrow" soft>
+            带去就诊
+          </AppText>
+          <AppText variant="caption" muted>
+            生成一份适合打印的 A4 健康摘要，或保存为 PDF 发给兽医。
+          </AppText>
+          {pdfError ? (
+            <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+              {pdfError}
+            </AppText>
+          ) : null}
+          <Button
+            label="打印 / 保存 PDF"
+            busy={pdfBusy}
+            accessibilityState={{ busy: pdfBusy }}
+            onPress={onPrintSummary}
+          />
+        </Card>
+      ) : null}
+
       <AppText muted>这个只读视图将于 {formatExpiry(view.expires_at)} 过期。</AppText>
     </View>
   );
@@ -232,12 +280,44 @@ export function PublicShareScreen() {
   const { theme } = useTheme();
   const params = useLocalSearchParams<{ token?: string }>();
   const token = typeof params.token === 'string' ? params.token : '';
+  const [pdfBusy, setPdfBusy] = React.useState(false);
+  const [pdfError, setPdfError] = React.useState('');
 
   const query = useQuery({
     queryKey: ['public-share', token],
     queryFn: () => extensionReaders.shareView(token),
     enabled: Boolean(token),
   });
+
+  async function printSummary() {
+    if (!query.data || query.data.kind !== 'summary' || pdfBusy) return;
+    setPdfBusy(true);
+    setPdfError('');
+    try {
+      const html = buildSummaryPdfHtml(query.data);
+      if (Platform.OS === 'web') {
+        if (typeof window === 'undefined' || typeof window.print !== 'function') {
+          throw new Error('当前浏览器不支持打印');
+        }
+        window.print();
+        return;
+      }
+      const result = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: '分享健康摘要 PDF',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        await Print.printAsync({ html });
+      }
+    } catch (error) {
+      setPdfError(errorMessage(error, '暂时无法生成 PDF，请重试。'));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   if (!token) {
     return (
@@ -290,7 +370,13 @@ export function PublicShareScreen() {
       />
       <FadeInView>
       {query.data ? (
-        <SharedViewCard view={query.data} seed={token} />
+        <SharedViewCard
+          view={query.data}
+          seed={token}
+          pdfBusy={pdfBusy}
+          pdfError={pdfError}
+          onPrintSummary={() => void printSummary()}
+        />
       ) : (
         <EmptyState
           title="暂时没有可显示的内容"

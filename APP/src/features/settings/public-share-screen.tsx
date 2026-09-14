@@ -62,6 +62,25 @@ function formatEventDate(iso: unknown): string {
   });
 }
 
+function formatSharedValue(value: unknown, fallback = '未记录'): string {
+  if (Array.isArray(value)) {
+    const text = value
+      .map((item) =>
+        item && typeof item === 'object'
+          ? Object.values(item as Record<string, unknown>).filter(Boolean).join(' · ')
+          : String(item),
+      )
+      .filter(Boolean)
+      .join('、');
+    return text || fallback;
+  }
+  if (value && typeof value === 'object') {
+    const text = Object.values(value as Record<string, unknown>).filter(Boolean).join(' · ');
+    return text || fallback;
+  }
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
 function SharedViewCard({
   view,
   seed,
@@ -111,6 +130,10 @@ function SharedViewCard({
     typeof view.data.notes === 'string' && view.data.notes ? view.data.notes : '';
   const reason =
     typeof view.data.reason === 'string' && view.data.reason ? view.data.reason : '';
+  const hasSummaryField = (field: string) =>
+    view.kind === 'summary' && Object.prototype.hasOwnProperty.call(view.data, field);
+  const hasProfile =
+    hasSummaryField('allergies') || hasSummaryField('conditions') || hasSummaryField('notes');
   const events = Array.isArray(view.data.events)
     ? view.data.events.filter(
         (item): item is Record<string, unknown> =>
@@ -177,31 +200,43 @@ function SharedViewCard({
         </Card>
       ) : null}
 
-      {medications.length > 0 ? (
+      {hasProfile ? (
+        <Card style={{ gap: 10 }}>
+          <AppText variant="eyebrow" soft>
+            过敏与既往病史
+          </AppText>
+          <AppText variant="label">过敏（请先告知兽医）</AppText>
+          <AppText>{formatSharedValue(view.data.allergies, '未记录过敏信息')}</AppText>
+          <AppText variant="label">慢性病 / 既往史</AppText>
+          <AppText>{formatSharedValue(view.data.conditions)}</AppText>
+        </Card>
+      ) : null}
+
+      {hasSummaryField('medications') ? (
         <Card style={{ gap: 10 }}>
           <AppText variant="eyebrow" soft>
             用药
           </AppText>
-          {medications.map((med, index) => (
-            <View key={`${String(med.id ?? index)}`} style={{ gap: 2 }}>
-              <AppText variant="label">{String(med.name ?? '药物')}</AppText>
-              <AppText muted>
-                {[med.dose, med.instructions ?? med.schedule]
-                  .filter(Boolean)
-                  .map(String)
-                  .join(' · ')}
-              </AppText>
-            </View>
-          ))}
+          {medications.length > 0 ? medications.map((med, index) => (
+              <View key={`${String(med.id ?? index)}`} style={{ gap: 2 }}>
+                <AppText variant="label">{String(med.name ?? '药物')}</AppText>
+                <AppText muted>
+                  {[med.dose, med.instructions ?? med.schedule]
+                    .filter(Boolean)
+                    .map(String)
+                    .join(' · ')}
+                </AppText>
+              </View>
+            )) : <AppText muted>当前没有记录用药。</AppText>}
         </Card>
       ) : null}
 
-      {events.length > 0 ? (
+      {hasSummaryField('events') ? (
         <Card style={{ gap: 12 }}>
           <AppText variant="eyebrow" soft>
             最近记录
           </AppText>
-          {events.map((event, index) => {
+          {events.length > 0 ? events.map((event, index) => {
             const type = typeof event.type === 'string' ? event.type : 'note';
             const payload =
               event.payload && typeof event.payload === 'object'
@@ -231,7 +266,7 @@ function SharedViewCard({
                 ) : null}
               </View>
             );
-          })}
+          }) : <AppText muted>所选时间范围内没有记录。</AppText>}
         </Card>
       ) : null}
 

@@ -16,6 +16,10 @@ API_BIN="$ROOT_DIR/planet-api/bin/planet-api"
 IOS_DERIVED_DATA="${IOS_DERIVED_DATA:-$ROOT_DIR/.dev/ios-derived}"
 NODE_BIN_DIR="$(dirname "$(command -v node)")"
 
+# The API and Metro launch paths both write diagnostics and process state
+# below .dev. Create it before either service can be started.
+mkdir -p "$ROOT_DIR/.dev"
+
 api_binary_needs_rebuild() {
   [ ! -x "$API_BIN" ] && return 0
   find "$ROOT_DIR/planet-api" -type f -name '*.go' -newer "$API_BIN" -print -quit 2>/dev/null | grep -q .
@@ -145,7 +149,6 @@ if [ -z "${UDID:-}" ]; then
   exit 1
 fi
 
-mkdir -p "$ROOT_DIR/.dev"
 cd "$APP_DIR"
 
 # Unset broken local proxies that break npm/metro

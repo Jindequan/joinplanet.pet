@@ -445,7 +445,7 @@ export const planetApi = {
       const suffix = query.toString() ? `?${query.toString()}` : '';
       return apiClient.get<{ care_plans: CarePlanSummary[] }>(`/pets/${id(petId)}/care-plans${suffix}`);
     },
-    createCarePlan: (petId: string, body: { family_id?: string; type: CarePlan['type']; title: string; description?: string; rule: { type: 'daily' | 'weekly' | 'monthly' | 'interval'; interval?: number; days?: number[]; day?: number; time?: string; start_date?: string; end_date?: string } }, requestKey = createIdempotencyKey()) => apiClient.post<CarePlanCreateResponse>(`/pets/${id(petId)}/care-plans`, body, { headers: { 'Idempotency-Key': requestKey } }),
+    createCarePlan: (petId: string, body: { family_id?: string; type: CarePlan['type']; title: string; description?: string; medication_id?: string; rule: { type: 'daily' | 'weekly' | 'monthly' | 'interval'; interval?: number; days?: number[]; day?: number; time?: string; start_date?: string; end_date?: string } }, requestKey = createIdempotencyKey()) => apiClient.post<CarePlanCreateResponse>(`/pets/${id(petId)}/care-plans`, body, { headers: { 'Idempotency-Key': requestKey } }),
     timeline: (petId: string, params?: { before?: string; before_id?: string; limit?: number }) => {
       const query = new URLSearchParams();
       if (params?.before) query.set('before', params.before);

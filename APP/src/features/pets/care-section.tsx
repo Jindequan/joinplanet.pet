@@ -7,6 +7,7 @@ import {
   createIdempotencyKey,
   planetApi,
   type CareAssignment,
+  type Medication,
   type Pet,
 } from '../../core/api/planet-api'
 import { errorMessage } from '../../core/api/errors'
@@ -27,6 +28,7 @@ import { DateField, TimeField } from '../../ui/components/date-field'
 import { EmptyState } from '../../ui/components/empty-state'
 import { LoadingState } from '../../ui/components/loading-state'
 import { ModalSheet } from '../../ui/components/modal-sheet'
+import { OptionSheet, SelectField } from '../../ui/components/option-sheet'
 import { TextField } from '../../ui/components/text-field'
 import { FadeInView, PressableScale, hapticSelection, hapticSuccess } from '../../ui/motion'
 import { CARE_TEMPLATES, type CarePlanRow, type CareTemplate } from './types'
@@ -54,6 +56,10 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
   const query = useQuery({
     queryKey: queryKeys.carePlans(pet.id, true, familyId),
     queryFn: () => planetApi.pets.carePlans(pet.id, true, familyId),
+  })
+  const medicationsQuery = useQuery({
+    queryKey: queryKeys.medications(pet.id),
+    queryFn: () => planetApi.pets.medications(pet.id),
   })
   const [show, setShow] = useState(initialShowForm)
   const [confirm, setConfirm] = useState<CarePlanRow | null>(null)
@@ -269,6 +275,10 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
         familyId={familyId}
         timezone={timezone}
         template={selectedTemplate}
+        medications={medicationsQuery.data?.medications ?? []}
+        medicationsLoading={medicationsQuery.isLoading}
+        medicationsError={medicationsQuery.error}
+        onRetryMedications={() => void medicationsQuery.refetch()}
         onClose={closeForm}
           onSaved={async () => {
             closeForm()
@@ -642,6 +652,10 @@ function CarePlanForm({
   familyId,
   timezone,
   template,
+  medications,
+  medicationsLoading,
+  medicationsError,
+  onRetryMedications,
   onClose,
   onSaved,
 }: {
@@ -650,6 +664,10 @@ function CarePlanForm({
   familyId?: string
   timezone?: string
   template: CareTemplate | null
+  medications: Medication[]
+  medicationsLoading: boolean
+  medicationsError: unknown
+  onRetryMedications: () => void
   onClose: () => void
   onSaved: () => void
 }) {
@@ -664,6 +682,8 @@ function CarePlanForm({
   const [startDate, setStartDate] = useState(civilDateInTimezone(timezone))
   const [endDate, setEndDate] = useState('')
   const [description, setDescription] = useState('')
+  const [medicationId, setMedicationId] = useState('')
+  const [medicationPickerVisible, setMedicationPickerVisible] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -682,11 +702,19 @@ function CarePlanForm({
     setStartDate(civilDateInTimezone(timezone))
     setEndDate('')
     setDescription('')
+    setMedicationId('')
+    setMedicationPickerVisible(false)
     setShowMore(false)
     setError('')
     setBusy(false)
     commandId.current = createIdempotencyKey()
   }, [templateKey, timezone, visible])
+
+  const activeMedications = medications.filter((medication) => !medication.ended_on)
+  useEffect(() => {
+    if (type !== 'medication' || medicationId || activeMedications.length === 0) return
+    setMedicationId(activeMedications[0]!.id)
+  }, [activeMedications, medicationId, type])
 
   const types = [
     { value: 'custom', label: '自定义' },
@@ -702,8 +730,12 @@ function CarePlanForm({
       Boolean(title.trim()) &&
       recurrenceValid(rule, days, day, interval) &&
       (!endDate || endDate >= startDate)
-    if (!valid) {
-      setError('请检查：标题不能为空；周计划至少选一天，间隔至少 1 天。')
+    if (!valid || (type === 'medication' && !medicationId)) {
+      setError(type === 'medication' && activeMedications.length === 0
+        ? '请先在下方“用药史”添加正在使用的药物，再创建定点给药计划。'
+        : type === 'medication' && !medicationId
+          ? '请选择要关联的药物。'
+          : '请检查：标题不能为空；周计划至少选一天，间隔至少 1 天。')
       return
     }
     setBusy(true)
@@ -718,6 +750,7 @@ function CarePlanForm({
           type,
           title: title.trim(),
           description,
+          ...(type === 'medication' && medicationId ? { medication_id: medicationId } : {}),
           rule: {
             type: rule,
             interval: Number(interval),
@@ -751,6 +784,47 @@ function CarePlanForm({
         设置多久做一次、几点出现；确认后才会生成 Today 待办。
       </AppText>
       <TextField label="标题" value={title} onChangeText={setTitle} maxLength={120} placeholder="早上吃药" />
+      {type === 'medication' ? (
+        medicationsLoading ? (
+          <AppText variant="caption" muted>正在读取可关联的用药记录…</AppText>
+        ) : medicationsError ? (
+          <Card style={{ gap: 8 }}>
+            <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+              暂时无法读取用药记录，不能安全创建定点给药计划。
+            </AppText>
+            <Button label="重试" variant="ghost" onPress={onRetryMedications} />
+          </Card>
+        ) : activeMedications.length === 0 ? (
+          <Card style={{ gap: 8 }}>
+            <AppText variant="caption" muted>
+              先在本页下方“用药史”添加正在使用的药物，计划才会和停药及提醒自动联动。
+            </AppText>
+            <Button label="知道了，去下方添加" variant="ghost" onPress={onClose} />
+          </Card>
+        ) : (
+          <>
+            <SelectField
+              label="关联药物"
+              value={activeMedications.find((medication) => medication.id === medicationId)?.name ?? '请选择药物'}
+              onPress={() => setMedicationPickerVisible(true)}
+            />
+            <OptionSheet
+              visible={medicationPickerVisible}
+              title="选择关联药物"
+              selected={medicationId}
+              options={activeMedications.map((medication) => ({
+                value: medication.id,
+                label: medication.dose ? `${medication.name} · ${medication.dose}` : medication.name,
+              }))}
+              onClose={() => setMedicationPickerVisible(false)}
+              onSelect={(value) => {
+                setMedicationId(value)
+                setMedicationPickerVisible(false)
+              }}
+            />
+          </>
+        )
+      ) : null}
       {showMore ? (
         <ChoiceChips
           label="类型"
@@ -801,7 +875,13 @@ function CarePlanForm({
       ) : null}
       <View style={styles.actions}>
         <Button label="取消" variant="secondary" onPress={onClose} style={{ flex: 1 }} />
-        <Button label="创建计划" busy={busy} onPress={() => void save()} style={{ flex: 1 }} />
+        <Button
+          label="创建计划"
+          busy={busy}
+          disabled={type === 'medication' && (medicationsLoading || Boolean(medicationsError) || activeMedications.length === 0 || !medicationId)}
+          onPress={() => void save()}
+          style={{ flex: 1 }}
+        />
       </View>
     </ModalSheet>
   )

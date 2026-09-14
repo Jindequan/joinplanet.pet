@@ -62,6 +62,54 @@ function formatEventDate(iso: unknown): string {
   });
 }
 
+/** Print the generated document without replacing or duplicating the app page. */
+async function printHtmlDocument(html: string): Promise<void> {
+  if (typeof document === 'undefined') throw new Error('当前浏览器不支持打印');
+  const frame = document.createElement('iframe');
+  frame.title = 'PLANET 健康摘要打印视图';
+  frame.dataset.planetPrintFrame = 'summary';
+  Object.assign(frame.style, {
+    position: 'fixed',
+    width: '1px',
+    height: '1px',
+    border: '0',
+    opacity: '0',
+    pointerEvents: 'none',
+    left: '-2px',
+    top: '-2px',
+  });
+  document.body.appendChild(frame);
+
+  const printDocument = frame.contentDocument;
+  const printWindow = frame.contentWindow;
+  if (!printDocument || !printWindow) {
+    frame.remove();
+    throw new Error('暂时无法准备打印内容');
+  }
+
+  printDocument.open();
+  printDocument.write(html);
+  printDocument.close();
+
+  const images = Array.from(printDocument.images);
+  await Promise.race([
+    Promise.all(images.map((image) => {
+      if (image.complete) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        image.addEventListener('load', () => resolve(), { once: true });
+        image.addEventListener('error', () => resolve(), { once: true });
+      });
+    })),
+    new Promise<void>((resolve) => window.setTimeout(resolve, 1500)),
+  ]);
+
+  printWindow.focus();
+  printWindow.print();
+  // Keep the document alive while the native print dialog is opening, then
+  // remove it so repeated taps never accumulate hidden frames in the page.
+  window.setTimeout(() => frame.remove(), 2000);
+}
+
 function formatSharedValue(value: unknown, fallback = '未记录'): string {
   if (Array.isArray(value)) {
     const text = value
@@ -353,10 +401,7 @@ export function PublicShareScreen() {
     try {
       const html = buildSummaryPdfHtml(query.data);
       if (Platform.OS === 'web') {
-        if (typeof window === 'undefined' || typeof window.print !== 'function') {
-          throw new Error('当前浏览器不支持打印');
-        }
-        window.print();
+        await printHtmlDocument(html);
         return;
       }
       const result = await Print.printToFileAsync({ html });

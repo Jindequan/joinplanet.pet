@@ -263,16 +263,6 @@ test('expired public shares expose a recoverable explanation', async ({ page }) 
 })
 
 test('summary share exposes a print or save PDF action', async ({ page }) => {
-  await page.addInitScript(() => {
-    ;(window as typeof window & { __planetPrints?: number }).__planetPrints = 0
-    Object.defineProperty(window, 'print', {
-      configurable: true,
-      value: () => {
-        const current = (window as typeof window & { __planetPrints?: number }).__planetPrints ?? 0
-        ;(window as typeof window & { __planetPrints?: number }).__planetPrints = current + 1
-      },
-    })
-  })
   await mockApi(page)
   await page.route('**/api/v1/shares/e2e-summary', async (route) => {
     await route.fulfill({
@@ -300,7 +290,10 @@ test('summary share exposes a print or save PDF action', async ({ page }) => {
   await expect(page.getByText('关节护理')).toBeVisible()
   await expect(page.getByText('带去就诊')).toBeVisible()
   await page.getByRole('button', { name: '打印 / 保存 PDF' }).click()
-  await expect.poll(() => page.evaluate(() => (window as typeof window & { __planetPrints?: number }).__planetPrints ?? 0)).toBe(1)
+  const printFrame = page.locator('iframe[data-planet-print-frame="summary"]')
+  await expect(printFrame).toHaveCount(1)
+  await expect(printFrame.contentFrame().locator('body')).toContainText('PLANET · VET-READY SUMMARY')
+  await expect(printFrame.contentFrame().locator('body')).toContainText('关节护理')
 })
 
 test('summary share only renders the selected privacy sections', async ({ page }) => {

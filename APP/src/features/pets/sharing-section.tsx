@@ -258,6 +258,7 @@ function ShareForm({
   const [ttl, setTtl] = useState('168')
   const [days, setDays] = useState('90')
   const [reason, setReason] = useState('')
+  const [sections, setSections] = useState<string[]>(['profile', 'medications', 'events'])
   const [includePhotos, setIncludePhotos] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -281,6 +282,10 @@ function ShareForm({
   ]
 
   async function save() {
+    if (kind === 'summary' && sections.length === 0) {
+      setError('至少选择一项摘要内容。')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -289,7 +294,12 @@ function ShareForm({
         kind,
         ttlHours: Number(ttl),
         options: kind === 'summary'
-          ? { days: Number(days), include_photos: includePhotos, ...(reason.trim() ? { reason: reason.trim() } : {}) }
+          ? {
+              sections,
+              days: Number(days),
+              include_photos: includePhotos,
+              ...(reason.trim() ? { reason: reason.trim() } : {}),
+            }
           : {},
         idempotencyKey: commandId.current,
       })
@@ -334,6 +344,46 @@ function ShareForm({
             value={days}
             onChange={setDays}
           />
+          <View style={{ gap: 8 }}>
+            <AppText variant="label">包含哪些内容</AppText>
+            <AppText variant="caption" muted>
+              只分享这次就诊需要的资料；过敏会在摘要顶部单独标注。
+            </AppText>
+            {([
+              { value: 'profile', label: '宠物档案', description: '基本信息、过敏、病史和家人备注' },
+              { value: 'medications', label: '当前用药', description: '正在使用的药物、剂量和频率' },
+              { value: 'events', label: '近期记录', description: '症状、体重、疫苗、驱虫和就诊记录' },
+            ] as const).map(({ value, label, description }) => {
+              const checked = sections.includes(value)
+              return (
+                <View
+                  key={value}
+                  style={[styles.toggleRow, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <AppText variant="label">{label}</AppText>
+                    <AppText variant="caption" muted>{description}</AppText>
+                  </View>
+                  <Switch
+                    value={checked}
+                    onValueChange={(next) => {
+                      setSections((current) => {
+                        if (next) return current.includes(value) ? current : [...current, value]
+                        return current.filter((item) => item !== value)
+                      })
+                    }}
+                    accessibilityLabel={`包含${label}`}
+                    trackColor={{ true: theme.colors.mintStrong, false: theme.colors.line }}
+                  />
+                </View>
+              )
+            })}
+            {sections.length === 0 ? (
+              <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+                至少选择一项摘要内容。
+              </AppText>
+            ) : null}
+          </View>
           <View
             style={[styles.toggleRow, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}
             accessibilityLabel="在健康摘要中包含记录照片"

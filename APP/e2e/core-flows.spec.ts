@@ -323,9 +323,12 @@ test('summary sharing captures the visit reason in the snapshot options', async 
   await page.getByRole('button', { name: '准备就诊' }).click()
   await expect(page.getByText('创建私密分享', { exact: true })).toBeVisible()
   await page.getByLabel('本次就诊主诉 / Why now').fill('最近两天反复呕吐，想确认是否需要检查')
+  await page.getByLabel('包含当前用药').click()
   await page.getByRole('button', { name: '创建链接' }).click()
   await expect.poll(() => createBody).toBeDefined()
-  expect((createBody?.options as Record<string, unknown>)?.reason).toBe('最近两天反复呕吐，想确认是否需要检查')
+  const options = createBody?.options as Record<string, unknown>
+  expect(options.reason).toBe('最近两天反复呕吐，想确认是否需要检查')
+  expect(options.sections).toEqual(['profile', 'events'])
 })
 
 test('pet JSON export produces a downloadable file on web', async ({ page }) => {

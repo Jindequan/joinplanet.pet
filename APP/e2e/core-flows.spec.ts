@@ -182,6 +182,7 @@ test('public invite preview preserves the code through authentication', async ({
   await mockApi(page)
   await page.goto('/invite/abc1234567')
   await expect(page.getByLabel('邀请码')).toHaveValue('ABC1234567')
+  await expect(page.getByLabel('邀请码')).not.toBeFocused()
   await expect(page.getByRole('button', { name: '登录后加入' })).toBeEnabled()
   await page.getByRole('button', { name: '登录后加入' }).click()
   await expect(page).toHaveURL(/\/auth\?invite=ABC1234567$/)

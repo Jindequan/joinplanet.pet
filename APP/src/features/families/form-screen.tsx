@@ -253,7 +253,7 @@ function JoinFamilyScreen({
             placeholder="10 位邀请码"
             autoCapitalize="characters"
             autoCorrect={false}
-            autoFocus
+            autoFocus={!publicEntry || !initialCode}
           />
 
           {checking ? (

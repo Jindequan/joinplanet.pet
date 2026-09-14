@@ -7,19 +7,22 @@
 
 ## 执行状态
 
-**09-09/10/11:静默限流连续第三天(提交无提示丢弃)。按协议:09-12 做最后一次每日尝试,仍失败则降级为隔日一试。触点:月帖/评论回复/收件箱/Chat 至今全部静默(09-11 检查,月帖所在帖子评论数仍在增长=有流量经过)。**
+**09-09~09-12:静默限流第四天,每日尝试全部失败 → 按协议降级为隔日一试(下次 09-14,队头=r/Dogowners 无链接版)。触点:全部静默(09-12 检查,会话有效)。**
 
 | 目标帖 | 状态 |
 |---|---|
-| r/Dogowners 1w3esdj(老年犬健康事务) | 📝 **队列 #1**:无链接版已备好(Tier 1 #0),限流解除即发。该帖评论数 13→14(有真实流量) |
+| r/Dogowners 1w3esdj(老年犬健康事务) | 📝 **队列 #1**:无链接版已备好(Tier 1 #0)。该帖持续有真实评论流量 |
 | r/seniordogs 1wct7il(关节炎换药困境) | 📝 **队列 #2**:纯帮助版已备好(Tier 1.5) |
 | r/PetAdvice 1syvzq1(宠物医疗记录怎么管) | 📝 **队列 #3** |
-| r/dogs 1nz5dwx(照护交接信息) | 📝 **队列 #4**(无链接+纯帮助) |
-| r/RoverPetSitting 1te02dh(保姆如何接药,09-11 新发现) | 📝 **队列 #5**:不pitch,参与讨论学语言——保姆/寄养=handoff 细分人群,为将来 sitter 场景铺路 |
+| r/dogs 1nz5dwx(照护交接信息) | 📝 **队列 #4** |
+| r/RoverPetSitting 1te02dh(保姆如何接药) | 📝 **队列 #5**:参与讨论学语言 |
+| r/petsitting 1vgnbvc(保姆完全没喂药,~09-08 发帖) | 📝 **队列 #6(09-12 新增,临界龄~1 个月,founder 判断)**:handoff+验证的产品故事正中;草稿方向=先支持楼主(留证据/向 Rover 报告/今后要求用药日志),最后一句披露"我在做一个显示每剂是否真喂了的交接视图"。同段位备选:1uumjfv(补剂版,无链接) |
 | r/EpilepsyDogs 1w4uund | ✅ 存活(09-06 发),无新回复 |
-| r/Pets 月帖 1vi0qcf | ✅ 存活(招募评论),无新回复(09-11 检查) |
+| r/Pets 月帖 1vi0qcf | ✅ 存活(招募评论),无新回复(09-12 检查) |
 | r/rescuedogs 1vneb3i | ❌ 已删,弃 |
 | 收件箱 / Chat | 空 |
+
+**细分备注(09-12)**:Feral_Cats 群护猫志愿者(批量管理多只猫的驱虫表)=远期"多动物管理"细分,记入未来方向。**文案弹药库新增**:r/petsitting 寄养表单"写了药却被跳过"、剂量 confusion("瓶上写半片主人说一片")——handoff 场景的真实事故语言。
 
 **文案弹药库(09-11 新增,老帖不回只取语言)**:三条独立老帖确认多人协调痛点密度——[r/dogs 伴侣差点混药](https://www.reddit.com/r/dogs/comments/1scavqj/my_partner_and_i_almost_mixed_up_our_dogs_meds/)、[r/dogs 只让一个人负责](https://www.reddit.com/r/dogs/comments/1setjxk/do_most_people_just_make_one_person_responsible/)、[r/Pets 夫妻沟通失败](https://www.reddit.com/r/Pets/comments/1tah3so/spouse_and_i_keep_miscommunicating_about_our_pets/)。社区自创解法:冰箱白板磁贴每日挪动、周日补充的药盒、指定唯一负责人——全部是"人肉版 PLANET",文案可直接引用这些形态。
 

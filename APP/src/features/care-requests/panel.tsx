@@ -437,6 +437,8 @@ export function CareRequestInbox({
       : '/(tabs)'
   const [composer, setComposer] = useState<ComposerMode | null>(null)
   const [pendingContinuation, setPendingContinuation] = useState<{ request: CareRequest; commandId: string } | null>(null)
+  const [continuationError, setContinuationError] = useState('')
+  const [continuationAttempt, setContinuationAttempt] = useState(0)
   const [pendingActions, setPendingActions] = useState<PendingCareAction[]>([])
   const [syncingActions, setSyncingActions] = useState(false)
   const syncingActionsRef = useRef(false)
@@ -575,13 +577,18 @@ export function CareRequestInbox({
       scopedInboxRequests.find((item) => item.id === pendingDecline.requestId) ??
       (pendingDecline.requestId === requestedIdValue ? requestedRequest.data?.care_request : undefined)
     if (request) {
+      setContinuationError('')
       setPendingContinuation({ request, commandId: pendingDecline.commandId })
       return
     }
     void planetApi.careRequests.get(pendingDecline.requestId!).then(({ care_request }) => {
+      setContinuationError('')
       setPendingContinuation({ request: care_request, commandId: pendingDecline.commandId })
-    }).catch(() => undefined)
+    }).catch((error) => {
+      setContinuationError(errorMessage(error))
+    })
   }, [
+    continuationAttempt,
     scopedInboxRequests,
     pendingActions,
     pendingContinuation,
@@ -603,7 +610,9 @@ export function CareRequestInbox({
         }
         setPendingContinuation(null)
       })
-    }).catch(() => undefined)
+    }).catch((error) => {
+      if (!cancelled) setContinuationError(errorMessage(error))
+    })
     return () => {
       cancelled = true
     }
@@ -780,6 +789,22 @@ export function CareRequestInbox({
       </Pressable>
     </View>
   ) : null
+  const continuationRecovery = continuationError ? (
+    <Card style={styles.continuationRecovery}>
+      <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+        已保存拒绝，但暂时无法打开继续安排。{continuationError}
+      </AppText>
+      <Button
+        label="重试打开继续安排"
+        variant="secondary"
+        onPress={() => {
+          setContinuationError('')
+          setContinuationAttempt((attempt) => attempt + 1)
+        }}
+        style={{ alignSelf: 'flex-start' }}
+      />
+    </Card>
+  ) : null
   const refreshing =
     (inbox.isFetching && !inbox.isLoading) ||
     (showSent && sent.isFetching && !sent.isLoading) ||
@@ -820,6 +845,7 @@ export function CareRequestInbox({
     return (
       <>
         {queueBar}
+        {continuationRecovery}
         {refreshBar}
         {statusCard}
         {composer ? <CareRequestComposer mode={composer} onClose={() => setComposer(null)} /> : null}
@@ -876,6 +902,7 @@ export function CareRequestInbox({
   return (
     <>
       {queueBar}
+      {continuationRecovery}
       {refreshBar}
       {statusCard}
       {summaryCard}
@@ -1529,6 +1556,7 @@ const styles = StyleSheet.create({
   batchSubjectList: { gap: 3 },
   sentBatchStatus: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   openOccurrenceButton: { paddingHorizontal: 11, minHeight: 44 },
+  continuationRecovery: { gap: 10 },
   requestTop: { flexDirection: 'row', gap: 8 },
   detailLink: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingTop: 2 },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },

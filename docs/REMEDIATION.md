@@ -173,3 +173,4 @@ cd ../planet-api && TEST_DATABASE_URL=postgres:///postgres go test ./...
 - 2026-09-14 负责人读取恢复补强：照护计划责任条在负责人接口失败时保留明确错误并提供“重试负责人”入口；连续 503 后手动重试可恢复真实负责人显示。桌面/移动 E2E 68/68、TypeScript、Lint、前端契约与 Backend/Landing CI 均通过，PR #32 已合并。生产 API `/readyz` 与登录路由仍为 404，未计入线上业务可用。
 - 2026-09-15 本地最终复核：当前源码 API 的 `acceptance-phase-a.sh` 与 `acceptance-care-coordination.sh` 均完成真实登录、家庭/宠物/计划、Today→Timeline、双账号请求/批量交班、拒绝重排、幂等和完成收束；同一 `PlanetBuildCheck` Simulator 上，单项与批量 APNs 样本均由 `simctl push` 投递，并从 `DeliveredNotifications.plist` 读回对应通知类别、全部动作标识和精确业务 ID。系统通知中心按钮的视觉/点击与断网重放仍按设备验收清单单独计为未完成。
 - 2026-09-15 邀请预览恢复补强：公开邀请码在预览接口暂时失败时显示统一错误并提供“重试核对”，恢复后继续保留预览结果与“登录后加入”主路径；桌面/移动 E2E 6/6、全量 E2E 74/74、TypeScript、Lint 和前端契约均通过。
+- 2026-09-15 责任链恢复补强：离线拒绝同步后，如果继续转交所需的请求详情暂时读取失败，Requests 页面现在显示可读错误和“重试打开继续安排”，不会静默停在已拒绝状态；TypeScript、Lint、前端契约均通过。

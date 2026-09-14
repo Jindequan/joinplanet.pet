@@ -45,6 +45,13 @@ else
   fail "invite preview failures have no recovery action"
 fi
 
+if rg -q 'continuationError' "$APP/features/care-requests/panel.tsx" && \
+   rg -q 'label="重试打开继续安排"' "$APP/features/care-requests/panel.tsx"; then
+  pass "offline decline continuation failures expose a recovery action"
+else
+  fail "offline decline continuation failures can become silent"
+fi
+
 if ! rg -q 'CareRequestInbox' "$APP/features/today/screen.tsx"; then
   pass "Today does not embed the full request inbox"
 else

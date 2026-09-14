@@ -134,6 +134,60 @@ export const lightTheme = {
   touchTarget: 44,
 } as const;
 
+/** Semantic dark palette. Component code keeps using the same roles, so the
+ * night surface is a deliberate theme rather than a global color inversion. */
+export const darkTheme = {
+  ...lightTheme,
+  colors: {
+    ...lightTheme.colors,
+    ink: '#f2f5ef',
+    muted: '#bdc9c1',
+    soft: '#9baa9f',
+    paper: '#101713',
+    paperStrong: '#18231c',
+    canvas: '#0b100d',
+    line: 'rgba(218,239,226,0.16)',
+    lineStrong: 'rgba(218,239,226,0.3)',
+    forest: '#8dd2ad',
+    forest2: '#2c8f6a',
+    sage: '#78bd98',
+    sageSoft: '#203b2c',
+    secondary: '#274936',
+    coral: '#e98970',
+    coralDark: '#ef9b82',
+    coralSoft: '#4a2c27',
+    mint: '#294b39',
+    mintStrong: '#91d9b1',
+    danger: '#ee907b',
+    inverseText: '#101713',
+    onBrand: '#ffffff',
+    onBrandMuted: '#f7d8cf',
+    onBrandSoft: 'rgba(255,255,255,0.18)',
+    onBrandLine: 'rgba(255,255,255,0.6)',
+    identityFrom: '#2e7659',
+    identityTo: '#1b4e3b',
+    dangerLine: 'rgba(238,144,123,0.28)',
+    focusRing: 'rgba(233,137,112,0.24)',
+    background: '#101713',
+    surface: '#18231c',
+    surfaceRaised: '#101713',
+    border: 'rgba(218,239,226,0.16)',
+    text: '#f2f5ef',
+    textMuted: '#bdc9c1',
+    textSubtle: '#9baa9f',
+    brand: '#e98970',
+    brandStrong: '#ef9b82',
+    brandSoft: '#4a2c27',
+    inverseSurface: '#ef9b82',
+    overlay: 'rgba(0,0,0,0.62)',
+    onDanger: '#101713',
+  },
+  shadow: {
+    card: cardShadow,
+    floating: floatingShadow,
+  },
+} as unknown as typeof lightTheme;
+
 export type AppTheme = {
   colors: Record<keyof typeof lightTheme.colors, string>;
   spacing: typeof lightTheme.spacing;

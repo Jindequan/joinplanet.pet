@@ -1,6 +1,6 @@
 import React from 'react';
 import 'react-native-reanimated';
-import { Platform, useWindowDimensions, View } from 'react-native';
+import { Platform, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,6 +18,7 @@ import { LoadingState } from '../src/ui/components/loading-state';
 
 function RootNavigator() {
   const { theme } = useTheme();
+  const scheme = useColorScheme();
   const { status } = useSession();
   const { width } = useWindowDimensions();
 
@@ -31,7 +32,7 @@ function RootNavigator() {
           backgroundColor: theme.colors.background,
         }}
       >
-        <StatusBar style="dark" />
+        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
         <LoadingState label="正在恢复登录状态" />
       </View>
     );
@@ -47,7 +48,7 @@ function RootNavigator() {
         backgroundColor: Platform.OS === 'web' ? theme.colors.canvas : theme.colors.background,
       }}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <View style={{ flex: 1, flexDirection: desktopWeb ? 'row' : 'column' }}>
         {desktopWeb ? <WebWorkspaceRail /> : null}
         <View

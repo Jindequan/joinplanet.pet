@@ -46,11 +46,14 @@ make migrate-up
 `scripts/production-smoke.sh` 会自动执行这组入口检查。
 
 仓库提供手动 GitHub Actions 工作流 `deploy backend`（`.github/workflows/backend-deploy.yml`）。
-执行前在 production environment 配置 `PLANET_SSH_HOST`、`PLANET_SSH_USER`、
-`PLANET_SSH_PRIVATE_KEY` 和固定的 `PLANET_SSH_KNOWN_HOSTS` 四个 Secrets；工作流只读取
-凭据，不把它们写入仓库，发布后自动运行
-`scripts/production-smoke.sh`。服务器仍需预先安装 `/etc/planet-api-owner.env`、数据库和
-systemd 单元，部署脚本会按服务器架构选择 amd64/arm64 二进制，并在健康或登录门禁失败时回滚。
+执行前需在 production environment 配置以下 Secrets：SSH 凭据
+`PLANET_SSH_HOST`、`PLANET_SSH_USER`、`PLANET_SSH_PRIVATE_KEY`、
+`PLANET_SSH_KNOWN_HOSTS`，以及运行时配置
+`PLANET_APP_DATABASE_URL`、`PLANET_OWNER_PASSWORD`、`PLANET_RESEND_API_KEY`、
+`PLANET_BACKUP_DIR`、`PLANET_BACKUP_S3_URI`。工作流会在远程主机上以 0600 权限生成
+`/etc/planet-api.env` 和 `/etc/planet-api-owner.env`，不会把值写入仓库；缺少任一密钥时
+会在远程写入前停止。服务器仍需预先安装 PostgreSQL、systemd 和 Caddy，部署脚本会按
+服务器架构选择 amd64/arm64 二进制，并在健康或登录门禁失败时回滚。
 
 `deploy/deploy.sh` 会同时构建 Linux `amd64` 与 `arm64` 静态二进制，上传后按目标机
 `uname -m` 选择正确架构；未知架构直接失败，避免把错误平台的文件装入生产环境。

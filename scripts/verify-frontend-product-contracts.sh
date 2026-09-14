@@ -299,6 +299,13 @@ else
   fail "assignment reorder or medication stop can repeat on network retry"
 fi
 
+if rg -q 'outgoingError' "$APP/features/pets/transfer-screen.tsx" && \
+   rg -q '不能安全地发起新的转移' "$APP/features/pets/transfer-screen.tsx"; then
+  pass "pet transfer blocks writes when existing status is unknown"
+else
+  fail "pet transfer can create duplicates when existing status lookup fails"
+fi
+
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
    rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
    rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx"; then

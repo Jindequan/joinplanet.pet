@@ -1027,6 +1027,22 @@ test('viewer cannot start a pet transfer and gets a recovery path', async ({ pag
   await expect(page.getByRole('button', { name: /发送转移请求/ })).toHaveCount(0)
 })
 
+test('pet transfer blocks duplicate requests when existing transfer status cannot be confirmed', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  await page.route('**/api/v1/families/e2e-family/transfers?direction=outgoing', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '转移状态暂时不可用' } }),
+    })
+  })
+  await page.goto('/pets/e2e-pet/transfer?familyId=e2e-family')
+  await expect(page.getByText('暂时无法确认已有转移请求，不能安全地发起新的转移。')).toBeVisible()
+  await expect(page.getByRole('button', { name: '重试' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /发送转移请求/ })).toHaveCount(0)
+})
+
 test('viewer Today is readable but cannot complete or reassign care', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)

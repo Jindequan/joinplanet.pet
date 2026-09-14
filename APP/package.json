@@ -34,6 +34,7 @@
     "expo-blur": "~15.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",
+    "expo-file-system": "~19.0.24",
     "expo-haptics": "~15.0.0",
     "expo-image-picker": "~17.0.11",
     "expo-linear-gradient": "~15.0.8",

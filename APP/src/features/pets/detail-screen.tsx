@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react'
 import {
   Platform,
   Pressable,
-  Share as RnShare,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
+import { File, Paths } from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ClipboardText,
@@ -575,30 +576,38 @@ function OverviewTab({
         {showExport ? (
         <MoreRow
           icon={<DownloadSimple size={19} color={theme.colors.forest2} />}
-          title="导出数据"
+            title="导出数据"
             sub="保存这只宠物的完整记录"
             onPress={() => {
               void (async () => {
                 try {
                   const data = await extensionReaders.petExport(pet.id)
                   const content = JSON.stringify(data, null, 2)
-                  const browserCanShare =
-                    Platform.OS === 'web' &&
-                    typeof navigator !== 'undefined' &&
-                    typeof navigator.share === 'function'
-                  if (Platform.OS !== 'web' || browserCanShare) {
-                    try {
-                      await RnShare.share({
-                        message: content,
-                        title: `${pet.name}-planet-export.json`,
-                      })
-                      return
-                    } catch {
-                      // Fall through to clipboard for browsers without Web Share.
-                    }
+                  const filename = `${pet.name.replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 48) || 'pet'}-planet-export.json`
+                  if (Platform.OS === 'web') {
+                    const blob = new Blob([content], { type: 'application/json;charset=utf-8' })
+                    const url = URL.createObjectURL(blob)
+                    const anchor = document.createElement('a')
+                    anchor.href = url
+                    anchor.download = filename
+                    anchor.click()
+                    URL.revokeObjectURL(url)
+                    showToast({ message: 'JSON 数据已下载' })
+                    return
+                  }
+                  const file = new File(Paths.cache, filename)
+                  file.create({ overwrite: true })
+                  file.write(content)
+                  if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(file.uri, {
+                      mimeType: 'application/json',
+                      dialogTitle: `导出 ${pet.name} 的 JSON 数据`,
+                      UTI: 'public.json',
+                    })
+                    return
                   }
                   await Clipboard.setStringAsync(content)
-                  showToast({ message: '系统分享不可用，导出内容已复制' })
+                  showToast({ message: '系统分享不可用，JSON 数据已复制' })
                 } catch (e) {
                   showToast({ message: errorMessage(e) })
                 }

@@ -337,6 +337,14 @@ else
   fail "Vet timelines have no deworming record contract"
 fi
 
+if rg -q "from 'expo-file-system'" "$ROOT/APP/src/features/pets/detail-screen.tsx" && \
+   rg -q "shareAsync\(file.uri" "$ROOT/APP/src/features/pets/detail-screen.tsx" && \
+   rg -q 'anchor.download' "$ROOT/APP/src/features/pets/detail-screen.tsx"; then
+  pass "Structured pet JSON export downloads or shares as a file"
+else
+  fail "Structured pet JSON export still falls back to text-only sharing"
+fi
+
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
    rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
    rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx"; then

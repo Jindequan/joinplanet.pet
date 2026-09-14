@@ -260,12 +260,17 @@ function ShareForm({
   const [reason, setReason] = useState('')
   const [sections, setSections] = useState<string[]>(['profile', 'medications', 'events'])
   const [includePhotos, setIncludePhotos] = useState(false)
+  const [step, setStep] = useState<'edit' | 'review'>('edit')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const commandId = useRef(createIdempotencyKey())
 
   useEffect(() => {
-    if (visible) setKind(initialKind)
+    if (visible) {
+      setKind(initialKind)
+      setStep('edit')
+      setError('')
+    }
   }, [initialKind, visible])
 
   const ttlOptions = [
@@ -284,6 +289,11 @@ function ShareForm({
   async function save() {
     if (kind === 'summary' && sections.length === 0) {
       setError('至少选择一项摘要内容。')
+      return
+    }
+    if (kind === 'summary' && step === 'edit') {
+      setError('')
+      setStep('review')
       return
     }
     setBusy(true)
@@ -318,16 +328,20 @@ function ShareForm({
         临时访问
       </AppText>
       <AppText variant="heading">创建私密分享</AppText>
-      <ChoiceChips
-        label="内容视图"
-        options={[
-          { value: 'care_card', label: '照护卡片(今日行动)' },
-          { value: 'summary', label: '健康摘要' },
-        ]}
-        value={kind}
-        onChange={setKind}
-      />
-      {kind === 'summary' ? (
+      {step === 'edit' ? (
+        <ChoiceChips
+          label="内容视图"
+          options={[
+            { value: 'care_card', label: '照护卡片(今日行动)' },
+            { value: 'summary', label: '健康摘要' },
+          ]}
+          value={kind}
+          onChange={setKind}
+        />
+      ) : (
+        <AppText variant="caption" muted>健康摘要 · 创建前最后确认</AppText>
+      )}
+      {kind === 'summary' && step === 'edit' ? (
         <View style={{ gap: 12 }}>
           <TextField
             label="本次就诊主诉 / Why now"
@@ -401,7 +415,25 @@ function ShareForm({
           </View>
         </View>
       ) : null}
+      {kind === 'summary' && step === 'review' ? (
+        <View style={{ gap: 10 }}>
+          <View style={[styles.reviewCard, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}>
+            <AppText variant="label">这份摘要将包含</AppText>
+            <AppText>{sections.map((section) => ({ profile: '宠物档案', medications: '当前用药', events: '近期记录' } as Record<string, string>)[section]).join('、')}</AppText>
+            <AppText variant="caption" muted>时间范围：近 {days === '180' ? '半年' : days === '365' ? '一年' : `${days} 天`}</AppText>
+            <AppText variant="caption" muted>记录照片：{includePhotos ? '包含' : '不包含'}</AppText>
+          </View>
+          <View style={[styles.reviewCard, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}>
+            <AppText variant="label">本次就诊主诉</AppText>
+            <AppText>{reason.trim() || '未填写；兽医可能需要你现场补充就诊原因。'}</AppText>
+          </View>
+          <AppText variant="caption" muted>
+            创建后会生成一条限时只读链接；拿到链接的人无需注册即可查看这份摘要。
+          </AppText>
+        </View>
+      ) : null}
       <ChoiceChips
+        /* 有摘要预览时只保留确认内容，避免用户在创建前无意切换视图类型。 */
         label="有效期"
         options={ttlOptions.map(([value, label]) => ({ value: value!, label: label! }))}
         value={ttl}
@@ -418,8 +450,25 @@ function ShareForm({
         </AppText>
       ) : null}
       <View style={styles.actions}>
-        <Button label="取消" variant="secondary" onPress={onClose} style={{ flex: 1 }} />
-        <Button label="创建链接" busy={busy} onPress={() => void save()} style={{ flex: 1 }} />
+        {kind === 'summary' && step === 'review' ? (
+          <Button
+            label="返回修改"
+            variant="secondary"
+            onPress={() => {
+              setStep('edit')
+              setError('')
+            }}
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <Button label="取消" variant="secondary" onPress={onClose} style={{ flex: 1 }} />
+        )}
+        <Button
+          label={kind === 'summary' && step === 'edit' ? '预览摘要' : '创建链接'}
+          busy={busy}
+          onPress={() => void save()}
+          style={{ flex: 1 }}
+        />
       </View>
     </ModalSheet>
   )
@@ -441,4 +490,5 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 12, paddingVertical: 9 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
+  reviewCard: { gap: 5, padding: 12 },
 })

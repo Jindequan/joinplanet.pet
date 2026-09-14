@@ -33,10 +33,18 @@ export function ActivationScreen() {
     queryFn: () => foundationReaders.accessiblePets(),
   })
 
+  // An incomplete account must never be sent to the empty Today workspace.
+  // Keep the escape hatch useful: a new account returns to family setup, and
+  // an existing family returns to that family's governance page.
+  const firstFamilyId = families.data?.families[0]?.id
+  const setupBackHref = firstFamilyId
+    ? `/families/${encodeURIComponent(firstFamilyId)}`
+    : '/families'
+
   if (activation.isLoading || families.isLoading || pets.isLoading) {
     return (
       <Screen edges={['top', 'left', 'right', 'bottom']}>
-        <BackHeader menu={false} title="开始使用" onBack={() => router.replace('/(tabs)' as never)} />
+        <BackHeader menu={false} title="开始使用" onBack={() => router.replace(setupBackHref as never)} />
         <LoadingState label="正在准备你的照护工作区" />
       </Screen>
     )
@@ -45,7 +53,7 @@ export function ActivationScreen() {
   if (activation.error || families.error || pets.error) {
     return (
       <Screen edges={['top', 'left', 'right', 'bottom']}>
-        <BackHeader menu={false} title="开始使用" onBack={() => router.replace('/(tabs)' as never)} />
+        <BackHeader menu={false} title="开始使用" onBack={() => router.replace(setupBackHref as never)} />
         <QueryErrorState
           error={activation.error ?? families.error ?? pets.error}
           message="暂时无法读取你的家庭和宠物"
@@ -63,7 +71,7 @@ export function ActivationScreen() {
 
   const familyCount = families.data?.families.length ?? activation.summary?.families ?? 0
   const activePets = (pets.data?.pets ?? []).filter((pet) => !pet.archived_at)
-  const familyId = families.data?.families[0]?.id
+  const familyId = firstFamilyId
   const firstPetId = activePets[0]?.id
   const targetFamily = families.data?.families[0]
   const canManagePet = !targetFamily || targetFamily.role === 'owner'
@@ -79,7 +87,7 @@ export function ActivationScreen() {
         title="开始使用"
         eyebrow="只需三步"
         subtitle="先建立家庭、宠物和一条日常安排，今天页就会有内容。"
-        onBack={() => router.replace('/(tabs)' as never)}
+        onBack={() => router.replace(setupBackHref as never)}
       />
       <View style={[styles.intro, { backgroundColor: theme.colors.forest2 }]}>
         <AppText variant="eyebrow" color={theme.colors.mint}>你的工作区还没准备好</AppText>

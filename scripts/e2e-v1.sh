@@ -375,6 +375,9 @@ expect "8.3c B transfers family ownership to A" 200 'any(m["user_id"] == "'"$A_I
 req POST "/api/v1/families/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
 expect "8.3c2 retry returns the final Family ownership state (idempotent)" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
 
+req POST "/api/v1/families/$CIRCLE_B/leave" "$B_TOK"
+expect "8.3c3 B leaves after transferring Family ownership" 204
+
 req GET "/api/v1/families/$CIRCLE_A/pets" "$A_TOK"
 expect "8.3d source Family remains empty after B leaves" 200 'not any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
 

@@ -322,7 +322,8 @@ fi
 if rg -q "from 'expo-print'" "$APP/features/settings/public-share-screen.tsx" && \
    rg -q "from 'expo-sharing'" "$APP/features/settings/public-share-screen.tsx" && \
    rg -q 'label="打印 / 保存 PDF"' "$APP/features/settings/public-share-screen.tsx" && \
-   rg -q 'buildSummaryPdfHtml' "$APP/features/settings/summary-pdf.ts"; then
+   rg -q 'buildSummaryPdfHtml' "$APP/features/settings/summary-pdf.ts" && \
+   rg -q '准备就诊' "$APP/features/pets/detail-screen.tsx"; then
   pass "Vet-ready summaries expose a native and web PDF output path"
 else
   fail "Vet-ready summaries have no complete PDF output path"

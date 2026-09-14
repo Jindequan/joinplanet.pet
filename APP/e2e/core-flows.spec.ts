@@ -321,7 +321,7 @@ test('care plan owner lookup exposes an inline retry', async ({ page }) => {
   let assignmentAttempts = 0
   await page.route('**/api/v1/care-plans/e2e-plan/assignments*', async (route) => {
     assignmentAttempts += 1
-    if (assignmentAttempts === 1) {
+    if (assignmentAttempts <= 3) {
       await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEMPORARY_FAILURE', message: 'temporary' } }) })
     } else {
       await route.fulfill({
@@ -355,7 +355,7 @@ test('care plan owner lookup exposes an inline retry', async ({ page }) => {
   await expect(page.getByText('负责人暂时无法加载')).toBeVisible()
   await page.getByRole('button', { name: '重试负责人' }).click()
   await expect(page.getByText(`固定负责人 · ${user.display_name}`)).toBeVisible()
-  await expect.poll(() => assignmentAttempts).toBe(2)
+  await expect.poll(() => assignmentAttempts).toBe(4)
 })
 
 test('Today adds a temporary care item from the collapsed tools', async ({ page }) => {

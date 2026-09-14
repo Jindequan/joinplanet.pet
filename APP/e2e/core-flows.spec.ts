@@ -319,7 +319,7 @@ test('care plan owner lookup exposes an inline retry', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)
   let assignmentAttempts = 0
-  await page.route('**/api/v1/care-plans/e2e-plan/assignments', async (route) => {
+  await page.route('**/api/v1/care-plans/e2e-plan/assignments*', async (route) => {
     assignmentAttempts += 1
     if (assignmentAttempts === 1) {
       await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEMPORARY_FAILURE', message: 'temporary' } }) })

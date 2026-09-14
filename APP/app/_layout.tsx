@@ -1,7 +1,7 @@
 import React from 'react';
 import 'react-native-reanimated';
 import { Platform, useColorScheme, useWindowDimensions, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -21,8 +21,13 @@ function RootNavigator() {
   const scheme = useColorScheme();
   const { status } = useSession();
   const { width } = useWindowDimensions();
+  const pathname = usePathname();
+  const publicShareRoute = pathname === '/share' || pathname.startsWith('/share/');
 
-  if (status === 'loading') {
+  // Public share snapshots do not need a session. Let the recipient read the
+  // link immediately instead of making an unauthenticated visitor wait for
+  // SecureStore/session restoration before the public route can render.
+  if (status === 'loading' && !publicShareRoute) {
     return (
       <View
         style={{

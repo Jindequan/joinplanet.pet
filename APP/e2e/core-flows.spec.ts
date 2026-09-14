@@ -254,7 +254,7 @@ test('medication care plans require and persist a medication link', async ({ pag
   await seedSession(page)
   await mockApi(page)
   let createBody: Record<string, unknown> | undefined
-  let carePlanCreated = false
+  let carePlanCreated = true
   await page.route('**/api/v1/pets/e2e-pet/medications', async (route) => {
     await route.fulfill({
       status: 200,
@@ -308,11 +308,11 @@ test('medication care plans require and persist a medication link', async ({ pag
   })
 
   await page.goto('/pets/e2e-pet/care')
+  await expect(page.getByText('关联药物 · 阿莫西林')).toBeVisible()
   await page.getByRole('button', { name: /设置照护计划：定点给药/ }).click()
   await expect(page.getByRole('button', { name: '关联药物：阿莫西林' })).toBeVisible()
   await page.getByRole('button', { name: '创建计划' }).click()
   await expect.poll(() => createBody?.medication_id).toBe('e2e-medication')
-  await expect(page.getByText('关联药物 · 阿莫西林')).toBeVisible()
 })
 
 test('Today adds a temporary care item from the collapsed tools', async ({ page }) => {

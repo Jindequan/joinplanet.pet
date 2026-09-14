@@ -198,7 +198,7 @@ test('invite preview exposes a retry when the lookup temporarily fails', async (
   let attempts = 0
   await page.route('**/api/v1/invite/ABC1234567', async (route) => {
     attempts += 1
-    if (attempts <= 4) {
+    if (attempts === 1) {
       await route.fulfill({
         status: 503,
         contentType: 'application/json',

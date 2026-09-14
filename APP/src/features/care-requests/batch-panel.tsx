@@ -107,6 +107,8 @@ export function CareHandoffBatchInbox({
     occurrenceIds: string[]
     commandId: string
   } | null>(null)
+  const [continuationError, setContinuationError] = useState('')
+  const [continuationAttempt, setContinuationAttempt] = useState(0)
   const [pendingActions, setPendingActions] = useState<PendingCareAction[]>([])
   const batches = useQuery({
     queryKey: queryKeys.careHandoffInbox,
@@ -207,7 +209,10 @@ export function CareHandoffBatchInbox({
     const pendingDecline = pendingActions.find(
       (item) => item.kind === 'batch-decline' && item.followUp === 'reassign' && item.batchId,
     )
-    if (!pendingDecline) return
+    if (!pendingDecline) {
+      setContinuationError('')
+      return
+    }
     const batch = batches.data?.batches.find((item) => item.id === pendingDecline.batchId) ??
       (pendingDecline.batchId === requestedBatchIdValue ? requestedBatch.data?.batch : undefined)
     if (!batch) return
@@ -217,6 +222,7 @@ export function CareHandoffBatchInbox({
         .filter((request) => request.state === 'sent' || request.state === 'seen')
         .map((request) => request.occurrence_id)
     if (occurrenceIds.length > 0) {
+      setContinuationError('')
       setPendingContinuation({ batch, occurrenceIds, commandId: pendingDecline.commandId })
     }
   }, [
@@ -241,15 +247,18 @@ export function CareHandoffBatchInbox({
         if (declinedIds.length > 0) {
           setDelegateBatch({ batch, occurrenceIds: declinedIds, mode: 'reassign' })
         } else {
-        showToast({ message: '这几件事已经有别的处理结果，不再重复打开' })
+          showToast({ message: '这几件事已经有别的处理结果，不再重复打开' })
         }
+        setContinuationError('')
         setPendingContinuation(null)
       })
-    }).catch(() => undefined)
+    }).catch((error) => {
+      if (!cancelled) setContinuationError(errorMessage(error))
+    })
     return () => {
       cancelled = true
     }
-  }, [canRespondTo, currentUserId, pendingActions, pendingContinuation, permissionsReady, showToast])
+  }, [canRespondTo, continuationAttempt, currentUserId, pendingActions, pendingContinuation, permissionsReady, showToast])
   const respond = useMutation({
     mutationFn: ({ batch, action, occurrenceIds, commandId }: { batch: CareHandoffBatch; action: 'accept' | 'decline'; occurrenceIds?: string[]; commandId: string }) =>
       action === 'accept'
@@ -317,6 +326,22 @@ export function CareHandoffBatchInbox({
   })
 
   const focusedBatch = requestedBatch.data?.batch
+  const continuationRecovery = continuationError ? (
+    <Card style={styles.continuationRecovery}>
+      <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+        已保存批量拒绝，但暂时无法打开继续安排。{continuationError}
+      </AppText>
+      <Button
+        label="重试打开继续安排"
+        variant="secondary"
+        onPress={() => {
+          setContinuationError('')
+          setContinuationAttempt((attempt) => attempt + 1)
+        }}
+        style={{ alignSelf: 'flex-start' }}
+      />
+    </Card>
+  ) : null
   const retryBatchDependencies = () => {
     void Promise.all([
       batches.refetch(),
@@ -327,11 +352,14 @@ export function CareHandoffBatchInbox({
   }
   if (requestedBatchIdValue && requestedBatch.isError && !focusedBatch && !delegateBatch) {
     return (
-      <QueryErrorState
-        error={requestedBatch.error}
-        message="这批照护安排暂时无法打开，请重试。"
-        onRetry={retryBatchDependencies}
-      />
+      <View style={{ gap: 10 }}>
+        {continuationRecovery}
+        <QueryErrorState
+          error={requestedBatch.error}
+          message="这批照护安排暂时无法打开，请重试。"
+          onRetry={retryBatchDependencies}
+        />
+      </View>
     )
   }
   if (permissionError && detailOnly && !focusedBatch && !delegateBatch) {
@@ -370,6 +398,7 @@ export function CareHandoffBatchInbox({
 
   return (
     <View style={{ gap: 10 }}>
+      {continuationRecovery}
       {permissionError ? (
         <QueryErrorState
           message="成员权限暂时无法确认；当前仅展示安排，回应操作会在重试成功后恢复。"
@@ -1143,6 +1172,7 @@ function MemberOption({ member, selected, onPress }: { member: Member; selected:
 
 const styles = StyleSheet.create({
   batchCard: { gap: 12 },
+  continuationRecovery: { gap: 10 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   detailLink: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingTop: 2 },
   iconBubble: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },

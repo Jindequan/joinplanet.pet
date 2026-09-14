@@ -61,6 +61,7 @@ jobs:
             exit 1
           fi
           BASE=http://127.0.0.1:8081 bash ../scripts/e2e-v1.sh
+          BASE=http://127.0.0.1:8081/api/v1 bash ../scripts/acceptance-care-coordination.sh
 
   app:
     runs-on: ubuntu-latest

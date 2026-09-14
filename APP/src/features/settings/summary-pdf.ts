@@ -80,6 +80,28 @@ export function buildSummaryPdfHtml(view: ShareViewResponse): string {
       return `<div class="event-row" key="event-${index}"><div class="event-head"><strong>${displayValue(event.type, '记录')}</strong><span>${dateLabel(event.occurred_at)}</span></div><p>${eventText(payload)}</p>${photo ? `<img src="${escapeHtml(photo)}" alt="记录照片" />` : ''}</div>`;
     }).join('')
     : '<p class="muted">选定时间范围内没有记录</p>';
+  const weightRows = events
+    .filter((item) => item && typeof item === 'object' && (item as Record<string, unknown>).type === 'weight')
+    .map((item) => item as Record<string, unknown>)
+    .filter((item) => item.payload && typeof item.payload === 'object' && typeof (item.payload as Record<string, unknown>).weight_g === 'number')
+    .slice(0, 6)
+    .map((item) => {
+      const payload = item.payload as Record<string, unknown>;
+      const grams = Number(payload.weight_g);
+      return `<div class="med-row"><strong>${(grams / 1000).toFixed(2)} kg</strong><span>${dateLabel(item.occurred_at)}</span></div>`;
+    }).join('');
+  const vaccineRows = events
+    .filter((item) => item && typeof item === 'object' && (item as Record<string, unknown>).type === 'vaccine')
+    .map((item) => item as Record<string, unknown>)
+    .slice(0, 6)
+    .map((item) => `<div class="med-row"><strong>${displayValue((item.payload as Record<string, unknown> | undefined)?.name, '疫苗')}</strong><span>${dateLabel(item.occurred_at)}</span></div>`)
+    .join('');
+  const visitRows = events
+    .filter((item) => item && typeof item === 'object' && (item as Record<string, unknown>).type === 'vet_visit')
+    .map((item) => item as Record<string, unknown>)
+    .slice(0, 6)
+    .map((item) => `<div class="med-row"><strong>${displayValue((item.payload as Record<string, unknown> | undefined)?.title, '就诊记录')}</strong><span>${dateLabel(item.occurred_at)}</span></div>`)
+    .join('');
 
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -95,6 +117,7 @@ export function buildSummaryPdfHtml(view: ShareViewResponse): string {
   .subtitle, .muted { color: #65726b; }
   .subtitle { margin: 0; }
   .alert { background: #fff1df; border-left: 4px solid #d8754d; padding: 10px 12px; margin: 16px 0; }
+  .allergy-alert { background: #fff0df; border: 2px solid #d8754d; border-radius: 8px; padding: 11px 13px; margin: 16px 0; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
   section { break-inside: avoid; margin: 16px 0; }
   h2 { color: #1c654e; font-size: 14pt; border-bottom: 1px solid #dce7df; padding-bottom: 5px; margin: 0 0 8px; }
@@ -113,9 +136,12 @@ export function buildSummaryPdfHtml(view: ShareViewResponse): string {
 </style></head><body>
 <header><div class="brand">PLANET · VET-READY SUMMARY</div><h1>${name}</h1><p class="subtitle">${species || '宠物健康记录'} · 生成于 ${dateLabel(new Date().toISOString())}</p></header>
 <div class="alert"><strong>本次就诊主诉 / Why now</strong><br />${displayValue(data.reason, '未填写；请在就诊前补充这次最想和兽医讨论的问题。')}</div>
+<div class="allergy-alert"><strong>过敏（请先告知兽医）</strong><br />${displayValue(data.allergies, '未记录过敏信息')}</div>
 <section><h2>基本信息</h2><div class="grid"><div class="field"><label>物种 / 品种</label>${species || '未记录'}</div><div class="field"><label>性别 / 绝育</label>${displayValue([pet.sex, pet.neutered ? '已绝育' : '未绝育'].filter(Boolean), '')}</div><div class="field"><label>生日</label>${dateLabel(pet.birth_date) || '未记录'}</div><div class="field"><label>体重</label>${typeof pet.weight_g === 'number' ? `${pet.weight_g} g` : '未记录'}</div></div></section>
+<section><h2>体重趋势</h2>${weightRows || '<p class="muted">选定时间范围内没有体重记录</p>'}</section>
 <section><h2>过敏与既往病史</h2><div class="grid"><div class="field"><label>过敏</label>${displayValue(data.allergies)}</div><div class="field"><label>慢性病 / 病史</label>${displayValue(data.conditions)}</div></div></section>
 <section><h2>当前用药</h2>${medicationRows}</section>
+<section><h2>疫苗与近期就诊</h2><div class="grid"><div class="field"><label>疫苗记录</label>${vaccineRows || '<span class="muted">未记录</span>'}</div><div class="field"><label>就诊记录</label>${visitRows || '<span class="muted">未记录</span>'}</div></div></section>
 <section><h2>近期记录（近 ${escapeHtml(data.event_days || 90)} 天）</h2>${eventRows}</section>
 ${data.notes ? `<section><h2>家人备注</h2><p>${displayValue(data.notes)}</p></section>` : ''}
 <footer>以上内容来自家庭成员在 PLANET 中记录的事实，仅供就诊沟通整理，不构成诊断或医疗建议。PDF 末尾：如需完整照护记录，请向分享人索取最新的 PLANET 链接。</footer>

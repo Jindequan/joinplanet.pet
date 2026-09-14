@@ -146,6 +146,9 @@ test("public summary pages keep the visit reason and PDF print action", async ()
   assert.match(printButton, /window\.print\(\)/);
   assert.match(printButton, /Print \/ save PDF/);
   assert.match(refreshCss, /share-print-button/);
+  assert.match(sharePage, /Weight trend/);
+  assert.match(sharePage, /Vaccines/);
+  assert.match(refreshCss, /share-allergy-card/);
 });
 
 test("the public checkout service shuts down without dropping in-flight work", async () => {

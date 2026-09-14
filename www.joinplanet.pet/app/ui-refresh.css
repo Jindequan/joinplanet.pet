@@ -6,4 +6,4 @@ html{scroll-padding-top:24px}body{line-height:1.5}:where(a,button,input,textarea
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 /* Private share + invite views: intentionally quieter than the marketing site. */
-.share-print-button{border:0;cursor:pointer;font-family:inherit}.share-print-button:disabled{cursor:wait;opacity:.65}.share-reason-card{max-width:520px;margin-top:20px;min-height:0}.share-reason-card p{margin-top:8px}@media print{.share-print-button{display:none}}
+.share-print-button{border:0;cursor:pointer;font-family:inherit}.share-print-button:disabled{cursor:wait;opacity:.65}.share-reason-card{max-width:520px;margin-top:20px;min-height:0}.share-reason-card p{margin-top:8px}.share-allergy-card{margin:18px 0;padding:18px 20px;border:2px solid #d8754d;border-radius:16px;background:#fff1df;color:#27332d}.share-allergy-card p{margin:8px 0 0;font-size:1.05rem;font-weight:700}@media print{.share-print-button{display:none}}

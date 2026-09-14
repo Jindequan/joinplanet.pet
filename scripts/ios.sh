@@ -173,7 +173,10 @@ if [ "$METRO_ALREADY_UP" = 0 ]; then
     "cd '$APP_DIR' && exec env EXPO_NO_DOTENV=1 DEVELOPER_DIR='$DEVELOPER_DIR' PATH='$NODE_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin' EXPO_PUBLIC_API_BASE_URL='$EXPO_PUBLIC_API_BASE_URL' EXPO_PUBLIC_EAS_PROJECT_ID='${EXPO_PUBLIC_EAS_PROJECT_ID:-}' ./node_modules/.bin/expo start --port '$EXPO_PORT' --clear --offline >>'$ROOT_DIR/.dev/frontend.log' 2>&1"
 fi
 
-for _ in $(seq 1 80); do
+# A cold Metro cache can take longer than the previous 20-second window on a
+# clean worktree. Keep waiting on the same process/port so the script does not
+# report a false failure while the bundle graph is being rebuilt.
+for _ in $(seq 1 240); do
   if curl -fsS --max-time 1 "http://127.0.0.1:${EXPO_PORT}/status" >/dev/null 2>&1; then
     break
   fi

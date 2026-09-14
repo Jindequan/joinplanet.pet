@@ -368,6 +368,10 @@ test('secondary management pages keep one heading and a stable return surface', 
 })
 
 test('object workspaces keep an accessible heading, return path, and mobile-safe width', async ({ page }) => {
+  // The first deep link can trigger a cold Expo web bundle compile in CI.
+  // Keep the structural assertions strict while allowing that one-time build
+  // to complete on a constrained runner.
+  test.setTimeout(120_000)
   await seedSession(page)
   await mockApi(page)
   await page.route('**/api/v1/me/activation-summary', async (route) => {
@@ -397,8 +401,13 @@ test('object workspaces keep an accessible heading, return path, and mobile-safe
   ]
 
   for (const path of pages) {
-    await page.goto(path)
-    await expect(page.locator('[role="heading"]').first()).toBeVisible()
+    // SPA readiness is asserted below; waiting for every dev-server asset to
+    // This is a client routed SPA: the response commit is enough to start the
+    // route, and the assertions below verify that the screen actually hydrates.
+    // Waiting for DOMContentLoaded/load makes the check sensitive to dev-server
+    // HMR noise in CI.
+    await page.goto(path, { waitUntil: 'commit' })
+    await expect(page.locator('[role="heading"]').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: '返回' })).toHaveCount(1)
     const unnamedButtons = await page.locator('button').evaluateAll((nodes) =>
       nodes

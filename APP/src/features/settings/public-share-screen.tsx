@@ -98,6 +98,15 @@ function SharedViewCard({
           Boolean(item) && typeof item === 'object',
       )
     : [];
+  const decisionMaker =
+    view.data.med_decision_maker && typeof view.data.med_decision_maker === 'object'
+      ? (view.data.med_decision_maker as Record<string, unknown>)
+      : {};
+  const decisionMakerName = typeof decisionMaker.name === 'string' ? decisionMaker.name.trim() : '';
+  const decisionMakerContact = [decisionMaker.phone, decisionMaker.email]
+    .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+    .map((value) => value.trim())
+    .join(' · ');
   const notes =
     typeof view.data.notes === 'string' && view.data.notes ? view.data.notes : '';
   const reason =
@@ -237,6 +246,19 @@ function SharedViewCard({
               <AppText muted>{String(contact.phone ?? contact.email ?? '')}</AppText>
             </View>
           ))}
+        </Card>
+      ) : null}
+
+      {decisionMakerName || decisionMakerContact ? (
+        <Card style={{ gap: 8 }}>
+          <AppText variant="eyebrow" soft>
+            医疗决定人
+          </AppText>
+          <AppText variant="label">{decisionMakerName || '已指定联系人'}</AppText>
+          {decisionMakerContact ? <AppText muted>{decisionMakerContact}</AppText> : null}
+          <AppText variant="caption" muted>
+            涉及用药或紧急治疗时，请先联系这位决定人。
+          </AppText>
         </Card>
       ) : null}
 

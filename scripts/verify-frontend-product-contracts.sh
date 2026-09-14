@@ -345,6 +345,13 @@ else
   fail "Structured pet JSON export still falls back to text-only sharing"
 fi
 
+if rg -q 'med_decision_maker' "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q '医疗决定人' "$APP/features/settings/public-share-screen.tsx"; then
+  pass "Care Cards expose the medical decision maker"
+else
+  fail "Care Cards omit the medical decision maker"
+fi
+
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
    rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
    rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx"; then

@@ -300,6 +300,32 @@ test('summary share exposes a print or save PDF action', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __planetPrints?: number }).__planetPrints ?? 0)).toBe(1)
 })
 
+test('care card exposes the medical decision maker to the caregiver', async ({ page }) => {
+  await mockApi(page)
+  await page.route('**/api/v1/shares/e2e-care', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'care_card',
+        expires_at: '2026-09-22T00:00:00Z',
+        created_at: '2026-09-15T00:00:00Z',
+        data: {
+          pet: { name: pet.name, species: pet.species, breed: pet.breed },
+          date: '2026-09-15',
+          tasks: [{ id: 'task-1', title: '晚餐', log_status: 'pending', time_of_day: '18:00' }],
+          emergency_contacts: [{ name: 'Devin', phone: '13800000000' }],
+          med_decision_maker: { name: '安安宠医·李医生', phone: '021-55550000' },
+        },
+      }),
+    })
+  })
+  await page.goto('/share/e2e-care')
+  await expect(page.getByText('医疗决定人')).toBeVisible()
+  await expect(page.getByText('安安宠医·李医生')).toBeVisible()
+  await expect(page.getByText('021-55550000')).toBeVisible()
+})
+
 test('summary sharing captures the visit reason in the snapshot options', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)

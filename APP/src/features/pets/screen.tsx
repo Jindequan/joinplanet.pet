@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CaretRight, Users } from 'phosphor-react-native'
+import { CaretRight, PawPrint, Users } from 'phosphor-react-native'
 import { router } from 'expo-router'
 import { planetApi, type TodayItem } from '../../core/api/planet-api'
 import { errorMessage } from '../../core/api/errors'
@@ -212,6 +212,7 @@ export function PetsScreen() {
 
       {rowsInScope.length === 0 ? (
         <EmptyState
+          icon={PawPrint}
           title={hasFamilies ? '还没有宠物' : '先有一个家庭'}
           description={
             hasFamilies && canCreatePet

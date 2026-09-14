@@ -9,10 +9,12 @@ type Props = {
   title: string
   description: string
   action?: React.ReactNode
+  /** A semantic icon for the empty state. Defaults to the pet mark. */
+  icon?: React.ComponentType<{ size?: number; color?: string }>
   style?: StyleProp<ViewStyle>
 }
 
-export function EmptyState({ title, description, action, style }: Props) {
+export function EmptyState({ title, description, action, icon: Icon = PawPrint, style }: Props) {
   const { theme } = useTheme()
   return (
     <FadeInView>
@@ -27,7 +29,7 @@ export function EmptyState({ title, description, action, style }: Props) {
         },
       ]}
     >
-        <PawPrint size={28} color={theme.colors.forest2} weight="duotone" />
+        <Icon size={28} color={theme.colors.forest2} />
       </View>
       <AppText variant="heading" style={styles.title} accessibilityRole="header">
         {title}

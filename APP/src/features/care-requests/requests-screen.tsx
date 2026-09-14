@@ -2,7 +2,7 @@ import React from 'react'
 import { StyleSheet, View } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { House } from 'phosphor-react-native'
+import { Bell, House } from 'phosphor-react-native'
 import { foundationReaders } from '../../core/foundation'
 import { queryKeys } from '../../core/query/keys'
 import { useSession } from '../../core/providers/session-provider'
@@ -125,6 +125,7 @@ export function RequestsScreen() {
       ) : null}
       {!scopeLoading && !scopeDependencyError && !resolvedScope.scopeError && resolvedScope.ready && !resolvedScope.familySelectionRequired && (families.data?.families.length ?? 0) === 0 ? (
         <EmptyState
+          icon={Bell}
           title="还没有家庭"
           description="先创建或加入家庭，才能和其他成员一起安排宠物照护。"
           action={

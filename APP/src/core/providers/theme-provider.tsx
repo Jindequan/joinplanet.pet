@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { lightTheme, type AppTheme } from '../../ui/theme/tokens';
+import { useColorScheme } from 'react-native';
+import { darkTheme, lightTheme, type AppTheme } from '../../ui/theme/tokens';
 
 type ThemeContextValue = {
   theme: AppTheme;
@@ -8,7 +9,8 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: React.PropsWithChildren) {
-  const value = useMemo(() => ({ theme: lightTheme }), []);
+  const scheme = useColorScheme();
+  const value = useMemo<ThemeContextValue>(() => ({ theme: scheme === 'dark' ? darkTheme : lightTheme }), [scheme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 

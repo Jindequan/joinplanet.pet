@@ -149,6 +149,10 @@ test("public summary pages keep the visit reason and PDF print action", async ()
   assert.match(sharePage, /Weight trend/);
   assert.match(sharePage, /Vaccines/);
   assert.match(refreshCss, /share-allergy-card/);
+  assert.match(sharePage, /hasField = \(field: keyof SummaryData\)/);
+  assert.match(sharePage, /hasProfile = hasField\("allergies"\) \|\| hasField\("conditions"\) \|\| hasField\("notes"\)/);
+  assert.match(sharePage, /hasMedications = hasField\("medications"\)/);
+  assert.match(sharePage, /hasEvents = hasField\("events"\)/);
 });
 
 test("the public checkout service shuts down without dropping in-flight work", async () => {

@@ -126,6 +126,15 @@ test("interactive intake paths bound user input and announce recoverable errors"
   assert.match(checkout, /className="checkout-state" role="status" aria-live="polite"/);
 });
 
+test("public invites distinguish unavailable services from expired invites", async () => {
+  const invite = await readFile(new URL("../app/invite/[code]/page.tsx", import.meta.url), "utf8");
+  assert.match(invite, /response\.status === 404 \|\| response\.status === 410/);
+  assert.match(invite, /if \(!response\.ok\) return \{ state: "error" \}/);
+  assert.match(invite, /We couldn’t check this invitation\./);
+  assert.match(invite, /Try again/);
+  assert.match(invite, /This invitation is no longer available\./);
+});
+
 test("the public checkout service shuts down without dropping in-flight work", async () => {
   const main = await readFile(new URL("../server/lemon-webhook/main.go", import.meta.url), "utf8");
   assert.match(main, /signal\.NotifyContext/);

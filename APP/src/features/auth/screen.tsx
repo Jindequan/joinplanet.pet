@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router } from 'expo-router';
-import { ArrowRight, PawPrint, Sparkle, UsersThree } from 'phosphor-react-native';
+import { ArrowRight, Planet, Sparkle, UsersThree } from 'phosphor-react-native';
 import { z } from 'zod';
 import { planetApi } from '../../core/api/planet-api';
 import { errorMessage, isApiError } from '../../core/api/errors';
@@ -135,7 +135,7 @@ export function AuthScreen() {
       <FadeInView style={[styles.page, compact && styles.compactPage]}>
         <View style={styles.brandRow}>
           <View style={[styles.brandMark, { backgroundColor: theme.colors.coralSoft }]}>
-            <PawPrint size={19} color={theme.colors.coralDark} weight="fill" />
+            <Planet size={19} color={theme.colors.coralDark} weight="duotone" />
           </View>
           <View style={styles.brandCopy}>
             <AppText variant="eyebrow" color={theme.colors.forest}>PLANET</AppText>

@@ -38,7 +38,12 @@ if [ "$API_BINARY_STALE" = 1 ]; then
   while read -r API_PID; do
     [ -n "$API_PID" ] || continue
     API_COMMAND="$(ps -p "$API_PID" -o command= 2>/dev/null || true)"
-    if [[ "$API_COMMAND" == *"$API_BIN"* ]]; then
+    # launchd and an interactive shell may expose the executable as
+    # `./bin/planet-api`, so matching only the absolute binary path can leave
+    # a stale checkout serving the current port. Restrict this to a process
+    # that is actually planet-api before replacing it.
+    API_CWD="$(lsof -a -p "$API_PID" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' || true)"
+    if [[ "$API_COMMAND" == *"planet-api"* ]] || [[ "$API_CWD" == "$ROOT_DIR/planet-api" ]]; then
       echo "stopping stale planet-api process $API_PID"
       kill "$API_PID" 2>/dev/null || true
     fi

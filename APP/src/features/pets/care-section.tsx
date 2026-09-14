@@ -68,6 +68,8 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
   const [showArchived, setShowArchived] = useState(false)
   const [busyPlanId, setBusyPlanId] = useState('')
   const plans = (query.data?.care_plans ?? []) as CarePlanRow[]
+  const medications = medicationsQuery.data?.medications ?? []
+  const medicationById = new Map(medications.map((medication) => [medication.id, medication]))
   const activePlans = plans.filter((plan) => plan.status !== 'archived')
   const archivedPlans = plans.filter((plan) => plan.status === 'archived')
   const visiblePlans = showArchived ? plans : activePlans
@@ -253,6 +255,8 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
               timezoneUnavailable={timezoneUnavailable}
               busy={busyPlanId === plan.id}
               assignmentQuery={assignmentByPlanId.get(plan.id)}
+              medication={plan.medication_id ? medicationById.get(plan.medication_id) : undefined}
+              medicationsLoading={medicationsQuery.isLoading}
               onToggle={() => void togglePlan(plan)}
               onEdit={() => setEditing(plan)}
               onDelete={() => setConfirm(plan)}
@@ -361,6 +365,8 @@ function CarePlanCard({
   timezoneUnavailable,
   busy,
   assignmentQuery,
+  medication,
+  medicationsLoading,
   onToggle,
   onEdit,
   onDelete,
@@ -375,6 +381,8 @@ function CarePlanCard({
   timezoneUnavailable: boolean
   busy: boolean
   assignmentQuery?: { data?: { assignments: CareAssignment[] }; isLoading: boolean; isError: boolean }
+  medication?: Medication
+  medicationsLoading: boolean
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
@@ -397,6 +405,19 @@ function CarePlanCard({
             </AppText>
             <AppText variant="heading">{plan.title}</AppText>
             <AppText muted>{ruleText(plan.schedule, plan.time_of_day)}</AppText>
+            {plan.type === 'medication' || plan.medication_id ? (
+              medicationsLoading ? (
+                <AppText variant="caption" muted>正在读取关联药物…</AppText>
+              ) : medication ? (
+                <AppText variant="caption" color={theme.colors.forest2}>
+                  关联药物 · {medication.name}{medication.dose ? ` · ${medication.dose}` : ''}
+                </AppText>
+              ) : (
+                <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+                  关联药物记录暂时不可用，请检查用药史。
+                </AppText>
+              )
+            ) : null}
             {oneTime ? (
               <AppText variant="caption" color={theme.colors.forest2}>
                 只影响这一天；转交和完成请在 Today 处理。

@@ -254,6 +254,7 @@ test('medication care plans require and persist a medication link', async ({ pag
   await seedSession(page)
   await mockApi(page)
   let createBody: Record<string, unknown> | undefined
+  let carePlanCreated = false
   await page.route('**/api/v1/pets/e2e-pet/medications', async (route) => {
     await route.fulfill({
       status: 200,
@@ -273,12 +274,37 @@ test('medication care plans require and persist a medication link', async ({ pag
     })
   })
   await page.route('**/api/v1/pets/e2e-pet/care-plans*', async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/assignments')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ assignments: [] }) })
+      return
+    }
     if (route.request().method() === 'POST') {
       createBody = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>
+      carePlanCreated = true
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ care_plan: {}, care_rule: {} }) })
       return
     }
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ care_plans: [] }) })
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        care_plans: carePlanCreated ? [{
+          id: 'e2e-med-plan',
+          pet_id: pet.id,
+          family_id: family.id,
+          medication_id: 'e2e-medication',
+          type: 'medication',
+          title: '早上吃药',
+          description: '',
+          schedule: { kind: 'daily' },
+          timezone: family.timezone,
+          time_of_day: '08:00',
+          due_date: e2eToday,
+          status: 'active',
+        }] : [],
+      }),
+    })
   })
 
   await page.goto('/pets/e2e-pet/care')
@@ -286,6 +312,7 @@ test('medication care plans require and persist a medication link', async ({ pag
   await expect(page.getByRole('button', { name: '关联药物：阿莫西林' })).toBeVisible()
   await page.getByRole('button', { name: '创建计划' }).click()
   await expect.poll(() => createBody?.medication_id).toBe('e2e-medication')
+  await expect(page.getByText('关联药物 · 阿莫西林')).toBeVisible()
 })
 
 test('Today adds a temporary care item from the collapsed tools', async ({ page }) => {

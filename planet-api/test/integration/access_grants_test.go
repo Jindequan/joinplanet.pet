@@ -23,6 +23,21 @@ func TestPetAccessGrantLifecycle(t *testing.T) {
 	if r := e.Do("GET", "/api/v1/pets/"+petID, viewerTok, nil); r.Status != http.StatusOK {
 		t.Fatalf("viewer should see granted pet: %d %v", r.Status, r.Body)
 	}
+	listed := e.Do("GET", "/api/v1/pets", viewerTok, nil)
+	if listed.Status != http.StatusOK {
+		t.Fatalf("viewer accessible pet list: %d %v", listed.Status, listed.Body)
+	}
+	petFound := false
+	for _, item := range listed.Body["pets"].([]any) {
+		pet, ok := item.(map[string]any)
+		if ok && pet["id"] == petID && pet["access_role"] == "viewer" {
+			petFound = true
+			break
+		}
+	}
+	if !petFound {
+		t.Fatalf("viewer accessible pet list omitted direct grant: %v", listed.Body)
+	}
 	if r := e.DoJSON("POST", "/api/v1/pets/"+petID+"/tasks", viewerTok,
 		`{"title":"不应写入","schedule":{"v":1,"kind":"daily"}}`); r.Status != http.StatusForbidden {
 		t.Fatalf("viewer should not write: %d %v", r.Status, r.Body)

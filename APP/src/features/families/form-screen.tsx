@@ -150,6 +150,7 @@ function JoinFamilyScreen({
   const [checking, setChecking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [previewAttempt, setPreviewAttempt] = useState(0)
   const commandId = useRef(createIdempotencyKey())
   const previewSeq = useRef(0)
 
@@ -199,7 +200,7 @@ function JoinFamilyScreen({
       clearTimeout(timer)
       if (previewSeq.current === seq) setChecking(false)
     }
-  }, [normalized, validCode])
+  }, [normalized, previewAttempt, validCode])
 
   async function join() {
     if (!validCode) {
@@ -277,9 +278,16 @@ function JoinFamilyScreen({
               </View>
             </Card>
           ) : previewError ? (
-            <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
-              {previewError}
-            </AppText>
+            <View style={{ gap: 10 }}>
+              <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+                {previewError}
+              </AppText>
+              <Button
+                label="重试核对"
+                variant="secondary"
+                onPress={() => setPreviewAttempt((attempt) => attempt + 1)}
+              />
+            </View>
           ) : null}
 
           {error ? (

@@ -38,6 +38,13 @@ else
   fail "invite deep links no longer seed the join form"
 fi
 
+if rg -q 'previewError' "$APP/features/families/form-screen.tsx" && \
+   rg -q 'label="重试核对"' "$APP/features/families/form-screen.tsx"; then
+  pass "invite preview failures expose a recovery action"
+else
+  fail "invite preview failures have no recovery action"
+fi
+
 if ! rg -q 'CareRequestInbox' "$APP/features/today/screen.tsx"; then
   pass "Today does not embed the full request inbox"
 else

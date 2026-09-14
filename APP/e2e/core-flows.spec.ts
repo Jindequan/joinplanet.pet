@@ -191,6 +191,33 @@ test('public invite preview preserves the code through authentication', async ({
   await expect(page.getByRole('button', { name: /加入 E2E 用户.*家庭/ })).toBeEnabled()
 })
 
+test('invite preview exposes a retry when the lookup temporarily fails', async ({ page }) => {
+  await mockApi(page)
+  let attempts = 0
+  await page.route('**/api/v1/invite/ABC1234567', async (route) => {
+    attempts += 1
+    if (attempts === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '服务暂时不可用' } }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ role: 'caregiver', pet_name: 'Milo', inviter_name: 'E2E 用户' }),
+    })
+  })
+  await page.goto('/invite/abc1234567')
+  await expect(page.getByRole('alert')).toHaveText('服务暂时出了点问题，请稍后再试。')
+  await expect(page.getByRole('button', { name: '重试核对' })).toBeVisible()
+  await page.getByRole('button', { name: '重试核对' }).click()
+  await expect(page.getByText(/E2E 用户\s+邀请你加入/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /登录后加入/ })).toBeEnabled()
+})
+
 test('invite form blocks malformed codes before submission', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)

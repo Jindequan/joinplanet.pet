@@ -20,7 +20,7 @@ export function AuthScreen() {
   const { theme } = useTheme();
   const { status, signIn } = useSession();
   const { invite: inviteParam } = useLocalSearchParams<{ invite?: string | string[] }>();
-  const inviteCode = (Array.isArray(inviteParam) ? inviteParam[0] : inviteParam ?? '')
+  const inviteCode = (Array.isArray(inviteParam) ? inviteParam[0] ?? '' : inviteParam ?? '')
     .replace(/[\s-]/g, '')
     .toUpperCase();
   const inviteHref = /^[A-Z0-9]{10}$/.test(inviteCode)

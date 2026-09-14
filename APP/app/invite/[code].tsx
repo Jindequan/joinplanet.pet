@@ -5,5 +5,5 @@ import { FamilyFormScreen } from '../../src/features/families/form-screen'
 export default function InviteRoute() {
   const { code } = useLocalSearchParams<{ code?: string | string[] }>()
   const inviteCode = Array.isArray(code) ? code[0] : code
-  return <FamilyFormScreen mode="join" initialCode={inviteCode} />
+  return <FamilyFormScreen mode="join" initialCode={inviteCode} publicEntry />
 }

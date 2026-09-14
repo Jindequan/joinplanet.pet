@@ -22,8 +22,20 @@ import { setCachedInvite } from './invite-cache'
 
 type Mode = 'create' | 'join'
 
-export function FamilyFormScreen({ mode, initialCode }: { mode: Mode; initialCode?: string }) {
-  return mode === 'create' ? <CreateFamilyScreen /> : <JoinFamilyScreen initialCode={initialCode} />
+export function FamilyFormScreen({
+  mode,
+  initialCode,
+  publicEntry = false,
+}: {
+  mode: Mode
+  initialCode?: string
+  publicEntry?: boolean
+}) {
+  return mode === 'create' ? (
+    <CreateFamilyScreen />
+  ) : (
+    <JoinFamilyScreen initialCode={initialCode} publicEntry={publicEntry} />
+  )
 }
 
 function CreateFamilyScreen() {
@@ -116,7 +128,13 @@ function CreateFamilyScreen() {
   )
 }
 
-function JoinFamilyScreen({ initialCode }: { initialCode?: string }) {
+function JoinFamilyScreen({
+  initialCode,
+  publicEntry = false,
+}: {
+  initialCode?: string
+  publicEntry?: boolean
+}) {
   const { theme } = useTheme()
   const { showToast } = useToast()
   const client = useQueryClient()
@@ -216,7 +234,8 @@ function JoinFamilyScreen({ initialCode }: { initialCode?: string }) {
     <Screen>
       <BackHeader
         title="加入家庭"
-        fallbackHref="/families"
+        fallbackHref={publicEntry ? '/' : '/families'}
+        menu={!publicEntry}
         eyebrow="你收到邀请了"
         subtitle="输入邀请码，先确认家庭再加入"
       />

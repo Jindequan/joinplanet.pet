@@ -649,6 +649,11 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     maxWidth: '100%',
   },
-  deletedToggle: { alignSelf: 'flex-start', paddingVertical: 8 },
+  deletedToggle: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
   deletedRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 })

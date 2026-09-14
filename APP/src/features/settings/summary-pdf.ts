@@ -91,10 +91,10 @@ export function buildSummaryPdfHtml(view: ShareViewResponse): string {
       return `<div class="med-row"><strong>${(grams / 1000).toFixed(2)} kg</strong><span>${dateLabel(item.occurred_at)}</span></div>`;
     }).join('');
   const vaccineRows = events
-    .filter((item) => item && typeof item === 'object' && (item as Record<string, unknown>).type === 'vaccine')
+    .filter((item) => item && typeof item === 'object' && ['vaccine', 'deworm'].includes(String((item as Record<string, unknown>).type)))
     .map((item) => item as Record<string, unknown>)
     .slice(0, 6)
-    .map((item) => `<div class="med-row"><strong>${displayValue((item.payload as Record<string, unknown> | undefined)?.name, '疫苗')}</strong><span>${dateLabel(item.occurred_at)}</span></div>`)
+    .map((item) => `<div class="med-row"><strong>${displayValue((item.payload as Record<string, unknown> | undefined)?.name, '疫苗 / 驱虫')}</strong><span>${dateLabel(item.occurred_at)}</span></div>`)
     .join('');
   const visitRows = events
     .filter((item) => item && typeof item === 'object' && (item as Record<string, unknown>).type === 'vet_visit')
@@ -141,7 +141,7 @@ export function buildSummaryPdfHtml(view: ShareViewResponse): string {
 <section><h2>体重趋势</h2>${weightRows || '<p class="muted">选定时间范围内没有体重记录</p>'}</section>
 <section><h2>过敏与既往病史</h2><div class="grid"><div class="field"><label>过敏</label>${displayValue(data.allergies)}</div><div class="field"><label>慢性病 / 病史</label>${displayValue(data.conditions)}</div></div></section>
 <section><h2>当前用药</h2>${medicationRows}</section>
-<section><h2>疫苗与近期就诊</h2><div class="grid"><div class="field"><label>疫苗记录</label>${vaccineRows || '<span class="muted">未记录</span>'}</div><div class="field"><label>就诊记录</label>${visitRows || '<span class="muted">未记录</span>'}</div></div></section>
+<section><h2>疫苗与驱虫</h2><div class="grid"><div class="field"><label>疫苗 / 驱虫记录</label>${vaccineRows || '<span class="muted">未记录</span>'}</div><div class="field"><label>就诊记录</label>${visitRows || '<span class="muted">未记录</span>'}</div></div></section>
 <section><h2>近期记录（近 ${escapeHtml(data.event_days || 90)} 天）</h2>${eventRows}</section>
 ${data.notes ? `<section><h2>家人备注</h2><p>${displayValue(data.notes)}</p></section>` : ''}
 <footer>以上内容来自家庭成员在 PLANET 中记录的事实，仅供就诊沟通整理，不构成诊断或医疗建议。PDF 末尾：如需完整照护记录，请向分享人索取最新的 PLANET 链接。</footer>

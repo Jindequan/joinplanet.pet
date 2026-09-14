@@ -32,6 +32,7 @@ var registry = map[string]PayloadValidator{
 	"weight":              requireWeight,
 	"medication":          requireMedication,
 	"vaccine":             requireName,
+	"deworm":              requireName,
 	"vet_visit":           func(p []byte) error { return requireText(p, "vet_visit payload requires title or summary") },
 	"note":                func(p []byte) error { return requireText(p, "note payload requires text or title") },
 	"photo":               requirePhoto,

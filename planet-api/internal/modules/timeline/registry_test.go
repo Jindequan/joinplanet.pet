@@ -29,3 +29,13 @@ func TestValidatePayloadKeepsOrdinaryEventLimit(t *testing.T) {
 		t.Fatal("ordinary event payload above 128 KiB must be rejected")
 	}
 }
+
+func TestValidatePayloadAllowsDewormingRecord(t *testing.T) {
+	valid := []byte(`{"name":"体内驱虫","text":"下次 12 月复查"}`)
+	if err := ValidatePayload("deworm", valid); err != nil {
+		t.Fatalf("deworming record should be accepted: %v", err)
+	}
+	if err := ValidatePayload("deworm", []byte(`{"text":"没有项目名称"}`)); err == nil {
+		t.Fatal("deworming record without a name must be rejected")
+	}
+}

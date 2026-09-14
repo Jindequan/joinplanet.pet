@@ -329,6 +329,14 @@ else
   fail "Vet-ready summaries have no complete PDF output path"
 fi
 
+if rg -q 'deworm' "$APP/features/timeline/composer.tsx" && \
+   rg -q 'deworm' "$APP/features/timeline/registry.ts" && \
+   rg -q 'deworm' "$ROOT/planet-api/internal/modules/timeline/registry.go"; then
+  pass "Vet timelines capture deworming records alongside vaccines"
+else
+  fail "Vet timelines have no deworming record contract"
+fi
+
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
    rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
    rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx"; then

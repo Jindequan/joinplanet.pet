@@ -63,7 +63,7 @@ export function TimelineScreen({ petId: routePetId = '', familyId: routeFamilyId
   const requestedFamilyId = routeFamilyId ||
     (typeof queryFamilyId === 'string' ? queryFamilyId : '') ||
     (typeof queryFamilyIdCamel === 'string' ? queryFamilyIdCamel : '')
-  const composeTypes: EventType[] = ['note', 'photo', 'symptom', 'weight', 'vet_visit', 'vaccine']
+  const composeTypes: EventType[] = ['note', 'photo', 'symptom', 'weight', 'vet_visit', 'vaccine', 'deworm']
   const composeType: EventType | undefined = composeTypes.includes(compose as EventType)
     ? compose as EventType
     : undefined

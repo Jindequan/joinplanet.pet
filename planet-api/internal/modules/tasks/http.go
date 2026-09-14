@@ -101,11 +101,12 @@ func (h *Handler) createCarePlan(w http.ResponseWriter, r *http.Request) {
 			return 0, nil, err
 		}
 		var body struct {
-			FamilyID    string `json:"family_id"`
-			Type        string `json:"type"`
-			Title       string `json:"title"`
-			Description string `json:"description"`
-			Rule        struct {
+			FamilyID     string `json:"family_id"`
+			Type         string `json:"type"`
+			Title        string `json:"title"`
+			Description  string `json:"description"`
+			MedicationID string `json:"medication_id"`
+			Rule         struct {
 				Type      string `json:"type"`
 				Interval  int    `json:"interval"`
 				Days      []int  `json:"days"`
@@ -138,7 +139,7 @@ func (h *Handler) createCarePlan(w http.ResponseWriter, r *http.Request) {
 			}
 			endDate = &d
 		}
-		result, err := h.Svc.CreateCarePlanAtWithOptionsForFamily(r.Context(), r.PathValue("id"), auth(r).UserID, body.Type, body.Title, body.Description, frequency, h.Clock.Now(), startDate, endDate, timeOfDay, body.FamilyID, key)
+		result, err := h.Svc.CreateCarePlanAtWithOptionsForFamilyAndMedication(r.Context(), r.PathValue("id"), auth(r).UserID, body.Type, body.Title, body.Description, body.MedicationID, frequency, h.Clock.Now(), startDate, endDate, timeOfDay, body.FamilyID, key)
 		if err != nil {
 			return 0, nil, err
 		}

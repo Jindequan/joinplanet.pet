@@ -185,6 +185,13 @@ func (s *Service) CreateCarePlanAtWithOptionsForFamily(ctx context.Context, petI
 	return s.createCarePlanAt(ctx, petID, userID, itemType, title, description, frequency, now, endDate, timeOfDay, startDate, idempotencyKey, "", familyID)
 }
 
+// CreateCarePlanAtWithOptionsForFamilyAndMedication creates a recurring plan
+// while preserving the medication link used by medication alerts and the
+// stop/delete cascade.
+func (s *Service) CreateCarePlanAtWithOptionsForFamilyAndMedication(ctx context.Context, petID, userID, itemType, title, description string, medicationID string, frequency []byte, now time.Time, startDate, endDate *time.Time, timeOfDay *time.Time, familyID, idempotencyKey string) (CarePlanResult, error) {
+	return s.createCarePlanAt(ctx, petID, userID, itemType, title, description, frequency, now, endDate, timeOfDay, startDate, idempotencyKey, medicationID, familyID)
+}
+
 func (s *Service) createCarePlanAt(ctx context.Context, petID, userID, itemType, title, description string, frequency []byte, now time.Time, endDate *time.Time, timeOfDay, requestedStartDate *time.Time, idempotencyKey, medicationID, familyID string) (CarePlanResult, error) {
 	if err := validateTitle(title); err != nil {
 		return CarePlanResult{}, err

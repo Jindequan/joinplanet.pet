@@ -87,7 +87,7 @@ PetEvent ──► Timeline（查询）
 | 完成/跳过 | POST | `/care-tasks/{id}/complete` | —（地基写） |
 | 撤销 | POST | `/task-logs/{id}/undo` | `Idempotency-Key`；支持断网重放且不会重复写撤销事实 |
 | 排程例外 | POST | `/care-schedule/actions` | skip/move/add/substitute/change_rule；`change_rule` 的 `payload.time_of_day` 遵循三态：缺省不改、`HH:MM` 设置、`null` 清空 |
-| 照护计划 | GET/POST/PATCH | `/pets/{id}/care-plans`, `/care-plans/{id}` | 计划属于 Family；GET/POST 多家庭宠物必须带 `family_id`，家庭筛选通过同名 query 参数传递；PATCH 可暂停/恢复，暂停不生成 Today 待办 |
+| 照护计划 | GET/POST/PATCH | `/pets/{id}/care-plans`, `/care-plans/{id}` | 计划属于 Family；GET/POST 多家庭宠物必须带 `family_id`，家庭筛选通过同名 query 参数传递；`type=medication` 的新建流程提交同一宠物的 `medication_id`，服务端会校验关联并联动用药提醒及停药/删除归档；PATCH 可暂停/恢复，暂停不生成 Today 待办 |
 | 用药 | GET/POST | `/pets/{id}/medications` | 分享卡、摘要；多家庭宠物创建时必须带 `family_id`，停用也按选定家庭时区写入日期 |
 
 ### 4.3 事实与档案（L2）

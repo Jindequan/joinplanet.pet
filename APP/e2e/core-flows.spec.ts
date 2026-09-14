@@ -250,6 +250,44 @@ test('Today can adjust one occurrence without changing the recurring plan', asyn
   await expect.poll(() => calls.filter((call) => call === 'POST /care-schedule/actions').length).toBe(1)
 })
 
+test('medication care plans require and persist a medication link', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  let createBody: Record<string, unknown> | undefined
+  await page.route('**/api/v1/pets/e2e-pet/medications', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        medications: [{
+          id: 'e2e-medication',
+          pet_id: pet.id,
+          name: '阿莫西林',
+          dose: '1 片',
+          schedule: '每日一次',
+          started_on: e2eToday,
+          ended_on: null,
+          note: '',
+        }],
+      }),
+    })
+  })
+  await page.route('**/api/v1/pets/e2e-pet/care-plans*', async (route) => {
+    if (route.request().method() === 'POST') {
+      createBody = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ care_plan: {}, care_rule: {} }) })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ care_plans: [] }) })
+  })
+
+  await page.goto('/pets/e2e-pet/care')
+  await page.getByRole('button', { name: /设置照护计划：定点给药/ }).click()
+  await expect(page.getByRole('button', { name: '关联药物：阿莫西林' })).toBeVisible()
+  await page.getByRole('button', { name: '创建计划' }).click()
+  await expect.poll(() => createBody?.medication_id).toBe('e2e-medication')
+})
+
 test('Today adds a temporary care item from the collapsed tools', async ({ page }) => {
   await seedSession(page)
   const { calls } = await mockApi(page)

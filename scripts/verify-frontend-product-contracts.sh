@@ -306,6 +306,13 @@ else
   fail "pet transfer can create duplicates when existing status lookup fails"
 fi
 
+if rg -q 'incomingTransfers\.error' "$APP/features/families/detail-screen.tsx" && \
+   rg -q '重试加载转移请求' "$APP/features/families/detail-screen.tsx"; then
+  pass "family detail exposes recovery when incoming transfers are unavailable"
+else
+  fail "family detail can silently hide incoming transfer requests on failure"
+fi
+
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
    rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
    rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx"; then

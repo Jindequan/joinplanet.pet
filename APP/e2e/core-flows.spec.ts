@@ -198,7 +198,7 @@ test('invite preview exposes a retry when the lookup temporarily fails', async (
   let attempts = 0
   await page.route('**/api/v1/invite/ABC1234567', async (route) => {
     attempts += 1
-    if (attempts === 1) {
+    if (attempts <= 4) {
       await route.fulfill({
         status: 503,
         contentType: 'application/json',
@@ -1041,6 +1041,29 @@ test('pet transfer blocks duplicate requests when existing transfer status canno
   await expect(page.getByText('暂时无法确认已有转移请求，不能安全地发起新的转移。')).toBeVisible()
   await expect(page.getByRole('button', { name: '重试' })).toBeVisible()
   await expect(page.getByRole('button', { name: /发送转移请求/ })).toHaveCount(0)
+})
+
+test('family detail exposes a retry when incoming transfer requests are unavailable', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  test.setTimeout(30_000)
+  let attempts = 0
+  await page.route('**/api/v1/families/e2e-family/transfers*', async (route) => {
+    if (new URL(route.request().url()).searchParams.get('direction') !== 'incoming') return route.fallback()
+    attempts += 1
+    return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '转移请求暂时不可用' } }),
+    })
+  })
+
+  await page.goto('/families/e2e-family')
+  await expect(page.getByText('转移请求暂时无法加载')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('alert')).toContainText('未能确认收到的宠物转移请求')
+  const beforeRetry = attempts
+  await page.getByRole('button', { name: '重试加载转移请求' }).click()
+  await expect.poll(() => attempts, { timeout: 10_000 }).toBeGreaterThan(beforeRetry)
 })
 
 test('viewer Today is readable but cannot complete or reassign care', async ({ page }) => {

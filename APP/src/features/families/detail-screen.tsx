@@ -372,7 +372,11 @@ export function FamilyDetailScreen({
         </View>
 
         <View style={[styles.detailColumn, wideLayout ? styles.detailColumnWide : null]}>
-          {isOwner && pendingIncomingTransfers.length > 0 ? (
+          {isOwner && incomingTransfers.error ? (
+            <FadeInView index={6}>
+              <IncomingTransferErrorCard onRetry={() => void incomingTransfers.refetch()} />
+            </FadeInView>
+          ) : isOwner && pendingIncomingTransfers.length > 0 ? (
             <FadeInView index={6}>
               <IncomingTransferCard
                 count={pendingIncomingTransfers.length}
@@ -516,6 +520,24 @@ function IncomingTransferCard({ count, onOpen }: { count: number; onOpen: () => 
         </View>
       </View>
       <Button label="查看转移请求" variant="secondary" onPress={onOpen} />
+    </Card>
+  )
+}
+
+function IncomingTransferErrorCard({ onRetry }: { onRetry: () => void }) {
+  const { theme } = useTheme()
+  return (
+    <Card style={[styles.incomingTransferCard, { backgroundColor: theme.colors.coralSoft }]}>
+      <View style={styles.governanceHeader}>
+        <WarningCircle size={20} color={theme.colors.coralDark} weight="fill" />
+        <View style={{ flex: 1, gap: 2 }}>
+          <AppText variant="heading">转移请求暂时无法加载</AppText>
+          <AppText accessibilityRole="alert" variant="caption" color={theme.colors.coralDark}>
+            未能确认收到的宠物转移请求；请重试后再继续管理。
+          </AppText>
+        </View>
+      </View>
+      <Button label="重试加载转移请求" variant="secondary" onPress={onRetry} />
     </Card>
   )
 }

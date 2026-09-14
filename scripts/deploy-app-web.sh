@@ -20,7 +20,7 @@ restore_root_directory() {
 trap restore_root_directory EXIT
 
 echo "app-web-deploy: temporarily clearing Vercel rootDirectory for APP upload"
-(cd "$ROOT_DIR" && npx vercel project update "$PROJECT" --auto-detect root-directory --json --yes >/dev/null)
+(cd "$ROOT_DIR" && npx vercel project update "$PROJECT" --auto-detect=root-directory --json --yes >/dev/null)
 
 (cd "$APP_DIR" && npx vercel deploy --prod --yes --archive=tgz)
 echo "app-web-deploy: production deployment finished"

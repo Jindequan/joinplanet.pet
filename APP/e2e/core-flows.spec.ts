@@ -598,6 +598,33 @@ test('activation does not count a failed care-plan lookup as zero plans', async 
   await expect(page.getByText('暂时无法读取你的家庭和宠物')).toHaveCount(0)
 })
 
+test('incomplete activation returns to setup instead of an empty Today workspace', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  await page.route('**/api/v1/me/activation-summary', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ families: 0, active_pets: 0, pets_with_active_plans: 0, has_today_items: false }),
+    })
+  })
+  await page.route('**/api/v1/families', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ families: [] }) })
+      return
+    }
+    await route.fallback()
+  })
+  await page.route('**/api/v1/pets', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ pets: [] }) })
+  })
+  await page.goto('/activation')
+  await expect(page.getByRole('heading', { name: '开始使用', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '返回' }).click()
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/families')
+  await expect(page.getByRole('heading', { name: '家庭', exact: true })).toBeVisible()
+})
+
 test('mobile pet workspace keeps long pet names inside the viewport', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)

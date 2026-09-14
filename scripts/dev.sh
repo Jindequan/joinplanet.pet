@@ -166,16 +166,16 @@ start_frontend() {
   echo "frontend: starting Expo ${mode} on :${frontend_port} (API ${api_base_url})"
   # shellcheck disable=SC2016
   if command -v setsid >/dev/null 2>&1; then
-    nohup setsid bash -c 'cd "$1" && exec env DEVELOPER_DIR="$4" EXPO_PUBLIC_API_BASE_URL="$2" EXPO_PUBLIC_EAS_PROJECT_ID="$5" npx expo start "${@:6}"' \
+    nohup setsid bash -c 'cd "$1" && exec env EXPO_NO_DOTENV=1 DEVELOPER_DIR="$4" EXPO_PUBLIC_API_BASE_URL="$2" EXPO_PUBLIC_EAS_PROJECT_ID="$5" npx expo start "${@:6}"' \
       bash "$APP_DIR" "$api_base_url" "$frontend_port" "${DEVELOPER_DIR:-}" "${EXPO_PUBLIC_EAS_PROJECT_ID:-}" "${expo_args[@]}" --port "$frontend_port" --clear \
       >>"$FRONTEND_LOG" 2>&1 < /dev/null &
   elif command -v perl >/dev/null 2>&1; then
     nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV or die $!;' -- \
-      bash -c 'cd "$1" && exec env DEVELOPER_DIR="$4" EXPO_PUBLIC_API_BASE_URL="$2" EXPO_PUBLIC_EAS_PROJECT_ID="$5" npx expo start "${@:6}"' \
+      bash -c 'cd "$1" && exec env EXPO_NO_DOTENV=1 DEVELOPER_DIR="$4" EXPO_PUBLIC_API_BASE_URL="$2" EXPO_PUBLIC_EAS_PROJECT_ID="$5" npx expo start "${@:6}"' \
       bash "$APP_DIR" "$api_base_url" "$frontend_port" "${DEVELOPER_DIR:-}" "${EXPO_PUBLIC_EAS_PROJECT_ID:-}" "${expo_args[@]}" --port "$frontend_port" --clear \
       >>"$FRONTEND_LOG" 2>&1 < /dev/null &
   else
-    nohup bash -c 'cd "$1" && exec env DEVELOPER_DIR="$4" EXPO_PUBLIC_API_BASE_URL="$2" EXPO_PUBLIC_EAS_PROJECT_ID="$5" npx expo start "${@:6}"' \
+    nohup bash -c 'cd "$1" && exec env EXPO_NO_DOTENV=1 DEVELOPER_DIR="$4" EXPO_PUBLIC_API_BASE_URL="$2" EXPO_PUBLIC_EAS_PROJECT_ID="$5" npx expo start "${@:6}"' \
       bash "$APP_DIR" "$api_base_url" "$frontend_port" "${DEVELOPER_DIR:-}" "${EXPO_PUBLIC_EAS_PROJECT_ID:-}" "${expo_args[@]}" --port "$frontend_port" --clear \
       >>"$FRONTEND_LOG" 2>&1 < /dev/null &
   fi

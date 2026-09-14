@@ -5,7 +5,9 @@ function normalizeBaseUrl(value?: string) {
   return trimmed || undefined;
 }
 
-const apiBaseUrl = normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
+const apiBaseUrl = normalizeBaseUrl(
+  Constants.expoConfig?.extra?.apiBaseUrl ?? process.env.EXPO_PUBLIC_API_BASE_URL,
+);
 const publicWebBaseUrl = normalizeBaseUrl(process.env.EXPO_PUBLIC_PUBLIC_WEB_BASE_URL);
 
 function runtimeApiBaseUrl() {

@@ -170,7 +170,7 @@ if [ "$METRO_ALREADY_UP" = 0 ]; then
   METRO_LABEL="com.joinplanet.planet-metro-${EXPO_PORT}"
   launchctl remove "$METRO_LABEL" 2>/dev/null || true
   launchctl submit -l "$METRO_LABEL" -- /bin/bash -lc \
-    "cd '$APP_DIR' && exec env DEVELOPER_DIR='$DEVELOPER_DIR' PATH='$NODE_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin' EXPO_PUBLIC_API_BASE_URL='$EXPO_PUBLIC_API_BASE_URL' EXPO_PUBLIC_EAS_PROJECT_ID='${EXPO_PUBLIC_EAS_PROJECT_ID:-}' ./node_modules/.bin/expo start --port '$EXPO_PORT' --clear --offline >>'$ROOT_DIR/.dev/frontend.log' 2>&1"
+    "cd '$APP_DIR' && exec env EXPO_NO_DOTENV=1 DEVELOPER_DIR='$DEVELOPER_DIR' PATH='$NODE_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin' EXPO_PUBLIC_API_BASE_URL='$EXPO_PUBLIC_API_BASE_URL' EXPO_PUBLIC_EAS_PROJECT_ID='${EXPO_PUBLIC_EAS_PROJECT_ID:-}' ./node_modules/.bin/expo start --port '$EXPO_PORT' --clear --offline >>'$ROOT_DIR/.dev/frontend.log' 2>&1"
 fi
 
 for _ in $(seq 1 80); do

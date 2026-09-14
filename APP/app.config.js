@@ -8,18 +8,29 @@ const baseConfig = require('./app.json');
  */
 module.exports = ({ config }) => {
   const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim();
+  // Capture the runtime API endpoint in Expo config. Metro's development
+  // client environment module merges .env values after the CLI starts, so a
+  // script-provided EXPO_PUBLIC_API_BASE_URL can otherwise be shadowed by a
+  // stale local .env file. The app reads this serialized value as its source
+  // of truth on Web and native.
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
   const resolved = config ?? baseConfig.expo;
 
   return {
     ...resolved,
-    ...(projectId
+    ...(projectId || apiBaseUrl
       ? {
           extra: {
             ...(resolved.extra ?? {}),
-            eas: {
-              ...(resolved.extra?.eas ?? {}),
-              projectId,
-            },
+            ...(apiBaseUrl ? { apiBaseUrl } : {}),
+            ...(projectId
+              ? {
+                  eas: {
+                    ...(resolved.extra?.eas ?? {}),
+                    projectId,
+                  },
+                }
+              : {}),
           },
         }
       : {}),

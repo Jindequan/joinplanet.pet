@@ -41,7 +41,7 @@
 
 ## F5 时间线与附件
 
-- `GET /pets/{petID}/timeline?before=<eventID>&limit=30&types=symptom,weight...` → `{events:[{id,type,occurred_at,title,body,severity,data,recorded_by,by_name,source,attachments:[{id,kind,url,filename}]}], next_cursor}`（按 occurred_at DESC）
+- `GET /pets/{petID}/timeline?before=<eventID>&limit=30&types=symptom,weight...` → `{events:[{id,type,occurred_at,title,body,severity,data,recorded_by,by_name,source,attachments:[{id,kind,url,filename}]}], next_cursor}`（按 occurred_at DESC；健康事件类型包含 `symptom|weight|vet_visit|vaccine|deworm`）
 - `POST /pets/{petID}/events` `{type, title, body?, occurred_at?, severity?, data?}` → `{event}`（weight 类型要求 data.weight_kg 数值）
 - `PATCH /events/{eventID}` / `DELETE /events/{eventID}`（记录者或 owner；删除二次确认在 UI）
 - `POST /pets/{petID}/attachments` multipart `file` + `event_id?` → 存本地 `./uploads/{random32hex}.{ext}` → `{attachment:{id,kind,url}}`；**存储配额（free 档=50MB/圈）：该圈全部附件 `SUM(size)` + 本次 size 超限 → 413 `{"error":"storage limit reached","used_bytes":X,"limit_bytes":Y}`**

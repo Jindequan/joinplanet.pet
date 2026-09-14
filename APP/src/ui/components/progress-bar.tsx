@@ -6,6 +6,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '../../core/providers/theme-provider';
+import { useReducedMotion } from '../motion/reduced-motion';
 
 type Props = {
   /** 0–100 */
@@ -16,13 +17,15 @@ type Props = {
 
 export function ProgressBar({ value, style, accessibilityLabel }: Props) {
   const { theme } = useTheme();
+  const reduceMotion = useReducedMotion();
   const progress = useSharedValue(value);
 
   useEffect(() => {
-    progress.value = withTiming(Math.min(100, Math.max(0, value)), {
-      duration: theme.motion.normal,
-    });
-  }, [progress, theme.motion.normal, value]);
+    const next = Math.min(100, Math.max(0, value));
+    progress.value = reduceMotion
+      ? next
+      : withTiming(next, { duration: theme.motion.normal });
+  }, [progress, reduceMotion, theme.motion.normal, value]);
 
   const fillStyle = useAnimatedStyle(() => ({
     width: `${progress.value}%`,
@@ -30,7 +33,9 @@ export function ProgressBar({ value, style, accessibilityLabel }: Props) {
 
   return (
     <View
+      accessibilityRole="progressbar"
       accessibilityLabel={accessibilityLabel}
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(Math.min(100, Math.max(0, value))) }}
       style={[styles.track, { backgroundColor: theme.colors.sageSoft }, style]}
     >
       <Animated.View

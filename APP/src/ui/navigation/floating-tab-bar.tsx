@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useQuery } from '@tanstack/react-query';
@@ -72,11 +73,13 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           const Icon = ICONS[route.name as keyof typeof ICONS] ?? DotsThree;
           const hasRequestBadge = route.name === 'requests' && pendingRequestCount > 0;
           return (
-            <Pressable
+            <FloatingTabItem
               key={route.key}
-              accessibilityRole="button"
-              accessibilityLabel={`${label}${hasRequestBadge ? `，${pendingRequestCount} 条待回应` : ''}`}
-              accessibilityState={focused ? { selected: true } : {}}
+              focused={focused}
+              label={label}
+              Icon={Icon}
+              hasRequestBadge={hasRequestBadge}
+              pendingRequestCount={pendingRequestCount}
               onPress={() => {
                 const event = navigation.emit({
                   type: 'tabPress',
@@ -89,42 +92,78 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                   navigation.navigate(route.name, route.params);
                 }
               }}
-              style={[
-                styles.item,
-                focused && {
-                  backgroundColor: theme.colors.forest2,
-                  borderRadius: theme.radius.pill,
-                },
-              ]}
-            >
-              <Icon
-                size={21}
-                weight={focused ? 'fill' : 'regular'}
-                color={focused ? theme.colors.onBrand : theme.colors.forest2}
-              />
-              <AppText
-                variant="caption"
-                color={focused ? theme.colors.onBrand : theme.colors.forest2}
-                style={styles.label}
-              >
-                {label}
-              </AppText>
-              {hasRequestBadge ? (
-                <View
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                  style={[styles.badge, { backgroundColor: theme.colors.coralDark }]}
-                >
-                  <AppText variant="caption" color={theme.colors.onBrand} style={styles.badgeLabel}>
-                    {pendingRequestCount > 99 ? '99+' : pendingRequestCount}
-                  </AppText>
-                </View>
-              ) : null}
-            </Pressable>
+              theme={theme}
+            />
           );
         })}
       </GlassBar>
     </View>
+  );
+}
+
+type TabItemProps = {
+  focused: boolean;
+  label: string;
+  Icon: typeof Sun;
+  hasRequestBadge: boolean;
+  pendingRequestCount: number;
+  onPress: () => void;
+  theme: ReturnType<typeof useTheme>['theme'];
+};
+
+function FloatingTabItem({ focused, label, Icon, hasRequestBadge, pendingRequestCount, onPress, theme }: TabItemProps) {
+  const selected = useSharedValue(focused ? 1 : 0);
+
+  React.useEffect(() => {
+    selected.value = withTiming(focused ? 1 : 0, { duration: theme.motion.normal });
+  }, [focused, selected, theme.motion.normal]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    opacity: selected.value,
+    transform: [
+      { scaleX: 0.94 + selected.value * 0.06 },
+      { scaleY: 0.9 + selected.value * 0.1 },
+    ],
+  }));
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}${hasRequestBadge ? `，${pendingRequestCount} 条待回应` : ''}`}
+      accessibilityState={focused ? { selected: true } : {}}
+      onPress={onPress}
+      style={({ pressed }) => [styles.item, { opacity: pressed ? theme.motion.pressOpacity : 1 }]}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.indicator, { backgroundColor: theme.colors.forest2, borderRadius: theme.radius.pill }, indicatorStyle]}
+      />
+      <View style={styles.itemContent}>
+        <Icon
+          size={21}
+          weight={focused ? 'fill' : 'regular'}
+          color={focused ? theme.colors.onBrand : theme.colors.forest2}
+        />
+        <AppText
+          variant="caption"
+          color={focused ? theme.colors.onBrand : theme.colors.forest2}
+          style={styles.label}
+        >
+          {label}
+        </AppText>
+      </View>
+      {hasRequestBadge ? (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+          style={[styles.badge, { backgroundColor: theme.colors.coralDark }]}
+        >
+          <AppText variant="caption" color={theme.colors.onBrand} style={styles.badgeLabel}>
+            {pendingRequestCount > 99 ? '99+' : pendingRequestCount}
+          </AppText>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -152,6 +191,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     paddingVertical: 6,
+  },
+  indicator: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  itemContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    zIndex: 1,
   },
   label: { fontWeight: '800' },
   badge: {

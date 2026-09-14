@@ -56,5 +56,5 @@ export function enterDuration(baseMs: number) {
 }
 
 export function shouldStaggerListEnter(index: number) {
-  return index < (prefersSnappyMotion() ? 6 : 12);
+  return index < (prefersSnappyMotion() ? 5 : 6);
 }

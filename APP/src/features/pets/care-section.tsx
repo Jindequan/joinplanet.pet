@@ -73,6 +73,7 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
   const activePlans = plans.filter((plan) => plan.status !== 'archived')
   const archivedPlans = plans.filter((plan) => plan.status === 'archived')
   const visiblePlans = showArchived ? plans : activePlans
+  const hasMedicationPlans = plans.some((plan) => plan.type === 'medication' || plan.medication_id)
   const canCreate = canManagePlans && !timezoneAmbiguous && !timezoneUnavailable
   const assignmentQueries = useQueries({
     queries: plans.map((plan) => ({
@@ -171,6 +172,14 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
           <AppText variant="caption" color={theme.colors.coralDark}>
             先等家庭设置加载完成；确认时区后才能新增或修改照护计划。
           </AppText>
+        </Card>
+      ) : null}
+      {hasMedicationPlans && medicationsQuery.error ? (
+        <Card style={{ gap: 8, backgroundColor: theme.colors.coralSoft }}>
+          <AppText accessibilityRole="alert" variant="caption" color={theme.colors.coralDark}>
+            用药记录暂时无法读取，当前计划仍保留，但暂时无法核对关联药物。
+          </AppText>
+          <Button label="重试读取用药" variant="ghost" onPress={() => void medicationsQuery.refetch()} />
         </Card>
       ) : null}
 

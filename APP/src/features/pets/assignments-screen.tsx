@@ -120,7 +120,8 @@ export function AssignmentsScreen({
       if (shouldAssign) await planetApi.carePlans.setAssignment(planId, userId, 'helper')
       else await planetApi.carePlans.removeAssignment(planId, userId)
       invalidateAfterCarePlanChange(client, petId)
-      await assignments.refetch()
+      const refreshed = await assignments.refetch()
+      if (refreshed.error) throw refreshed.error
       setRemoveUser(null)
     } catch (e) {
       setError(errorMessage(e))
@@ -135,7 +136,8 @@ export function AssignmentsScreen({
     try {
       await planetApi.carePlans.moveAssignment(planId, userId, direction)
       invalidateAfterCarePlanChange(client, petId)
-      await assignments.refetch()
+      const refreshed = await assignments.refetch()
+      if (refreshed.error) throw refreshed.error
     } catch (e) {
       setError(errorMessage(e))
     } finally {

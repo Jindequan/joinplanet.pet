@@ -228,9 +228,13 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
     if (pet.archived_at) await planetApi.pets.unarchive(pet.id)
     else await planetApi.pets.archive(pet.id)
     invalidateAfterPetChange(client, pet.id)
-    await petQuery.refetch()
+    const refreshed = await petQuery.refetch()
     setConfirm(null)
-    showToast({ message: pet.archived_at ? '已恢复为活跃。' : '已归档，历史保留。' })
+    showToast({
+      message: refreshed.error
+        ? `${pet.archived_at ? '已恢复为活跃' : '已归档'}，但宠物页面刷新失败，请重试加载。`
+        : pet.archived_at ? '已恢复为活跃。' : '已归档，历史保留。',
+    })
   }
 
   async function destroy() {
@@ -396,7 +400,8 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
           onArchive={() => setConfirm('archive')}
           onDelete={() => setConfirm('delete')}
           onFamilyChanged={async () => {
-            await petQuery.refetch()
+            const refreshed = await petQuery.refetch()
+            if (refreshed.error) throw refreshed.error
             invalidateAfterPetChange(client, pet.id)
           }}
           onRecordWeight={() => {

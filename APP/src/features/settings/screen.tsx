@@ -85,9 +85,13 @@ export function SettingsScreen() {
           ? { default_family_id: value || null, default_pet_id: nextDefaultPetId }
           : { default_family_id: defaultFamilyId || null, default_pet_id: nextDefaultPetId },
       );
-      await preferences.refetch();
+      const refreshed = await preferences.refetch();
       invalidateAfterPreferencesChange(client);
       await resetToDefault();
+      if (refreshed.error) {
+        showToast({ message: `默认项已保存，但设置页刷新失败：${errorMessage(refreshed.error)}` });
+        return;
+      }
       showToast({
         message:
           kind === 'family' && defaultPetId !== nextDefaultPetId

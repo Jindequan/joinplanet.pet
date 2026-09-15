@@ -171,9 +171,13 @@ export function FamilyDetailScreen({
       router.replace('/families' as never)
     } else if (confirm && typeof confirm === 'object') {
       await planetApi.families.removeMember(family.id, confirm.user_id)
-      await query.refetch()
+      const refreshed = await query.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({ message: `已移除 ${confirm.display_name}` })
+      if (refreshed.error) {
+        showToast({ message: `已移除 ${confirm.display_name}，但成员列表刷新失败：${errorMessage(refreshed.error)}` })
+      } else {
+        showToast({ message: `已移除 ${confirm.display_name}` })
+      }
     }
     setConfirm(null)
   }
@@ -183,9 +187,13 @@ export function FamilyDetailScreen({
     try {
       await planetApi.pets.removeFromFamily(petToRemove.id, family.id)
       setPetToRemove(null)
-      await pets.refetch()
+      const refreshed = await pets.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({ message: `已从「${family.name}」移出 ${petToRemove.name}` })
+      if (refreshed.error) {
+        showToast({ message: `已从「${family.name}」移出 ${petToRemove.name}，但宠物列表刷新失败：${errorMessage(refreshed.error)}` })
+      } else {
+        showToast({ message: `已从「${family.name}」移出 ${petToRemove.name}` })
+      }
     } catch (e) {
       showToast({ message: errorMessage(e) })
     }
@@ -197,9 +205,13 @@ export function FamilyDetailScreen({
     setRoleBusy(member.user_id)
     try {
       await planetApi.families.updateMemberRole(family.id, member.user_id, nextRole)
-      await query.refetch()
+      const refreshed = await query.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({ message: `${member.display_name} 已改为${nextRole === 'viewer' ? '只查看' : '可参与照护'}` })
+      if (refreshed.error) {
+        showToast({ message: `${member.display_name} 的角色已更新，但成员列表刷新失败：${errorMessage(refreshed.error)}` })
+      } else {
+        showToast({ message: `${member.display_name} 已改为${nextRole === 'viewer' ? '只查看' : '可参与照护'}` })
+      }
     } catch (e) {
       showToast({ message: errorMessage(e) })
     } finally {

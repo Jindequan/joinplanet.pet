@@ -71,8 +71,12 @@ export function NotificationSettingsScreen({ familyId: routeFamilyId }: { family
     }
     try {
       await planetApi.families.updateNotificationPrefs(selectedFamilyId, { [kind]: value });
-      await query.refetch();
-      showToast({ message: '通知偏好已保存。' });
+      const refreshed = await query.refetch();
+      showToast({
+        message: refreshed.error
+          ? `通知偏好已保存，但页面刷新失败：${errorMessage(refreshed.error)}`
+          : '通知偏好已保存。',
+      });
     } catch (e) {
       showToast({ message: errorMessage(e) });
     }

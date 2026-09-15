@@ -60,11 +60,15 @@ export function FamilyTransfersScreen({ familyId }: { familyId: string }) {
         await planetApi.transfers.accept(transfer.id, requestKey)
       else await planetApi.transfers.decline(transfer.id, requestKey)
       commandKeys.current.delete(commandScope)
-      await query.refetch()
+      const refreshed = await query.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({
-        message: `转移请求已${action === 'accept' ? '接受' : action === 'decline' ? '婉拒' : '取消'}。`,
-      })
+      if (refreshed.error) {
+        showToast({ message: '操作已保存，但转移列表刷新失败，请重试加载。' })
+      } else {
+        showToast({
+          message: `转移请求已${action === 'accept' ? '接受' : action === 'decline' ? '婉拒' : '取消'}。`,
+        })
+      }
       return true
     } catch (e) {
       setError(errorMessage(e))

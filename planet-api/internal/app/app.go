@@ -104,11 +104,21 @@ func New(pool *pgxpool.Pool, log *slog.Logger, devAuthCodes bool, corsOrigins []
 	}
 
 	familySvc := &families.Service{Repo: &families.Repo{Pool: pool}, Pool: pool, Ent: entSvc}
+	joinPerHour := httpx.NewLimiter(10, time.Hour)
+	invitePreviewPerHour := httpx.NewLimiter(30, time.Hour)
+	// Local development E2E intentionally creates several fresh accounts and
+	// joins in one process. Keep the production anti-enumeration limits, while
+	// avoiding stale process-local buckets making repeated local verification
+	// look like a family membership failure.
+	if devAuthCodes && !databaseRateLimits {
+		joinPerHour = httpx.NewLimiter(10_000, time.Hour)
+		invitePreviewPerHour = httpx.NewLimiter(10_000, time.Hour)
+	}
 	familyHandler := &families.Handler{
 		Svc: familySvc,
 		// 邀请码防穷举：按 IP 限速（49.5bit 熵本身已够，双保险）
-		JoinPerHour:          httpx.NewLimiter(10, time.Hour),
-		InvitePreviewPerHour: httpx.NewLimiter(30, time.Hour),
+		JoinPerHour:          joinPerHour,
+		InvitePreviewPerHour: invitePreviewPerHour,
 	}
 	petSvc := &pets.Service{
 		Repo: &pets.Repo{Pool: pool}, Pool: pool,

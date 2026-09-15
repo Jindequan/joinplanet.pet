@@ -207,3 +207,9 @@ cd ../planet-api && TEST_DATABASE_URL=postgres:///postgres go test ./...
 - **问题**：iOS Simulator 首次打开登录页时，`autoFocus` 在键盘出现前按完整视口判断，导致键盘自动弹出并把主视觉与主按钮推到首屏之外。
 - **修复**：`APP/src/features/auth/screen.tsx` 将自动聚焦限制为桌面 Web；移动端由用户点击邮箱/验证码输入框后再调起键盘。
 - **证据**：重启 `PlanetBuildCheck` Simulator 后截图 `/tmp/planet-sim-auth-no-keyboard-2.png`，登录首屏完整显示且无系统键盘；`cd APP && npm run typecheck` 通过。
+
+### 2026-09-15 — 通知未配置状态增加原地恢复
+
+- **问题**：设备通知状态为 `not_configured` 时只显示发布配置未完成，没有任何恢复动作；配置恢复后用户必须退出重进才能再次登记。
+- **修复**：通知设置页为该状态增加“重新检查”，并明确说明配置恢复后可原地重试。
+- **证据**：`cd APP && npm run typecheck`、`cd APP && npm run lint`、`./scripts/verify-notification-contract.sh` 全部通过。

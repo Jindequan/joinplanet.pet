@@ -34,6 +34,8 @@
 
 目标：验证系统通知行动卡、责任转接和离线重放在可操作的 Simulator/Emulator（或另行授权设备）上形成完整闭环。该验收只验证产品行为，不验证商业指标。
 
+2026-09-15 最新本地复核：`./scripts/acceptance-care-coordination.sh http://127.0.0.1:8081/api/v1` 全部通过，并生成 `request_accept_id=78f16c17-0eb3-48b9-9963-030dd451771d`、`care_handoff_batch_id=f19c9617-08f8-4704-b8ef-66f63387abd5`；同一 `PlanetBuildCheck` Simulator 上，单项与批量模拟通知均投递成功，`acceptance-care-notification-inspect.sh` 读回正确 category、动作注册状态和业务对象 ID。该证据仍不替代系统通知中心按钮点击、锁屏、冷启动和断网重放的宿主 UI 验收。
+
 ## 参与者与准备
 
 - 设备 A / 账号 A：当前照护负责人或请求发起人；

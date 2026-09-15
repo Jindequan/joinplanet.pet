@@ -450,10 +450,18 @@ export function FamilyDetailScreen({
         <FamilyEdit
           family={family}
           onClose={() => setEdit(false)}
-          onSaved={async () => {
+          onSaved={() => {
             setEdit(false)
-            await query.refetch()
             invalidateAfterFamilyChange(client)
+            void query.refetch()
+              .then((result) => {
+                if (result.error) {
+                  showToast({ message: `家庭已保存，但列表刷新失败：${errorMessage(result.error)}` })
+                }
+              })
+              .catch((error) => {
+                showToast({ message: `家庭已保存，但列表刷新失败：${errorMessage(error)}` })
+              })
           }}
         />
       ) : null}
@@ -463,10 +471,18 @@ export function FamilyDetailScreen({
           familyId={family.id}
           members={members.filter((member) => member.role !== 'owner')}
           onClose={() => setTransferOpen(false)}
-          onSaved={async () => {
+          onSaved={() => {
             setTransferOpen(false)
-            await query.refetch()
             invalidateAfterFamilyChange(client)
+            void query.refetch()
+              .then((result) => {
+                if (result.error) {
+                  showToast({ message: `管理员已转让，但家庭信息刷新失败：${errorMessage(result.error)}` })
+                }
+              })
+              .catch((error) => {
+                showToast({ message: `管理员已转让，但家庭信息刷新失败：${errorMessage(error)}` })
+              })
           }}
         />
       ) : null}

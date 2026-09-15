@@ -213,3 +213,9 @@ cd ../planet-api && TEST_DATABASE_URL=postgres:///postgres go test ./...
 - **问题**：设备通知状态为 `not_configured` 时只显示发布配置未完成，没有任何恢复动作；配置恢复后用户必须退出重进才能再次登记。
 - **修复**：通知设置页为该状态增加“重新检查”，并明确说明配置恢复后可原地重试。
 - **证据**：`cd APP && npm run typecheck`、`cd APP && npm run lint`、`./scripts/verify-notification-contract.sh` 全部通过。
+
+### 2026-09-15 — 家庭摘要加载态可见
+
+- **问题**：Today 的“更多照护工具”打开后，家庭摘要请求期间组件直接返回空节点，用户看不到正在加载或点击反馈。
+- **修复**：单家庭 `DigestCard` 与全家庭 `DigestOverview` 均在首轮请求期间显示带日期、任务级文案的紧凑加载卡；失败和空数据状态继续沿用各自恢复路径。
+- **证据**：`cd APP && npm run typecheck`、`cd APP && npm run lint`、`./scripts/verify-frontend-product-contracts.sh` 全部通过。

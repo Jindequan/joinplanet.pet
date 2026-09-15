@@ -9,6 +9,7 @@ import { useScope } from '../../core/providers/scope-provider'
 import { useTheme } from '../../core/providers/theme-provider'
 import { AppText } from '../../ui/components/app-text'
 import { Card } from '../../ui/components/card'
+import { LoadingState } from '../../ui/components/loading-state'
 import { QueryErrorState } from '../../ui/components/query-error-state'
 import { FadeInView, PressableScale } from '../../ui/motion'
 
@@ -51,6 +52,21 @@ export function DigestOverview({ families, date }: Props) {
   )
   const loadedRows = rows.filter((row) => row.loaded)
   const allFailed = rows.length > 0 && rows.every((row) => row.failed)
+  const allLoading = rows.length > 0 && rows.every((row) => !row.loaded && !row.failed)
+  if (allLoading) {
+    return (
+      <FadeInView>
+        <Card style={styles.card}>
+          <ViewHeader
+            title="今天的家庭状态"
+            subtitle={`${families.length} 个家庭 · ${date} · 按家庭统计`}
+            color={theme.colors.ink}
+          />
+          <LoadingState compact label="正在加载家庭摘要" />
+        </Card>
+      </FadeInView>
+    )
+  }
   if (allFailed) {
     return (
       <FadeInView>

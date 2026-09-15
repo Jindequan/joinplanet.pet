@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -65,9 +66,10 @@ func hashToken(t string) string {
 
 // summaryOptions：Summary 的段落选择（v1：profile/medications/events + 时间窗）。
 type summaryOptions struct {
-	Sections      []string `json:"sections"`
-	Days          int      `json:"days"`
-	IncludePhotos bool     `json:"include_photos"`
+	Sections       []string `json:"sections"`
+	Days           int      `json:"days"`
+	IncludePhotos  bool     `json:"include_photos"`
+	ChiefComplaint string   `json:"reason"`
 }
 
 func parseSummaryOptions(raw []byte) (summaryOptions, error) {
@@ -80,6 +82,7 @@ func parseSummaryOptions(raw []byte) (summaryOptions, error) {
 	if err := json.Unmarshal(raw, &o); err != nil {
 		return o, httpx.ErrValidation("invalid options")
 	}
+	o.ChiefComplaint = strings.TrimSpace(o.ChiefComplaint)
 	if len(o.Sections) == 0 {
 		o.Sections = []string{"profile", "medications", "events"}
 	}
@@ -88,6 +91,9 @@ func parseSummaryOptions(raw []byte) (summaryOptions, error) {
 	}
 	if o.Days > 365 {
 		return o, httpx.ErrValidation("options.days max 365")
+	}
+	if len([]rune(o.ChiefComplaint)) > 300 {
+		return o, httpx.ErrValidation("options.reason max 300 characters")
 	}
 	valid := map[string]bool{"profile": true, "medications": true, "events": true}
 	for _, s := range o.Sections {
@@ -388,6 +394,9 @@ func (s *Service) buildSummary(ctx context.Context, share ShareLink) (map[string
 		data["allergies"] = rawOr(profile.Allergies, []any{})
 		data["conditions"] = rawOr(profile.Conditions, []any{})
 		data["notes"] = profile.Notes
+	}
+	if opts.ChiefComplaint != "" {
+		data["reason"] = opts.ChiefComplaint
 	}
 	if wants["medications"] {
 		meds, err := s.Meds.ListForShare(ctx, share.PetID)

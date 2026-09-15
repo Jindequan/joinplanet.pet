@@ -74,8 +74,12 @@ export function AccountScreen() {
     setSavingName(true)
     try {
       await planetApi.me.update({ display_name: displayName })
-      await me.refetch()
-      showToast({ message: '账户信息已保存。' })
+      const refreshed = await me.refetch()
+      showToast({
+        message: refreshed.error
+          ? `账户信息已保存，但账户页刷新失败：${errorMessage(refreshed.error)}`
+          : '账户信息已保存。',
+      })
     } catch (e) {
       setNameError(errorMessage(e))
       showToast({ message: errorMessage(e) })
@@ -90,7 +94,11 @@ export function AccountScreen() {
     setLocalePickerOpen(false)
     try {
       await planetApi.me.update({ locale: value })
-      await me.refetch()
+      const refreshed = await me.refetch()
+      if (refreshed.error) {
+        showToast({ message: `语言偏好已保存，但账户页刷新失败：${errorMessage(refreshed.error)}` })
+        return
+      }
       showToast({ message: '语言偏好已保存。' })
     } catch (e) {
       setLocale(previous)
@@ -101,8 +109,12 @@ export function AccountScreen() {
   async function revokeSession(sessionId: string) {
     try {
       await planetApi.me.revokeSession(sessionId)
-      await sessions.refetch()
-      showToast({ message: '已退出该设备。' })
+      const refreshed = await sessions.refetch()
+      showToast({
+        message: refreshed.error
+          ? `已退出该设备，但设备列表刷新失败：${errorMessage(refreshed.error)}`
+          : '已退出该设备。',
+      })
     } catch (e) {
       showToast({ message: errorMessage(e) })
     } finally {
@@ -114,8 +126,12 @@ export function AccountScreen() {
     setRevokingOtherSessions(true)
     try {
       await planetApi.me.revokeOtherSessions()
-      await sessions.refetch()
-      showToast({ message: '其他设备已退出。' })
+      const refreshed = await sessions.refetch()
+      showToast({
+        message: refreshed.error
+          ? `其他设备已退出，但设备列表刷新失败：${errorMessage(refreshed.error)}`
+          : '其他设备已退出。',
+      })
     } catch (e) {
       showToast({ message: errorMessage(e) })
     } finally {

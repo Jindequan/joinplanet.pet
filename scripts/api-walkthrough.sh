@@ -65,7 +65,7 @@ CODE_C=$(jq -r '.dev_code' <<<"$R")
 R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_C\",\"code\":\"$CODE_C\"}")
 TOKEN_C=$(jq -r '.token' <<<"$R")
 USER_C=$(jq -r '.user.id' <<<"$(get /api/v1/me "$TOKEN_C")")
-R=$(post "/api/v1/pets/$PET/access-grants" "$TOKEN" "{\"user_id\":\"$USER_C\",\"role\":\"editor\"}")
+R=$(post "/api/v1/pets/$PET/access-grants" "$TOKEN" "{\"user_id\":\"$USER_C\",\"role\":\"editor\"}" "$(key)")
 GRANT=$(jq -r '.grant.id' <<<"$R")
 expect "directly granted user sees the Pet" ".pets | any(.id == \"$PET\" and .access_role == \"editor\")" "$(get /api/v1/pets "$TOKEN_C")"
 R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_B\"}")
@@ -82,7 +82,7 @@ CIRCLE_2=$(jq -r '.family.id' <<<"$R")
 INVITE_2=$(jq -r '.invite_code' <<<"$R")
 R=$(post /api/v1/families/join "$TOKEN" "{\"code\":\"$INVITE_2\"}" "$(key)")
 expect "Pet owner joins the second Family" ".family.id == \"$CIRCLE_2\"" "$R"
-R=$(post "/api/v1/pets/$PET/families" "$TOKEN" "{\"family_id\":\"$CIRCLE_2\"}")
+R=$(post "/api/v1/pets/$PET/families" "$TOKEN" "{\"family_id\":\"$CIRCLE_2\"}" "$(key)")
 expect "share Pet with another Family" ".family_id == \"$CIRCLE_2\"" "$R"
 expect "shared Family sees the Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/families/$CIRCLE_2/pets" "$TOKEN_B")"
 delete "/api/v1/pets/$PET/families/$CIRCLE_2" "$TOKEN"
@@ -139,9 +139,9 @@ expect "start medication" '.medication.id and .medication.ended_on == null' "$R"
 MED=$(jq -r '.medication.id' <<<"$R")
 expect "started medication appears in the Pet list" ".medications | any(.id == \"$MED\" and .ended_on == null)" "$(get "/api/v1/pets/$PET/medications" "$TOKEN")"
 expect "medication start is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"started\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
-R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '' "$(key)")
 expect "stop medication" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}$\"))" "$R"
-R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '' "$(key)")
 expect "repeating stop is idempotent" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}\"))" "$R"
 expect "medication stop is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"ended\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
 delete "/api/v1/medications/$MED" "$TOKEN"

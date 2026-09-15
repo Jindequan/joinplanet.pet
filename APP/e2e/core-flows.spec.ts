@@ -97,7 +97,14 @@ async function mockApi(page: Page) {
       route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
     if (path === '/me') return json({ user, entitlements: [] })
+    if (path === '/auth/request-code' && request.method() === 'POST') {
+      return json({ dev_code: '123456' }, 202)
+    }
+    if (path === '/auth/verify-code' && request.method() === 'POST') {
+      return json({ token: 'e2e-token', user })
+    }
     if (path === '/me/preferences') return json({ preferences: {} })
+    if (path === '/me/capabilities') return json({ export_json: true, export_pdf: false, push: false, i18n: false })
     if (path === '/me/activation-summary') {
       return json({ families: 1, active_pets: 1, pets_with_active_plans: 1, has_today_items: true })
     }
@@ -107,12 +114,16 @@ async function mockApi(page: Page) {
     if (path === `/pets/${pet.id}`) {
       return json({ pet, profile: { allergies: [], conditions: [], emergency_contacts: [], notes: '' } })
     }
+    if (path === `/pets/${pet.id}/export`) return json({ pet, profile: { allergies: [], conditions: [], emergency_contacts: [], notes: '' }, timeline: [] })
     if (path === '/today') return json(todayResponse(completed))
     if (path === '/care-requests/inbox') return json({ care_requests: [] })
     if (path === '/care-handoff-batches/inbox') return json({ batches: [] })
     if (path === '/timeline') return json({ events: [], next_cursor: undefined })
     if (path === `/invite/ABC1234567`) {
       return json({ role: 'caregiver', pet_name: pet.name, inviter_name: user.display_name })
+    }
+    if (path === `/families/${family.id}/invite/refresh` && request.method() === 'POST') {
+      return json({ invite_code: 'ABC1234567' })
     }
     if (path === '/shares/expired') {
       return json({ error: { code: 'SHARE_EXPIRED', message: 'share expired' } }, 410)
@@ -169,6 +180,48 @@ test('invite deep link pre-fills and previews the join form', async ({ page }) =
   await expect(page.getByRole('button', { name: /加入 E2E 用户.*家庭/ })).toBeEnabled()
 })
 
+test('public invite preview preserves the code through authentication', async ({ page }) => {
+  await mockApi(page)
+  await page.goto('/invite/abc1234567')
+  await expect(page.getByLabel('邀请码')).toHaveValue('ABC1234567')
+  await expect(page.getByLabel('邀请码')).not.toBeFocused()
+  await expect(page.getByRole('button', { name: '登录后加入' })).toBeEnabled()
+  await page.getByRole('button', { name: '登录后加入' }).click()
+  await expect(page).toHaveURL(/\/auth\?invite=ABC1234567$/)
+  await page.getByLabel('邮箱地址').fill('invitee@example.com')
+  await page.getByRole('button', { name: '继续' }).click()
+  await expect(page).toHaveURL(/\/families\/join\?code=ABC1234567$/)
+  await expect(page.getByLabel('邀请码')).not.toBeFocused()
+  await expect(page.getByRole('button', { name: /加入 E2E 用户.*家庭/ })).toBeEnabled()
+})
+
+test('invite preview exposes a retry when the lookup temporarily fails', async ({ page }) => {
+  await mockApi(page)
+  let attempts = 0
+  await page.route('**/api/v1/invite/ABC1234567', async (route) => {
+    attempts += 1
+    if (attempts === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '服务暂时不可用' } }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ role: 'caregiver', pet_name: 'Milo', inviter_name: 'E2E 用户' }),
+    })
+  })
+  await page.goto('/invite/abc1234567')
+  await expect(page.getByRole('alert')).toHaveText('服务暂时出了点问题，请稍后再试。')
+  await expect(page.getByRole('button', { name: '重试核对' })).toBeVisible()
+  await page.getByRole('button', { name: '重试核对' }).click()
+  await expect(page.getByText(/E2E 用户\s+邀请你加入/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /登录后加入/ })).toBeEnabled()
+})
+
 test('invite form blocks malformed codes before submission', async ({ page }) => {
   await seedSession(page)
   await mockApi(page)
@@ -177,11 +230,167 @@ test('invite form blocks malformed codes before submission', async ({ page }) =>
   await expect(page.getByRole('button', { name: '加入家庭' })).toBeDisabled()
 })
 
+test('family invite sharing includes a preview link and manual-code fallback', async ({ page }) => {
+  await seedSession(page)
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (payload: { text?: string }) => {
+        ;(window as typeof window & { __planetShared?: { text?: string } }).__planetShared = payload
+      },
+    })
+  })
+  await mockApi(page)
+  await page.goto(`/families/${family.id}`)
+  await page.getByRole('button', { name: '邀请成员' }).click()
+  await page.getByRole('button', { name: '生成邀请码' }).click()
+  await expect(page.getByLabel(/邀请码 ABC1234567/)).toBeVisible()
+  await page.getByRole('button', { name: '发给成员' }).click()
+
+  await expect.poll(async () =>
+    page.evaluate(() => (window as typeof window & { __planetShared?: { text?: string } }).__planetShared?.text ?? ''),
+  ).toContain('https://www.joinplanet.pet/invite/ABC1234567')
+  await expect.poll(async () =>
+    page.evaluate(() => (window as typeof window & { __planetShared?: { text?: string } }).__planetShared?.text ?? ''),
+  ).toContain('用邀请码加入')
+})
+
 test('expired public shares expose a recoverable explanation', async ({ page }) => {
   await mockApi(page)
   await page.goto('/share/expired')
   await expect(page.getByText('分享已过期')).toBeVisible()
   await expect(page.getByText('链接已失效或被管理员撤销。')).toBeVisible()
+})
+
+test('summary share exposes a print or save PDF action', async ({ page }) => {
+  await mockApi(page)
+  await page.route('**/api/v1/shares/e2e-summary', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'summary',
+        expires_at: '2026-09-22T00:00:00Z',
+        created_at: '2026-09-15T00:00:00Z',
+        data: {
+          pet: { name: pet.name, species: pet.species, breed: pet.breed },
+          allergies: ['鸡肉'],
+          conditions: ['关节护理'],
+          notes: '就诊前观察走路状态',
+          medications: [{ name: '关节营养', dose: '1 片', schedule: '每日一次' }],
+          events: [{ type: 'symptom', occurred_at: '2026-09-14T09:00:00Z', payload: { summary: '偶尔跛行' } }],
+          event_days: 90,
+        },
+      }),
+    })
+  })
+  await page.goto('/share/e2e-summary')
+  await expect(page.getByText('过敏与既往病史')).toBeVisible()
+  await expect(page.getByText('鸡肉')).toBeVisible()
+  await expect(page.getByText('关节护理')).toBeVisible()
+  await expect(page.getByText('带去就诊')).toBeVisible()
+  await page.getByRole('button', { name: '打印 / 保存 PDF' }).click()
+  const printFrame = page.locator('iframe[data-planet-print-frame="summary"]')
+  await expect(printFrame).toHaveCount(1)
+  await expect(printFrame.contentFrame().locator('body')).toContainText('PLANET · VET-READY SUMMARY')
+  await expect(printFrame.contentFrame().locator('body')).toContainText('关节护理')
+})
+
+test('summary share only renders the selected privacy sections', async ({ page }) => {
+  await mockApi(page)
+  await page.route('**/api/v1/shares/e2e-summary-medications-only', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'summary',
+        expires_at: '2026-09-22T00:00:00Z',
+        created_at: '2026-09-15T00:00:00Z',
+        data: {
+          pet: { name: pet.name, species: pet.species, breed: pet.breed },
+          medications: [{ name: '关节营养', dose: '1 片', schedule: '每日一次' }],
+        },
+      }),
+    })
+  })
+  await page.goto('/share/e2e-summary-medications-only')
+  await expect(page.getByText('用药', { exact: true })).toBeVisible()
+  await expect(page.getByText('关节营养')).toBeVisible()
+  await expect(page.getByText('过敏与既往病史', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('最近记录', { exact: true })).toHaveCount(0)
+})
+
+test('care card exposes the medical decision maker to the caregiver', async ({ page }) => {
+  await mockApi(page)
+  await page.route('**/api/v1/shares/e2e-care', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'care_card',
+        expires_at: '2026-09-22T00:00:00Z',
+        created_at: '2026-09-15T00:00:00Z',
+        data: {
+          pet: { name: pet.name, species: pet.species, breed: pet.breed },
+          date: '2026-09-15',
+          tasks: [{ id: 'task-1', title: '晚餐', log_status: 'pending', time_of_day: '18:00' }],
+          emergency_contacts: [{ name: 'Devin', phone: '13800000000' }],
+          med_decision_maker: { name: '安安宠医·李医生', phone: '021-55550000' },
+        },
+      }),
+    })
+  })
+  await page.goto('/share/e2e-care')
+  await expect(page.getByText('医疗决定人')).toBeVisible()
+  await expect(page.getByText('安安宠医·李医生')).toBeVisible()
+  await expect(page.getByText('021-55550000')).toBeVisible()
+})
+
+test('summary sharing captures the visit reason in the snapshot options', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  let createBody: Record<string, unknown> | undefined
+  await page.route('**/api/v1/pets/e2e-pet/shares', async (route) => {
+    if (route.request().method() === 'POST') {
+      createBody = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          share: { id: 'e2e-share', pet_id: pet.id, kind: 'summary', expires_at: '2026-09-22T00:00:00Z', view_count: 0, created_at: '2026-09-15T00:00:00Z' },
+          token: 'e2e-summary-token',
+        }),
+      })
+      return
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ shares: [] }) })
+  })
+  await page.goto(`/pets/${pet.id}`)
+  await page.getByRole('button', { name: '准备就诊' }).click()
+  await expect(page.getByText('创建私密分享', { exact: true })).toBeVisible()
+  await page.getByLabel('本次就诊主诉 / Why now').fill('最近两天反复呕吐，想确认是否需要检查')
+  await page.getByLabel('包含当前用药').click()
+  await page.getByLabel('包含宠物档案').click()
+  await page.getByLabel('包含近期记录').click()
+  await expect(page.getByText('至少选择一项摘要内容。', { exact: true })).toBeVisible()
+  await page.getByLabel('包含宠物档案').click()
+  await page.getByLabel('包含近期记录').click()
+  await page.getByRole('button', { name: '预览摘要' }).click()
+  await expect(page.getByText('这份摘要将包含')).toBeVisible()
+  await page.getByRole('button', { name: '创建链接' }).click()
+  await expect.poll(() => createBody).toBeDefined()
+  const options = createBody?.options as Record<string, unknown>
+  expect(options.reason).toBe('最近两天反复呕吐，想确认是否需要检查')
+  expect(options.sections).toEqual(['profile', 'events'])
+})
+
+test('pet JSON export produces a downloadable file on web', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  await page.goto(`/pets/${pet.id}`)
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: /导出数据/ }).click()
+  await expect((await download).suggestedFilename()).toMatch(/planet-export\.json$/)
 })
 
 test('Today completes a task and reflects the persisted state', async ({ page }) => {
@@ -358,6 +567,55 @@ test('care plan owner lookup exposes an inline retry', async ({ page }) => {
   await expect.poll(() => assignmentAttempts).toBe(4)
 })
 
+test('editing an interval care plan sends the backend every_n schedule key', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  let scheduleActionBody: Record<string, unknown> | undefined
+  await page.route('**/api/v1/pets/e2e-pet/care-plans*', async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/assignments')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ assignments: [] }) })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ care_plans: [{
+        id: 'e2e-interval-plan',
+        pet_id: pet.id,
+        family_id: family.id,
+        type: 'custom',
+        title: '每隔几天梳毛',
+        description: '',
+        schedule: { v: 1, kind: 'daily' },
+        timezone: family.timezone,
+        time_of_day: '08:00',
+        due_date: e2eToday,
+        status: 'active',
+      }] }),
+    })
+  })
+  await page.route('**/api/v1/care-schedule/actions', async (route) => {
+    scheduleActionBody = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ care_rule: {} }) })
+  })
+
+  await page.goto('/pets/e2e-pet/care?familyId=e2e-family')
+  await expect(page.getByText('每隔几天梳毛')).toBeVisible()
+  await page.getByRole('button', { name: '编辑计划' }).click()
+  await page.getByRole('radio', { name: '重复规则：每隔 N 天' }).click()
+  await page.getByLabel('间隔天数（≥1）').fill('3')
+  await page.getByRole('button', { name: '保存修改' }).click()
+
+  await expect.poll(() => scheduleActionBody).toBeDefined()
+  expect((scheduleActionBody?.payload as Record<string, unknown>)?.schedule).toMatchObject({
+    v: 1,
+    kind: 'interval',
+    every_n: 3,
+  })
+  expect((scheduleActionBody?.payload as Record<string, unknown>)?.schedule).not.toHaveProperty('interval')
+})
+
 test('Today adds a temporary care item from the collapsed tools', async ({ page }) => {
   await seedSession(page)
   const { calls } = await mockApi(page)
@@ -406,6 +664,73 @@ test('care handoff composer exposes a retry when the member lookup fails', async
   await page.getByRole('button', { name: '重试' }).click()
   await expect(page.getByRole('button', { name: /家人/ })).toBeVisible()
   await expect.poll(() => attempts).toBeGreaterThanOrEqual(2)
+})
+
+test('batch decline continuation exposes a retry when the refreshed batch is unavailable', async ({ page }) => {
+  await seedSession(page)
+  await page.addInitScript(() => {
+    localStorage.setItem('planet.pending.care-actions.e2e-user', JSON.stringify([{
+      userId: 'e2e-user',
+      commandId: 'batch-decline-retry',
+      kind: 'batch-decline',
+      batchId: 'e2e-batch',
+      occurrenceIds: ['e2e-task'],
+      followUp: 'reassign',
+    }]))
+  })
+  await mockApi(page)
+  const batch = {
+    id: 'e2e-batch',
+    family_id: family.id,
+    family_timezone: family.timezone,
+    from_user_id: 'other-user',
+    from_user_name: '家人',
+    target_user_id: user.id,
+    target_user_name: user.display_name,
+    message: '今天麻烦帮忙',
+    created_at: '2026-09-01T00:00:00Z',
+    requests: [{
+      id: 'e2e-batch-request',
+      family_id: family.id,
+      family_timezone: family.timezone,
+      pet_id: pet.id,
+      occurrence_id: 'e2e-task',
+      from_user_id: 'other-user',
+      from_user_name: '家人',
+      target_user_id: user.id,
+      target_user_name: user.display_name,
+      state: 'declined',
+      pet_name: pet.name,
+      occurrence_title: '早餐',
+      occurrence_type: 'feeding',
+      occurrence_status: 'pending',
+      due_date: e2eToday,
+      created_at: '2026-09-01T00:00:00Z',
+      updated_at: '2026-09-01T00:00:00Z',
+    }],
+    total_count: 1,
+    open_count: 0,
+    accepted_count: 0,
+    declined_count: 1,
+    resolved_count: 0,
+  }
+  await page.route('**/api/v1/care-handoff-batches/inbox', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ batches: [batch] }) })
+  })
+  await page.route('**/api/v1/care-handoff-batches/e2e-batch', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '批次暂时不可用' } }),
+    })
+  })
+  await page.route('**/api/v1/care-handoff-batches/e2e-batch/decline', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+  })
+  await page.goto('/requests')
+  await expect(page.getByRole('alert')).toContainText('已保存批量拒绝，但暂时无法打开继续安排。')
+  await expect(page.getByRole('button', { name: '重试打开继续安排' })).toBeVisible()
 })
 
 test('primary tabs expose a single readable page heading', async ({ page }) => {
@@ -882,6 +1207,76 @@ test('viewer cannot start a pet transfer and gets a recovery path', async ({ pag
   await expect(page.getByText('当前没有可操作的源家庭')).toBeVisible()
   await expect(page.getByText('转移必须由宠物所在源家庭的管理员发起；请让他打开这只宠物的转移页处理。')).toBeVisible()
   await expect(page.getByRole('button', { name: /发送转移请求/ })).toHaveCount(0)
+})
+
+test('pet transfer blocks duplicate requests when existing transfer status cannot be confirmed', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  await page.route('**/api/v1/families/e2e-family/transfers?direction=outgoing', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '转移状态暂时不可用' } }),
+    })
+  })
+  await page.goto('/pets/e2e-pet/transfer?familyId=e2e-family')
+  await expect(page.getByText('暂时无法确认已有转移请求，不能安全地发起新的转移。')).toBeVisible()
+  await expect(page.getByRole('button', { name: '重试' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /发送转移请求/ })).toHaveCount(0)
+})
+
+test('transfer list identifies the counterpart family for both directions', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  await page.route('**/api/v1/families/e2e-family/transfers*', async (route) => {
+    const direction = new URL(route.request().url()).searchParams.get('direction')
+    const incoming = direction !== 'outgoing'
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        transfers: [{
+          id: incoming ? 'e2e-incoming-transfer' : 'e2e-outgoing-transfer',
+          pet_id: pet.id,
+          pet_name: pet.name,
+          from_family_id: incoming ? 'source-family' : family.id,
+          from_family_name: incoming ? '源家庭' : family.name,
+          to_family_id: incoming ? family.id : 'target-family',
+          to_family_name: incoming ? family.name : '目标家庭',
+          status: 'pending',
+          created_at: '2026-09-01T00:00:00Z',
+        }],
+      }),
+    })
+  })
+  await page.goto('/families/e2e-family/transfers')
+  await expect(page.getByText('来自「源家庭」')).toBeVisible()
+  await page.getByRole('tab', { name: '发出的' }).click()
+  await expect(page.getByText('转往「目标家庭」')).toBeVisible()
+})
+
+test('family detail exposes a retry when incoming transfer requests are unavailable', async ({ page }) => {
+  await seedSession(page)
+  await mockApi(page)
+  test.setTimeout(30_000)
+  let attempts = 0
+  await page.route('**/api/v1/families/e2e-family/transfers*', async (route) => {
+    if (new URL(route.request().url()).searchParams.get('direction') !== 'incoming') return route.fallback()
+    attempts += 1
+    return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: '转移请求暂时不可用' } }),
+    })
+  })
+
+  await page.goto('/families/e2e-family')
+  await expect(page.getByText(/还剩 -\d+ 位/)).toHaveCount(0)
+  await expect(page.getByText('转移请求暂时无法加载')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('alert')).toContainText('未能确认收到的宠物转移请求')
+  const beforeRetry = attempts
+  await page.getByRole('button', { name: '重试加载转移请求' }).click()
+  await expect.poll(() => attempts, { timeout: 10_000 }).toBeGreaterThan(beforeRetry)
 })
 
 test('viewer Today is readable but cannot complete or reassign care', async ({ page }) => {

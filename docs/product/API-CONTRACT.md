@@ -41,7 +41,7 @@
 
 ## F5 时间线与附件
 
-- `GET /pets/{petID}/timeline?before=<eventID>&limit=30&types=symptom,weight...` → `{events:[{id,type,occurred_at,title,body,severity,data,recorded_by,by_name,source,attachments:[{id,kind,url,filename}]}], next_cursor}`（按 occurred_at DESC）
+- `GET /pets/{petID}/timeline?before=<eventID>&limit=30&types=symptom,weight...` → `{events:[{id,type,occurred_at,title,body,severity,data,recorded_by,by_name,source,attachments:[{id,kind,url,filename}]}], next_cursor}`（按 occurred_at DESC；健康事件类型包含 `symptom|weight|vet_visit|vaccine|deworm`）
 - `POST /pets/{petID}/events` `{type, title, body?, occurred_at?, severity?, data?}` → `{event}`（weight 类型要求 data.weight_kg 数值）
 - `PATCH /events/{eventID}` / `DELETE /events/{eventID}`（记录者或 owner；删除二次确认在 UI）
 - `POST /pets/{petID}/attachments` multipart `file` + `event_id?` → 存本地 `./uploads/{random32hex}.{ext}` → `{attachment:{id,kind,url}}`；**存储配额（free 档=50MB/圈）：该圈全部附件 `SUM(size)` + 本次 size 超限 → 413 `{"error":"storage limit reached","used_bytes":X,"limit_bytes":Y}`**
@@ -50,7 +50,7 @@
 
 ## F6/F7 分享与就诊
 
-- `POST /pets/{petID}/shares` `{kind:"summary"|"care", ttl_hours:24|72|168, reason?, includes?:{profile,allergies,medications,events,weight,visits}}` → `{share:{id,kind,token,url,expires_at,view_count}}`
+- `POST /pets/{petID}/shares` `{kind:"summary"|"care_card", ttl_hours:24|72|168, options?:{sections?:["profile"|"medications"|"events"], days:30|90|180|365, reason?:string(max 300), include_photos?:boolean}}` → `{share:{id,kind,token,url,expires_at,view_count}}`; Summary 的 `sections` 控制档案、用药和近期记录三个区块，未传时默认全部包含。
 - `GET /pets/{petID}/shares` → `{shares:[{id,kind,url,expires_at,revoked_at,view_count,status:"active"|"expired"|"revoked"}]}`
 - `DELETE /shares/{shareID}` → revoke（owner）
 - `GET /s/{token}` **公开 Web 页**（无 JSON API）：summary=就诊摘要 HTML（打印友好），care=Care Card（今日任务+紧急联系+医疗决定人，"Health history stays private."）；过期/撤销显示中性提示；每次有效访问 view_count+1

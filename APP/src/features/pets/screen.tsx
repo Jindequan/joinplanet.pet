@@ -420,9 +420,13 @@ export function PetsScreen() {
                   onPress={async () => {
                     try {
                       await planetApi.pets.restore(pet.id)
-                      await deleted.refetch()
+                      const refreshed = await deleted.refetch()
                       invalidateAfterPetChange(client, pet.id)
-                      showToast({ message: '宠物已恢复。' })
+                      showToast({
+                        message: refreshed.error
+                          ? '宠物已恢复，但已删除列表刷新失败，请重试加载。'
+                          : '宠物已恢复。',
+                      })
                     } catch (e) {
                       showToast({ message: errorMessage(e) })
                     }

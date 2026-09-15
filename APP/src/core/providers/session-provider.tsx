@@ -52,6 +52,15 @@ type SessionContextValue = {
   signIn: (token: string, userId?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshPushRegistration: () => void;
+  notificationActionFailure: NotificationActionFailure | null;
+  clearNotificationActionFailure: () => void;
+};
+
+export type NotificationActionFailure = {
+  surface: 'request' | 'batch';
+  resourceId: string;
+  action: 'accept' | 'decline';
+  message: string;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -77,6 +86,7 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
     Platform.OS === 'web' ? 'unsupported' : 'idle',
   );
   const [pushRegistrationAttempt, setPushRegistrationAttempt] = useState(0);
+  const [notificationActionFailure, setNotificationActionFailure] = useState<NotificationActionFailure | null>(null);
   const userIdRef = useRef<string | null>(null);
   const pushTokenRef = useRef<string | null>(null);
   const pushRegistrationRef = useRef<Promise<void> | null>(null);
@@ -101,6 +111,7 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
       queryClient.clear();
       setToken(null);
       setStatus('unauthenticated');
+      setNotificationActionFailure(null);
     });
     return () => setUnauthorizedHandler();
   }, []);
@@ -417,9 +428,20 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
                     note: '',
                   });
                 } catch {
-                  // The request detail remains the authoritative retry surface
-                  // when device storage itself is unavailable.
+                  setNotificationActionFailure({
+                    surface: 'request',
+                    resourceId: data.care_request_id,
+                    action: 'accept',
+                    message: '通知上的操作没有保存，请在下方请求卡重新尝试。',
+                  });
                 }
+              } else if (shouldRetryCareAction(error)) {
+                setNotificationActionFailure({
+                  surface: 'request',
+                  resourceId: data.care_request_id,
+                  action: 'accept',
+                  message: '通知上的操作没有保存，请在下方请求卡重新尝试。',
+                });
               }
               // The inbox remains authoritative when the request is stale or already handled.
             }
@@ -446,9 +468,20 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
                     followUp: 'reassign',
                   });
                 } catch {
-                  // The request detail remains the authoritative retry surface
-                  // when device storage itself is unavailable.
+                  setNotificationActionFailure({
+                    surface: 'request',
+                    resourceId: data.care_request_id,
+                    action: 'decline',
+                    message: '通知上的操作没有保存，请在下方请求卡重新尝试。',
+                  });
                 }
+              } else if (shouldRetryCareAction(error)) {
+                setNotificationActionFailure({
+                  surface: 'request',
+                  resourceId: data.care_request_id,
+                  action: 'decline',
+                  message: '通知上的操作没有保存，请在下方请求卡重新尝试。',
+                });
               }
               // The inbox remains authoritative when the request is stale or already handled.
             }
@@ -495,9 +528,20 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
                     ...(action === 'decline' ? { followUp: 'reassign' as const } : {}),
                   });
                 } catch {
-                  // The batch detail remains the authoritative retry surface
-                  // when device storage itself is unavailable.
+                  setNotificationActionFailure({
+                    surface: 'batch',
+                    resourceId: data.care_batch_id,
+                    action,
+                    message: '通知上的操作没有保存，请在下方安排卡重新尝试。',
+                  });
                 }
+              } else if (shouldRetryCareAction(error)) {
+                setNotificationActionFailure({
+                  surface: 'batch',
+                  resourceId: data.care_batch_id,
+                  action,
+                  message: '通知上的操作没有保存，请在下方安排卡重新尝试。',
+                });
               }
             }
             invalidateForNotification(data);
@@ -599,6 +643,7 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
       pushTokenRef.current = null;
       setPushToken(null);
       setPushStatus(Platform.OS === 'web' ? 'unsupported' : 'idle');
+      setNotificationActionFailure(null);
     }
     await writeSessionToken(nextToken);
     queryClient.clear();
@@ -646,6 +691,7 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
     await clearSessionUserId();
     await clearPendingNotificationResponse();
     handledNotificationResponses.current.clear();
+    setNotificationActionFailure(null);
     userIdRef.current = null;
     setUserId(null);
     queryClient.clear();
@@ -657,10 +703,23 @@ export function SessionProvider({ children }: React.PropsWithChildren) {
   const refreshPushRegistration = useCallback(() => {
     setPushRegistrationAttempt((attempt) => attempt + 1);
   }, []);
+  const clearNotificationActionFailure = useCallback(() => {
+    setNotificationActionFailure(null);
+  }, []);
 
   const value = useMemo(
-    () => ({ status, token, userId, pushStatus, signIn, signOut, refreshPushRegistration }),
-    [pushStatus, refreshPushRegistration, signIn, signOut, status, token, userId],
+    () => ({
+      status,
+      token,
+      userId,
+      pushStatus,
+      signIn,
+      signOut,
+      refreshPushRegistration,
+      notificationActionFailure,
+      clearNotificationActionFailure,
+    }),
+    [clearNotificationActionFailure, notificationActionFailure, pushStatus, refreshPushRegistration, signIn, signOut, status, token, userId],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

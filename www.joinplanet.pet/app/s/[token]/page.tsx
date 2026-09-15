@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PrintSummaryButton } from "./print-summary-button";
 
 // 社交预览卡片：宠物名 + 一句定位。token 本身不可猜测，noindex 保持私密性，
 // 元数据只用于聊天工具内的链接预览（默认值即失败兜底）。
@@ -40,6 +41,7 @@ type CareData = {
 };
 type SummaryData = {
   pet: Pet;
+  reason?: string;
   allergies?: unknown;
   conditions?: unknown;
   notes?: string;
@@ -111,17 +113,31 @@ function InfoCard({ label, value }: { label: string; value: unknown }) {
 
 function SummaryCard({ value }: { value: ShareResponse }) {
   const data = value.data as SummaryData;
+  const hasField = (field: keyof SummaryData) => Object.prototype.hasOwnProperty.call(data, field);
+  const hasProfile = hasField("allergies") || hasField("conditions") || hasField("notes");
+  const hasMedications = hasField("medications");
+  const hasEvents = hasField("events");
+  const events = data.events ?? [];
+  const weightEvents = events.filter((event) => event.type === "weight" && typeof event.payload?.weight_g === "number").slice(0, 6);
+  const vaccineEvents = events.filter((event) => event.type === "vaccine" || event.type === "deworm").slice(0, 6);
+  const visitEvents = events.filter((event) => event.type === "vet_visit").slice(0, 6);
   return (
     <>
       <ShareHeader pet={data.pet} expiresAt={value.expires_at} eyebrow="Vet-ready summary" />
       <main className="share-main">
-        <section className="share-intro"><span className="share-label">Prepared health context</span><h2>A clear starting point for the next conversation.</h2><p>Organized from the family’s records. Review with a veterinarian before making care decisions.</p></section>
-        <section className="share-grid share-summary-grid">
-          <InfoCard label="Allergies" value={data.allergies} /><InfoCard label="Conditions" value={data.conditions} />
-          <InfoCard label="Current notes" value={data.notes} />
-          <div className="share-info-card"><span className="share-label">Current medication</span>{data.medications?.length ? data.medications.map((med) => <p className="share-med" key={`${med.name}-${med.dose ?? ""}`}><strong>{med.name}</strong><br />{[med.dose, med.schedule].filter(Boolean).join(" · ")}</p>) : <p>None recorded</p>}</div>
-        </section>
-        <section className="share-panel"><div className="share-panel-head"><div><span className="share-label">Recent timeline</span><h2>{data.events?.length ?? 0} recorded changes</h2></div><span className="share-date">Last {data.event_days ?? 90} days</span></div><div className="share-event-list">{data.events?.length ? data.events.map((event, index) => <div className="share-event" key={`${event.occurred_at}-${index}`}><span>{dateLabel(event.occurred_at)}</span><div><strong>{titleCase(event.type)}</strong><p>{event.payload ? Object.values(event.payload).filter((item) => typeof item === "string" || typeof item === "number").join(" · ") : "Recorded in PLANET"}</p></div></div>) : <p className="share-empty">No timeline events in this period.</p>}</div></section>
+        <section className="share-intro"><span className="share-label">Prepared health context</span><h2>A clear starting point for the next conversation.</h2><p>Organized from the family’s records. Review with a veterinarian before making care decisions.</p>{data.reason ? <div className="share-info-card share-reason-card"><span className="share-label">Why now</span><p>{data.reason}</p></div> : null}<PrintSummaryButton /></section>
+        {hasProfile ? <>
+          <section className="share-allergy-card"><span className="share-label">Allergies · tell your vet first</span><p>{Array.isArray(data.allergies) && data.allergies.length ? data.allergies.map((item) => typeof item === "object" && item ? Object.values(item as Record<string, unknown>).filter(Boolean).join(" · ") : String(item)).join(" · ") : "None recorded"}</p></section>
+          <section className="share-grid share-summary-grid">
+            <InfoCard label="Conditions" value={data.conditions} />
+            <InfoCard label="Current notes" value={data.notes} />
+          </section>
+        </> : null}
+        {hasMedications ? <section className="share-grid share-summary-grid"><div className="share-info-card"><span className="share-label">Current medication</span>{data.medications?.length ? data.medications.map((med) => <p className="share-med" key={`${med.name}-${med.dose ?? ""}`}><strong>{med.name}</strong><br />{[med.dose, med.schedule].filter(Boolean).join(" · ")}</p>) : <p>None recorded</p>}</div></section> : null}
+        {hasEvents ? <>
+          <section className="share-grid share-summary-grid"><div className="share-info-card"><span className="share-label">Weight trend</span>{weightEvents.length ? weightEvents.map((event, index) => <p className="share-med" key={`${event.occurred_at}-${index}`}><strong>{((event.payload?.weight_g as number) / 1000).toFixed(2)} kg</strong><br />{dateLabel(event.occurred_at)}</p>) : <p>None recorded</p>}</div><InfoCard label="Vaccines / deworming" value={vaccineEvents.length ? vaccineEvents.map((event) => `${typeof event.payload?.name === "string" ? event.payload.name : "Vaccine / deworming"} · ${dateLabel(event.occurred_at)}`) : undefined} /><InfoCard label="Vet visits" value={visitEvents.length ? visitEvents.map((event) => `${typeof event.payload?.title === "string" ? event.payload.title : "Vet visit"} · ${dateLabel(event.occurred_at)}`) : undefined} /></section>
+          <section className="share-panel"><div className="share-panel-head"><div><span className="share-label">Recent timeline</span><h2>{events.length} recorded changes</h2></div><span className="share-date">Last {data.event_days ?? 90} days</span></div><div className="share-event-list">{events.length ? events.map((event, index) => <div className="share-event" key={`${event.occurred_at}-${index}`}><span>{dateLabel(event.occurred_at)}</span><div><strong>{titleCase(event.type)}</strong><p>{event.payload ? Object.values(event.payload).filter((item) => typeof item === "string" || typeof item === "number").join(" · ") : "Recorded in PLANET"}</p></div></div>) : <p className="share-empty">No timeline events in this period.</p>}</div></section>
+        </> : null}
         <ShareFooter note="This summary is a snapshot of family-entered records, not a diagnosis or replacement for veterinary advice." />
       </main>
     </>

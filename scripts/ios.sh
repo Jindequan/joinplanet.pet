@@ -38,7 +38,12 @@ if [ "$API_BINARY_STALE" = 1 ]; then
   while read -r API_PID; do
     [ -n "$API_PID" ] || continue
     API_COMMAND="$(ps -p "$API_PID" -o command= 2>/dev/null || true)"
-    if [[ "$API_COMMAND" == *"$API_BIN"* ]]; then
+    # launchd and an interactive shell may expose the executable as
+    # `./bin/planet-api`, so matching only the absolute binary path can leave
+    # a stale checkout serving the current port. Restrict this to a process
+    # that is actually planet-api before replacing it.
+    API_CWD="$(lsof -a -p "$API_PID" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' || true)"
+    if [[ "$API_COMMAND" == *"planet-api"* ]] || [[ "$API_CWD" == "$ROOT_DIR/planet-api" ]]; then
       echo "stopping stale planet-api process $API_PID"
       kill "$API_PID" 2>/dev/null || true
     fi
@@ -173,7 +178,10 @@ if [ "$METRO_ALREADY_UP" = 0 ]; then
     "cd '$APP_DIR' && exec env EXPO_NO_DOTENV=1 DEVELOPER_DIR='$DEVELOPER_DIR' PATH='$NODE_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin' EXPO_PUBLIC_API_BASE_URL='$EXPO_PUBLIC_API_BASE_URL' EXPO_PUBLIC_EAS_PROJECT_ID='${EXPO_PUBLIC_EAS_PROJECT_ID:-}' ./node_modules/.bin/expo start --port '$EXPO_PORT' --clear --offline >>'$ROOT_DIR/.dev/frontend.log' 2>&1"
 fi
 
-for _ in $(seq 1 80); do
+# A cold Metro cache can take longer than the previous 20-second window on a
+# clean worktree. Keep waiting on the same process/port so the script does not
+# report a false failure while the bundle graph is being rebuilt.
+for _ in $(seq 1 240); do
   if curl -fsS --max-time 1 "http://127.0.0.1:${EXPO_PORT}/status" >/dev/null 2>&1; then
     break
   fi

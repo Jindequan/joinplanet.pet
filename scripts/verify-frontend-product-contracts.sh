@@ -15,11 +15,56 @@ else
   fail "public share links drifted from the web /s/:token route"
 fi
 
+if rg -q 'publicWebBaseUrl}/invite/' "$APP/features/families/invite-sheet.tsx" && \
+   rg -q '用邀请码加入' "$APP/features/families/invite-sheet.tsx"; then
+  pass "family invites share a preview link with a manual-code fallback"
+else
+  fail "family invites do not provide a usable preview link and fallback"
+fi
+
+if rg -q '<Stack.Screen name="invite/\[code\]"' "$ROOT/APP/app/_layout.tsx" && \
+   rg -q 'publicInviteRoute' "$ROOT/APP/app/_layout.tsx" && \
+   rg -q 'inviteHref' "$APP/features/auth/screen.tsx" && \
+   rg -q "status !== 'authenticated'" "$APP/features/families/form-screen.tsx"; then
+  pass "public invite previews preserve the code through authentication"
+else
+  fail "public invite previews can lose the code at the auth boundary"
+fi
+
 if rg -q 'useLocalSearchParams' "$APP/features/families/form-screen.tsx" && \
    rg -q 'inviteCodeParam' "$APP/features/families/form-screen.tsx"; then
   pass "invite deep links seed the join form"
 else
   fail "invite deep links no longer seed the join form"
+fi
+
+if rg -q 'previewError' "$APP/features/families/form-screen.tsx" && \
+   rg -q 'label="重试核对"' "$APP/features/families/form-screen.tsx"; then
+  pass "invite preview failures expose a recovery action"
+else
+  fail "invite preview failures have no recovery action"
+fi
+
+if rg -q 'continuationError' "$APP/features/care-requests/panel.tsx" && \
+   rg -q 'label="重试打开继续安排"' "$APP/features/care-requests/panel.tsx"; then
+  pass "offline decline continuation failures expose a recovery action"
+else
+  fail "offline decline continuation failures can become silent"
+fi
+
+if rg -q 'continuationError' "$APP/features/care-requests/batch-panel.tsx" && \
+   rg -q 'label="重试打开继续安排"' "$APP/features/care-requests/batch-panel.tsx"; then
+  pass "batch decline continuation failures expose a recovery action"
+else
+  fail "batch decline continuation failures can become silent"
+fi
+
+if rg -q 'notificationActionFailure' "$APP/core/providers/session-provider.tsx" && \
+   rg -q 'notificationFailureCard' "$APP/features/care-requests/panel.tsx" && \
+   rg -q 'notificationFailureCard' "$APP/features/care-requests/batch-panel.tsx"; then
+  pass "notification action storage failures remain visible with a manual retry surface"
+else
+  fail "notification action storage failures can become silent"
 fi
 
 if ! rg -q 'CareRequestInbox' "$APP/features/today/screen.tsx"; then
@@ -260,6 +305,59 @@ if rg -q 'MoveAssignmentWithIdempotency' "$ROOT/planet-api/internal/modules/task
   pass "assignment reorder and medication stop are retry-safe"
 else
   fail "assignment reorder or medication stop can repeat on network retry"
+fi
+
+if rg -q 'outgoingError' "$APP/features/pets/transfer-screen.tsx" && \
+   rg -q '不能安全地发起新的转移' "$APP/features/pets/transfer-screen.tsx"; then
+  pass "pet transfer blocks writes when existing status is unknown"
+else
+  fail "pet transfer can create duplicates when existing status lookup fails"
+fi
+
+if rg -q 'incomingTransfers\.error' "$APP/features/families/detail-screen.tsx" && \
+   rg -q '重试加载转移请求' "$APP/features/families/detail-screen.tsx"; then
+  pass "family detail exposes recovery when incoming transfers are unavailable"
+else
+  fail "family detail can silently hide incoming transfer requests on failure"
+fi
+
+if rg -q 'if \(rule === '\''interval'\''\) schedule\.every_n = Number\(interval\)' "$APP/features/pets/care-section.tsx"; then
+  pass "care plan interval edits use the backend every_n schedule contract"
+else
+  fail "care plan interval edits can send an unsupported interval schedule key"
+fi
+
+if rg -q "from 'expo-print'" "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q "from 'expo-sharing'" "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q 'label="打印 / 保存 PDF"' "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q 'buildSummaryPdfHtml' "$APP/features/settings/summary-pdf.ts" && \
+   rg -q '准备就诊' "$APP/features/pets/detail-screen.tsx"; then
+  pass "Vet-ready summaries expose a native and web PDF output path"
+else
+  fail "Vet-ready summaries have no complete PDF output path"
+fi
+
+if rg -q 'deworm' "$APP/features/timeline/composer.tsx" && \
+   rg -q 'deworm' "$APP/features/timeline/registry.ts" && \
+   rg -q 'deworm' "$ROOT/planet-api/internal/modules/timeline/registry.go"; then
+  pass "Vet timelines capture deworming records alongside vaccines"
+else
+  fail "Vet timelines have no deworming record contract"
+fi
+
+if rg -q "from 'expo-file-system'" "$ROOT/APP/src/features/pets/detail-screen.tsx" && \
+   rg -q "shareAsync\(file.uri" "$ROOT/APP/src/features/pets/detail-screen.tsx" && \
+   rg -q 'anchor.download' "$ROOT/APP/src/features/pets/detail-screen.tsx"; then
+  pass "Structured pet JSON export downloads or shares as a file"
+else
+  fail "Structured pet JSON export still falls back to text-only sharing"
+fi
+
+if rg -q 'med_decision_maker' "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q '医疗决定人' "$APP/features/settings/public-share-screen.tsx"; then
+  pass "Care Cards expose the medical decision maker"
+else
+  fail "Care Cards omit the medical decision maker"
 fi
 
 if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \

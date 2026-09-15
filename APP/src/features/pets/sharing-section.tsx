@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Share as RnShare, StyleSheet, Switch, View } from 'react-native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Clipboard from 'expo-clipboard'
@@ -23,6 +23,7 @@ import { ConfirmDialog } from '../../ui/components/confirm-dialog'
 import { EmptyState } from '../../ui/components/empty-state'
 import { LoadingState } from '../../ui/components/loading-state'
 import { ModalSheet } from '../../ui/components/modal-sheet'
+import { TextField } from '../../ui/components/text-field'
 import { FadeInView } from '../../ui/motion'
 
 function formatShareExpiry(iso: string): string {
@@ -31,7 +32,15 @@ function formatShareExpiry(iso: string): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日过期`
 }
 
-export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?: boolean }) {
+export function SharingSection({
+  pet,
+  readOnly = false,
+  openSummarySignal = 0,
+}: {
+  pet: Pet
+  readOnly?: boolean
+  openSummarySignal?: number
+}) {
   const { theme } = useTheme()
   const { showToast } = useToast()
   const client = useQueryClient()
@@ -41,12 +50,19 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
     enabled: !readOnly,
   })
   const [show, setShow] = useState(false)
+  const [showKind, setShowKind] = useState<'care_card' | 'summary'>('care_card')
   const [created, setCreated] = useState('')
   const [confirm, setConfirm] = useState<Share | null>(null)
 
   function invalidate() {
     invalidateAfterShareChange(client, pet.id)
   }
+
+  useEffect(() => {
+    if (readOnly || openSummarySignal <= 0) return
+    setShowKind('summary')
+    setShow(true)
+  }, [openSummarySignal, readOnly])
 
   if (readOnly) {
     return (
@@ -110,7 +126,14 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
           <AppText muted>给寄养、朋友或兽医一条临时只读链接；不含完整病史，到期后自动失效。</AppText>
         </View>
         {!pet.archived_at && !readOnly ? (
-          <Button label="创建分享" onPress={() => setShow(true)} style={{ paddingHorizontal: 12 }} />
+          <Button
+            label="创建分享"
+            onPress={() => {
+              setShowKind('care_card')
+              setShow(true)
+            }}
+            style={{ paddingHorizontal: 12 }}
+          />
         ) : null}
       </View>
 
@@ -183,6 +206,7 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
         <ShareForm
           visible={show}
           petId={pet.id}
+          initialKind={showKind}
           onClose={() => setShow(false)}
           onSaved={async (token) => {
             // The public web app owns the /s/:token route. Keep generated
@@ -219,22 +243,35 @@ export function SharingSection({ pet, readOnly = false }: { pet: Pet; readOnly?:
 function ShareForm({
   visible,
   petId,
+  initialKind,
   onClose,
   onSaved,
 }: {
   visible: boolean
   petId: string
+  initialKind: 'care_card' | 'summary'
   onClose: () => void
   onSaved: (token: string) => void
 }) {
   const { theme } = useTheme()
-  const [kind, setKind] = useState<'care_card' | 'summary'>('care_card')
+  const [kind, setKind] = useState<'care_card' | 'summary'>(initialKind)
   const [ttl, setTtl] = useState('168')
   const [days, setDays] = useState('90')
+  const [reason, setReason] = useState('')
+  const [sections, setSections] = useState<string[]>(['profile', 'medications', 'events'])
   const [includePhotos, setIncludePhotos] = useState(false)
+  const [step, setStep] = useState<'edit' | 'review'>('edit')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const commandId = useRef(createIdempotencyKey())
+
+  useEffect(() => {
+    if (visible) {
+      setKind(initialKind)
+      setStep('edit')
+      setError('')
+    }
+  }, [initialKind, visible])
 
   const ttlOptions = [
     ['24', '24 小时'],
@@ -250,6 +287,15 @@ function ShareForm({
   ]
 
   async function save() {
+    if (kind === 'summary' && sections.length === 0) {
+      setError('至少选择一项摘要内容。')
+      return
+    }
+    if (kind === 'summary' && step === 'edit') {
+      setError('')
+      setStep('review')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -257,7 +303,14 @@ function ShareForm({
         petId,
         kind,
         ttlHours: Number(ttl),
-        options: kind === 'summary' ? { days: Number(days), include_photos: includePhotos } : {},
+        options: kind === 'summary'
+          ? {
+              sections,
+              days: Number(days),
+              include_photos: includePhotos,
+              ...(reason.trim() ? { reason: reason.trim() } : {}),
+            }
+          : {},
         idempotencyKey: commandId.current,
       })
       commandId.current = createIdempotencyKey()
@@ -275,23 +328,76 @@ function ShareForm({
         临时访问
       </AppText>
       <AppText variant="heading">创建私密分享</AppText>
-      <ChoiceChips
-        label="内容视图"
-        options={[
-          { value: 'care_card', label: '照护卡片(今日行动)' },
-          { value: 'summary', label: '健康摘要' },
-        ]}
-        value={kind}
-        onChange={setKind}
-      />
-      {kind === 'summary' ? (
+      {step === 'edit' ? (
+        <ChoiceChips
+          label="内容视图"
+          options={[
+            { value: 'care_card', label: '照护卡片(今日行动)' },
+            { value: 'summary', label: '健康摘要' },
+          ]}
+          value={kind}
+          onChange={setKind}
+        />
+      ) : (
+        <AppText variant="caption" muted>健康摘要 · 创建前最后确认</AppText>
+      )}
+      {kind === 'summary' && step === 'edit' ? (
         <View style={{ gap: 12 }}>
+          <TextField
+            label="本次就诊主诉 / Why now"
+            value={reason}
+            onChangeText={setReason}
+            placeholder="这次最想和兽医讨论什么？"
+            maxLength={300}
+            multiline
+            style={{ minHeight: 72, textAlignVertical: 'top' }}
+          />
           <ChoiceChips
             label="摘要范围"
             options={rangeOptions.map(([value, label]) => ({ value: value!, label: label! }))}
             value={days}
             onChange={setDays}
           />
+          <View style={{ gap: 8 }}>
+            <AppText variant="label">包含哪些内容</AppText>
+            <AppText variant="caption" muted>
+              只分享这次就诊需要的资料；过敏会在摘要顶部单独标注。
+            </AppText>
+            {([
+              { value: 'profile', label: '宠物档案', description: '基本信息、过敏、病史和家人备注' },
+              { value: 'medications', label: '当前用药', description: '正在使用的药物、剂量和频率' },
+              { value: 'events', label: '近期记录', description: '症状、体重、疫苗、驱虫和就诊记录' },
+            ] as const).map(({ value, label, description }) => {
+              const checked = sections.includes(value)
+              return (
+                <View
+                  key={value}
+                  style={[styles.toggleRow, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <AppText variant="label">{label}</AppText>
+                    <AppText variant="caption" muted>{description}</AppText>
+                  </View>
+                  <Switch
+                    value={checked}
+                    onValueChange={(next) => {
+                      setSections((current) => {
+                        if (next) return current.includes(value) ? current : [...current, value]
+                        return current.filter((item) => item !== value)
+                      })
+                    }}
+                    accessibilityLabel={`包含${label}`}
+                    trackColor={{ true: theme.colors.mintStrong, false: theme.colors.line }}
+                  />
+                </View>
+              )
+            })}
+            {sections.length === 0 ? (
+              <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+                至少选择一项摘要内容。
+              </AppText>
+            ) : null}
+          </View>
           <View
             style={[styles.toggleRow, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}
             accessibilityLabel="在健康摘要中包含记录照片"
@@ -309,7 +415,25 @@ function ShareForm({
           </View>
         </View>
       ) : null}
+      {kind === 'summary' && step === 'review' ? (
+        <View style={{ gap: 10 }}>
+          <View style={[styles.reviewCard, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}>
+            <AppText variant="label">这份摘要将包含</AppText>
+            <AppText>{sections.map((section) => ({ profile: '宠物档案', medications: '当前用药', events: '近期记录' } as Record<string, string>)[section]).join('、')}</AppText>
+            <AppText variant="caption" muted>时间范围：近 {days === '180' ? '半年' : days === '365' ? '一年' : `${days} 天`}</AppText>
+            <AppText variant="caption" muted>记录照片：{includePhotos ? '包含' : '不包含'}</AppText>
+          </View>
+          <View style={[styles.reviewCard, { backgroundColor: theme.colors.sageSoft, borderRadius: theme.radius.md }]}>
+            <AppText variant="label">本次就诊主诉</AppText>
+            <AppText>{reason.trim() || '未填写；兽医可能需要你现场补充就诊原因。'}</AppText>
+          </View>
+          <AppText variant="caption" muted>
+            创建后会生成一条限时只读链接；拿到链接的人无需注册即可查看这份摘要。
+          </AppText>
+        </View>
+      ) : null}
       <ChoiceChips
+        /* 有摘要预览时只保留确认内容，避免用户在创建前无意切换视图类型。 */
         label="有效期"
         options={ttlOptions.map(([value, label]) => ({ value: value!, label: label! }))}
         value={ttl}
@@ -326,8 +450,25 @@ function ShareForm({
         </AppText>
       ) : null}
       <View style={styles.actions}>
-        <Button label="取消" variant="secondary" onPress={onClose} style={{ flex: 1 }} />
-        <Button label="创建链接" busy={busy} onPress={() => void save()} style={{ flex: 1 }} />
+        {kind === 'summary' && step === 'review' ? (
+          <Button
+            label="返回修改"
+            variant="secondary"
+            onPress={() => {
+              setStep('edit')
+              setError('')
+            }}
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <Button label="取消" variant="secondary" onPress={onClose} style={{ flex: 1 }} />
+        )}
+        <Button
+          label={kind === 'summary' && step === 'edit' ? '预览摘要' : '创建链接'}
+          busy={busy}
+          onPress={() => void save()}
+          style={{ flex: 1 }}
+        />
       </View>
     </ModalSheet>
   )
@@ -349,4 +490,5 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 12, paddingVertical: 9 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 8 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
+  reviewCard: { gap: 5, padding: 12 },
 })

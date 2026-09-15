@@ -76,6 +76,19 @@ export function PetTransferScreen({ petId, familyId: routeFamilyId }: { petId: s
       </Screen>
     )
   }
+  const outgoingError = outgoingQueries.find((query) => query.isError)?.error
+  if (outgoingError) {
+    return (
+      <Screen>
+        <BackHeader title="转移宠物" fallbackHref={`/pets/${petId}`} />
+        <QueryErrorState
+          error={outgoingError}
+          message="暂时无法确认已有转移请求，不能安全地发起新的转移。"
+          onRetry={() => void Promise.all(outgoingQueries.map((query) => query.refetch()))}
+        />
+      </Screen>
+    )
+  }
 
   const current = new Set(petFamilyIds)
   const selectedSourceFamily = sourceFamilies.find((family) => family.id === sourceFamilyId)

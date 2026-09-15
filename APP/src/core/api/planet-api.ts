@@ -118,7 +118,7 @@ export type SessionInfo = {
 };
 export type AccessGrant = { id: string; pet_id: string; user_id: string; role: Role; expires_at?: string | null; created_at: string };
 export type TransferStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
-export type Transfer = { id: string; pet_id: string; pet_name: string; from_family_id: string; to_family_id: string; status: TransferStatus; created_by_user_id?: string; decided_by_user_id?: string; created_at: string; decided_at?: string };
+export type Transfer = { id: string; pet_id: string; pet_name: string; from_family_id: string; from_family_name: string; to_family_id: string; to_family_name: string; status: TransferStatus; created_by_user_id?: string; decided_by_user_id?: string; created_at: string; decided_at?: string };
 export type Alert = { id: string; kind: string; pet_id: string; pet_name: string; title: string; body: string; severity: 'watch' | 'warn'; occurred_at: string; data?: Record<string, unknown> };
 export type CareRisk = {
   occurrence_id: string;

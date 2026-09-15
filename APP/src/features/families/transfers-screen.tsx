@@ -23,6 +23,12 @@ function transferStatus(status: string) {
   return TRANSFER_STATUS_LABELS[status] ?? status
 }
 
+function relatedFamilyLabel(transfer: Transfer, direction: 'incoming' | 'outgoing') {
+  const name = direction === 'incoming' ? transfer.from_family_name : transfer.to_family_name
+  const id = direction === 'incoming' ? transfer.from_family_id : transfer.to_family_id
+  return name || (id ? `家庭 ${id.slice(0, 8)}` : '未知家庭')
+}
+
 export function FamilyTransfersScreen({ familyId }: { familyId: string }) {
   const { theme } = useTheme()
   const { showToast } = useToast()
@@ -54,11 +60,15 @@ export function FamilyTransfersScreen({ familyId }: { familyId: string }) {
         await planetApi.transfers.accept(transfer.id, requestKey)
       else await planetApi.transfers.decline(transfer.id, requestKey)
       commandKeys.current.delete(commandScope)
-      await query.refetch()
+      const refreshed = await query.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({
-        message: `转移请求已${action === 'accept' ? '接受' : action === 'decline' ? '婉拒' : '取消'}。`,
-      })
+      if (refreshed.error) {
+        showToast({ message: '操作已保存，但转移列表刷新失败，请重试加载。' })
+      } else {
+        showToast({
+          message: `转移请求已${action === 'accept' ? '接受' : action === 'decline' ? '婉拒' : '取消'}。`,
+        })
+      }
       return true
     } catch (e) {
       setError(errorMessage(e))
@@ -156,6 +166,9 @@ export function FamilyTransfersScreen({ familyId }: { familyId: string }) {
               <View style={{ flex: 1, gap: 4 }}>
                 <AppText variant="heading">
                   {transfer.pet_name || transfer.pet_id}
+                </AppText>
+                <AppText variant="caption" muted numberOfLines={1}>
+                  {direction === 'incoming' ? '来自' : '转往'}「{relatedFamilyLabel(transfer, direction)}」
                 </AppText>
                 <AppText variant="caption" muted>
                   {transferStatus(transfer.status)} ·{' '}

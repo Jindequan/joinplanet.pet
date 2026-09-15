@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react'
 import {
   Platform,
   Pressable,
-  Share as RnShare,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
+import { File, Paths } from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ClipboardText,
@@ -18,6 +19,7 @@ import {
   House,
   Info,
   ShareNetwork,
+  Stethoscope,
   Trash,
   Users,
   WarningCircle,
@@ -82,6 +84,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
   const { userId } = useSession()
   const client = useQueryClient()
   const [confirm, setConfirm] = useState<'delete' | 'archive' | null>(null)
+  const [vetSummarySignal, setVetSummarySignal] = useState(0)
 
   const petQuery = useQuery({
     queryKey: queryKeys.pet(petId),
@@ -225,9 +228,13 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
     if (pet.archived_at) await planetApi.pets.unarchive(pet.id)
     else await planetApi.pets.archive(pet.id)
     invalidateAfterPetChange(client, pet.id)
-    await petQuery.refetch()
+    const refreshed = await petQuery.refetch()
     setConfirm(null)
-    showToast({ message: pet.archived_at ? '已恢复为活跃。' : '已归档，历史保留。' })
+    showToast({
+      message: refreshed.error
+        ? `${pet.archived_at ? '已恢复为活跃' : '已归档'}，但宠物页面刷新失败，请重试加载。`
+        : pet.archived_at ? '已恢复为活跃。' : '已归档，历史保留。',
+    })
   }
 
   async function destroy() {
@@ -310,6 +317,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
         readOnly={readOnly}
         familySelectionRequired={todayFamilySelectionRequired}
         canManagePlans={canManagePlans}
+        canManageShares={canManagePet}
         writesLocked={writesLocked}
         onToday={() => {
           setScope({ type: 'pet', id: pet.id, ...(todayFamilyId ? { familyId: todayFamilyId } : {}) })
@@ -320,6 +328,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
           setScope({ type: 'pet', id: pet.id, ...(todayFamilyId ? { familyId: todayFamilyId } : {}) })
           router.push(`/pets/${pet.id}/timeline?compose=note${todayFamilyId ? `&familyId=${encodeURIComponent(todayFamilyId)}` : ''}` as never)
         }}
+        onPrepareVet={() => setVetSummarySignal((value) => value + 1)}
       />
       </FadeInView>
 
@@ -391,7 +400,8 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
           onArchive={() => setConfirm('archive')}
           onDelete={() => setConfirm('delete')}
           onFamilyChanged={async () => {
-            await petQuery.refetch()
+            const refreshed = await petQuery.refetch()
+            if (refreshed.error) throw refreshed.error
             invalidateAfterPetChange(client, pet.id)
           }}
           onRecordWeight={() => {
@@ -413,6 +423,7 @@ export function PetDetailScreen({ petId, tab = 'overview', familyId: routeFamily
           transferFamilyId={todayFamilyId}
           canManageLifecycle={canManageLifecycle}
           canRestoreLifecycle={canRestoreLifecycle}
+          openSummarySignal={vetSummarySignal}
         />
       ) : null}
       {tab === 'care' ? (
@@ -487,6 +498,7 @@ function OverviewTab({
   transferFamilyId,
   canManageLifecycle,
   canRestoreLifecycle,
+  openSummarySignal,
 }: {
   pet: Pet
   profile: Profile
@@ -510,6 +522,7 @@ function OverviewTab({
   transferFamilyId?: string
   canManageLifecycle: boolean
   canRestoreLifecycle: boolean
+  openSummarySignal: number
 }) {
   const { theme } = useTheme()
   const { showToast } = useToast()
@@ -568,30 +581,38 @@ function OverviewTab({
         {showExport ? (
         <MoreRow
           icon={<DownloadSimple size={19} color={theme.colors.forest2} />}
-          title="导出数据"
+            title="导出数据"
             sub="保存这只宠物的完整记录"
             onPress={() => {
               void (async () => {
                 try {
                   const data = await extensionReaders.petExport(pet.id)
                   const content = JSON.stringify(data, null, 2)
-                  const browserCanShare =
-                    Platform.OS === 'web' &&
-                    typeof navigator !== 'undefined' &&
-                    typeof navigator.share === 'function'
-                  if (Platform.OS !== 'web' || browserCanShare) {
-                    try {
-                      await RnShare.share({
-                        message: content,
-                        title: `${pet.name}-planet-export.json`,
-                      })
-                      return
-                    } catch {
-                      // Fall through to clipboard for browsers without Web Share.
-                    }
+                  const filename = `${pet.name.replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 48) || 'pet'}-planet-export.json`
+                  if (Platform.OS === 'web') {
+                    const blob = new Blob([content], { type: 'application/json;charset=utf-8' })
+                    const url = URL.createObjectURL(blob)
+                    const anchor = document.createElement('a')
+                    anchor.href = url
+                    anchor.download = filename
+                    anchor.click()
+                    URL.revokeObjectURL(url)
+                    showToast({ message: 'JSON 数据已下载' })
+                    return
+                  }
+                  const file = new File(Paths.cache, filename)
+                  file.create({ overwrite: true })
+                  file.write(content)
+                  if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(file.uri, {
+                      mimeType: 'application/json',
+                      dialogTitle: `导出 ${pet.name} 的 JSON 数据`,
+                      UTI: 'public.json',
+                    })
+                    return
                   }
                   await Clipboard.setStringAsync(content)
-                  showToast({ message: '系统分享不可用，导出内容已复制' })
+                  showToast({ message: '系统分享不可用，JSON 数据已复制' })
                 } catch (e) {
                   showToast({ message: errorMessage(e) })
                 }
@@ -621,7 +642,11 @@ function OverviewTab({
           <ShareNetwork size={18} color={theme.colors.forest2} />
           <AppText variant="heading">分享给别人</AppText>
         </View>
-        <SharingSection pet={pet} readOnly={!canManagePet} />
+        <SharingSection
+          pet={pet}
+          readOnly={!canManagePet}
+          openSummarySignal={openSummarySignal}
+        />
       </View>
 
       {canManageLifecycle ? (
@@ -655,10 +680,12 @@ function PetWorkspaceHero({
   readOnly,
   familySelectionRequired,
   canManagePlans,
+  canManageShares,
   writesLocked,
   onToday,
   onCare,
   onRecord,
+  onPrepareVet,
 }: {
   pet: Pet
   familyName?: string
@@ -666,10 +693,12 @@ function PetWorkspaceHero({
   readOnly: boolean
   familySelectionRequired: boolean
   canManagePlans: boolean
+  canManageShares: boolean
   writesLocked: boolean
   onToday: () => void
   onCare: () => void
   onRecord: () => void
+  onPrepareVet: () => void
 }) {
   const { theme } = useTheme()
   const { width } = useWindowDimensions()
@@ -740,6 +769,16 @@ function PetWorkspaceHero({
           </View>
           <CaretRight size={15} color={theme.colors.onBrandMuted} weight="bold" />
         </PressableScale>
+        {canManageShares ? (
+          <PressableScale accessibilityRole="button" onPress={onPrepareVet} style={styles.workspaceLink}>
+            <Stethoscope size={17} color={theme.colors.mint} weight="bold" />
+            <View style={styles.workspaceLinkCopy}>
+              <AppText variant="label" color={theme.colors.onBrand}>准备就诊</AppText>
+              <AppText variant="caption" color={theme.colors.onBrandMuted}>生成健康摘要 PDF</AppText>
+            </View>
+            <CaretRight size={15} color={theme.colors.onBrandMuted} weight="bold" />
+          </PressableScale>
+        ) : null}
       </View>
     </View>
   )

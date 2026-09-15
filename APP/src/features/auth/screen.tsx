@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { ArrowRight, Planet, Sparkle, UsersThree } from 'phosphor-react-native';
 import { z } from 'zod';
 import { planetApi } from '../../core/api/planet-api';
@@ -19,6 +19,13 @@ import { FadeInView } from '../../ui/motion';
 export function AuthScreen() {
   const { theme } = useTheme();
   const { status, signIn } = useSession();
+  const { invite: inviteParam } = useLocalSearchParams<{ invite?: string | string[] }>();
+  const inviteCode = (Array.isArray(inviteParam) ? inviteParam[0] ?? '' : inviteParam ?? '')
+    .replace(/[\s-]/g, '')
+    .toUpperCase();
+  const inviteHref = /^[A-Z0-9]{10}$/.test(inviteCode)
+    ? `/families/join?code=${encodeURIComponent(inviteCode)}`
+    : null;
   const { height: viewportHeight } = useWindowDimensions();
   const compact = viewportHeight < 700;
   const [ready, setReady] = useState(false);
@@ -59,7 +66,7 @@ export function AuthScreen() {
     void verifyRef.current();
   }, [busy, code, retryAfter, step]);
 
-  if (status === 'authenticated') return <Redirect href="/(tabs)" />;
+  if (status === 'authenticated') return <Redirect href={inviteHref ?? '/(tabs)'} />;
   if (!ready || status === 'loading') {
     return (
       <Screen edges={['top', 'left', 'right', 'bottom']} contentStyle={styles.content}>
@@ -107,7 +114,7 @@ export function AuthScreen() {
       );
       await signIn(result.token, result.user.id);
       await clearAuthEmail();
-      router.replace('/');
+      router.replace(inviteHref ?? '/');
     } catch (e) {
       setError(authErrorMessage(e));
       if (isApiError(e) && e.status === 429) setRetryAfter(e.retryAfterSeconds ?? 60);
@@ -207,9 +214,11 @@ export function AuthScreen() {
             keyboardType={step === 'email' ? 'email-address' : 'number-pad'}
             textContentType={step === 'email' ? 'emailAddress' : 'oneTimeCode'}
             maxLength={step === 'email' ? 254 : 6}
-            // On a small phone, opening the keyboard immediately hides the
-            // primary action. Let the user choose when to focus instead.
-            autoFocus={!compact}
+            // Keep the first mobile frame calm and fully visible. Focusing
+            // before the user asks for it opens the keyboard and can push the
+            // primary action below the fold; desktop Web can still focus the
+            // field for fast keyboard entry.
+            autoFocus={Platform.OS === 'web' && !compact}
             wrapperStyle={styles.field}
           />
 

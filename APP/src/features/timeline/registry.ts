@@ -44,6 +44,7 @@ export const eventRegistry = {
   weight: { schema: weightPayload, editable: true, deletable: true },
   vet_visit: { schema: textPayload, editable: true, deletable: true },
   vaccine: { schema: vaccinePayload, editable: true, deletable: true },
+  deworm: { schema: vaccinePayload, editable: true, deletable: true },
   // —— 系统自动事实：只展示 ——
   medication: { schema: medicationPayload, editable: false, deletable: false },
   care_task_completed: {
@@ -99,6 +100,7 @@ const EVENT_CATEGORY: Record<string, string> = {
   weight: "体重",
   vet_visit: "就诊",
   vaccine: "疫苗",
+  deworm: "驱虫",
   medication: "用药",
   care_task_completed: "照护",
   care_task_undone: "照护",
@@ -157,6 +159,13 @@ export function describeEvent(
       return {
         category: "疫苗",
         icon: "syringe",
+        headline: str("name"),
+        detail: str("due") ? `下次到期 ${str("due")}` : str("text"),
+      };
+    case "deworm":
+      return {
+        category: "驱虫",
+        icon: "pill",
         headline: str("name"),
         detail: str("due") ? `下次到期 ${str("due")}` : str("text"),
       };

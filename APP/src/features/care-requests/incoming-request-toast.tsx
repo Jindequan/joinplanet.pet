@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BellRinging, CaretRight, Check, X } from 'phosphor-react-native'
-import { router } from 'expo-router'
+import { router, usePathname } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createIdempotencyKey, planetApi, type CareHandoffBatch, type CareRequest } from '../../core/api/planet-api'
 import { errorMessage, isApiError } from '../../core/api/errors'
@@ -29,6 +29,7 @@ export function IncomingRequestToast() {
   const { setScope } = useScope()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
+  const pathname = usePathname()
   const client = useQueryClient()
   const [incoming, setIncoming] = useState<IncomingItem | null>(null)
   const knownIds = useRef(new Set<string>())
@@ -244,7 +245,12 @@ export function IncomingRequestToast() {
     </View>
   ) : null
 
-  if (!incoming) {
+  // The Requests and handoff detail pages already own the actionable card.
+  // Keeping the shell prompt there duplicates the same action buttons and can
+  // make one request look like two separate responsibilities.
+  const inlineRequestSurface = pathname === '/requests' || pathname.startsWith('/requests/') || pathname === '/handoffs' || pathname.startsWith('/handoffs/')
+
+  if (!incoming || inlineRequestSurface) {
     return syncNotice ? (
       <View style={[styles.host, styles.hostPointer, compact && styles.hostCompact, { top: topOffset }]}>
         {syncNotice}

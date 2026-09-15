@@ -126,6 +126,35 @@ test("interactive intake paths bound user input and announce recoverable errors"
   assert.match(checkout, /className="checkout-state" role="status" aria-live="polite"/);
 });
 
+test("public invites distinguish unavailable services from expired invites", async () => {
+  const invite = await readFile(new URL("../app/invite/[code]/page.tsx", import.meta.url), "utf8");
+  assert.match(invite, /response\.status === 404 \|\| response\.status === 410/);
+  assert.match(invite, /if \(!response\.ok\) return \{ state: "error" \}/);
+  assert.match(invite, /We couldn’t check this invitation\./);
+  assert.match(invite, /Try again/);
+  assert.match(invite, /This invitation is no longer available\./);
+});
+
+test("public summary pages keep the visit reason and PDF print action", async () => {
+  const [sharePage, printButton, refreshCss] = await Promise.all([
+    readFile(new URL("../app/s/[token]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/s/[token]/print-summary-button.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/ui-refresh.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(sharePage, /reason\?: string/);
+  assert.match(sharePage, /PrintSummaryButton/);
+  assert.match(printButton, /window\.print\(\)/);
+  assert.match(printButton, /Print \/ save PDF/);
+  assert.match(refreshCss, /share-print-button/);
+  assert.match(sharePage, /Weight trend/);
+  assert.match(sharePage, /Vaccines/);
+  assert.match(refreshCss, /share-allergy-card/);
+  assert.match(sharePage, /hasField = \(field: keyof SummaryData\)/);
+  assert.match(sharePage, /hasProfile = hasField\("allergies"\) \|\| hasField\("conditions"\) \|\| hasField\("notes"\)/);
+  assert.match(sharePage, /hasMedications = hasField\("medications"\)/);
+  assert.match(sharePage, /hasEvents = hasField\("events"\)/);
+});
+
 test("the public checkout service shuts down without dropping in-flight work", async () => {
   const main = await readFile(new URL("../server/lemon-webhook/main.go", import.meta.url), "utf8");
   assert.match(main, /signal\.NotifyContext/);

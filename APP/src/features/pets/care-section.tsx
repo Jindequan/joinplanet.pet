@@ -86,7 +86,7 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
     plans.map((plan, index) => [plan.id, assignmentQueries[index]]),
   )
 
-  async function invalidate() {
+  function invalidate() {
     invalidateAfterCarePlanChange(client, pet.id)
     invalidateAfterActivationChange(client)
   }
@@ -293,10 +293,10 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
         medicationsError={medicationsQuery.error}
         onRetryMedications={() => void medicationsQuery.refetch()}
         onClose={closeForm}
-          onSaved={async () => {
+          onSaved={() => {
             closeForm()
             const wasEmpty = activePlans.length === 0
-            await invalidate()
+            invalidate()
             if (wasEmpty) {
               if (setup && familyId) setScope({ type: 'pet', id: pet.id, familyId })
               router.push({ pathname: '/(tabs)', params: { pet_id: pet.id, family_id: familyId } } as never)
@@ -311,9 +311,9 @@ export function CareSection({ pet, timezone, timezoneAmbiguous = false, timezone
           petId={pet.id}
           timezone={timezone}
           onClose={() => setEditing(null)}
-          onSaved={async () => {
+          onSaved={() => {
             setEditing(null)
-            await invalidate()
+            invalidate()
           }}
         />
       ) : null}
@@ -597,7 +597,7 @@ function scheduleFromFields(
   const schedule: Record<string, unknown> = { v: 1, kind: rule }
   if (rule === 'weekly') schedule.days = days
   if (rule === 'monthly') schedule.day = Number(day)
-  if (rule === 'interval') schedule.interval = Number(interval)
+  if (rule === 'interval') schedule.every_n = Number(interval)
   return schedule
 }
 

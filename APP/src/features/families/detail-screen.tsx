@@ -171,9 +171,13 @@ export function FamilyDetailScreen({
       router.replace('/families' as never)
     } else if (confirm && typeof confirm === 'object') {
       await planetApi.families.removeMember(family.id, confirm.user_id)
-      await query.refetch()
+      const refreshed = await query.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({ message: `已移除 ${confirm.display_name}` })
+      if (refreshed.error) {
+        showToast({ message: `已移除 ${confirm.display_name}，但成员列表刷新失败：${errorMessage(refreshed.error)}` })
+      } else {
+        showToast({ message: `已移除 ${confirm.display_name}` })
+      }
     }
     setConfirm(null)
   }
@@ -183,9 +187,13 @@ export function FamilyDetailScreen({
     try {
       await planetApi.pets.removeFromFamily(petToRemove.id, family.id)
       setPetToRemove(null)
-      await pets.refetch()
+      const refreshed = await pets.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({ message: `已从「${family.name}」移出 ${petToRemove.name}` })
+      if (refreshed.error) {
+        showToast({ message: `已从「${family.name}」移出 ${petToRemove.name}，但宠物列表刷新失败：${errorMessage(refreshed.error)}` })
+      } else {
+        showToast({ message: `已从「${family.name}」移出 ${petToRemove.name}` })
+      }
     } catch (e) {
       showToast({ message: errorMessage(e) })
     }
@@ -197,9 +205,13 @@ export function FamilyDetailScreen({
     setRoleBusy(member.user_id)
     try {
       await planetApi.families.updateMemberRole(family.id, member.user_id, nextRole)
-      await query.refetch()
+      const refreshed = await query.refetch()
       invalidateAfterFamilyChange(client)
-      showToast({ message: `${member.display_name} 已改为${nextRole === 'viewer' ? '只查看' : '可参与照护'}` })
+      if (refreshed.error) {
+        showToast({ message: `${member.display_name} 的角色已更新，但成员列表刷新失败：${errorMessage(refreshed.error)}` })
+      } else {
+        showToast({ message: `${member.display_name} 已改为${nextRole === 'viewer' ? '只查看' : '可参与照护'}` })
+      }
     } catch (e) {
       showToast({ message: errorMessage(e) })
     } finally {
@@ -372,7 +384,11 @@ export function FamilyDetailScreen({
         </View>
 
         <View style={[styles.detailColumn, wideLayout ? styles.detailColumnWide : null]}>
-          {isOwner && pendingIncomingTransfers.length > 0 ? (
+          {isOwner && incomingTransfers.error ? (
+            <FadeInView index={6}>
+              <IncomingTransferErrorCard onRetry={() => void incomingTransfers.refetch()} />
+            </FadeInView>
+          ) : isOwner && pendingIncomingTransfers.length > 0 ? (
             <FadeInView index={6}>
               <IncomingTransferCard
                 count={pendingIncomingTransfers.length}
@@ -446,10 +462,18 @@ export function FamilyDetailScreen({
         <FamilyEdit
           family={family}
           onClose={() => setEdit(false)}
-          onSaved={async () => {
+          onSaved={() => {
             setEdit(false)
-            await query.refetch()
             invalidateAfterFamilyChange(client)
+            void query.refetch()
+              .then((result) => {
+                if (result.error) {
+                  showToast({ message: `家庭已保存，但列表刷新失败：${errorMessage(result.error)}` })
+                }
+              })
+              .catch((error) => {
+                showToast({ message: `家庭已保存，但列表刷新失败：${errorMessage(error)}` })
+              })
           }}
         />
       ) : null}
@@ -459,10 +483,18 @@ export function FamilyDetailScreen({
           familyId={family.id}
           members={members.filter((member) => member.role !== 'owner')}
           onClose={() => setTransferOpen(false)}
-          onSaved={async () => {
+          onSaved={() => {
             setTransferOpen(false)
-            await query.refetch()
             invalidateAfterFamilyChange(client)
+            void query.refetch()
+              .then((result) => {
+                if (result.error) {
+                  showToast({ message: `管理员已转让，但家庭信息刷新失败：${errorMessage(result.error)}` })
+                }
+              })
+              .catch((error) => {
+                showToast({ message: `管理员已转让，但家庭信息刷新失败：${errorMessage(error)}` })
+              })
           }}
         />
       ) : null}
@@ -516,6 +548,24 @@ function IncomingTransferCard({ count, onOpen }: { count: number; onOpen: () => 
         </View>
       </View>
       <Button label="查看转移请求" variant="secondary" onPress={onOpen} />
+    </Card>
+  )
+}
+
+function IncomingTransferErrorCard({ onRetry }: { onRetry: () => void }) {
+  const { theme } = useTheme()
+  return (
+    <Card style={[styles.incomingTransferCard, { backgroundColor: theme.colors.coralSoft }]}>
+      <View style={styles.governanceHeader}>
+        <WarningCircle size={20} color={theme.colors.coralDark} weight="fill" />
+        <View style={{ flex: 1, gap: 2 }}>
+          <AppText variant="heading">转移请求暂时无法加载</AppText>
+          <AppText accessibilityRole="alert" variant="caption" color={theme.colors.coralDark}>
+            未能确认收到的宠物转移请求；请重试后再继续管理。
+          </AppText>
+        </View>
+      </View>
+      <Button label="重试加载转移请求" variant="secondary" onPress={onRetry} />
     </Card>
   )
 }
@@ -724,7 +774,8 @@ function FamilyGovernanceCard({
   canDelete: boolean
 }) {
   const { theme } = useTheme()
-  const memberReady = memberCount === 1
+  const additionalMemberCount = Math.max(0, memberCount - 1)
+  const memberReady = additionalMemberCount === 0
   const petsReady = petCount === 0
   return (
     <Card style={styles.governanceCard}>
@@ -747,7 +798,7 @@ function FamilyGovernanceCard({
         <GovernanceRow
           ready={memberReady}
           label="其他成员"
-          detail={memberReady ? '已清空' : `还剩 ${memberCount - 1} 位，需要先移除`}
+          detail={memberReady ? '已清空' : `还剩 ${additionalMemberCount} 位，需要先移除`}
         />
         <GovernanceRow
           ready={petsReady}

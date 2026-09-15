@@ -1,7 +1,9 @@
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { type ShareViewResponse } from '../../core/api/planet-api';
 import { extensionReaders } from '../../core/extension';
 import { errorMessage, isApiError } from '../../core/api/errors';
@@ -17,6 +19,7 @@ import { PetAvatar } from '../../ui/components/pet-avatar';
 import { Screen } from '../../ui/components/screen';
 import { FadeInView } from '../../ui/motion';
 import { describeEvent } from '../timeline/registry';
+import { buildSummaryPdfHtml } from './summary-pdf';
 
 function speciesShort(species: unknown): string {
   return speciesLabel(typeof species === 'string' ? species : undefined);
@@ -59,7 +62,86 @@ function formatEventDate(iso: unknown): string {
   });
 }
 
-function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string }) {
+/** Print the generated document without replacing or duplicating the app page. */
+async function printHtmlDocument(html: string): Promise<void> {
+  if (typeof document === 'undefined') throw new Error('当前浏览器不支持打印');
+  const frame = document.createElement('iframe');
+  frame.title = 'PLANET 健康摘要打印视图';
+  frame.dataset.planetPrintFrame = 'summary';
+  Object.assign(frame.style, {
+    position: 'fixed',
+    width: '1px',
+    height: '1px',
+    border: '0',
+    opacity: '0',
+    pointerEvents: 'none',
+    left: '-2px',
+    top: '-2px',
+  });
+  document.body.appendChild(frame);
+
+  const printDocument = frame.contentDocument;
+  const printWindow = frame.contentWindow;
+  if (!printDocument || !printWindow) {
+    frame.remove();
+    throw new Error('暂时无法准备打印内容');
+  }
+
+  printDocument.open();
+  printDocument.write(html);
+  printDocument.close();
+
+  const images = Array.from(printDocument.images);
+  await Promise.race([
+    Promise.all(images.map((image) => {
+      if (image.complete) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        image.addEventListener('load', () => resolve(), { once: true });
+        image.addEventListener('error', () => resolve(), { once: true });
+      });
+    })),
+    new Promise<void>((resolve) => window.setTimeout(resolve, 1500)),
+  ]);
+
+  printWindow.focus();
+  printWindow.print();
+  // Keep the document alive while the native print dialog is opening, then
+  // remove it so repeated taps never accumulate hidden frames in the page.
+  window.setTimeout(() => frame.remove(), 2000);
+}
+
+function formatSharedValue(value: unknown, fallback = '未记录'): string {
+  if (Array.isArray(value)) {
+    const text = value
+      .map((item) =>
+        item && typeof item === 'object'
+          ? Object.values(item as Record<string, unknown>).filter(Boolean).join(' · ')
+          : String(item),
+      )
+      .filter(Boolean)
+      .join('、');
+    return text || fallback;
+  }
+  if (value && typeof value === 'object') {
+    const text = Object.values(value as Record<string, unknown>).filter(Boolean).join(' · ');
+    return text || fallback;
+  }
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function SharedViewCard({
+  view,
+  seed,
+  pdfBusy,
+  pdfError,
+  onPrintSummary,
+}: {
+  view: ShareViewResponse;
+  seed: string;
+  pdfBusy: boolean;
+  pdfError: string;
+  onPrintSummary: () => void;
+}) {
   const { theme } = useTheme();
   const pet =
     view.data.pet && typeof view.data.pet === 'object'
@@ -83,8 +165,23 @@ function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string 
           Boolean(item) && typeof item === 'object',
       )
     : [];
+  const decisionMaker =
+    view.data.med_decision_maker && typeof view.data.med_decision_maker === 'object'
+      ? (view.data.med_decision_maker as Record<string, unknown>)
+      : {};
+  const decisionMakerName = typeof decisionMaker.name === 'string' ? decisionMaker.name.trim() : '';
+  const decisionMakerContact = [decisionMaker.phone, decisionMaker.email]
+    .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+    .map((value) => value.trim())
+    .join(' · ');
   const notes =
     typeof view.data.notes === 'string' && view.data.notes ? view.data.notes : '';
+  const reason =
+    typeof view.data.reason === 'string' && view.data.reason ? view.data.reason : '';
+  const hasSummaryField = (field: string) =>
+    view.kind === 'summary' && Object.prototype.hasOwnProperty.call(view.data, field);
+  const hasProfile =
+    hasSummaryField('allergies') || hasSummaryField('conditions') || hasSummaryField('notes');
   const events = Array.isArray(view.data.events)
     ? view.data.events.filter(
         (item): item is Record<string, unknown> =>
@@ -142,31 +239,52 @@ function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string 
         </Card>
       ) : null}
 
-      {medications.length > 0 ? (
+      {view.kind === 'summary' ? (
+        <Card style={{ gap: 8 }}>
+          <AppText variant="eyebrow" soft>
+            本次就诊主诉 / Why now
+          </AppText>
+          <AppText>{reason || '未填写；请在就诊前补充最想和兽医讨论的问题。'}</AppText>
+        </Card>
+      ) : null}
+
+      {hasProfile ? (
+        <Card style={{ gap: 10 }}>
+          <AppText variant="eyebrow" soft>
+            过敏与既往病史
+          </AppText>
+          <AppText variant="label">过敏（请先告知兽医）</AppText>
+          <AppText>{formatSharedValue(view.data.allergies, '未记录过敏信息')}</AppText>
+          <AppText variant="label">慢性病 / 既往史</AppText>
+          <AppText>{formatSharedValue(view.data.conditions)}</AppText>
+        </Card>
+      ) : null}
+
+      {hasSummaryField('medications') ? (
         <Card style={{ gap: 10 }}>
           <AppText variant="eyebrow" soft>
             用药
           </AppText>
-          {medications.map((med, index) => (
-            <View key={`${String(med.id ?? index)}`} style={{ gap: 2 }}>
-              <AppText variant="label">{String(med.name ?? '药物')}</AppText>
-              <AppText muted>
-                {[med.dose, med.instructions ?? med.schedule]
-                  .filter(Boolean)
-                  .map(String)
-                  .join(' · ')}
-              </AppText>
-            </View>
-          ))}
+          {medications.length > 0 ? medications.map((med, index) => (
+              <View key={`${String(med.id ?? index)}`} style={{ gap: 2 }}>
+                <AppText variant="label">{String(med.name ?? '药物')}</AppText>
+                <AppText muted>
+                  {[med.dose, med.instructions ?? med.schedule]
+                    .filter(Boolean)
+                    .map(String)
+                    .join(' · ')}
+                </AppText>
+              </View>
+            )) : <AppText muted>当前没有记录用药。</AppText>}
         </Card>
       ) : null}
 
-      {events.length > 0 ? (
+      {hasSummaryField('events') ? (
         <Card style={{ gap: 12 }}>
           <AppText variant="eyebrow" soft>
             最近记录
           </AppText>
-          {events.map((event, index) => {
+          {events.length > 0 ? events.map((event, index) => {
             const type = typeof event.type === 'string' ? event.type : 'note';
             const payload =
               event.payload && typeof event.payload === 'object'
@@ -196,7 +314,7 @@ function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string 
                 ) : null}
               </View>
             );
-          })}
+          }) : <AppText muted>所选时间范围内没有记录。</AppText>}
         </Card>
       ) : null}
 
@@ -214,12 +332,47 @@ function SharedViewCard({ view, seed }: { view: ShareViewResponse; seed: string 
         </Card>
       ) : null}
 
+      {decisionMakerName || decisionMakerContact ? (
+        <Card style={{ gap: 8 }}>
+          <AppText variant="eyebrow" soft>
+            医疗决定人
+          </AppText>
+          <AppText variant="label">{decisionMakerName || '已指定联系人'}</AppText>
+          {decisionMakerContact ? <AppText muted>{decisionMakerContact}</AppText> : null}
+          <AppText variant="caption" muted>
+            涉及用药或紧急治疗时，请先联系这位决定人。
+          </AppText>
+        </Card>
+      ) : null}
+
       {notes ? (
         <Card style={{ gap: 8 }}>
           <AppText variant="eyebrow" soft>
             备注
           </AppText>
           <AppText>{notes}</AppText>
+        </Card>
+      ) : null}
+
+      {view.kind === 'summary' ? (
+        <Card style={{ gap: 8 }}>
+          <AppText variant="eyebrow" soft>
+            带去就诊
+          </AppText>
+          <AppText variant="caption" muted>
+            生成一份适合打印的 A4 健康摘要，或保存为 PDF 发给兽医。
+          </AppText>
+          {pdfError ? (
+            <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+              {pdfError}
+            </AppText>
+          ) : null}
+          <Button
+            label="打印 / 保存 PDF"
+            busy={pdfBusy}
+            accessibilityState={{ busy: pdfBusy }}
+            onPress={onPrintSummary}
+          />
         </Card>
       ) : null}
 
@@ -232,12 +385,41 @@ export function PublicShareScreen() {
   const { theme } = useTheme();
   const params = useLocalSearchParams<{ token?: string }>();
   const token = typeof params.token === 'string' ? params.token : '';
+  const [pdfBusy, setPdfBusy] = React.useState(false);
+  const [pdfError, setPdfError] = React.useState('');
 
   const query = useQuery({
     queryKey: ['public-share', token],
     queryFn: () => extensionReaders.shareView(token),
     enabled: Boolean(token),
   });
+
+  async function printSummary() {
+    if (!query.data || query.data.kind !== 'summary' || pdfBusy) return;
+    setPdfBusy(true);
+    setPdfError('');
+    try {
+      const html = buildSummaryPdfHtml(query.data);
+      if (Platform.OS === 'web') {
+        await printHtmlDocument(html);
+        return;
+      }
+      const result = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: '分享健康摘要 PDF',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        await Print.printAsync({ html });
+      }
+    } catch (error) {
+      setPdfError(errorMessage(error, '暂时无法生成 PDF，请重试。'));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   if (!token) {
     return (
@@ -290,7 +472,13 @@ export function PublicShareScreen() {
       />
       <FadeInView>
       {query.data ? (
-        <SharedViewCard view={query.data} seed={token} />
+        <SharedViewCard
+          view={query.data}
+          seed={token}
+          pdfBusy={pdfBusy}
+          pdfError={pdfError}
+          onPrintSummary={() => void printSummary()}
+        />
       ) : (
         <EmptyState
           title="暂时没有可显示的内容"

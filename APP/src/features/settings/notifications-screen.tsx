@@ -71,8 +71,12 @@ export function NotificationSettingsScreen({ familyId: routeFamilyId }: { family
     }
     try {
       await planetApi.families.updateNotificationPrefs(selectedFamilyId, { [kind]: value });
-      await query.refetch();
-      showToast({ message: '通知偏好已保存。' });
+      const refreshed = await query.refetch();
+      showToast({
+        message: refreshed.error
+          ? `通知偏好已保存，但页面刷新失败：${errorMessage(refreshed.error)}`
+          : '通知偏好已保存。',
+      });
     } catch (e) {
       showToast({ message: errorMessage(e) });
     }
@@ -219,7 +223,7 @@ function PushDeviceStatus({
     requesting: ['设备通知', '正在登记这台设备…', ''],
     ready: ['设备通知', '这台设备已登记，可以接收照护请求；如果系统没有显示按钮，点通知进入应用内处理。', '重新检查'],
     denied: ['设备通知', '系统通知权限没有打开，请在系统设置中允许 PLANET 通知。', '重试'],
-    not_configured: ['设备通知', '发布配置还没有完成，暂时不能登记这台设备。', ''],
+    not_configured: ['设备通知', '发布配置还没有完成，暂时不能登记这台设备；配置恢复后可重新检查。', '重新检查'],
     failed: ['设备通知', '这台设备登记失败，网络恢复后可以重试。', '重试'],
     unsupported: ['设备通知', '当前平台不支持设备推送。', ''],
   } as const;

@@ -9,6 +9,7 @@ import { invalidateAfterFamilyChange } from '../../core/foundation'
 import { useTheme } from '../../core/providers/theme-provider'
 import { useToast } from '../../core/providers/toast-provider'
 import { useScope } from '../../core/providers/scope-provider'
+import { useSession } from '../../core/providers/session-provider'
 import { AppText } from '../../ui/components/app-text'
 import { BackHeader } from '../../ui/components/back-header'
 import { Button } from '../../ui/components/button'
@@ -21,8 +22,20 @@ import { setCachedInvite } from './invite-cache'
 
 type Mode = 'create' | 'join'
 
-export function FamilyFormScreen({ mode }: { mode: Mode }) {
-  return mode === 'create' ? <CreateFamilyScreen /> : <JoinFamilyScreen />
+export function FamilyFormScreen({
+  mode,
+  initialCode,
+  publicEntry = false,
+}: {
+  mode: Mode
+  initialCode?: string
+  publicEntry?: boolean
+}) {
+  return mode === 'create' ? (
+    <CreateFamilyScreen />
+  ) : (
+    <JoinFamilyScreen initialCode={initialCode} publicEntry={publicEntry} />
+  )
 }
 
 function CreateFamilyScreen() {
@@ -115,12 +128,19 @@ function CreateFamilyScreen() {
   )
 }
 
-function JoinFamilyScreen() {
+function JoinFamilyScreen({
+  initialCode,
+  publicEntry = false,
+}: {
+  initialCode?: string
+  publicEntry?: boolean
+}) {
   const { theme } = useTheme()
   const { showToast } = useToast()
   const client = useQueryClient()
+  const { status } = useSession()
   const { code: inviteCodeParam } = useLocalSearchParams<{ code?: string | string[] }>()
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(initialCode?.toUpperCase() ?? '')
   const [preview, setPreview] = useState<{
     role: 'caregiver' | 'viewer'
     petName: string | null
@@ -130,16 +150,17 @@ function JoinFamilyScreen() {
   const [checking, setChecking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [previewAttempt, setPreviewAttempt] = useState(0)
   const commandId = useRef(createIdempotencyKey())
   const previewSeq = useRef(0)
+  const incomingCode = Array.isArray(inviteCodeParam) ? inviteCodeParam[0] : inviteCodeParam
 
   // Web invite links arrive as /families/join?code=... after login. Seed the
   // form once so the user lands directly on the preview step instead of
   // having to copy the code a second time.
   useEffect(() => {
-    const incoming = Array.isArray(inviteCodeParam) ? inviteCodeParam[0] : inviteCodeParam
-    if (incoming && !code) setCode(incoming.toUpperCase())
-  }, [code, inviteCodeParam])
+    if (incomingCode && !code) setCode(incomingCode.toUpperCase())
+  }, [code, incomingCode])
 
   // 服务端邀请码固定 10 位；粘贴可能带空格/连字符，先归一化。
   const normalized = code.replace(/[\s-]/g, '').toUpperCase()
@@ -179,7 +200,7 @@ function JoinFamilyScreen() {
       clearTimeout(timer)
       if (previewSeq.current === seq) setChecking(false)
     }
-  }, [normalized, validCode])
+  }, [normalized, previewAttempt, validCode])
 
   async function join() {
     if (!validCode) {
@@ -188,6 +209,10 @@ function JoinFamilyScreen() {
     }
     if (!preview) {
       setError(previewError || '请先确认邀请码有效。')
+      return
+    }
+    if (status !== 'authenticated') {
+      router.replace(`/auth?invite=${encodeURIComponent(normalized)}` as never)
       return
     }
     setBusy(true)
@@ -210,7 +235,8 @@ function JoinFamilyScreen() {
     <Screen>
       <BackHeader
         title="加入家庭"
-        fallbackHref="/families"
+        fallbackHref={publicEntry ? '/' : '/families'}
+        menu={!publicEntry}
         eyebrow="你收到邀请了"
         subtitle="输入邀请码，先确认家庭再加入"
       />
@@ -227,7 +253,9 @@ function JoinFamilyScreen() {
             placeholder="10 位邀请码"
             autoCapitalize="characters"
             autoCorrect={false}
-            autoFocus
+            // A link already supplies the code; keep the preview and CTA visible
+            // until the user explicitly chooses to edit it.
+            autoFocus={!incomingCode && !initialCode}
           />
 
           {checking ? (
@@ -252,9 +280,16 @@ function JoinFamilyScreen() {
               </View>
             </Card>
           ) : previewError ? (
-            <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
-              {previewError}
-            </AppText>
+            <View style={{ gap: 10 }}>
+              <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+                {previewError}
+              </AppText>
+              <Button
+                label="重试核对"
+                variant="secondary"
+                onPress={() => setPreviewAttempt((attempt) => attempt + 1)}
+              />
+            </View>
           ) : null}
 
           {error ? (
@@ -265,7 +300,9 @@ function JoinFamilyScreen() {
 
           <Button
             label={
-              preview?.inviterName ? `加入 ${preview.inviterName} 的家庭` : '加入家庭'
+              status === 'authenticated'
+                ? preview?.inviterName ? `加入 ${preview.inviterName} 的家庭` : '加入家庭'
+                : '登录后加入'
             }
             full
             busy={busy}

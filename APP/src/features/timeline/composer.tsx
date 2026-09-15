@@ -35,7 +35,7 @@ import { MAX_PHOTO_DATA_BYTES, parseEventPayload } from "./registry";
 import { dateTimeLocalInTimezone, instantFromCivilDateTime } from "./time";
 
 export type EventType =
-  "note" | "photo" | "symptom" | "weight" | "vet_visit" | "vaccine";
+  "note" | "photo" | "symptom" | "weight" | "vet_visit" | "vaccine" | "deworm";
 
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   note: "笔记",
@@ -44,6 +44,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   weight: "体重",
   vet_visit: "就诊",
   vaccine: "疫苗",
+  deworm: "驱虫",
 };
 
 const EVENT_TYPE_OPTIONS = (Object.keys(EVENT_TYPE_LABELS) as EventType[]).map(
@@ -108,7 +109,7 @@ export function EventForm({
         ? readPayload("caption")
         : type === "symptom"
           ? readPayload("title")
-          : type === "vaccine"
+          : type === "vaccine" || type === "deworm"
             ? readPayload("name")
             : type === "vet_visit"
               ? readPayload("title")
@@ -139,6 +140,7 @@ export function EventForm({
     weight: "",
     vet_visit: "就诊事项",
     vaccine: "疫苗名称",
+    deworm: "驱虫项目",
   };
   const SECONDARY_LABELS: Partial<Record<EventType, string>> = {
     symptom: "补充说明",
@@ -165,7 +167,7 @@ export function EventForm({
       payload = { photo_data: photoData, caption: primary.trim() };
     else if (type === "symptom")
       payload = { title: primary.trim(), detail: detailText };
-    else if (type === "vaccine")
+    else if (type === "vaccine" || type === "deworm")
       payload = {
         name: primary.trim(),
         ...(detailText ? { text: detailText } : {}),
@@ -415,11 +417,13 @@ export function EventComposer({
     weight: "体重多少？",
     vet_visit: "就诊事项，如 年度体检",
     vaccine: "疫苗名称，如 狂犬疫苗",
+    deworm: "驱虫项目，如 体内驱虫",
   };
   const EXTRA_LABELS: Partial<Record<EventType, string>> = {
     symptom: "补充说明（选填）",
     vet_visit: "小结（诊所 / 结论，选填）",
     vaccine: "备注（选填）",
+    deworm: "备注（选填）",
     weight: "备注（选填）",
   };
 
@@ -458,7 +462,7 @@ export function EventComposer({
       return;
     } else if (type === "symptom")
       payload = { title: text.trim(), detail: extra.trim() };
-    else if (type === "vaccine")
+    else if (type === "vaccine" || type === "deworm")
       payload = {
         name: text.trim(),
         ...(extra.trim() ? { text: extra.trim() } : {}),

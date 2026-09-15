@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState, Pressable, StyleSheet, View } from 'react-native'
-import { ArrowRight, Check, Clock, Users } from 'phosphor-react-native'
+import { ArrowRight, Check, Clock, Users, WarningCircle } from 'phosphor-react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -19,6 +19,7 @@ import { CARE_ACTION_LABELS } from '../../core/presentation/terminology'
 import { useTheme } from '../../core/providers/theme-provider'
 import { useToast } from '../../core/providers/toast-provider'
 import { useScope } from '../../core/providers/scope-provider'
+import { useSession } from '../../core/providers/session-provider'
 import {
   enqueueCareAction,
   readPendingCareActions,
@@ -424,6 +425,7 @@ export function CareRequestInbox({
   const { theme } = useTheme()
   const { showToast } = useToast()
   const { scope, setScope } = useScope()
+  const { notificationActionFailure, clearNotificationActionFailure } = useSession()
   const client = useQueryClient()
   const { care_request_id: requestedId, care_action: requestedAction } = useLocalSearchParams<{
     care_request_id?: string
@@ -437,6 +439,8 @@ export function CareRequestInbox({
       : '/(tabs)'
   const [composer, setComposer] = useState<ComposerMode | null>(null)
   const [pendingContinuation, setPendingContinuation] = useState<{ request: CareRequest; commandId: string } | null>(null)
+  const [continuationError, setContinuationError] = useState('')
+  const [continuationAttempt, setContinuationAttempt] = useState(0)
   const [pendingActions, setPendingActions] = useState<PendingCareAction[]>([])
   const [syncingActions, setSyncingActions] = useState(false)
   const syncingActionsRef = useRef(false)
@@ -570,18 +574,28 @@ export function CareRequestInbox({
     const pendingDecline = pendingActions.find(
       (item) => item.kind === 'decline' && item.followUp === 'reassign' && item.requestId,
     )
-    if (!pendingDecline || pendingContinuation) return
+    if (!pendingDecline) {
+      if (!pendingContinuation) setContinuationError('')
+      return
+    }
+    if (pendingContinuation) return
+    setContinuationError('')
     const request =
       scopedInboxRequests.find((item) => item.id === pendingDecline.requestId) ??
       (pendingDecline.requestId === requestedIdValue ? requestedRequest.data?.care_request : undefined)
     if (request) {
+      setContinuationError('')
       setPendingContinuation({ request, commandId: pendingDecline.commandId })
       return
     }
     void planetApi.careRequests.get(pendingDecline.requestId!).then(({ care_request }) => {
+      setContinuationError('')
       setPendingContinuation({ request: care_request, commandId: pendingDecline.commandId })
-    }).catch(() => undefined)
+    }).catch((error) => {
+      setContinuationError(errorMessage(error))
+    })
   }, [
+    continuationAttempt,
     scopedInboxRequests,
     pendingActions,
     pendingContinuation,
@@ -599,11 +613,14 @@ export function CareRequestInbox({
         if (care_request.state === 'declined') {
           setComposer({ kind: 'reassign', request: care_request, currentUserId })
         } else {
-      showToast({ message: '这件事已经有别的处理结果，不再重复打开' })
+          showToast({ message: '这件事已经有别的处理结果，不再重复打开' })
         }
+        setContinuationError('')
         setPendingContinuation(null)
       })
-    }).catch(() => undefined)
+    }).catch((error) => {
+      if (!cancelled) setContinuationError(errorMessage(error))
+    })
     return () => {
       cancelled = true
     }
@@ -686,6 +703,9 @@ export function CareRequestInbox({
         ? planetApi.careRequests.accept(request.id, '', commandId)
         : planetApi.careRequests.decline(request.id, '', commandId),
     onSuccess: (result, variables) => {
+      if (notificationActionFailure?.surface === 'request' && notificationActionFailure.resourceId === variables.request.id) {
+        clearNotificationActionFailure()
+      }
       invalidateAfterCareRequestChange(client)
       if (variables.action === 'accept') {
         void hapticSuccess()
@@ -693,6 +713,11 @@ export function CareRequestInbox({
       } else {
         showToast({ message: '选择已保存' })
         setComposer({ kind: 'reassign', request: result.care_request, currentUserId })
+      }
+    },
+    onMutate: (variables) => {
+      if (notificationActionFailure?.surface === 'request' && notificationActionFailure.resourceId === variables.request.id) {
+        clearNotificationActionFailure()
       }
     },
     onError: (error, variables) => {
@@ -751,6 +776,26 @@ export function CareRequestInbox({
   const focusedPendingAction = focusedRequest
     ? pendingActions.find((item) => item.requestId === focusedRequest.id)
     : undefined
+  const matchingNotificationFailure = notificationActionFailure?.surface === 'request' &&
+    (!requestedIdValue || notificationActionFailure.resourceId === requestedIdValue)
+    ? notificationActionFailure
+    : null
+  const notificationFailureCard = matchingNotificationFailure ? (
+    <Card style={styles.notificationFailure}>
+      <View style={styles.notificationFailureCopy}>
+        <WarningCircle size={18} color={theme.colors.coralDark} weight="fill" />
+        <AppText accessibilityRole="alert" variant="caption" color={theme.colors.coralDark} style={{ flex: 1 }}>
+          {matchingNotificationFailure.message}
+        </AppText>
+      </View>
+      <Button
+        label="知道了"
+        variant="secondary"
+        onPress={clearNotificationActionFailure}
+        style={{ alignSelf: 'flex-start' }}
+      />
+    </Card>
+  ) : null
   const openOccurrence = useCallback((request: CareRequest) => {
     setScope({ type: 'pet', id: request.pet_id, familyId: request.family_id })
     const focusDate = request.due_date?.slice(0, 10) || request.due_at?.slice(0, 10)
@@ -779,6 +824,22 @@ export function CareRequestInbox({
         <AppText variant="caption" color={theme.colors.coralDark}>立即同步</AppText>
       </Pressable>
     </View>
+  ) : null
+  const continuationRecovery = continuationError ? (
+    <Card style={styles.continuationRecovery}>
+      <AppText accessibilityRole="alert" variant="caption" color={theme.colors.danger}>
+        已保存拒绝，但暂时无法打开继续安排。{continuationError}
+      </AppText>
+      <Button
+        label="重试打开继续安排"
+        variant="secondary"
+        onPress={() => {
+          setContinuationError('')
+          setContinuationAttempt((attempt) => attempt + 1)
+        }}
+        style={{ alignSelf: 'flex-start' }}
+      />
+    </Card>
   ) : null
   const refreshing =
     (inbox.isFetching && !inbox.isLoading) ||
@@ -819,7 +880,9 @@ export function CareRequestInbox({
   if (detailOnly) {
     return (
       <>
+        {notificationFailureCard}
         {queueBar}
+        {continuationRecovery}
         {refreshBar}
         {statusCard}
         {composer ? <CareRequestComposer mode={composer} onClose={() => setComposer(null)} /> : null}
@@ -875,7 +938,9 @@ export function CareRequestInbox({
 
   return (
     <>
+      {notificationFailureCard}
       {queueBar}
+      {continuationRecovery}
       {refreshBar}
       {statusCard}
       {summaryCard}
@@ -1529,6 +1594,9 @@ const styles = StyleSheet.create({
   batchSubjectList: { gap: 3 },
   sentBatchStatus: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   openOccurrenceButton: { paddingHorizontal: 11, minHeight: 44 },
+  continuationRecovery: { gap: 10 },
+  notificationFailure: { gap: 10, padding: 13 },
+  notificationFailureCopy: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   requestTop: { flexDirection: 'row', gap: 8 },
   detailLink: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingTop: 2 },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },

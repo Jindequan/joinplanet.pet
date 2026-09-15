@@ -50,7 +50,7 @@ export function MedicationsSection({ pet, timezone: selectedTimezone, familyId, 
     : preferences.data?.preferences.default_family_id
   const timezone = selectedTimezone ?? resolvePetTimezone(pet.family_ids, families.data?.families ?? [], preferredFamilyId)
 
-  async function invalidate() {
+  function invalidate() {
     invalidateAfterMedicationChange(client, pet.id)
   }
 
@@ -90,10 +90,10 @@ export function MedicationsSection({ pet, timezone: selectedTimezone, familyId, 
           petId={pet.id}
           familyId={familyId}
           disabled={timezoneAmbiguous || timezoneUnavailable}
-          onSaved={async (name) => {
+          onSaved={(name) => {
             void hapticSuccess()
             showToast({ message: `已开始记录「${name}」。` })
-            await invalidate()
+            invalidate()
           }}
         />
         </FadeInView>
@@ -191,10 +191,10 @@ export function MedicationsSection({ pet, timezone: selectedTimezone, familyId, 
           petId={pet.id}
           initial={editing}
           onClose={() => setEditing(null)}
-          onSaved={async () => {
+          onSaved={() => {
             setEditing(null)
             showToast({ message: '档案已更新。' })
-            await invalidate()
+            invalidate()
           }}
         />
       ) : null}

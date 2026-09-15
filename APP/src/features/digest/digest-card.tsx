@@ -8,6 +8,7 @@ import { queryKeys } from '../../core/query/keys'
 import { useTheme } from '../../core/providers/theme-provider'
 import { AppText } from '../../ui/components/app-text'
 import { Card } from '../../ui/components/card'
+import { LoadingState } from '../../ui/components/loading-state'
 import { QueryErrorState } from '../../ui/components/query-error-state'
 import { useScope } from '../../core/providers/scope-provider'
 import { FadeInView, PressableScale } from '../../ui/motion'
@@ -38,7 +39,21 @@ export function DigestCard({ familyId, date, familyName }: Props) {
     enabled: Boolean(familyId && date),
   })
 
-  if (query.isLoading) return null
+  if (query.isLoading) {
+    return (
+      <FadeInView>
+        <Card style={styles.card}>
+          <View style={styles.header}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <AppText variant="label">{familyName ? `${familyName} · ` : ''}家庭照护摘要</AppText>
+              <AppText variant="caption" muted>{date} · 今天的照护情况</AppText>
+            </View>
+          </View>
+          <LoadingState compact label="正在加载家庭摘要" />
+        </Card>
+      </FadeInView>
+    )
+  }
 
   // 摘要里可能包含体重、用药等预警；接口失败时不能让卡片像“没有问题”一样消失。
   if (query.isError) {

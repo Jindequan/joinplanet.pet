@@ -30,9 +30,13 @@ export function DeletedFamiliesScreen() {
     setBusyId(family.id);
     try {
       await planetApi.families.restore(family.id);
-      await query.refetch();
+      const refreshed = await query.refetch();
       invalidateAfterFamilyChange(client);
-      showToast({ message: `已恢复「${family.name}」。` });
+      showToast({
+        message: refreshed.error
+          ? `已恢复「${family.name}」，但列表刷新失败，请重试加载。`
+          : `已恢复「${family.name}」。`,
+      });
     } catch (e) {
       showToast({ message: errorMessage(e) });
     } finally {

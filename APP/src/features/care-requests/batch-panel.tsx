@@ -20,6 +20,7 @@ import { CARE_ACTION_LABELS } from '../../core/presentation/terminology'
 import { useTheme } from '../../core/providers/theme-provider'
 import { useToast } from '../../core/providers/toast-provider'
 import { useScope } from '../../core/providers/scope-provider'
+import { useSession } from '../../core/providers/session-provider'
 import { AppText } from '../../ui/components/app-text'
 import { Button } from '../../ui/components/button'
 import { Card } from '../../ui/components/card'
@@ -92,12 +93,33 @@ export function CareHandoffBatchInbox({
   const { theme } = useTheme()
   const { showToast } = useToast()
   const { scope } = useScope()
+  const { notificationActionFailure, clearNotificationActionFailure } = useSession()
   const client = useQueryClient()
   const { care_batch_id: requestedBatchId, care_batch_action: requestedBatchAction } = useLocalSearchParams<{
     care_batch_id?: string
     care_batch_action?: string
   }>()
   const requestedBatchIdValue = batchId || (typeof requestedBatchId === 'string' ? requestedBatchId : '')
+  const matchingNotificationFailure = notificationActionFailure?.surface === 'batch' &&
+    (!requestedBatchIdValue || notificationActionFailure.resourceId === requestedBatchIdValue)
+    ? notificationActionFailure
+    : null
+  const notificationFailureCard = matchingNotificationFailure ? (
+    <Card style={styles.notificationFailure}>
+      <View style={styles.notificationFailureCopy}>
+        <WarningCircle size={18} color={theme.colors.coralDark} weight="fill" />
+        <AppText accessibilityRole="alert" variant="caption" color={theme.colors.coralDark} style={{ flex: 1 }}>
+          {matchingNotificationFailure.message}
+        </AppText>
+      </View>
+      <Button
+        label="知道了"
+        variant="secondary"
+        onPress={clearNotificationActionFailure}
+        style={{ alignSelf: 'flex-start' }}
+      />
+    </Card>
+  ) : null
   const [selectionMode, setSelectionMode] = useState('')
   const [selectionIntent, setSelectionIntent] = useState<Record<string, 'accept' | 'delegate'>>({})
   const [selected, setSelected] = useState<Record<string, string[]>>({})
@@ -265,6 +287,9 @@ export function CareHandoffBatchInbox({
         ? planetApi.careHandoffBatches.accept(batch.id, occurrenceIds, commandId)
         : planetApi.careHandoffBatches.decline(batch.id, occurrenceIds, commandId),
     onSuccess: (result: CareHandoffBatchResponse, variables) => {
+      if (notificationActionFailure?.surface === 'batch' && notificationActionFailure.resourceId === variables.batch.id) {
+        clearNotificationActionFailure()
+      }
       void hapticSuccess()
       invalidateBatchQueries(client)
       setSelectionMode('')
@@ -291,6 +316,11 @@ export function CareHandoffBatchInbox({
         } else {
           showToast({ message: '选择已保存' })
         }
+      }
+    },
+    onMutate: (variables) => {
+      if (notificationActionFailure?.surface === 'batch' && notificationActionFailure.resourceId === variables.batch.id) {
+        clearNotificationActionFailure()
       }
     },
     onError: (error, variables) => {
@@ -353,6 +383,7 @@ export function CareHandoffBatchInbox({
   if (requestedBatchIdValue && requestedBatch.isError && !focusedBatch && !delegateBatch) {
     return (
       <View style={{ gap: 10 }}>
+        {notificationFailureCard}
         {continuationRecovery}
         <QueryErrorState
           error={requestedBatch.error}
@@ -365,6 +396,7 @@ export function CareHandoffBatchInbox({
   if (permissionError && detailOnly && !focusedBatch && !delegateBatch) {
     return (
       <View style={{ gap: 10 }}>
+        {notificationFailureCard}
         {continuationRecovery}
         <QueryErrorState
           error={permissionError}
@@ -377,6 +409,7 @@ export function CareHandoffBatchInbox({
   if (batches.isError && !focusedBatch && !delegateBatch) {
     return (
       <View style={{ gap: 10 }}>
+        {notificationFailureCard}
         {continuationRecovery}
         <QueryErrorState
           message="批量照护安排暂时无法更新"
@@ -388,6 +421,7 @@ export function CareHandoffBatchInbox({
   if ((batches.isLoading && !focusedBatch) || (scopedBatchList.length === 0 && !delegateBatch && !focusedBatch)) {
     return (
       <View style={{ gap: 10 }}>
+        {notificationFailureCard}
         {continuationRecovery}
         {detailOnly ? <AppText muted>正在加载这批事项…</AppText> : null}
       </View>
@@ -409,6 +443,7 @@ export function CareHandoffBatchInbox({
 
   return (
     <View style={{ gap: 10 }}>
+      {notificationFailureCard}
       {continuationRecovery}
       {permissionError ? (
         <QueryErrorState
@@ -1184,6 +1219,8 @@ function MemberOption({ member, selected, onPress }: { member: Member; selected:
 const styles = StyleSheet.create({
   batchCard: { gap: 12 },
   continuationRecovery: { gap: 10 },
+  notificationFailure: { gap: 10, padding: 13 },
+  notificationFailureCopy: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   detailLink: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingTop: 2 },
   iconBubble: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },

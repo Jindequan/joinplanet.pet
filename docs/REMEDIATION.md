@@ -201,3 +201,9 @@ cd ../planet-api && TEST_DATABASE_URL=postgres:///postgres go test ./...
 - 2026-09-15 本地 V1 双/三账号验收：重启当前开发 API 清理进程内邀请码限流计数后，`BASE=http://127.0.0.1:8081 ./scripts/e2e-v1.sh` 完成 `PASS: 96 / FAIL: 0`，覆盖认证、家庭成员、宠物、Today、时间线、用药、分享撤销、宠物转移、家庭治理、删除恢复、配额、权限隔离、幂等和登出失效。重复运行前若同一 API 进程已消耗 10 次邀请码尝试，会先触发预期的 `JOIN_RATE_LIMITED`，不能把该测试环境前置限流误判为业务状态机失败。
 - 2026-09-15 本地开发限流一致性修复：`DEV_AUTH_CODES=1` 且关闭持久化限流时，邀请码加入/预览与认证接口统一使用宽松的进程内桶；生产环境仍保持加入 10 次/小时、预览 30 次/小时的防穷举限制。重建同一 `8081` API 后连续两次 `e2e-v1.sh` 均为 `PASS: 96 / FAIL: 0`。
 - 2026-09-15 协作验收脚本入口修复：`acceptance-care-coordination.sh` 自动补齐 `/api/v1` 并去除尾斜杠，裸 API 根地址与完整 V1 地址都指向同一真实路由；使用裸 `http://127.0.0.1:8081` 复测，服务端照护协作验收全通过。
+
+### 2026-09-15 — 移动端登录首屏不再抢焦点
+
+- **问题**：iOS Simulator 首次打开登录页时，`autoFocus` 在键盘出现前按完整视口判断，导致键盘自动弹出并把主视觉与主按钮推到首屏之外。
+- **修复**：`APP/src/features/auth/screen.tsx` 将自动聚焦限制为桌面 Web；移动端由用户点击邮箱/验证码输入框后再调起键盘。
+- **证据**：重启 `PlanetBuildCheck` Simulator 后截图 `/tmp/planet-sim-auth-no-keyboard-2.png`，登录首屏完整显示且无系统键盘；`cd APP && npm run typecheck` 通过。

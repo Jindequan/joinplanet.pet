@@ -214,9 +214,11 @@ export function AuthScreen() {
             keyboardType={step === 'email' ? 'email-address' : 'number-pad'}
             textContentType={step === 'email' ? 'emailAddress' : 'oneTimeCode'}
             maxLength={step === 'email' ? 254 : 6}
-            // On a small phone, opening the keyboard immediately hides the
-            // primary action. Let the user choose when to focus instead.
-            autoFocus={!compact}
+            // Keep the first mobile frame calm and fully visible. Focusing
+            // before the user asks for it opens the keyboard and can push the
+            // primary action below the fold; desktop Web can still focus the
+            // field for fast keyboard entry.
+            autoFocus={Platform.OS === 'web' && !compact}
             wrapperStyle={styles.field}
           />
 

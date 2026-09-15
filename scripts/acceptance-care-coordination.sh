@@ -8,10 +8,15 @@
 #
 # Usage:
 #   ./scripts/acceptance-care-coordination.sh [http://127.0.0.1:8081/api/v1]
+#   (也接受裸 API 根地址，会自动补上 /api/v1)
 #   DEV_AUTH_CODES=1 ./scripts/acceptance-care-coordination.sh
 set -euo pipefail
 
 BASE="${1:-${BASE:-http://127.0.0.1:8081/api/v1}}"
+BASE="${BASE%/}"
+if [[ "$BASE" != */api/v1 ]]; then
+  BASE="$BASE/api/v1"
+fi
 RUN="care-$(date +%s)-$$"
 TODAY="$(TZ=Asia/Shanghai date +%Y-%m-%d)"
 JSON_HEADER='Content-Type: application/json'

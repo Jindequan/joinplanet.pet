@@ -59,6 +59,14 @@ else
   fail "batch decline continuation failures can become silent"
 fi
 
+if rg -q 'notificationActionFailure' "$APP/core/providers/session-provider.tsx" && \
+   rg -q 'notificationFailureCard' "$APP/features/care-requests/panel.tsx" && \
+   rg -q 'notificationFailureCard' "$APP/features/care-requests/batch-panel.tsx"; then
+  pass "notification action storage failures remain visible with a manual retry surface"
+else
+  fail "notification action storage failures can become silent"
+fi
+
 if ! rg -q 'CareRequestInbox' "$APP/features/today/screen.tsx"; then
   pass "Today does not embed the full request inbox"
 else

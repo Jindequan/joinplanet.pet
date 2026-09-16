@@ -7,18 +7,19 @@
 
 ## 执行状态
 
-**09-13(隔日停发日,未发帖):触点第 7 天全部静默(月帖/EpilepsyDogs/评论回复/Chat,会话有效)。搜索无新目标;竞品情报:独立宠物追踪 App 已见 13+ 个(Pawza/FamilyPet/Yumipal/Pawsitive/Compaw/PawTrack/PetBuddy/PetDose/TailCare/PawRx/Zetrix/Dog Log/Refact)——赛道变挤,验证窗口紧迫性+1。FB 群准备文档已交付:docs/marketing/FB-GROUPS-PREP.md。下次发帖:09-14(队头=r/Dogowners 无链接版)。**
+**09-14(隔日发帖日):第五次尝试仍被限流 → 继续隔日,下次 09-16。今日直连浏览发现 r/EpilepsyDogs 日活很高(每天多条新帖),写好一条最高优先级回复入队(#0):[Does the paranoia ever get easier?](https://old.reddit.com/r/EpilepsyDogs/comments/1wgcfgw/does_the_paranoia_ever_get_easier/)(09-14 发,23 赞 22 评论,新手癫痫犬主人夜焦虑)——这是我们的主阵地社区且已有存活评论。触点:全部静默(09-14 检查)。竞品补充:FamilyPet(1u96dc5,疫苗+就诊+体重+全家共享)与 PLANET 几乎同构,值得单独拉一次体量数据。**
 
 | 目标帖 | 状态 |
 |---|---|
+| r/EpilepsyDogs 1wgcfgw(夜焦虑,09-14 发,23 赞) | 📝 **队列 #0(最高优)**:纯帮助版已备好(Tier 1.5b),无链接,主阵地热帖 |
 | r/Dogowners 1w3esdj(老年犬健康事务) | 📝 **队列 #1**:无链接版已备好(Tier 1 #0)。该帖持续有真实评论流量 |
 | r/seniordogs 1wct7il(关节炎换药困境) | 📝 **队列 #2**:纯帮助版已备好(Tier 1.5) |
 | r/PetAdvice 1syvzq1(宠物医疗记录怎么管) | 📝 **队列 #3** |
 | r/dogs 1nz5dwx(照护交接信息) | 📝 **队列 #4** |
 | r/RoverPetSitting 1te02dh(保姆如何接药) | 📝 **队列 #5**:参与讨论学语言 |
 | r/petsitting 1vgnbvc(保姆完全没喂药,~09-08 发帖) | 📝 **队列 #6(09-12 新增,临界龄~1 个月,founder 判断)**:handoff+验证的产品故事正中;草稿方向=先支持楼主(留证据/向 Rover 报告/今后要求用药日志),最后一句披露"我在做一个显示每剂是否真喂了的交接视图"。同段位备选:1uumjfv(补剂版,无链接) |
-| r/EpilepsyDogs 1w4uund | ✅ 存活(09-06 发),无新回复 |
-| r/Pets 月帖 1vi0qcf | ✅ 存活(招募评论),无新回复(09-12 检查) |
+| r/EpilepsyDogs 1w4uund | ✅ 存活(09-06 发),1 赞 0 回 |
+| r/Pets 月帖 1vi0qcf | ✅ 存活(招募评论),无新回复(09-14 检查) |
 | r/rescuedogs 1vneb3i | ❌ 已删,弃 |
 | 收件箱 / Chat | 空 |
 
@@ -58,6 +59,16 @@ https://old.reddit.com/r/seniordogs/comments/1wct7il/senior_dog_with_hip_dysplas
 > One thing that helps when meds keep changing: keep a simple daily log — med + time given, appetite, gait/wobbliness on a 0-3, anything odd. It turns vet calls from "I think she seemed worse" into "wobbly since Tuesday's dose, eating about half" — vets can make much better calls with that, and it's how we caught a bad reaction early with our own senior dog.
 >
 > Hope she steadies up soon.
+
+### 1.5b 待发(最高优):r/EpilepsyDogs · "Does the paranoia ever get easier?"(09-14 发,23 赞 22 评论)
+https://old.reddit.com/r/EpilepsyDogs/comments/1wgcfgw/does_the_paranoia_ever_get_easier/
+楼主:新手癫痫犬主人,狗的发作都在夜间睡觉时,每晚高度紧张。**纯帮助版,零产品**(主阵地社区+健康情绪帖):
+
+> The night paranoia is real — most of us here have sat up watching our dog sleep, counting breaths. It does get easier, but honestly not because the seizures become less scary; it's because you stop feeling alone in handling them.
+>
+> What helped us was a night routine that removes the "what do I do now" decisions — where he sleeps, what's within reach, and everyone in the house knowing their job if it happens (one notes the time, one clears space, one stays calm with him through recovery). The 3-minute rule you'll see mentioned here matters — timing is the one thing to get right.
+>
+> One small practical thing: keeping a simple log of every seizure (time, length, what happened just before) turns those overwhelming vet conversations into data, and gives you back a bit of the control the paranoia takes away. You're doing better than you think — the fact that you're this watchful means he's got someone really paying attention.
 
 ### 1. r/EpilepsyDogs · "What to do if you can't remember if a dose was given?"(几天内,活帖)
 https://www.reddit.com/r/EpilepsyDogs/comments/1w4uund/what_to_do_if_you_cant_remember_if_a_dose_was/

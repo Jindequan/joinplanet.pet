@@ -33,7 +33,7 @@
 | L11 | ✔ | §4.3 状态词漂移：canonical 词表（等待回应/已确认负责/正在同步…）与实际文案（等你回应/由你负责/已接手/未能接手…）全站不一致 | care-requests/copy.ts:35-41,91,105-126 + today/cards.tsx:65-79 + timeline/screen.tsx:494-498 |
 | L12 | ✔ | 离线行为断层：complete/skip/undo/Today claim 有队列，而排程四动作/care-risk claim/timeline 编辑删除无队列——同屏两套离线行为（有可见报错，不违 §3.2，但违背预期）。本轮先做「需联网」诚实文案，队列化待裁决 | schedule-adjustment.tsx:76-83、care-risk-banner.tsx:54-84、foundation/writers.ts:65-77 |
 | L13 | ✔ | 错误码缺映射一批：UNDO_WINDOW_EXPIRED、FAMILY_NOT_EMPTY、CARE_ASSIGNMENT_OWNER_REQUIRED、AUTO_EVENT_IMMUTABLE、IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE（后三个低频） | errors.ts:12-44 逐码比对（本体亲读） |
-| L14 | ✔ | care_card 分享是创建时刻冻结快照却以「今日照护」呈现：7 天寄养链接第 3 天打开仍显示第 1 天清单，接收方照过期清单执行 | sharing/service.go:133-152,381 + public-share-screen.tsx:217-241 |
+| L14 | 🔧 | care_card 冻结快照以「今日照护」呈现 | WO5（2026-09-17 创始人裁决改呈现）：标题→「照护快照」+ 生成日期诚实说明行 + 快照空态文案；typecheck/lint/契约 0 FAIL/e2e 114/114；APP 提交见仓内 log |
 
 ### P3（本轮顺手修，成本极低）
 
@@ -104,7 +104,7 @@
 
 ## 六、遗留（下轮，均 P3 或需裁决）
 
-1. **L14 care_card「今日照护」vs 冻结快照语义** —— 需产品裁决：改 UI 呈现（标注快照日期）或改后端（实时渲染）。建议前者。
+1. ~~L14 care_card 呈现~~ 已关闭（WO5，2026-09-17 创始人裁决改呈现，APP 98627f3）。
 2. 排程四动作/care-risk claim/timeline 改删的离线队列化 —— 设计决策待裁决（当前为诚实文案）。
 3. petshares Cancel 404/403 口径统一、ResolvedAt 死字段、ErrAlreadyMember 孤儿、B10 错误码三态混乱、care_plans 死枚举 completed（需迁移）。
 4. edit-screen base 侧 name/med_decision_maker 未 trim（带空格存量数据下假脏）；errors.ts CARE_REQUEST_RESPONSE_REQUIRED 文案含「等你回应」未入统一词表。

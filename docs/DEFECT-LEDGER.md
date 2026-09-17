@@ -1,0 +1,112 @@
+# PLANET 缺陷台账（契约收口专项）
+
+创建：2026-09-17。来源：两份全量摸底 + 本体亲核 + 三路全新上下文盲审（后端行为 / 前端行为 / 端到端旅程）。
+分级：P0=静默失败/错数据/权限洞；P1=主流程常见场景断裂或误导；P2=体验降级/陈旧显示/不一致；P3=死代码/外观。
+状态标记：✅已证实（本体亲核）｜✔盲审证实（未逐行亲核）｜❌已证伪｜🔧已修复待复验。
+
+## 一、进入修复清单
+
+### P0（必修）
+
+| # | 状态 | 缺陷 | 证据 |
+|---|---|---|---|
+| L1 | ✅ | petshares.Accept 状态迁移逃逸事务：`SetState` 用 `r.Pool.Exec` 独立提交（repo.go:122），InTx 里 LinkFamily 回滚后 state='accepted' 已持久化→「已接受但宠物不可见」，且重放走 resolve 读回不pending提前返回，**无自愈路径**。注释（service.go:61-62）与实现相悖 | planet-api internal/modules/petshares/service.go:75 + repo.go:121-129（本体亲读） |
+| L2 | ✅ | 跨家庭共享确认 UI：接受/拒绝失败**零反馈**（`respond()` try/finally 无 catch、`void respond()`），无稳定幂等键（api 每次新生成），无成功反馈；与 L1 叠加即「点了没反应」 | APP src/features/care-requests/pet-share-requests.tsx:38-53,72-73（本体亲读；盲审确认全库 216 处 fire-and-forget 中唯一无反馈点） |
+
+### P1（必修）
+
+| # | 状态 | 缺陷 | 证据 |
+|---|---|---|---|
+| L3 | ✅ | 多人家庭 caregiver 对未认领事项点主按钮「完成」：前端 canExecute 放行（`!assigned_to_user_id ||`），后端要求 caregiver=被指派或在计划责任链（否则 ErrRoleForbidden），映射文案「只有家庭管理员可以执行这个操作。」完全误导——**产品核心场景（多人共养）首次操作即撞墙**。APP-PAGE-MAP 本有约定「多成员卡默认突出我来做」但实现未执行 | 前端 today/screen.tsx:591-598 + cards.tsx:411-439；后端 tasks/service.go:1828-1842；errors.ts:16（三处本体亲读） |
+| L4 | ✅ | petshares 模块幂等键形同虚设：HTTP 层强制 8-200 字符键，service 收下后全程不用（无 Claim/Bind）；decline/cancel 审计在事务外且吞错（`_ = platformaudit.Record`） | petshares/service.go:63/93/113/106/132（盲审证实+本体亲读 service 结构） |
+
+### P2（本轮修）
+
+| # | 状态 | 缺陷 | 证据 |
+|---|---|---|---|
+| L5 | ✅ | RespondBatch 缺成员/宠物资格复核：被移出成员仍可接受批量交班→occurrence 指派给无权限者且 accepted 请求永不过期，**该照护项永久卡死** | carecoord/service.go:593-640 无 guard（本体亲读段落+盲审证实） |
+| L6 | ✔ | 暂停计划恢复后回看暂停期日期会补生成 occurrence 并烂成 missed，污染完成率，违反 PRODUCT.md:161 承诺 | tasks/service.go:1198 物化只看 plan status，无暂停区间记录 |
+| L7 | ✅ | 宠物移出家庭时 cancelFamilyPetOpenOccurrences 只置 status='cancelled' 不置 deleted_at→占死 (rule,date) 唯一槽，重新共享后 ~30 天待办静默消失（索引是 `WHERE deleted_at IS NULL` 部分索引，补列即可解） | pets/service.go:1026-1047（本体亲读）+ 0001:645 索引定义 |
+| L8 | ✔ | 停药后前端不失效 care-plans：后端停药会归档挂药计划+取消未完成项，前端 invalidateAfterMedicationChange 不含 ['care-plans'] 也不含 today→停药后照护页 30s 内仍显示计划进行中 | APP src/core/foundation/cache.ts:117-126 |
+| L9 | ✔ | ['family-pets',familyId] 裸键逃逸所有失效器：家庭详情宠物列表与全局 ['pets'] 双缓存不同步（新建宠物/接受共享/转移后 >30s 陈旧） | families/detail-screen.tsx:73-77 + cache.ts:166-181 |
+| L10 | ✅ | 撤销 7 天窗：30 天历史视图仍显示撤销按钮，超窗报 UNDO_WINDOW_EXPIRED **无映射**→「内容刚发生变化，请刷新后重试」误导死循环 | today/screen.tsx:564-573 + errors.ts 无此码（本体亲读 errors.ts 全文） |
+| L11 | ✔ | §4.3 状态词漂移：canonical 词表（等待回应/已确认负责/正在同步…）与实际文案（等你回应/由你负责/已接手/未能接手…）全站不一致 | care-requests/copy.ts:35-41,91,105-126 + today/cards.tsx:65-79 + timeline/screen.tsx:494-498 |
+| L12 | ✔ | 离线行为断层：complete/skip/undo/Today claim 有队列，而排程四动作/care-risk claim/timeline 编辑删除无队列——同屏两套离线行为（有可见报错，不违 §3.2，但违背预期）。本轮先做「需联网」诚实文案，队列化待裁决 | schedule-adjustment.tsx:76-83、care-risk-banner.tsx:54-84、foundation/writers.ts:65-77 |
+| L13 | ✔ | 错误码缺映射一批：UNDO_WINDOW_EXPIRED、FAMILY_NOT_EMPTY、CARE_ASSIGNMENT_OWNER_REQUIRED、AUTO_EVENT_IMMUTABLE、IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE（后三个低频） | errors.ts:12-44 逐码比对（本体亲读） |
+| L14 | ✔ | care_card 分享是创建时刻冻结快照却以「今日照护」呈现：7 天寄养链接第 3 天打开仍显示第 1 天清单，接收方照过期清单执行 | sharing/service.go:133-152,381 + public-share-screen.tsx:217-241 |
+
+### P3（本轮顺手修，成本极低）
+
+| # | 状态 | 缺陷 |
+|---|---|---|
+| L15 | ✔ | transfers cancel 读幂等键未 TrimSpace（带空格键绑定失配→409 而非重放）transfers/http.go:94 |
+| L16 | ✔ | MaterializeTask 退化 CASE（两分支相同）掩盖 L7 语义 tasks/repo.go:467 |
+| L17 | ✔ | pet-share 不拦归档宠（与 share-link「归档禁新增」政策不一致）pets/service.go:442 mutable=false |
+| L18 | ✔ | families.Join 末尾 ErrAlreadyMember 死防御 service.go:414-418 |
+| L19 | ✔ | 「我发出的」首次加载无 loading 指示 panel.tsx:1001 |
+| L20 | ✔ | 离线「标记跳过」后弹窗不关 today/screen.tsx:1253-1272 |
+| L21 | ✔ | VERSION_CONFLICT 只有文案无就地刷新；编辑失败后幂等键不轮换→改内容重存命中键复用 409 edit-screen.tsx:118-151 |
+| L22 | ✔ | 计划编辑双写（标题+循环）第二步失败文案未说明部分已保存 care-section.tsx:1008-1047 |
+| L23 | ✔ | care-request 接受/拒绝后 ['care-responsibility'] 不失效（≤30s 陈旧）cache.ts:21-40 |
+| L24 | ✔ | 后端测试盲区：GET /me/activation-summary、GET /care-requests/sent 无集成测试 |
+| L25 | ✔ | ROLE_FORBIDDEN message 恒 "owner role required"，在 viewer 写拦截等场景为零信息（L3 修复后剩余场景影响小） |
+
+## 二、证伪销号
+
+| 原编号 | 内容 | 证据 |
+|---|---|---|
+| ❌ | 「medications 删除 onConfirm 未处理 rejection」 | ConfirmDialog.confirm() try/catch 完整（confirm-dialog.tsx:45-53） |
+| ❌ | 「notification-prefs PUT 无键+单字段 body 有重放风险」 | 后端 PUT 为合并语义（nil 不改）+savingKind 串行，重放安全（notify/http.go:69-89） |
+| ❌ | 「DELETE /care-plans 双写 archived+deleted_at 有复活风险」 | 双写版本 Repo.DeleteItem 全库无调用者（死代码）；live 路径只写 status；读路径全过滤 deleted_at |
+| ❌ | 「pet_share_requests pending 唯一索引挡二次发起」 | 部分索引仅 pending，declined/cancelled 离开索引，可再次发起 |
+| ❌ | 「配额检查与写入可能不同锁」 | families/pets/unarchive/transfer 全部 advisory 锁内同事务（逐路径核对） |
+| ❌ | 「careRequests.seen 静默失败属缺陷」 | 已读回执天然幂等，失败下次 effect 自愈，有注释理由，留痕豁免 |
+| ❌ | 「J1 主闭环字段/时区/幂等有错配」 | 逐跳核对完全对齐（含 weekly ISO、time_of_day 三态、occurrence_ids 空语义） |
+
+## 三、豁免留痕（有理由接受，不改）
+
+1. GET /shares/:token 读路径 UPDATE view_count：单行自增+IP 限流，注释明示冗余计数容忍丢失——接受。
+2. 通知 outbox at-most-once 崩溃窗口：领域事务不受影响，仅推送延迟，设计选择有注释——接受。
+3. 幂等键 ref Map 内存性：会话内防线+服务端业务幂等兜底——已知取舍。
+4. push token 注册失败无自动重试：设置页已有登记状态+手动重试——接受。
+5. B10「服务未配置」三态码混乱、care_plans 死枚举 completed：低价值清理，下轮。
+
+## 四、盲审整体结论（存档）
+
+- 后端：状态机纪律普遍很高（行锁+CAS+partial 唯一+同事务幂等四件套），权限抽查无越权；**petshares 是唯一没跟上纪律的模块**（L1/L4），外加四处取消/恢复语义各自为政（L6/L7）。
+- 前端：错误处理纪律高于常见水准（215/216 fire-and-forget 有反馈），**系统性风险在失效图与后端联动语义漂移**（L8/L9/L23），mock 型 e2e 测不出这类。
+- 端到端：单人主闭环全链路对齐无错；**多人场景第一堵墙=L3**；误导性文案集中在错误码映射缺口（L10/L13）。
+
+## 五、修复记录（2026-09-17 契约收口专项）
+
+四张派工单存档：~/.zcode/tasks/2026-09-17-app-contract-closeout-WO1-backend.md（后端主修）、…-WO2-frontend.md（前端主修）、WO3（收尾）、WO4a/WO4b（评审回炉）。
+
+| # | 修复 | 验证证据 | 复审 |
+|---|---|---|---|
+| L1+L4 | petshares 全模块重写：状态迁移/ACL/审计/幂等全同事务，审计错误传播，读回路径也 bind | TestPetShareResolutionIsAtomicAndIdempotent + 全量 go test 绿 | 后端 code-reviewer PASS（两轮） |
+| L2 | pet-share UI：catch+toast、稳定幂等键、成功反馈、失效面补齐 | 新 e2e（失败 toast+同键重放）双端绿 | 前端 code-reviewer PASS |
+| L3 | 后端新码 CARE_OCCURRENCE_ASSIGNMENT_REQUIRED（拦截移到 replay 后）；前端 needsClaim 主按钮=我来做 + 码映射 | TestCaregiverUnassignedCompletionRequiresClaim + 新 e2e（主按钮=我来做） | 双侧 PASS |
+| L5 | RespondBatch 逐项资格复核（accept+decline 同口径，失格→not_actionable/eligibility_lost） | TestRespondBatchViewerLosesEligibility / DeclineRechecksEligibility | 后端 PASS |
+| L6 | 暂停收口/恢复重开规则（版本化，复用 change_rule 机制）+ 修复评审发现的「暂停→归档→恢复死计划」 | TestPauseRestoreLeavesNoPhantomOccurrences / PauseArchiveRestoreRegeneratesToday / RestoreDoesNotReviveNaturallyEndedPlan | 后端 PASS（RuleClosedByPause 审计标记判定评估为可接受，保守失配方向） |
+| L7+同类 | 家庭移出/宠物删除两条取消路径均补 deleted_at 释放唯一槽 | TestPetRemovalReleasesOccurrenceSlot / PetDeleteRestoreReleasesOccurrenceSlot | 后端 PASS（消费方过滤全核） |
+| L8/L9/L23 | 前端失效图补齐（care-plans/today/family-pets/care-responsibility） | cache.ts 契约检查 + e2e | 前端 PASS |
+| L10 | canUndo 7 天窗（done_at 口径）+权限收紧+UNDO_WINDOW_EXPIRED 映射 | 新 e2e（超 7 天无撤销按钮） | 前端 PASS |
+| L11 | 状态词对齐 §4.3（copy/panel/toast/batch/today 共 20+ 处） | grep 清零 + e2e 断言同步 | 前端 PASS |
+| L12 | 无队列动作的「需联网」诚实文案（ABORTED 不误报） | typecheck/lint | 前端 PASS |
+| L13 | errors.ts +6 码映射 | 契约 61→64 PASS | 前端 PASS |
+| L19-L22 | sent loading/离线跳过关窗/指纹幂等键+字段级合并/部分保存文案 | e2e 114/114；字段级合并经定向复审逐字段推演通过 | 前端 PASS（P1 双快照方案） |
+| L15-L18 | transfers trim/CASE 清理/pet-share 拦归档/死分支删除 | go test 绿 | 后端 PASS |
+| L24 | activation-summary/sent 集成测试补齐 | TestMeActivationSummary / TestCareRequestsSent | 后端 PASS |
+| 定时炸弹 | TestShareLifecycle 等硬编码 2026 日期改相对时间 | 复跑 PASS | — |
+| 契约 FAIL×4 | 44pt/maxLength/来源句/脚本对齐 chips 常驻裁决 | verify:frontend 64/64 PASS | — |
+
+**评审引入问题的回炉记录**：前端 P1（拉取最新后全量覆盖并发编辑）→ 双快照字段级合并修复并复审通过；后端 P2（暂停→归档→恢复死计划）→ RuleClosedByPause 修复并复审通过。
+
+## 六、遗留（下轮，均 P3 或需裁决）
+
+1. **L14 care_card「今日照护」vs 冻结快照语义** —— 需产品裁决：改 UI 呈现（标注快照日期）或改后端（实时渲染）。建议前者。
+2. 排程四动作/care-risk claim/timeline 改删的离线队列化 —— 设计决策待裁决（当前为诚实文案）。
+3. petshares Cancel 404/403 口径统一、ResolvedAt 死字段、ErrAlreadyMember 孤儿、B10 错误码三态混乱、care_plans 死枚举 completed（需迁移）。
+4. edit-screen base 侧 name/med_decision_maker 未 trim（带空格存量数据下假脏）；errors.ts CARE_REQUEST_RESPONSE_REQUIRED 文案含「等你回应」未入统一词表。
+5. e2e 全 mock 层面缺一条真实后端冒烟（建议下轮加 smoke profile）。
+6. walk-through 脚本 diff 含本轮前的未提交改动，归属待 founder 提交时厘清。

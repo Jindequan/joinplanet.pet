@@ -29,9 +29,10 @@ get() {
   curl "${args[@]}"
 }
 delete() {
-  local path="$1" token="$2" body="${3:-}"
+  local path="$1" token="$2" body="${3:-}" idempotency="${4:-}"
   local args=(-sS -X DELETE "$BASE$path" -H "Authorization: Bearer $token")
   [ -n "$body" ] && args+=(-H "$JSON" -d "$body")
+  [ -n "$idempotency" ] && args+=(-H "Idempotency-Key: $idempotency")
   curl "${args[@]}"
 }
 
@@ -65,26 +66,52 @@ CODE_C=$(jq -r '.dev_code' <<<"$R")
 R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_C\",\"code\":\"$CODE_C\"}")
 TOKEN_C=$(jq -r '.token' <<<"$R")
 USER_C=$(jq -r '.user.id' <<<"$(get /api/v1/me "$TOKEN_C")")
-R=$(post "/api/v1/pets/$PET/access-grants" "$TOKEN" "{\"user_id\":\"$USER_C\",\"role\":\"editor\"}")
+R=$(post "/api/v1/pets/$PET/access-grants" "$TOKEN" "{\"user_id\":\"$USER_C\",\"role\":\"editor\"}" "$(key)")
 GRANT=$(jq -r '.grant.id' <<<"$R")
 expect "directly granted user sees the Pet" ".pets | any(.id == \"$PET\" and .access_role == \"editor\")" "$(get /api/v1/pets "$TOKEN_C")"
 R=$(post /api/v1/auth/request-code "" "{\"email\":\"$EMAIL_B\"}")
 CODE_B=$(jq -r '.dev_code' <<<"$R")
 R=$(post /api/v1/auth/verify-code "" "{\"email\":\"$EMAIL_B\",\"code\":\"$CODE_B\"}")
 TOKEN_B=$(jq -r '.token' <<<"$R")
-R=$(post /api/v1/families/join "$TOKEN_B" "{\"code\":\"$INVITE\"}")
+USER_B=$(jq -r '.user.id' <<<"$R")
+R=$(post /api/v1/families/join "$TOKEN_B" "{\"code\":\"$INVITE\"}" "$(key)")
 expect "second user joins Family" ".family.id == \"$CIRCLE\"" "$R"
 expect "second user sees the shared Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/families/$CIRCLE/pets" "$TOKEN_B")"
+ROLE_VIEWER_KEY="$(key)"
+change_role() {
+  local role="$1" key_value="$2"
+  curl -sS -X PATCH "$BASE/api/v1/families/$CIRCLE/members/$USER_B" -H "$JSON" -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: $key_value" -d "{\"role\":\"$role\"}"
+}
+change_role viewer "$ROLE_VIEWER_KEY" >/dev/null
+R=$(change_role viewer "$ROLE_VIEWER_KEY")
+[ -z "$R" ] && ok "repeating member role change with the same key is safe" || fail "repeating member role change with the same key"
+ROLE_CAREGIVER_KEY="$(key)"
+change_role caregiver "$ROLE_CAREGIVER_KEY" >/dev/null
 R=$(post /api/v1/families "$TOKEN_B" '{"name":"Second Walkthrough Family","timezone":"Asia/Shanghai"}' "$(key)")
 expect "create second Family for Pet sharing" '.family.id and .invite_code' "$R"
 CIRCLE_2=$(jq -r '.family.id' <<<"$R")
 INVITE_2=$(jq -r '.invite_code' <<<"$R")
-R=$(post /api/v1/families/join "$TOKEN" "{\"code\":\"$INVITE_2\"}")
+R=$(post /api/v1/families/join "$TOKEN" "{\"code\":\"$INVITE_2\"}" "$(key)")
 expect "Pet owner joins the second Family" ".family.id == \"$CIRCLE_2\"" "$R"
-R=$(post "/api/v1/pets/$PET/families" "$TOKEN" "{\"family_id\":\"$CIRCLE_2\"}")
+R=$(post "/api/v1/pets/$PET/families" "$TOKEN" "{\"family_id\":\"$CIRCLE_2\"}" "$(key)")
 expect "share Pet with another Family" ".family_id == \"$CIRCLE_2\"" "$R"
+# 跨家庭共享走确认制（founder 裁决 2026-09-17）：目标家庭 owner 接受后
+# ACL 边才存在，宠物才会出现在目标家庭列表。
+R=$(get "/api/v1/families/$CIRCLE_2/pet-share-requests?direction=incoming" "$TOKEN_B")
+expect "share request waits for confirmation" ".share_requests | any(.pet_id == \"$PET\" and .state == \"pending\")" "$R"
+SHARE_REQUEST=$(jq -r ".share_requests[] | select(.pet_id == \"$PET\" and .state == \"pending\") | .id" <<<"$R" | head -n1)
+R=$(post "/api/v1/pet-share-requests/$SHARE_REQUEST/accept" "$TOKEN_B" '{}' "$(key)")
+expect "target owner accepts share request" '.share_request.state == "accepted"' "$R"
 expect "shared Family sees the Pet" ".pets | any(.id == \"$PET\")" "$(get "/api/v1/families/$CIRCLE_2/pets" "$TOKEN_B")"
-delete "/api/v1/pets/$PET/families/$CIRCLE_2" "$TOKEN"
+REMOVE_MEMBER_KEY="$(key)"
+delete "/api/v1/families/$CIRCLE_2/members/$USER_A" "$TOKEN_B" '' "$REMOVE_MEMBER_KEY"
+R=$(delete "/api/v1/families/$CIRCLE_2/members/$USER_A" "$TOKEN_B" '' "$REMOVE_MEMBER_KEY")
+[ -z "$R" ] && ok "repeating member removal with the same key is safe" || fail "repeating member removal with the same key"
+expect "removed member leaves shared Family" ".members | all(.user_id != \"$USER_A\")" "$(get "/api/v1/families/$CIRCLE_2" "$TOKEN_B")"
+UNSHARE_KEY="$(key)"
+delete "/api/v1/pets/$PET/families/$CIRCLE_2" "$TOKEN" '' "$UNSHARE_KEY"
+R=$(delete "/api/v1/pets/$PET/families/$CIRCLE_2" "$TOKEN" '' "$UNSHARE_KEY")
+[ -z "$R" ] && ok "repeating shared Family removal with the same key is safe" || fail "repeating shared Family removal with the same key"
 expect "remove shared Family access" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/families/$CIRCLE_2/pets" "$TOKEN_B")"
 
 echo "== F3 Care plan、Today、历史 =="
@@ -92,13 +119,16 @@ R=$(post "/api/v1/pets/$PET/care-plans" "$TOKEN" '{"type":"medication","title":"
 expect "create care plan" '.care_plan.id and .care_rule.id and .task.id' "$R"
 TASK=$(jq -r '.task.id' <<<"$R")
 CARE_ITEM=$(jq -r '.care_plan.id' <<<"$R")
-R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"role":"helper"}')
-expect "assign a helper to the care plan" ".assignment.user_id == \"$USER_C\" and .assignment.role == \"helper\"" "$R"
-expect "care assignments list includes the helper" ".assignments | any(.user_id == \"$USER_C\" and .role == \"helper\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
-R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_C" -H "$JSON" -H "Authorization: Bearer $TOKEN_B" -d '{"role":"helper"}')
+R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_B" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"role":"helper"}')
+expect "assign a helper to the care plan" ".assignment.user_id == \"$USER_B\" and .assignment.role == \"helper\"" "$R"
+expect "care assignments list includes the helper" ".assignments | any(.user_id == \"$USER_B\" and .role == \"helper\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
+R=$(curl -sS -X PUT "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_A" -H "$JSON" -H "Authorization: Bearer $TOKEN_B" -d '{"role":"helper"}')
 expect "non-owner cannot change care assignments" '.error.code == "ROLE_FORBIDDEN"' "$R"
-delete "/api/v1/care-plans/$CARE_ITEM/assignments/$USER_C" "$TOKEN"
-expect "remove helper from the care plan" ".assignments | all(.user_id != \"$USER_C\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
+REMOVE_ASSIGNMENT_KEY="$(key)"
+delete "/api/v1/care-plans/$CARE_ITEM/assignments/$USER_B" "$TOKEN" '' "$REMOVE_ASSIGNMENT_KEY"
+R=$(delete "/api/v1/care-plans/$CARE_ITEM/assignments/$USER_B" "$TOKEN" '' "$REMOVE_ASSIGNMENT_KEY")
+[ -z "$R" ] && ok "repeating assignment removal with the same key is safe" || fail "repeating assignment removal with the same key"
+expect "remove helper from the care plan" ".assignments | all(.user_id != \"$USER_B\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
 R=$(curl -sS -w $'\n%{http_code}' -X DELETE "$BASE/api/v1/care-plans/$CARE_ITEM/assignments/$USER_A" -H "Authorization: Bearer $TOKEN")
 OWNER_DELETE_STATUS="${R##*$'\n'}"
 OWNER_DELETE_BODY="${R%$'\n'*}"
@@ -113,15 +143,15 @@ TODAY=$(get "/api/v1/families/$CIRCLE/today" "$TOKEN")
 expect "Today contains the care task" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$TODAY"
 TASK=$(jq -r '.pets[].items[] | select(.task.care_plan_id == "'"$CARE_ITEM"'") | .task.id' <<<"$TODAY")
 expect "directly granted user sees Pet Today" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$(get "/api/v1/today?pet_id=$PET" "$TOKEN_C")"
-R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"done"}')
+R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"done"}' "$(key)")
 expect "complete Today task" '.log.status == "completed" or .log.status == "done"' "$R"
 LOG=$(jq -r '.log.id' <<<"$R")
-R=$(post "/api/v1/task-logs/$LOG/undo" "$TOKEN" '')
+R=$(post "/api/v1/task-logs/$LOG/undo" "$TOKEN" '' "$(key)")
 [ -z "$R" ] && ok "undo task completion" || expect "undo task completion" 'true' "$R"
-R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"skipped"}')
+R=$(post "/api/v1/care-tasks/$TASK/complete" "$TOKEN" '{"status":"skipped"}' "$(key)")
 expect "skip Today task" '.log.status == "skipped"' "$R"
 SKIP_LOG=$(jq -r '.log.id' <<<"$R")
-R=$(post "/api/v1/task-logs/$SKIP_LOG/undo" "$TOKEN" '')
+R=$(post "/api/v1/task-logs/$SKIP_LOG/undo" "$TOKEN" '' "$(key)")
 [ -z "$R" ] && ok "undo skipped task" || expect "undo skipped task" 'true' "$R"
 R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN" '{"type":"symptom","occurred_at":"2026-08-21T08:00:00Z","payload":{"text":"Less active after breakfast"}}' "$(key)")
 expect "record timeline symptom" '.event.type == "symptom"' "$R"
@@ -138,12 +168,16 @@ expect "start medication" '.medication.id and .medication.ended_on == null' "$R"
 MED=$(jq -r '.medication.id' <<<"$R")
 expect "started medication appears in the Pet list" ".medications | any(.id == \"$MED\" and .ended_on == null)" "$(get "/api/v1/pets/$PET/medications" "$TOKEN")"
 expect "medication start is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"started\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
-R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+STOP_KEY="$(key)"
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '' "$STOP_KEY")
 expect "stop medication" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}$\"))" "$R"
-R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '')
+R=$(post "/api/v1/medications/$MED/stop" "$TOKEN" '' "$STOP_KEY")
 expect "repeating stop is idempotent" ".medication.id == \"$MED\" and (.medication.ended_on | strings | test(\"^[0-9]{4}-[0-9]{2}-[0-9]{2}\"))" "$R"
 expect "medication stop is recorded automatically" ".events | any(.type == \"medication\" and .source == \"auto:med\" and .payload.action == \"ended\" and .payload.medication_id == \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
-delete "/api/v1/medications/$MED" "$TOKEN"
+DELETE_MED_KEY="$(key)"
+delete "/api/v1/medications/$MED" "$TOKEN" '' "$DELETE_MED_KEY"
+R=$(delete "/api/v1/medications/$MED" "$TOKEN" '' "$DELETE_MED_KEY")
+[ -z "$R" ] && ok "repeating medication delete with the same key is safe" || fail "repeating medication delete with the same key"
 expect "deleted medication removes its automatic history" ".events | all(.payload.medication_id != \"$MED\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
 
 echo "== F4 分享、撤销、导出 =="
@@ -153,16 +187,33 @@ SHARE=$(jq -r '.token' <<<"$R")
 expect "anonymous share view" '.kind == "care_card"' "$(get "/api/v1/shares/$SHARE" "")"
 SHARE_ID=$(jq -r '.share.id' <<<"$R")
 expect "share count increments" ".shares | any(.id == \"$SHARE_ID\" and .view_count == 1)" "$(get "/api/v1/pets/$PET/shares" "$TOKEN")"
-delete "/api/v1/shares/$SHARE_ID" "$TOKEN"
+REVOKE_KEY="$(key)"
+delete "/api/v1/shares/$SHARE_ID" "$TOKEN" '' "$REVOKE_KEY"
+R=$(delete "/api/v1/shares/$SHARE_ID" "$TOKEN" '' "$REVOKE_KEY")
+[ -z "$R" ] && ok "repeating share revoke with the same key is safe" || fail "repeating share revoke with the same key"
 R=$(curl -sS "$BASE/api/v1/shares/$SHARE")
 expect "revoked share returns SHARE_GONE" '.error.code == "SHARE_GONE"' "$R"
 expect "Pet export includes timeline" '.timeline' "$(get "/api/v1/pets/$PET/export" "$TOKEN")"
-delete "/api/v1/pets/$PET/access-grants/$GRANT" "$TOKEN"
+REVOKE_ACCESS_KEY="$(key)"
+delete "/api/v1/pets/$PET/access-grants/$GRANT" "$TOKEN" '' "$REVOKE_ACCESS_KEY"
+R=$(delete "/api/v1/pets/$PET/access-grants/$GRANT" "$TOKEN" '' "$REVOKE_ACCESS_KEY")
+[ -z "$R" ] && ok "repeating access revoke with the same key is safe" || fail "repeating access revoke with the same key"
 expect "revoking direct access removes the Pet" ".pets | all(.id != \"$PET\")" "$(get /api/v1/pets "$TOKEN_C")"
 
 echo "== F5 删除保护 =="
 delete "/api/v1/pets/$PET" "$TOKEN" "{\"confirm\":\"$PET\"}"
 expect "deleted Pet disappears from Family" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/families/$CIRCLE/pets" "$TOKEN")"
+
+echo "== 清理测试账号 =="
+delete "/api/v1/account" "$TOKEN" "{\"confirm\":\"$EMAIL\"}" >/dev/null
+delete "/api/v1/account" "$TOKEN_B" "{\"confirm\":\"$EMAIL_B\"}" >/dev/null
+delete "/api/v1/account" "$TOKEN_C" "{\"confirm\":\"$EMAIL_C\"}" >/dev/null
+for pair in "$TOKEN:$EMAIL" "$TOKEN_B:$EMAIL_B" "$TOKEN_C:$EMAIL_C"; do
+  old_token="${pair%%:*}"
+  status=$(curl -sS -w '%{http_code}' -o /dev/null "$BASE/api/v1/me" -H "Authorization: Bearer $old_token")
+  [ "$status" = 401 ] || fail "deleted account token is rejected"
+done
+ok "test accounts are deleted and old tokens return 401"
 
 echo "== 汇总 =="
 echo "PASS=$PASS FAIL=$FAIL"

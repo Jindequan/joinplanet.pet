@@ -23,7 +23,7 @@
 | 动作 | 端点 | 数据变更 | 幂等 | 离线 | 成功所见 | 失败/逆向 |
 |---|---|---|---|---|---|---|
 | 完成/跳过 | POST /care-tasks/:id/complete | occurrence→completed/skipped + pet_events(auto,dedupe) + 关联 open request 取消 | 必需 | 队列（pending-today） | 权威回读后清单更新+沉底+toast | caregiver 未认领→403 CARE_OCCURRENCE_ASSIGNMENT_REQUIRED（UI 主按钮切换为「我来做」）；重放语义在指派移除后仍成立 |
-| 撤销 | POST /task-logs/:id/undo | occurrence→pending + pet_events(undone) | 必需 | 队列 | 回到待处理 | >7 天：后端 409 UNDO_WINDOW_EXPIRED（前端按 done_at 预藏按钮）；非完成者非 owner 不显示 |
+| 撤销 | POST /task-logs/:id/undo | occurrence→pending + **撤回该次 care_task_completed（软删，含 occurred_at 精确匹配）** + pet_events(undone) | 必需 | 队列 | 回到待处理 | >7 天：后端 409 UNDO_WINDOW_EXPIRED（前端按 done_at 预藏按钮）；非完成者非 owner 不显示；完成→撤销→再完成时只撤回被撤销的那一次 |
 | 我来做 | POST …/care-occurrences/:id/claim | occurrence.assigned_to=me | 必需 | 队列 | 责任条=已确认负责 | 已指派他人 409 ASSIGNED |
 | 排程调整/临时/替代 | POST /care-schedule/actions | overrides + occurrence 增改 | 必需 | 无队列（文案明示需联网） | Today 回读 | 过去≤7天/未来≤366 天外 400 |
 | 跳过弹窗两选项 | complete(skipped) / actions(skip,this) | 见上 | — | 有队列 / 无队列 | 弹窗关闭 | 离线时文案区分两种能力 |
@@ -45,6 +45,18 @@
 | 共享确认 | POST /pet-share-requests/:id/accept·decline·cancel | 目标 owner/发起人；**全同事务+审计传播** | 必需（读回也 bind） |
 | 停药 | POST /medications/:id/stop | 家庭时区当日；联动归档挂药计划+取消开放项 | 必需 |
 | 时间线写/改/删 | POST/PATCH/DELETE …/timeline… | auto 事件不可改删；weight 联动体重 | 必需（新建进离线队列；改删无队列） |
+
+**照片（2026-09-18 R2 化）**：`POST /pets/:id/photo-upload` 签发直传 URL（需该宠物写权限；返回 `key` / `thumb_key` / `upload_url` / `thumb_upload_url`，15 分钟有效）；客户端压缩后（长边 2048、质量 0.82 + 480 缩略图）直传 R2，再以 `{photo:{key,thumb_key,width,height,bytes,mime},caption}` 建事件。服务端写入前校验 ① 对象键属于该宠物目录 ② 对象真实存在（Stat），缺一即拒绝——不存在「有记录没照片」。读取：事件 DTO 附带 `photo_url` / `photo_thumb_url`（私有桶签名，1 小时）；公开分享快照剥离 `photo` 引用与 `photo_data`。未配置存储时新形态返回 503，旧内联形态仅迁移期可读。**客户端侧已于 2026-09-19 落地（M5 完成）**：`APP/src/core/media/photo-upload.ts`（压缩→领票→双 PUT→引用）+ 两个 composer 提交时上传（失败可重试不丢照片；离线队列要求引用先行）+ 事件卡优先 `photo_thumb_url`；本地真栈（本地 API + 真实 R2）端到端 8/8 通过。
+
+**身份与时间口径（2026-09-18 定稿，真实数据逐屏核对后固化）**：
+
+- **登录方式的唯一出处是服务端**（2026-09-18 裁决）：客户端登录页必须先读 `GET /api/v1/auth/methods`，只渲染 `enabled=true` 的方式。生产只开 Apple；Web 端没有 Apple 能力时给"需要 iPhone 客户端"的诚实说明与下一步，**不摆任何点了会失败的按钮**。邮件端点关闭时返回 410 `EMAIL_LOGIN_DISABLED`（不是 401/404），客户端据此提示"邮箱登录已停用，请改用 Apple 登录"。客户端在问不到服务端时按环境默认（dev 显示邮件登录、生产显示可重试错误态）。
+- **绝不把邮箱/账号串当人名**：接口在缺显示名时返回空串（`COALESCE(NULLIF(display_name,''),'')`），不再回退邮箱；客户端统一经 `memberName()` 兜底为「一位家庭成员」。**本人一律显示「你」**（按 user_id 判定，不是按名字字符串）。
+- **时间显示取实际到点时间 `due_at`**（按家庭时区格式化，`core/presentation/task-time.ts::taskTimeLabel`），不是规则里的 `time_of_day`；「调整这一次」后两者会分叉，只显示规则时间就是错的信息。
+- **逾期是一等状态**：记录/今天页把逾期项单独成段（「已逾期」+ 数量），卡片带强调条与**逾期时长**（`taskOverdueText`），不与未来事项混列。
+- **入站排程严格、读库宽松**：请求体里 `schedule` 出现未知字段一律 400（典型误用：把时间写进 `schedule.time` 会静默落成 00:00）；数据库读路径必须宽松，历史行多字段不得把接口打成 400（2026-09-18 实测踩过：`/me/activation-summary` 500→整站进不去）。
+
+**记录投影（2026-09-18 founder 裁决：记录展示事实，管理类默认不展示）**：`GET /timeline` 与 `GET /pets/:id/timeline` 支持 `scope=facts`（默认，白名单 FactTypes：note/photo/symptom/weight/vet_visit/vaccine/deworm/medication/care_task_completed）与 `scope=all`（含管理类 transfer / care_task_undone）；非法 scope 返回 400。类型过滤在 SQL 内完成（LIMIT 必须作用在可见行上，否则分页短页）。分享摘要 `ListForShare` 与记录页同口径。白名单新增事实类型时，必须同步本表与 `docs/PRODUCT.md` §4.4。
 | 家庭治理 | PATCH/DELETE/leave/transfer/restore… | 删家庭前置 409 FAMILY_NOT_EMPTY；角色改 viewer 联动收束照护 | 必需/可选 |
 
 ### 2.4 分享/导出/账户
@@ -76,7 +88,7 @@
 | 建宠、家庭治理、转移、分享创建 | ✓（对应 owner） | ✗ | ✗ |
 | 时间线写/用药写 | 编辑权者 | 编辑权者 | ✗ |
 
-## 6. e2e ↔ 契约映射（回归防线；60+3 用例全 mock，双端口跑）
+## 6. e2e ↔ 契约映射（回归防线；57 用例全 mock，桌面 1280 + 移动 390 双视口跑 = 114 次执行，2026-09-18 复核）
 
 认证边界/邀请深链→§2.4；**caregiver 主按钮=我来做**→§5；**pet-share 失败 toast+同键重放**→§2.3 共享确认；**超 7 天无撤销按钮**→§2.1 撤销；权威回读系列（档案/用药/归档/治理/时间线/Today/请求/值班）→§4 失效图；viewer 边界系列→§5；离线队列系列→§2.1/2.2 离线列；尾斜杠/能力接口→运行时配置。真实后端契约防线=planet-api 集成测试（含本轮 defect_closeout_test.go 十一项）+ api-walkthrough.sh（62 步，含确认制）。
 

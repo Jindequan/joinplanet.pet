@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>PLANET - Today</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#fbf9f8",
+                    "tertiary": "#586062",
+                    "outline": "#6f7a74",
+                    "surface-bright": "#fbf9f8",
+                    "on-secondary-fixed": "#241a00",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#efedec",
+                    "primary-fixed-dim": "#82d7ba",
+                    "secondary": "#745b00",
+                    "on-tertiary-container": "#3d4446",
+                    "surface-dim": "#dbdad9",
+                    "surface-tint": "#016b54",
+                    "tertiary-container": "#aab1b3",
+                    "surface-container-highest": "#e4e2e1",
+                    "on-secondary": "#ffffff",
+                    "on-background": "#1b1c1b",
+                    "on-primary-fixed": "#002117",
+                    "surface": "#fbf9f8",
+                    "on-primary-fixed-variant": "#00513f",
+                    "primary-container": "#6bbfa3",
+                    "inverse-on-surface": "#f2f0ef",
+                    "surface-container-high": "#e9e8e7",
+                    "secondary-fixed-dim": "#ebc246",
+                    "tertiary-fixed": "#dde4e6",
+                    "on-secondary-container": "#735a00",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#f5f3f2",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#1b1c1b",
+                    "secondary-container": "#fdd355",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#82d7ba",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed": "#161d1f",
+                    "on-surface-variant": "#3e4944",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#41484a",
+                    "on-primary-container": "#004c3b",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#bec9c3",
+                    "primary": "#016b54",
+                    "tertiary-fixed-dim": "#c1c8ca",
+                    "inverse-surface": "#303030",
+                    "secondary-fixed": "#ffe08b",
+                    "surface-variant": "#e4e2e1",
+                    "on-secondary-fixed-variant": "#584400",
+                    "primary-fixed": "#9ef3d5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "2xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "lg": "24px",
+                    "xl": "40px",
+                    "xs": "4px",
+                    "container-margin": "20px",
+                    "md": "16px",
+                    "sm": "8px",
+                    "unit": "4px",
+                    "gutter": "16px",
+                    "safe": "env(safe-area-inset-bottom)"
+            },
+            "fontFamily": {
+                    "hero-mobile": ["Inter"],
+                    "caption": ["Inter"],
+                    "hero": ["Inter"],
+                    "body": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "section-header": ["Inter"]
+            },
+            "fontSize": {
+                    "hero-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "caption": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "hero": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body": ["15px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "body-lg": ["17px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "section-header": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}]
+            },
+            "animation": {
+                "fade-up": "fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+                "scale-in": "scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards"
+            },
+            "keyframes": {
+                "fadeUp": {
+                    "0%": { opacity: "0", transform: "translateY(20px)" },
+                    "100%": { opacity: "1", transform: "translateY(0)" }
+                },
+                "scaleIn": {
+                    "0%": { opacity: "0", transform: "scale(0.95)" },
+                    "100%": { opacity: "1", transform: "scale(1)" }
+                }
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .glass-panel {
+            background-color: rgba(251, 249, 248, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        .stagger-1 { animation-delay: 100ms; opacity: 0; }
+        .stagger-2 { animation-delay: 200ms; opacity: 0; }
+        .stagger-3 { animation-delay: 300ms; opacity: 0; }
+        .stagger-4 { animation-delay: 400ms; opacity: 0; }
+        
+        .bouncy-press:active {
+            transform: scale(0.96);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Bottom Sheet Transitions */
+        .bottom-sheet {
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #filter-modal-toggle:checked ~ .modal-overlay {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #filter-modal-toggle:checked ~ .modal-overlay .bottom-sheet {
+            transform: translateY(0);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen relative overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- Background Shader -->
+<div class="fixed inset-0 w-full h-full z-[-1] pointer-events-none opacity-40">
+
+</div>
+<!-- Modal Checkbox State -->
+<input class="hidden" id="filter-modal-toggle" type="checkbox"/>
+<!-- Desktop Navigation Cluster (TopAppBar) -->
+<header class="hidden md:flex justify-between items-center w-full px-container-margin py-md fixed top-0 left-0 z-50 bg-background/80 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="font-hero text-hero tracking-tight text-primary dark:text-primary-fixed-dim">PLANET</span>
+</div>
+<nav class="flex gap-lg items-center">
+<a class="text-primary dark:text-primary-fixed-dim font-bold font-label-md text-label-md hover:bg-primary-container/20 px-4 py-2 rounded-full transition-colors active:scale-95 duration-200 ease-out" href="#">Today</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:bg-primary-container/20 px-4 py-2 rounded-full transition-colors active:scale-95 duration-200 ease-out" href="#">Timeline</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:bg-primary-container/20 px-4 py-2 rounded-full transition-colors active:scale-95 duration-200 ease-out" href="#">Pets</a>
+<a class="text-on-surface-variant font-label-md text-label-md hover:bg-primary-container/20 px-4 py-2 rounded-full transition-colors active:scale-95 duration-200 ease-out" href="#">More</a>
+</nav>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">filter_list</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="pt-[env(safe-area-inset-top)] pb-[calc(80px+env(safe-area-inset-bottom))] md:pt-24 px-container-margin max-w-[1200px] mx-auto min-h-screen flex flex-col gap-xl">
+<!-- Header Section -->
+<section class="animate-fade-up stagger-1 mt-6">
+<div class="flex justify-between items-end">
+<div>
+<p class="font-caption text-caption text-on-surface-variant uppercase tracking-wider mb-sm">8月25日 周一</p>
+<h1 class="font-hero-mobile text-hero-mobile md:font-hero md:text-hero text-on-background">今天</h1>
+</div>
+<div class="flex flex-col items-end gap-unit">
+<span class="font-label-md text-label-md text-primary">2/5 完成</span>
+<div class="w-24 h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full w-[40%] transition-all duration-1000 ease-out"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Filter Chips -->
+<section class="animate-fade-up stagger-2 pb-sm">
+<label class="inline-flex items-center gap-xs px-5 py-2 rounded-full font-label-md text-label-md bg-primary-container text-on-primary-container border border-primary bouncy-press shadow-sm cursor-pointer select-none" for="filter-modal-toggle">
+        Milo
+        <span class="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+</label>
+</section>
+<!-- Next Big Thing Card -->
+<section class="animate-fade-up stagger-3">
+<div class="glass-panel rounded-2xl overflow-hidden relative group">
+<div class="h-48 md:h-64 w-full relative">
+<img class="w-full h-full object-cover" data-alt="A close-up, soulful portrait of a beautiful ginger cat (Milo) bathed in soft, warm morning sunlight. The lighting creates a gentle light-mode aesthetic, emphasizing the tactile softness of the cat's fur. The background is a beautifully blurred modern home interior in off-white and subtle sage green tones, evoking a sense of calm, premium care, and emotional connection." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmoU-Eh_nKyQpEnGeXrZl0bcUV7aripUSArfHn4pptbgVw6hLLw0svqAEshdl6pLQ5OYNcMZutMm0gPdqCOFVlqM5yenKbSu5mjZbf-v8Nxfz4bMGNQxLWcFGlKcE8IgSmTDwRToMdQ5bMWwvhcjQad1jqREpAupfJwolapnm22DGhuVbSh2g6xPY1AjL4IzqDsw_YEez7Z0JBbXONgSMsijbielSGRIXk8DWt-FwNJkYjQf8-6aUT"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+<div class="absolute top-md right-md bg-error/90 text-on-error px-3 py-1 rounded-full font-caption text-caption flex items-center gap-unit backdrop-blur-md">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+                        已逾期
+                    </div>
+</div>
+<div class="p-lg flex flex-col gap-md">
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-sm mb-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">medication</span>
+<span class="font-caption text-caption text-on-surface-variant">08:00</span>
+</div>
+<h2 class="font-section-header text-section-header text-on-background">Milo 的用药</h2>
+<p class="font-body text-body text-on-surface-variant mt-sm line-clamp-2">Daily heartworm medication. Mix with a small spoonful of wet food.</p>
+</div>
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-surface flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A small, perfectly circular portrait of a cute ginger cat looking directly at the camera, lit with soft natural light, conveying a sense of health and well-being." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_CtLTLjVxYIb7rhjAb8qJSbxWP6nwgoLT_1JIpJdCHgUHsi9u5NQh1mJsHFWNpLnq57wXhs9bWacNFwCKtPyx6jFMp2PTSXrpjc0VqAXKMxVyNMy4bCQIxzyRWVy_xX9b292XacMTC2K7LalD-7oS8DvisOfq1Nydu6O42OI1ZhmgzybQZMeJbf4DLJf2xmixXycKwc134t2M19MH1g3KDNtWSLGExz40lyyxx2rRelGAI0XHBZx8"/>
+</div>
+</div>
+<div class="flex gap-md mt-sm">
+<button class="flex-1 bg-primary text-on-primary font-label-md text-label-md py-3 rounded-xl bouncy-press flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-[20px]">check</span>
+                            完成
+                        </button>
+<button class="flex-1 bg-surface-container text-on-surface-variant font-label-md text-label-md py-3 rounded-xl bouncy-press hover:bg-surface-container-high transition-colors">
+                            跳过
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Upcoming List -->
+<section class="animate-fade-up stagger-4 pb-lg">
+<h3 class="font-section-header text-section-header text-on-background mb-md">Upcoming</h3>
+<div class="flex flex-col gap-sm">
+<!-- Item 1 -->
+<div class="glass-panel rounded-xl p-md flex items-center gap-md bouncy-press cursor-pointer group">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-surface flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A small, perfectly circular portrait of a fluffy golden retriever puppy panting happily outdoors, bathed in bright, soft sunlight, suggesting an active and joyful lifestyle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCD7KQtt7l0SdaMkBGd4pRGcmzTneIum8J8uzGVgzRwhEUfAihCYM-ITaQ9lInGusWmVrjYWMYvlO7v5ujp1RlEUsDEUZNv2_YgDLF6K7BJqau4psMIpJ1088284OsJaZluOcS_9wH2dVg3vmojHA7n_OZjAWSwMAfjC-PsMwptlTHRqBjZoEPzNnLEx9VyiVUdrBuHYgSoZ1fMVs67ZMy41ig3_56yLDt9l6HJGItxM3ZwjlzsaAgs"/>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-on-background">Luna - Walk</h4>
+<div class="flex items-center gap-unit text-on-surface-variant font-caption text-caption mt-xs">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+                            16:30
+                        </div>
+</div>
+<div class="w-10 h-10 rounded-full bg-secondary-container/30 flex items-center justify-center group-hover:bg-secondary-container/50 transition-colors">
+<span class="material-symbols-outlined text-secondary text-[20px]">directions_walk</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="glass-panel rounded-xl p-md flex items-center gap-md bouncy-press cursor-pointer group">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-surface flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A small, perfectly circular portrait of a cute ginger cat looking directly at the camera, lit with soft natural light, conveying a sense of health and well-being." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlSi-By_x7wt_b6c7GMmODR_hlqTUI8UDo32zNaPCJ4lHbK4acFf4lr3PgHmQd50iL9PJFkGsjUJijF9ealbCgkw5gchxNSo4Clewwxs7NeyqRuPEUshAZwTnsKmuN-xfMKIeu4UJU7J2S4BHI5SzQd3ulSEmby3j_oy6SX53Jw99jRZULyEsaOiIGUyBcB2vE5IlPXAHVMPIKV7XvmMSSQg8filEemGg9__uQ-aOECutLb3OERf9U"/>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-on-background">Milo - Dinner</h4>
+<div class="flex items-center gap-unit text-on-surface-variant font-caption text-caption mt-xs">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+                            18:00
+                        </div>
+</div>
+<div class="w-10 h-10 rounded-full bg-primary-container/30 flex items-center justify-center group-hover:bg-primary-container/50 transition-colors">
+<span class="material-symbols-outlined text-primary text-[20px]">restaurant</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Mobile Bottom Navigation (BottomNavBar) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe pt-2 bg-surface/70 backdrop-blur-2xl shadow-[0_-10px_30px_rgba(0,0,0,0.05)] rounded-t-xl">
+<!-- Active Item -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-container text-on-secondary-container dark:text-on-secondary-container rounded-full px-4 py-1.5 scale-90 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-md text-label-md mt-1">Today</span>
+</a>
+<!-- Inactive Items -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-4 py-1.5 hover:bg-secondary-container/50 dark:hover:bg-secondary-container/30 rounded-full transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-md text-label-md mt-1">Timeline</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-4 py-1.5 hover:bg-secondary-container/50 dark:hover:bg-secondary-container/30 rounded-full transition-colors" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-md text-label-md mt-1">Pets</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-4 py-1.5 hover:bg-secondary-container/50 dark:hover:bg-secondary-container/30 rounded-full transition-colors" href="#">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-label-md text-label-md mt-1">More</span>
+</a>
+</nav>
+<!-- Filter Modal Overlay (Bottom Sheet) -->
+<div class="modal-overlay fixed inset-0 z-[100] opacity-0 pointer-events-none transition-opacity duration-300">
+<label class="absolute inset-0 bg-on-background/40 backdrop-blur-sm cursor-pointer" for="filter-modal-toggle"></label>
+<div class="bottom-sheet absolute bottom-0 left-0 w-full bg-surface rounded-t-3xl shadow-2xl flex flex-col">
+<div class="p-lg pb-[calc(32px+env(safe-area-inset-bottom))]">
+<div class="w-12 h-1.5 bg-outline-variant/40 rounded-full mx-auto mb-6"></div>
+<h3 class="font-section-header text-section-header text-on-background mb-4 px-2">选择视图</h3>
+<div class="flex flex-col gap-2">
+<label class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container transition-colors cursor-pointer" for="filter-modal-toggle">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">apps</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-background">全部</span>
+</div>
+</label>
+<label class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container transition-colors cursor-pointer" for="filter-modal-toggle">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">home</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-background">家庭</span>
+</div>
+</label>
+<label class="flex items-center justify-between p-4 rounded-xl bg-primary-container/20 text-primary cursor-pointer border border-primary-container/30" for="filter-modal-toggle">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_CtLTLjVxYIb7rhjAb8qJSbxWP6nwgoLT_1JIpJdCHgUHsi9u5NQh1mJsHFWNpLnq57wXhs9bWacNFwCKtPyx6jFMp2PTSXrpjc0VqAXKMxVyNMy4bCQIxzyRWVy_xX9b292XacMTC2K7LalD-7oS8DvisOfq1Nydu6O42OI1ZhmgzybQZMeJbf4DLJf2xmixXycKwc134t2M19MH1g3KDNtWSLGExz40lyyxx2rRelGAI0XHBZx8"/>
+</div>
+<span class="font-body-lg text-body-lg font-medium">Milo</span>
+</div>
+<span class="material-symbols-outlined">check</span>
+</label>
+<label class="flex items-center justify-between p-4 rounded-xl hover:bg-surface-container transition-colors cursor-pointer" for="filter-modal-toggle">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCD7KQtt7l0SdaMkBGd4pRGcmzTneIum8J8uzGVgzRwhEUfAihCYM-ITaQ9lInGusWmVrjYWMYvlO7v5ujp1RlEUsDEUZNv2_YgDLF6K7BJqau4psMIpJ1088284OsJaZluOcS_9wH2dVg3vmojHA7n_OZjAWSwMAfjC-PsMwptlTHRqBjZoEPzNnLEx9VyiVUdrBuHYgSoZ1fMVs67ZMy41ig3_56yLDt9l6HJGItxM3ZwjlzsaAgs"/>
+</div>
+<span class="font-body-lg text-body-lg text-on-background">Luna</span>
+</div>
+</label>
+</div>
+</div>
+</div>
+</div>
+</body></html>

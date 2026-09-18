@@ -41,6 +41,7 @@ planet-lemon-webhook
 
 # Independent repos living in this workspace (each has its own .git)
 /mobile/
+/APP/
 /www.joinplanet.pet/
 /planet-api/
 

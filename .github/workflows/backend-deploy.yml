@@ -1,0 +1,51 @@
+name: deploy backend
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: planet-api/go.mod
+          cache: true
+
+      - name: Configure SSH
+        env:
+          PLANET_SSH_PRIVATE_KEY: ${{ secrets.PLANET_SSH_PRIVATE_KEY }}
+          PLANET_SSH_HOST: ${{ secrets.PLANET_SSH_HOST }}
+          PLANET_SSH_KNOWN_HOSTS: ${{ secrets.PLANET_SSH_KNOWN_HOSTS }}
+        run: |
+          test -n "$PLANET_SSH_PRIVATE_KEY"
+          test -n "$PLANET_SSH_HOST"
+          test -n "$PLANET_SSH_KNOWN_HOSTS"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$PLANET_SSH_PRIVATE_KEY" > "$HOME/.ssh/planet-deploy"
+          chmod 600 "$HOME/.ssh/planet-deploy"
+          printf '%s\n' "$PLANET_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          cat > "$HOME/.ssh/config" <<EOF
+          Host $PLANET_SSH_HOST
+            IdentityFile $HOME/.ssh/planet-deploy
+            IdentitiesOnly yes
+          EOF
+          chmod 600 "$HOME/.ssh/config"
+
+      - name: Deploy current backend
+        working-directory: planet-api
+        env:
+          PLANET_SSH_USER: ${{ secrets.PLANET_SSH_USER }}
+          PLANET_SSH_HOST: ${{ secrets.PLANET_SSH_HOST }}
+        run: |
+          test -n "$PLANET_SSH_USER"
+          ./deploy/deploy.sh "$PLANET_SSH_USER@$PLANET_SSH_HOST"
+
+      - name: Verify public production entry points
+        run: ./scripts/production-smoke.sh

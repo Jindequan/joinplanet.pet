@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLANET Design System — 设计规范与开发标准</title>
+    <style>
+        /* ============================================
+           PLANET DESIGN SYSTEM
+           版本: 1.0.0
+           最后更新: 2026-08-21
+           ============================================ */
+
+        /* ── 1. CSS Custom Properties (设计令牌) ── */
+        :root {
+            /* 品牌色 */
+            --color-brand-50:  #FFF7ED;
+            --color-brand-100: #FFEDD5;
+            --color-brand-200: #FED7AA;
+            --color-brand-300: #FDBA74;
+            --color-brand-400: #FB923C;
+            --color-brand-500: #F97316;
+            --color-brand-600: #EA580C;
+            --color-brand-700: #C2410C;
+            --color-brand-800: #9A3412;
+            --color-brand-900: #7C2D12;
+
+            /* 中性色 */
+            --color-neutral-0:   #FFFFFF;
+            --color-neutral-50:  #FAFAF9;
+            --color-neutral-100: #F5F5F4;
+            --color-neutral-200: #E7E5E4;
+            --color-neutral-300: #D6D3D1;
+            --color-neutral-400: #A8A29E;
+            --color-neutral-500: #78716C;
+            --color-neutral-600: #57534E;
+            --color-neutral-700: #44403C;
+            --color-neutral-800: #292524;
+            --color-neutral-900: #1C1917;
+            --color-neutral-950: #0C0A09;
+
+            /* 语义色 */
+            --color-success-50:  #F0FDF4;
+            --color-success-500: #22C55E;
+            --color-success-600: #16A34A;
+            --color-warning-50:  #FFFBEB;
+            --color-warning-500: #F59E0B;
+            --color-warning-600: #D97706;
+            --color-danger-50:   #FEF2F2;
+            --color-danger-500:  #EF4444;
+            --color-danger-600:  #DC2626;
+            --color-info-50:     #EFF6FF;
+            --color-info-500:    #3B82F6;
+            --color-info-600:    #2563EB;
+
+            /* 宠物种类色 */
+            --color-pet-cat:     #FB923C;
+            --color-pet-dog:     #A8A29E;
+            --color-pet-rabbit:  #F9A8D4;
+            --color-pet-bird:    #60A5FA;
+            --color-pet-fish:    #22D3EE;
+            --color-pet-reptile: #84CC16;
+            --color-pet-other:   #A78BFA;
+
+            /* 字体 */
+            --font-sans: "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", "Cascadia Code", monospace;
+
+            /* 字号 */
+            --text-xs:   0.75rem;
+            --text-sm:   0.875rem;
+            --text-base: 1rem;
+            --text-lg:   1.125rem;
+            --text-xl:   1.25rem;
+            --text-2xl:  1.5rem;
+            --text-3xl:  1.875rem;
+            --text-4xl:  2.25rem;
+
+            /* 字重 */
+            --font-normal:   400;
+            --font-medium:   500;
+            --font-semibold: 600;
+            --font-bold:     700;
+
+            /* 行高 */
+            --leading-none:  1;
+            --leading-tight: 1.25;
+            --leading-snug:  1.375;
+            --leading-normal:1.5;
+            --leading-relaxed:1.625;
+            --leading-loose: 2;
+
+            /* 间距 */
+            --space-0:  0px;
+            --space-1:  4px;
+            --space-2:  8px;
+            --space-3:  12px;
+            --space-4:  16px;
+            --space-5:  20px;
+            --space-6:  24px;
+            --space-8:  32px;
+            --space-10: 40px;
+            --space-12: 48px;
+            --space-16: 64px;
+            --space-20: 80px;
+            --space-24: 96px;
+
+            /* 圆角 */
+            --radius-none: 0px;
+            --radius-sm:   6px;
+            --radius-md:   10px;
+            --radius-lg:   14px;
+            --radius-xl:   20px;
+            --radius-2xl:  28px;
+            --radius-full: 9999px;
+
+            /* 阴影 */
+            --shadow-sm:   0 1px 2px 0 rgba(0, 0, 0, 0.04);
+            --shadow-md:   0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+            --shadow-lg:   0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+            --shadow-xl:   0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.04);
+            --shadow-glow:  0 0 20px rgba(249, 115, 22, 0.15);
+
+            /* 动效 */
+            --ease-out-expo:    cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-out-quart:   cubic-bezier(0.25, 1, 0.5, 1);
+            --ease-in-out-quart:cubic-bezier(0.76, 0, 0.24, 1);
+            --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-smooth:      cubic-bezier(0.4, 0, 0.2, 1);
+
+            --duration-instant:  80ms;
+            --duration-fast:     150ms;
+            --duration-normal:   250ms;
+            --duration-slow:     400ms;
+            --duration-slower:   600ms;
+
+            /* Z-Index */
+            --z-base:     0;
+            --z-dropdown: 100;
+            --z-sticky:   200;
+            --z-modal:    300;
+            --z-toast:    400;
+            --z-tooltip:  500;
+
+            /* 布局 */
+            --max-width-sm:  480px;
+            --max-width-md:  640px;
+            --max-width-lg:  768px;
+            --max-width-xl:  1024px;
+
+            /* 安全区 */
+            --safe-top:    env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left:   env(safe-area-inset-left, 0px);
+            --safe-right:  env(safe-area-inset-right, 0px);
+        }
+
+        /* ── 2. Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html {
+            -webkit-text-size-adjust: 100%;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: var(--font-sans);
+            font-size: var(--text-base);
+            line-height: var(--leading-normal);
+            color: var(--color-neutral-800);
+            background: var(--color-neutral-50);
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+            font-variant-emoji: text;
+        }
+        img, svg { display: block; max-width: 100%; }
+        button {
+            font-family: inherit; cursor: pointer; border: none; background: none; -webkit-appearance: none;
+        }
+        input, textarea, select {
+            font-family: inherit; font-size: inherit; color: inherit; -webkit-appearance: none; outline: none;
+        }
+        a { color: inherit; text-decoration: none; }
+        ul, ol { list-style: none; }
+
+        /* ── 3. 文档样式 ── */
+        .ds-page { max-width: var(--max-width-xl); margin: 0 auto; padding: var(--space-8) var(--space-6); }
+        .ds-header { margin-bottom: var(--space-12); padding-bottom: var(--space-8); border-bottom: 1px solid var(--color-neutral-200); }
+        .ds-header h1 { font-size: var(--text-4xl); font-weight: var(--font-bold); color: var(--color-neutral-900); letter-spacing: -0.02em; line-height: var(--leading-tight); margin-bottom: var(--space-3); }
+        .ds-header .subtitle { font-size: var(--text-lg); color: var(--color-neutral-500); font-weight: var(--font-normal); }
+        .ds-header .meta { margin-top: var(--space-4); display: flex; gap: var(--space-4); font-size: var(--text-sm); color: var(--color-neutral-400); }
+        .ds-section { margin-bottom: var(--space-16); }
+        .ds-section-title { font-size: var(--text-2xl); font-weight: var(--font-bold); color: var(--color-neutral-900); margin-bottom: var(--space-6); padding-bottom: var(--space-3); border-bottom: 2px solid var(--color-brand-500); display: inline-block; }
+        .ds-subsection { margin-bottom: var(--space-10); }
+        .ds-subsection h3 { font-size: var(--text-xl); font-weight: var(--font-semibold); color: var(--color-neutral-800); margin-bottom: var(--space-4); }
+        .ds-subsection h4 { font-size: var(--text-base); font-weight: var(--font-semibold); color: var(--color-neutral-700); margin-bottom: var(--space-2); margin-top: var(--space-6); }
+        .ds-desc { color: var(--color-neutral-600); margin-bottom: var(--space-4); line-height: var(--leading-relaxed); }
+        .ds-code { font-family: var(--font-mono); font-size: var(--text-sm); background: var(--color-neutral-100); padding: 2px 6px; border-radius: var(--radius-sm); color: var(--color-neutral-700); }
+        .ds-code-block { font-family: var(--font-mono); font-size: var(--text-sm); background: var(--color-neutral-900); color: var(--color-neutral-200); padding: var(--space-5); border-radius: var(--radius-lg); overflow-x: auto; line-height: var(--leading-relaxed); margin: var(--space-4) 0; }
+        .ds-grid { display: grid; gap: var(--space-4); }
+        .ds-grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .ds-grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .ds-grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .ds-grid-6 { grid-template-columns: repeat(6, 1fr); }
+        @media (max-width: 768px) { .ds-grid-2, .ds-grid-3, .ds-grid-4, .ds-grid-6 { grid-template-columns: repeat(2, 1fr); } }
+        .ds-card { background: var(--color-neutral-0); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); border: 1px solid var(--color-neutral-100); }
+        .ds-tag { display: inline-flex; align-items: center; padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: var(--font-medium); }
+        .ds-tag-required { background: var(--color-success-50); color: var(--color-success-600); }
+        .ds-tag-recommended { background: var(--color-brand-50); color: var(--color-brand-700); }
+        .ds-tag-forbidden { background: var(--color-neutral-100); color: var(--color-neutral-500); text-decoration: line-through; }
+        .ds-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); margin: var(--space-4) 0; }
+        .ds-table th { text-align: left; padding: var(--space-3) var(--space-4); background: var(--color-neutral-100); font-weight: var(--font-semibold); color: var(--color-neutral-700); border-bottom: 2px solid var(--color-neutral-200); }
+        .ds-table td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-neutral-100); color: var(--color-neutral-600); }
+        .ds-table tr:hover td { background: var(--color-neutral-50); }
+        .ds-alert { padding: var(--space-4) var(--space-5); border-radius: var(--radius-md); margin: var(--space-4) 0; font-size: var(--text-sm); display: flex; align-items: flex-start; gap: var(--space-3); }
+        .ds-alert-danger { background: var(--color-danger-50); color: var(--color-danger-700); border-left: 3px solid var(--color-danger-500); }
+        .ds-alert-warning { background: var(--color-warning-50); color: var(--color-warning-700); border-left: 3px solid var(--color-warning-500); }
+        .ds-alert-info { background: var(--color-info-50); color: var(--color-info-700); border-left: 3px solid var(--color-info-500); }
+
+        /* ── 4. 组件预览样式 ── */
+        .preview-box { background: var(--color-neutral-50); border: 1px dashed var(--color-neutral-300); border-radius: var(--radius-lg); padding: var(--space-8); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; justify-content: center; margin: var(--space-4) 0; }
+        .preview-dark { background: var(--color-neutral-900); border-color: var(--color-neutral-700); }
+        .preview-label { font-size: var(--text-xs); color: var(--color-neutral-400); text-align: center; margin-top: var(--space-2); }
+
+        /* 按钮 */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); font-weight: var(--font-medium); font-size: var(--text-sm); line-height: var(--leading-none); border-radius: var(--radius-md); transition: all var(--duration-fast) var(--ease-out-quart); cursor: pointer; border: none; outline: none; position: relative; overflow: hidden; }
+        .btn::after { content: ""; position: absolute; inset: 0; background: rgba(255,255,255,0); transition: background var(--duration-fast) var(--ease-out-quart); }
+        .btn:active::after { background: rgba(0,0,0,0.06); }
+        .btn-primary { background: var(--color-brand-500); color: var(--color-neutral-0); padding: var(--space-3) var(--space-5); box-shadow: 0 1px 3px rgba(249, 115, 22, 0.3); }
+        .btn-primary:hover { background: var(--color-brand-600); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25); }
+        .btn-primary:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(249, 115, 22, 0.3); }
+        .btn-secondary { background: var(--color-neutral-100); color: var(--color-neutral-700); padding: var(--space-3) var(--space-5); }
+        .btn-secondary:hover { background: var(--color-neutral-200); transform: translateY(-1px); }
+        .btn-ghost { background: transparent; color: var(--color-neutral-600); padding: var(--space-3) var(--space-4); }
+        .btn-ghost:hover { background: var(--color-neutral-100); color: var(--color-neutral-800); }
+        .btn-danger { background: var(--color-danger-500); color: var(--color-neutral-0); padding: var(--space-3) var(--space-5); }
+        .btn-danger:hover { background: var(--color-danger-600); }
+        .btn-sm { padding: var(--space-2) var(--space-3); font-size: var(--text-xs); }
+        .btn-lg { padding: var(--space-4) var(--space-6); font-size: var(--text-base); }
+        .btn-full { width: 100%; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+        /* 输入框 */
+        .input { width: 100%; padding: var(--space-3) var(--space-4); font-size: var(--text-base); color: var(--color-neutral-800); background: var(--color-neutral-0); border: 1.5px solid var(--color-neutral-200); border-radius: var(--radius-md); transition: all var(--duration-fast) var(--ease-out-quart); }
+        .input::placeholder { color: var(--color-neutral-400); }
+        .input:hover { border-color: var(--color-neutral-300); }
+        .input:focus { border-color: var(--color-brand-500); box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1); }
+        .input-error { border-color: var(--color-danger-500); }
+        .input-error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1); }
+        .input-label { display: block; font-size: var(--text-sm); font-weight: var(--font-medium); color: var(--color-neutral-700); margin-bottom: var(--space-2); }
+        .input-hint { font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2); }
+        .input-error-text { font-size: var(--text-xs); color: var(--color-danger-600); margin-top: var(--space-2); }
+
+        /* 卡片 */
+        .card { background: var(--color-neutral-0); border-radius: var(--radius-xl); padding: var(--space-5); box-shadow: var(--shadow-sm); border: 1px solid var(--color-neutral-100); transition: all var(--duration-normal) var(--ease-out-quart); }
+        .card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .card:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
+        .card-flat { box-shadow: none; border: 1px solid var(--color-neutral-200); }
+        .card-flat:hover { box-shadow: none; border-color: var(--color-neutral-300); }
+
+        /* 宠物头像 */
+        .pet-avatar { width: 56px; height: 56px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-weight: var(--font-bold); font-size: var(--text-lg); color: var(--color-neutral-0); position: relative; flex-shrink: 0; }
+        .pet-avatar-sm { width: 40px; height: 40px; font-size: var(--text-sm); }
+        .pet-avatar-lg { width: 80px; height: 80px; font-size: var(--text-2xl); }
+        .pet-avatar-cat { background: linear-gradient(135deg, var(--color-pet-cat), #EA580C); }
+        .pet-avatar-dog { background: linear-gradient(135deg, var(--color-pet-dog), #57534E); }
+        .pet-avatar-rabbit { background: linear-gradient(135deg, var(--color-pet-rabbit), #DB2777); }
+        .pet-avatar-bird { background: linear-gradient(135deg, var(--color-pet-bird), #2563EB); }
+        .pet-avatar-fish { background: linear-gradient(135deg, var(--color-pet-fish), #0891B2); }
+        .pet-avatar-reptile { background: linear-gradient(135deg, var(--color-pet-reptile), #4D7C0F); }
+        .pet-avatar-other { background: linear-gradient(135deg, var(--color-pet-other), #7C3AED); }
+        .pet-avatar-ring { position: absolute; inset: -3px; border-radius: var(--radius-full); border: 2.5px solid var(--color-brand-500); opacity: 0; transition: opacity var(--duration-fast) var(--ease-out-quart); }
+        .pet-avatar:hover .pet-avatar-ring { opacity: 1; }
+
+        /* 标签 */
+        .badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: var(--font-medium); }
+        .badge-brand { background: var(--color-brand-50); color: var(--color-brand-700); }
+        .badge-success { background: var(--color-success-50); color: var(--color-success-600); }
+        .badge-warning { background: var(--color-warning-50); color: var(--color-warning-600); }
+        .badge-danger { background: var(--color-danger-50); color: var(--color-danger-600); }
+        .badge-neutral { background: var(--color-neutral-100); color: var(--color-neutral-600); }
+
+        /* 列表项 */
+        .list-item { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); background: var(--color-neutral-0); border-radius: var(--radius-lg); border: 1px solid var(--color-neutral-100); transition: all var(--duration-fast) var(--ease-out-quart); cursor: pointer; }
+        .list-item:hover { background: var(--color-neutral-50); border-color: var(--color-neutral-200); }
+        .list-item:active { background: var(--color-neutral-100); }
+        .list-item-content { flex: 1; min-width: 0; }
+        .list-item-title { font-weight: var(--font-medium); color: var(--color-neutral-800); margin-bottom: var(--space-1); }
+        .list-item-desc { font-size: var(--text-sm); color: var(--color-neutral-400); }
+
+        /* 开关 */
+        .toggle { width: 48px; height: 28px; background: var(--color-neutral-300); border-radius: var(--radius-full); position: relative; cursor: pointer; transition: background var(--duration-normal) var(--ease-out-quart); flex-shrink: 0; }
+        .toggle::after { content: ""; position: absolute; width: 24px; height: 24px; background: var(--color-neutral-0); border-radius: var(--radius-full); top: 2px; left: 2px; transition: transform var(--duration-normal) var(--ease-spring); box-shadow: var(--shadow-sm); }
+        .toggle.active { background: var(--color-brand-500); }
+        .toggle.active::after { transform: translateX(20px); }
+
+        /* 底部导航 */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-top: 1px solid rgba(0, 0, 0, 0.06); padding-bottom: var(--safe-bottom); z-index: var(--z-sticky); display: flex; justify-content: space-around; padding-top: var(--space-2); }
+        .bottom-nav-item { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-4); color: var(--color-neutral-400); font-size: var(--text-xs); font-weight: var(--font-medium); transition: color var(--duration-fast) var(--ease-out-quart); position: relative; }
+        .bottom-nav-item.active { color: var(--color-brand-500); }
+        .bottom-nav-item::before { content: ""; position: absolute; top: -2px; width: 20px; height: 3px; background: var(--color-brand-500); border-radius: var(--radius-full); opacity: 0; transition: opacity var(--duration-fast) var(--ease-out-quart); }
+        .bottom-nav-item.active::before { opacity: 1; }
+        .bottom-nav-icon { width: 24px; height: 24px; transition: transform var(--duration-fast) var(--ease-spring); }
+        .bottom-nav-item:active .bottom-nav-icon { transform: scale(0.88); }
+
+        /* 顶部导航 */
+        .top-nav { position: sticky; top: 0; z-index: var(--z-sticky); background: rgba(250, 250, 249, 0.92); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid rgba(0, 0, 0, 0.06); padding-top: var(--safe-top); }
+        .top-nav-inner { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); max-width: var(--max-width-lg); margin: 0 auto; }
+        .top-nav-title { font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--color-neutral-900); }
+
+        /* 分段控制器 */
+        .segmented-control { display: flex; background: var(--color-neutral-100); border-radius: var(--radius-md); padding: 3px; gap: 3px; }
+        .segmented-control-item { flex: 1; text-align: center; padding: var(--space-2) var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium); color: var(--color-neutral-500); border-radius: calc(var(--radius-md) - 3px); transition: all var(--duration-fast) var(--ease-out-quart); cursor: pointer; }
+        .segmented-control-item.active { background: var(--color-neutral-0); color: var(--color-neutral-800); box-shadow: var(--shadow-sm); }
+
+        /* 进度条 */
+        .progress-bar { height: 6px; background: var(--color-neutral-200); border-radius: var(--radius-full); overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--color-brand-400), var(--color-brand-500)); border-radius: var(--radius-full); transition: width var(--duration-slow) var(--ease-out-expo); }
+
+        /* 骨架屏 */
+        .skeleton { background: linear-gradient(90deg, var(--color-neutral-200) 25%, var(--color-neutral-100) 50%, var(--color-neutral-200) 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s ease-in-out infinite; border-radius: var(--radius-md); }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Toast */
+        .toast { position: fixed; bottom: calc(80px + var(--safe-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--color-neutral-800); color: var(--color-neutral-0); padding: var(--space-3) var(--space-5); border-radius: var(--radius-lg); font-size: var(--text-sm); font-weight: var(--font-medium); opacity: 0; pointer-events: none; transition: all var(--duration-normal) var(--ease-out-expo); z-index: var(--z-toast); box-shadow: var(--shadow-lg); white-space: nowrap; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* 模态框 */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); z-index: var(--z-modal); opacity: 0; pointer-events: none; transition: opacity var(--duration-normal) var(--ease-out-quart); }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--color-neutral-0); border-radius: var(--radius-2xl) var(--radius-2xl) 0 0; padding: var(--space-6); padding-bottom: calc(var(--space-6) + var(--safe-bottom)); z-index: calc(var(--z-modal) + 1); transform: translateY(100%); transition: transform var(--duration-slow) var(--ease-out-expo); max-height: 85vh; overflow-y: auto; }
+        .modal-sheet.show { transform: translateY(0); }
+        .modal-sheet-handle { width: 36px; height: 4px; background: var(--color-neutral-300); border-radius: var(--radius-full); margin: 0 auto var(--space-4); }
+
+        /* 页面转场 */
+        .page-enter { animation: page-enter var(--duration-slow) var(--ease-out-expo) forwards; }
+        .page-exit { animation: page-exit var(--duration-normal) var(--ease-in-out-quart) forwards; }
+        @keyframes page-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes page-exit { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
+
+        /* 列表项滑入 */
+        .list-item-enter { animation: list-item-enter var(--duration-normal) var(--ease-out-expo) forwards; opacity: 0; }
+        @keyframes list-item-enter { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* 脉冲 */
+        .pulse-ring { position: absolute; inset: 0; border-radius: var(--radius-full); border: 2px solid var(--color-brand-500); animation: pulse-ring 2s ease-out infinite; }
+        @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.4); opacity: 0; } }
+
+        /* 颜色样本 */
+        .color-swatch { height: 80px; border-radius: var(--radius-lg); display: flex; align-items: flex-end; padding: var(--space-3); font-size: var(--text-xs); font-weight: var(--font-medium); color: var(--color-neutral-0); text-shadow: 0 1px 2px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+        .color-swatch::after { content: attr(data-hex); position: absolute; top: var(--space-3); left: var(--space-3); font-family: var(--font-mono); font-size: var(--text-xs); opacity: 0.9; }
+        .color-swatch-light { color: var(--color-neutral-700); text-shadow: none; }
+        .color-swatch-light::after { color: var(--color-neutral-500); }
+
+        /* 排版样本 */
+        .type-sample { padding: var(--space-4) 0; border-bottom: 1px solid var(--color-neutral-100); }
+        .type-sample-info { display: flex; gap: var(--space-4); font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2); font-family: var(--font-mono); }
+
+        /* 间距样本 */
+        .space-sample { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-3); }
+        .space-bar { background: var(--color-brand-200); border-radius: var(--radius-sm); flex-shrink: 0; }
+        .space-label { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--color-neutral-600); min-width: 80px; }
+
+        /* 阴影样本 */
+        .shadow-sample { height: 60px; background: var(--color-neutral-0); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: var(--text-xs); color: var(--color-neutral-500); }
+
+        /* 动效样本 */
+        .motion-sample { padding: var(--space-6); background: var(--color-neutral-0); border-radius: var(--radius-lg); border: 1px solid var(--color-neutral-100); text-align: center; }
+        .motion-box { width: 48px; height: 48px; background: var(--color-brand-500); border-radius: var(--radius-md); margin: 0 auto var(--space-4); }
+        .motion-demo-spring .motion-box { animation: demo-spring 2s ease-in-out infinite; }
+        @keyframes demo-spring { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+        .motion-demo-slide .motion-box { animation: demo-slide 2s var(--ease-out-expo) infinite alternate; }
+        @keyframes demo-slide { from { transform: translateX(-40px); opacity: 0.5; } to { transform: translateX(40px); opacity: 1; } }
+
+        /* 图标样本 */
+        .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-4); }
+        .icon-item { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); transition: background var(--duration-fast); }
+        .icon-item:hover { background: var(--color-neutral-100); }
+        .icon-item svg { width: 24px; height: 24px; color: var(--color-neutral-600); }
+        .icon-item span { font-size: var(--text-xs); color: var(--color-neutral-400); }
+        @media (max-width: 768px) { .icon-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        /* 页面结构示例 */
+        .page-mockup { max-width: 375px; margin: 0 auto; background: var(--color-neutral-50); border-radius: var(--radius-2xl); overflow: hidden; box-shadow: var(--shadow-xl); border: 8px solid var(--color-neutral-900); position: relative; }
+        .page-mockup-content { padding: var(--space-4); padding-bottom: calc(var(--space-4) + 60px); min-height: 600px; }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--color-neutral-300); border-radius: var(--radius-full); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-400); }
+
+        @media print { .ds-page { padding: 20px; } .preview-box { break-inside: avoid; } }
+    </style>
+</head>
+<body>
+    <div class="ds-page">
+        <header class="ds-header">
+            <h1>PLANET Design System</h1>
+            <p class="subtitle">宠物护理协作平台 — 设计规范与前端开发标准</p>
+            <div class="meta">
+                <span>版本 1.0.0</span>
+                <span>2026-08-21</span>
+                <span>面向开发仓库</span>
+            </div>
+        </header>
+
+        <!-- Section: 设计原则 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">01. 设计原则</h2>
+
+            <div class="ds-subsection">
+                <h3>核心定位</h3>
+                <p class="ds-desc">PLANET 不是社交应用，不是医疗诊断工具，不是待办清单。它是一个围绕「宠物生命」展开的协作系统。所有设计决策必须服务于以下闭环：</p>
+                <div class="ds-code-block">Pet → Care → Action → Event → Memory</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>五大设计原则</h3>
+                <div class="ds-grid ds-grid-2" style="margin-top: var(--space-6);">
+                    <div class="ds-card">
+                        <h4 style="color: var(--color-brand-600); margin-bottom: var(--space-3);">1. 温暖而不幼稚</h4>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed);">宠物是家人，不是玩具。界面应传递关怀与专业感，避免卡通化、低龄化的视觉语言。色彩温暖但有节制，圆角柔和但不失结构感。</p>
+                        <div style="margin-top: var(--space-4);">
+                            <span class="ds-tag ds-tag-forbidden">emoji 表情</span>
+                            <span class="ds-tag ds-tag-forbidden">卡通插画</span>
+                            <span class="ds-tag ds-tag-recommended">几何图标</span>
+                            <span class="ds-tag ds-tag-recommended">摄影级质感</span>
+                        </div>
+                    </div>
+                    <div class="ds-card">
+                        <h4 style="color: var(--color-brand-600); margin-bottom: var(--space-3);">2. 行动优先于记录</h4>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed);">用户打开 APP 的第一眼应该回答三个问题：宠物状态如何？今天需要做什么？有什么重要事项？记录是行动的副产品，不是目的。</p>
+                        <div style="margin-top: var(--space-4);">
+                            <span class="ds-tag ds-tag-required">Care Home 首屏</span>
+                            <span class="ds-tag ds-tag-required">待办高亮</span>
+                        </div>
+                    </div>
+                    <div class="ds-card">
+                        <h4 style="color: var(--color-brand-600); margin-bottom: var(--space-3);">3. 协作的透明感</h4>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed);">家庭成员需要即时感知彼此的动作。谁喂了药、谁遛了狗，这些信息必须在视觉上即时呈现，不需要主动刷新或进入二级页面。</p>
+                        <div style="margin-top: var(--space-4);">
+                            <span class="ds-tag ds-tag-required">实时状态</span>
+                            <span class="ds-tag ds-tag-required">操作者标识</span>
+                        </div>
+                    </div>
+                    <div class="ds-card">
+                        <h4 style="color: var(--color-brand-600); margin-bottom: var(--space-3);">4. 克制与一致性</h4>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed);">每个新增的视觉元素都需要理由。不使用装饰性动画，不堆砌功能入口。同一类操作在不同页面中应有完全一致的交互模式。</p>
+                        <div style="margin-top: var(--space-4);">
+                            <span class="ds-tag ds-tag-forbidden">装饰性动效</span>
+                            <span class="ds-tag ds-tag-forbidden">每页不同布局</span>
+                        </div>
+                    </div>
+                    <div class="ds-card" style="grid-column: 1 / -1;">
+                        <h4 style="color: var(--color-brand-600); margin-bottom: var(--space-3);">5. 丝滑与响应</h4>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed);">所有交互必须在 100ms 内给出视觉反馈。页面切换、列表滚动、按钮点击必须有精心调校的缓动曲线。卡顿是不可接受的。</p>
+                        <div style="margin-top: var(--space-4);">
+                            <span class="ds-tag ds-tag-required">60fps 动画</span>
+                            <span class="ds-tag ds-tag-required">触觉反馈</span>
+                            <span class="ds-tag ds-tag-required">骨架屏加载</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ds-alert ds-alert-danger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                    <strong>严禁使用 Emoji</strong><br>
+                    整个产品不允许出现任何 Unicode Emoji 字符。所有情绪表达、状态标识、宠物类型必须使用自定义 SVG 图标或色彩编码系统。Emoji 会严重破坏产品的专业感和设计一致性。
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: 色彩系统 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">02. 色彩系统</h2>
+
+            <div class="ds-subsection">
+                <h3>品牌色</h3>
+                <p class="ds-desc">主品牌色为暖橙色，象征温暖、活力与关怀。不是高饱和的警示橙，而是带有大地质感的温暖色调。</p>
+                <div class="ds-grid ds-grid-6">
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-brand-50);" data-hex="#FFF7ED"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-brand-100);" data-hex="#FFEDD5"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-brand-200);" data-hex="#FED7AA"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-brand-300);" data-hex="#FDBA74"></div>
+                    <div class="color-swatch" style="background: var(--color-brand-400);" data-hex="#FB923C"></div>
+                    <div class="color-swatch" style="background: var(--color-brand-500);" data-hex="#F97316"></div>
+                    <div class="color-swatch" style="background: var(--color-brand-600);" data-hex="#EA580C"></div>
+                    <div class="color-swatch" style="background: var(--color-brand-700);" data-hex="#C2410C"></div>
+                    <div class="color-swatch" style="background: var(--color-brand-800);" data-hex="#9A3412"></div>
+                    <div class="color-swatch" style="background: var(--color-brand-900);" data-hex="#7C2D12"></div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>中性色</h3>
+                <p class="ds-desc">中性色带有微弱暖调，避免冷灰带来的疏离感。文字层级通过明度差异建立，不使用纯黑。</p>
+                <div class="ds-grid ds-grid-6">
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-neutral-0); border: 1px solid var(--color-neutral-200);" data-hex="#FFFFFF"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-neutral-50);" data-hex="#FAFAF9"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-neutral-100);" data-hex="#F5F5F4"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-neutral-200);" data-hex="#E7E5E4"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-neutral-300);" data-hex="#D6D3D1"></div>
+                    <div class="color-swatch color-swatch-light" style="background: var(--color-neutral-400);" data-hex="#A8A29E"></div>
+                    <div class="color-swatch" style="background: var(--color-neutral-500);" data-hex="#78716C"></div>
+                    <div class="color-swatch" style="background: var(--color-neutral-600);" data-hex="#57534E"></div>
+                    <div class="color-swatch" style="background: var(--color-neutral-700);" data-hex="#44403C"></div>
+                    <div class="color-swatch" style="background: var(--color-neutral-800);" data-hex="#292524"></div>
+                    <div class="color-swatch" style="background: var(--color-neutral-900);" data-hex="#1C1917"></div>
+                    <div class="color-swatch" style="background: var(--color-neutral-950);" data-hex="#0C0A09"></div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>语义色</h3>
+                <div class="ds-grid ds-grid-4">
+                    <div>
+                        <div class="color-swatch color-swatch-light" style="background: var(--color-success-50); margin-bottom: var(--space-2);" data-hex="#F0FDF4"></div>
+                        <div class="color-swatch" style="background: var(--color-success-500); margin-bottom: var(--space-2);" data-hex="#22C55E"></div>
+                        <div class="color-swatch" style="background: var(--color-success-600);" data-hex="#16A34A"></div>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2); text-align: center;">Success</p>
+                    </div>
+                    <div>
+                        <div class="color-swatch color-swatch-light" style="background: var(--color-warning-50); margin-bottom: var(--space-2);" data-hex="#FFFBEB"></div>
+                        <div class="color-swatch" style="background: var(--color-warning-500); margin-bottom: var(--space-2);" data-hex="#F59E0B"></div>
+                        <div class="color-swatch" style="background: var(--color-warning-600);" data-hex="#D97706"></div>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2); text-align: center;">Warning</p>
+                    </div>
+                    <div>
+                        <div class="color-swatch color-swatch-light" style="background: var(--color-danger-50); margin-bottom: var(--space-2);" data-hex="#FEF2F2"></div>
+                        <div class="color-swatch" style="background: var(--color-danger-500); margin-bottom: var(--space-2);" data-hex="#EF4444"></div>
+                        <div class="color-swatch" style="background: var(--color-danger-600);" data-hex="#DC2626"></div>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2); text-align: center;">Danger</p>
+                    </div>
+                    <div>
+                        <div class="color-swatch color-swatch-light" style="background: var(--color-info-50); margin-bottom: var(--space-2);" data-hex="#EFF6FF"></div>
+                        <div class="color-swatch" style="background: var(--color-info-500); margin-bottom: var(--space-2);" data-hex="#3B82F6"></div>
+                        <div class="color-swatch" style="background: var(--color-info-600);" data-hex="#2563EB"></div>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2); text-align: center;">Info</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>宠物种类色</h3>
+                <p class="ds-desc">每种宠物类型对应一个专属色彩，用于头像背景、标识、图表等。不使用 emoji，用色彩区分宠物类型。</p>
+                <div class="ds-grid ds-grid-4">
+                    <div><div class="pet-avatar pet-avatar-cat" style="margin: 0 auto;">C</div><p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-medium);">Cat</p><p style="text-align: center; font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">#FB923C</p></div>
+                    <div><div class="pet-avatar pet-avatar-dog" style="margin: 0 auto;">D</div><p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-medium);">Dog</p><p style="text-align: center; font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">#A8A29E</p></div>
+                    <div><div class="pet-avatar pet-avatar-rabbit" style="margin: 0 auto;">R</div><p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-medium);">Rabbit</p><p style="text-align: center; font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">#F9A8D4</p></div>
+                    <div><div class="pet-avatar pet-avatar-bird" style="margin: 0 auto;">B</div><p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-medium);">Bird</p><p style="text-align: center; font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">#60A5FA</p></div>
+                    <div><div class="pet-avatar pet-avatar-fish" style="margin: 0 auto;">F</div><p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-medium);">Fish</p><p style="text-align: center; font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">#22D3EE</p></div>
+                    <div><div class="pet-avatar pet-avatar-reptile" style="margin: 0 auto;">R</div><p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-medium);">Reptile</p><p style="text-align: center; font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">#84CC16</p></div>
+                    <div><div class="pet-avatar pet-avatar-other" style="margin: 0 auto;">O</div><p style="text-align: center; margin-top: var(--space-2); font-size: var(--text-sm); font-weight: var(--font-medium);">Other</p><p style="text-align: center; font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">#A78BFA</p></div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>使用规范</h3>
+                <table class="ds-table">
+                    <thead><tr><th>场景</th><th>颜色</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td>主按钮 / 主要操作</td><td><span class="ds-code">--color-brand-500</span></td><td>CTA、完成、确认</td></tr>
+                        <tr><td>页面背景</td><td><span class="ds-code">--color-neutral-50</span></td><td>全局页面底色</td></tr>
+                        <tr><td>卡片背景</td><td><span class="ds-code">--color-neutral-0</span></td><td>内容容器</td></tr>
+                        <tr><td>主标题</td><td><span class="ds-code">--color-neutral-900</span></td><td>H1, 页面标题</td></tr>
+                        <tr><td>正文</td><td><span class="ds-code">--color-neutral-700</span></td><td>段落、描述</td></tr>
+                        <tr><td>辅助文字</td><td><span class="ds-code">--color-neutral-400</span></td><td>时间戳、提示</td></tr>
+                        <tr><td>分割线 / 边框</td><td><span class="ds-code">--color-neutral-200</span></td><td>卡片边框、分割线</td></tr>
+                        <tr><td>成功状态</td><td><span class="ds-code">--color-success-500</span></td><td>已完成、正常</td></tr>
+                        <tr><td>警告状态</td><td><span class="ds-code">--color-warning-500</span></td><td>即将到期、需注意</td></tr>
+                        <tr><td>危险状态</td><td><span class="ds-code">--color-danger-500</span></td><td>已逾期、删除</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section: 字体系统 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">03. 字体系统</h2>
+
+            <div class="ds-subsection">
+                <h3>字体栈</h3>
+                <div class="ds-code-block">
+--font-sans: "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+--font-mono: "SF Mono", "Fira Code", "JetBrains Mono", "Cascadia Code", monospace;
+                </div>
+                <p class="ds-desc">中文优先使用系统字体，确保加载速度。代码/数据展示使用等宽字体。</p>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>字号层级</h3>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-4xl); font-weight: var(--font-bold); color: var(--color-neutral-900); line-height: var(--leading-tight);">页面大标题 36px</div>
+                    <div class="type-sample-info"><span>--text-4xl</span><span>bold</span><span>leading-tight</span><span>页面顶部标题</span></div>
+                </div>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-3xl); font-weight: var(--font-bold); color: var(--color-neutral-900); line-height: var(--leading-tight);">区块标题 30px</div>
+                    <div class="type-sample-info"><span>--text-3xl</span><span>bold</span><span>leading-tight</span><span>重要区块标题</span></div>
+                </div>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-2xl); font-weight: var(--font-semibold); color: var(--color-neutral-800); line-height: var(--leading-snug);">卡片标题 24px</div>
+                    <div class="type-sample-info"><span>--text-2xl</span><span>semibold</span><span>leading-snug</span><span>卡片、模态框标题</span></div>
+                </div>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-xl); font-weight: var(--font-semibold); color: var(--color-neutral-800); line-height: var(--leading-snug);">列表标题 20px</div>
+                    <div class="type-sample-info"><span>--text-xl</span><span>semibold</span><span>leading-snug</span><span>列表项标题、导航标题</span></div>
+                </div>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-lg); font-weight: var(--font-medium); color: var(--color-neutral-800); line-height: var(--leading-normal);">副标题 18px</div>
+                    <div class="type-sample-info"><span>--text-lg</span><span>medium</span><span>leading-normal</span><span>副标题、强调正文</span></div>
+                </div>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-base); font-weight: var(--font-normal); color: var(--color-neutral-700); line-height: var(--leading-normal);">正文 16px — 这是 PLANET 的默认正文字号，用于所有常规文本内容。行高 1.5 确保中文阅读舒适度。</div>
+                    <div class="type-sample-info"><span>--text-base</span><span>normal</span><span>leading-normal</span><span>默认正文</span></div>
+                </div>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-sm); font-weight: var(--font-normal); color: var(--color-neutral-600); line-height: var(--leading-normal);">辅助文字 14px — 用于标签、说明、时间戳等次要信息。</div>
+                    <div class="type-sample-info"><span>--text-sm</span><span>normal</span><span>leading-normal</span><span>辅助文字、标签</span></div>
+                </div>
+                <div class="type-sample">
+                    <div style="font-size: var(--text-xs); font-weight: var(--font-medium); color: var(--color-neutral-500); line-height: var(--leading-normal);">微小文字 12px — 仅用于时间戳、角标、技术参数。</div>
+                    <div class="type-sample-info"><span>--text-xs</span><span>medium</span><span>leading-normal</span><span>时间戳、角标</span></div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>字重使用规范</h3>
+                <table class="ds-table">
+                    <thead><tr><th>字重</th><th>值</th><th>使用场景</th></tr></thead>
+                    <tbody>
+                        <tr><td>Normal</td><td>400</td><td>正文、描述、辅助文字</td></tr>
+                        <tr><td>Medium</td><td>500</td><td>按钮文字、标签、列表项标题</td></tr>
+                        <tr><td>Semibold</td><td>600</td><td>卡片标题、导航标题、章节标题</td></tr>
+                        <tr><td>Bold</td><td>700</td><td>页面大标题、数据展示、关键数字</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section: 间距系统 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">04. 间距系统</h2>
+            <p class="ds-desc">基于 4px 的基线网格系统。所有间距必须是 4px 的整数倍，确保视觉节奏的一致性。</p>
+
+            <div class="ds-subsection">
+                <h3>间距令牌</h3>
+                <div class="space-sample"><span class="space-label">space-1</span><div class="space-bar" style="width: 4px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">4px — 图标与文字间距</span></div>
+                <div class="space-sample"><span class="space-label">space-2</span><div class="space-bar" style="width: 8px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">8px — 紧凑元素间距</span></div>
+                <div class="space-sample"><span class="space-label">space-3</span><div class="space-bar" style="width: 12px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">12px — 表单元素间距</span></div>
+                <div class="space-sample"><span class="space-label">space-4</span><div class="space-bar" style="width: 16px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">16px — 卡片内边距</span></div>
+                <div class="space-sample"><span class="space-label">space-5</span><div class="space-bar" style="width: 20px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">20px — 区块间距</span></div>
+                <div class="space-sample"><span class="space-label">space-6</span><div class="space-bar" style="width: 24px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">24px — 模块间距</span></div>
+                <div class="space-sample"><span class="space-label">space-8</span><div class="space-bar" style="width: 32px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">32px — 大模块间距</span></div>
+                <div class="space-sample"><span class="space-label">space-12</span><div class="space-bar" style="width: 48px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">48px — 页面区块间距</span></div>
+                <div class="space-sample"><span class="space-label">space-16</span><div class="space-bar" style="width: 64px; height: 16px;"></div><span style="font-size: var(--text-xs); color: var(--color-neutral-400);">64px — 页面大间距</span></div>
+            </div>
+        </section>
+
+        <!-- Section: 圆角系统 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">05. 圆角系统</h2>
+            <p class="ds-desc">圆角传达柔和、友好的品牌调性，但需要根据元素层级和用途精确控制。</p>
+            <div class="ds-grid ds-grid-4">
+                <div class="ds-card" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--color-brand-200); border-radius: var(--radius-sm); margin: 0 auto;"></div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">radius-sm</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">6px</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-1);">小标签、徽章</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--color-brand-200); border-radius: var(--radius-md); margin: 0 auto;"></div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">radius-md</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">10px</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-1);">按钮、输入框</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--color-brand-200); border-radius: var(--radius-lg); margin: 0 auto;"></div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">radius-lg</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">14px</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-1);">卡片、列表项</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--color-brand-200); border-radius: var(--radius-xl); margin: 0 auto;"></div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">radius-xl</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">20px</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-1);">大卡片、模态框</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--color-brand-200); border-radius: var(--radius-2xl); margin: 0 auto;"></div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">radius-2xl</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">28px</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-1);">底部 Sheet</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--color-brand-200); border-radius: var(--radius-full); margin: 0 auto;"></div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">radius-full</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">9999px</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-1);">头像、开关、胶囊</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: 阴影系统 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">06. 阴影系统</h2>
+            <p class="ds-desc">阴影用于建立层级关系，而非装饰。阴影颜色始终基于中性色，不带有品牌色倾向。</p>
+            <div class="ds-grid ds-grid-3">
+                <div class="ds-card" style="text-align: center;">
+                    <div class="shadow-sample" style="box-shadow: var(--shadow-sm);">shadow-sm</div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">轻微投影</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400);">卡片默认、按钮</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div class="shadow-sample" style="box-shadow: var(--shadow-md);">shadow-md</div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">中等投影</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400);">悬浮卡片、下拉菜单</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div class="shadow-sample" style="box-shadow: var(--shadow-lg);">shadow-lg</div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">明显投影</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400);">模态框、Toast</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div class="shadow-sample" style="box-shadow: var(--shadow-xl);">shadow-xl</div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">强投影</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400);">全屏模态、重要弹窗</p>
+                </div>
+                <div class="ds-card" style="text-align: center;">
+                    <div class="shadow-sample" style="box-shadow: var(--shadow-glow);">shadow-glow</div>
+                    <p style="margin-top: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-medium);">品牌光晕</p>
+                    <p style="font-size: var(--text-xs); color: var(--color-neutral-400);">选中状态、焦点环</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: 动效系统 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">07. 动效系统</h2>
+            <p class="ds-desc">动效不是装饰，是交互的语言。每个动画都必须有明确的目的：引导注意力、提供反馈、解释状态变化。</p>
+
+            <div class="ds-subsection">
+                <h3>缓动曲线</h3>
+                <div class="ds-grid ds-grid-3">
+                    <div class="motion-sample motion-demo-spring">
+                        <div class="motion-box"></div>
+                        <p style="font-size: var(--text-sm); font-weight: var(--font-medium); margin-bottom: var(--space-1);">Spring</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">cubic-bezier(0.34, 1.56, 0.64, 1)</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2);">开关、弹窗、选中态</p>
+                    </div>
+                    <div class="motion-sample motion-demo-slide">
+                        <div class="motion-box"></div>
+                        <p style="font-size: var(--text-sm); font-weight: var(--font-medium); margin-bottom: var(--space-1);">Out Expo</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">cubic-bezier(0.16, 1, 0.3, 1)</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2);">页面切换、列表进入</p>
+                    </div>
+                    <div class="motion-sample">
+                        <div class="motion-box" style="animation: demo-smooth 2s var(--ease-smooth) infinite alternate;"></div>
+                        <p style="font-size: var(--text-sm); font-weight: var(--font-medium); margin-bottom: var(--space-1);">Smooth</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); font-family: var(--font-mono);">cubic-bezier(0.4, 0, 0.2, 1)</p>
+                        <p style="font-size: var(--text-xs); color: var(--color-neutral-400); margin-top: var(--space-2);">颜色过渡、透明度</p>
+                        <style>@keyframes demo-smooth { from { opacity: 0.3; } to { opacity: 1; } }</style>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>持续时间</h3>
+                <table class="ds-table">
+                    <thead><tr><th>令牌</th><th>时长</th><th>使用场景</th></tr></thead>
+                    <tbody>
+                        <tr><td><span class="ds-code">--duration-instant</span></td><td>80ms</td><td>按钮按下、颜色瞬时变化</td></tr>
+                        <tr><td><span class="ds-code">--duration-fast</span></td><td>150ms</td><td>悬停状态、微交互</td></tr>
+                        <tr><td><span class="ds-code">--duration-normal</span></td><td>250ms</td><td>开关切换、下拉展开</td></tr>
+                        <tr><td><span class="ds-code">--duration-slow</span></td><td>400ms</td><td>页面转场、模态框</td></tr>
+                        <tr><td><span class="ds-code">--duration-slower</span></td><td>600ms</td><td>复杂动画、引导流程</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>动画模式</h3>
+                <div class="ds-grid ds-grid-2">
+                    <div class="ds-card">
+                        <h4>页面进入</h4>
+                        <div class="ds-code-block">.page-enter {
+  animation: page-enter var(--duration-slow) var(--ease-out-expo) forwards;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}</div>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-500);">新页面从下方淡入，传达「前进」的方向感。</p>
+                    </div>
+                    <div class="ds-card">
+                        <h4>列表项进入</h4>
+                        <div class="ds-code-block">.list-item-enter {
+  animation: list-item-enter var(--duration-normal) var(--ease-out-expo) forwards;
+  opacity: 0;
+}
+@keyframes list-item-enter {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}</div>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-500);">列表项从左侧滑入，带有交错延迟（stagger 50ms）。</p>
+                    </div>
+                    <div class="ds-card">
+                        <h4>骨架屏加载</h4>
+                        <div class="ds-code-block">.skeleton {
+  background: linear-gradient(90deg, ...);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}</div>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-500);">内容加载时使用，避免白屏。加载完成后内容淡入覆盖。</p>
+                    </div>
+                    <div class="ds-card">
+                        <h4>脉冲提醒</h4>
+                        <div class="ds-code-block">.pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}</div>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-500);">用于紧急提醒、待办事项到期通知。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ds-alert ds-alert-warning">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div>
+                    <strong>动效性能要求</strong><br>
+                    所有动画必须使用 transform 和 opacity，禁止使用 width/height/top/left 等会触发重排的属性。动画帧率必须稳定在 60fps。在 prefers-reduced-motion: reduce 媒体查询下，所有动画应立即完成或禁用。
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: 图标系统 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">08. 图标系统</h2>
+            <p class="ds-desc">使用 SVG 图标，线条风格，2px 描边，24x24 视图框。图标必须清晰传达功能，不依赖颜色即可识别。</p>
+
+            <div class="ds-subsection">
+                <h3>图标规范</h3>
+                <div class="ds-grid ds-grid-2">
+                    <div class="ds-card">
+                        <h4>线条规范</h4>
+                        <ul style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed); padding-left: var(--space-4); list-style: disc;">
+                            <li>描边宽度：2px</li>
+                            <li>端点样式：round</li>
+                            <li>连接样式：round</li>
+                            <li>视图框：24x24</li>
+                            <li>尺寸：24px（默认）/ 20px（紧凑）/ 16px（微小）</li>
+                        </ul>
+                    </div>
+                    <div class="ds-card">
+                        <h4>使用原则</h4>
+                        <ul style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed); padding-left: var(--space-4); list-style: disc;">
+                            <li>每个图标对应唯一语义，不重复</li>
+                            <li>图标 + 文字标签同时使用（底部导航除外）</li>
+                            <li>图标颜色跟随当前文字颜色</li>
+                            <li>禁用状态图标透明度降至 40%</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>核心图标集</h3>
+                <div class="icon-grid">
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Calendar</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>History</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>User</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Edit</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Delete</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Info</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Check</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Alert</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Family</span></div>
+                    <div class="icon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span>Photo</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: 组件库 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">09. 组件库</h2>
+
+            <div class="ds-subsection">
+                <h3>Button 按钮</h3>
+                <p class="ds-desc">按钮是用户与系统交互的核心触点。必须提供即时的触觉和视觉反馈。</p>
+
+                <h4>变体</h4>
+                <div class="preview-box">
+                    <div style="text-align: center;"><button class="btn btn-primary">主要按钮</button><div class="preview-label">Primary</div></div>
+                    <div style="text-align: center;"><button class="btn btn-secondary">次要按钮</button><div class="preview-label">Secondary</div></div>
+                    <div style="text-align: center;"><button class="btn btn-ghost">幽灵按钮</button><div class="preview-label">Ghost</div></div>
+                    <div style="text-align: center;"><button class="btn btn-danger">危险按钮</button><div class="preview-label">Danger</div></div>
+                </div>
+
+                <h4>尺寸</h4>
+                <div class="preview-box">
+                    <div style="text-align: center;"><button class="btn btn-primary btn-sm">小按钮</button><div class="preview-label">Small</div></div>
+                    <div style="text-align: center;"><button class="btn btn-primary">默认按钮</button><div class="preview-label">Default</div></div>
+                    <div style="text-align: center;"><button class="btn btn-primary btn-lg">大按钮</button><div class="preview-label">Large</div></div>
+                </div>
+
+                <h4>状态</h4>
+                <div class="preview-box">
+                    <div style="text-align: center;"><button class="btn btn-primary">正常状态</button><div class="preview-label">Default</div></div>
+                    <div style="text-align: center;"><button class="btn btn-primary" disabled>禁用状态</button><div class="preview-label">Disabled</div></div>
+                    <div style="text-align: center;"><button class="btn btn-primary btn-full" style="width: 200px;">全宽按钮</button><div class="preview-label">Full Width</div></div>
+                </div>
+
+                <h4>前端规范</h4>
+                <div class="ds-code-block">&lt;button class="btn btn-primary"&gt;确认&lt;/button&gt;
+&lt;button class="btn btn-secondary"&gt;取消&lt;/button&gt;
+&lt;button class="btn btn-ghost"&gt;返回&lt;/button&gt;
+&lt;button class="btn btn-danger"&gt;删除&lt;/button&gt;
+
+&lt;!-- 尺寸修饰 --&gt;
+&lt;button class="btn btn-primary btn-sm"&gt;小按钮&lt;/button&gt;
+&lt;button class="btn btn-primary btn-lg"&gt;大按钮&lt;/button&gt;
+&lt;button class="btn btn-primary btn-full"&gt;全宽&lt;/button&gt;
+
+&lt;!-- 状态 --&gt;
+&lt;button class="btn btn-primary" disabled&gt;禁用&lt;/button&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Input 输入框</h3>
+                <p class="ds-desc">输入框是数据录入的核心组件。必须有清晰的焦点状态和错误提示。</p>
+
+                <h4>基础样式</h4>
+                <div class="preview-box" style="flex-direction: column; align-items: stretch; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <div>
+                        <label class="input-label">宠物名称</label>
+                        <input type="text" class="input" placeholder="请输入宠物名称">
+                        <p class="input-hint">2-20 个字符</p>
+                    </div>
+                    <div>
+                        <label class="input-label">出生日期</label>
+                        <input type="text" class="input input-error" placeholder="2024-01-01" value="invalid">
+                        <p class="input-error-text">请输入有效的日期格式</p>
+                    </div>
+                </div>
+
+                <h4>前端规范</h4>
+                <div class="ds-code-block">&lt;div&gt;
+  &lt;label class="input-label"&gt;宠物名称&lt;/label&gt;
+  &lt;input type="text" class="input" placeholder="请输入宠物名称"&gt;
+  &lt;p class="input-hint"&gt;2-20 个字符&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;div&gt;
+  &lt;label class="input-label"&gt;出生日期&lt;/label&gt;
+  &lt;input type="text" class="input input-error" value="invalid"&gt;
+  &lt;p class="input-error-text"&gt;请输入有效的日期格式&lt;/p&gt;
+&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Card 卡片</h3>
+                <p class="ds-desc">卡片是内容组织的基本单元。默认带有轻微阴影，hover 时提升层级。</p>
+
+                <div class="preview-box">
+                    <div class="card" style="width: 200px;">
+                        <div style="font-weight: var(--font-semibold); margin-bottom: var(--space-2);">默认卡片</div>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-500);">带有阴影和 hover 效果</p>
+                    </div>
+                    <div class="card card-flat" style="width: 200px;">
+                        <div style="font-weight: var(--font-semibold); margin-bottom: var(--space-2);">扁平卡片</div>
+                        <p style="font-size: var(--text-sm); color: var(--color-neutral-500);">无边框阴影，用于列表内</p>
+                    </div>
+                </div>
+
+                <div class="ds-code-block">&lt;div class="card"&gt;...&lt;/div&gt;
+&lt;div class="card card-flat"&gt;...&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Pet Avatar 宠物头像</h3>
+                <p class="ds-desc">宠物头像不使用 emoji 或真实照片（MVP 阶段），使用首字母 + 渐变背景 + 宠物种类色。</p>
+
+                <div class="preview-box">
+                    <div style="text-align: center;"><div class="pet-avatar pet-avatar-cat">M</div><div class="preview-label">Cat</div></div>
+                    <div style="text-align: center;"><div class="pet-avatar pet-avatar-dog">L</div><div class="preview-label">Dog</div></div>
+                    <div style="text-align: center;"><div class="pet-avatar pet-avatar-rabbit">C</div><div class="preview-label">Rabbit</div></div>
+                    <div style="text-align: center;"><div class="pet-avatar pet-avatar-bird">B</div><div class="preview-label">Bird</div></div>
+                    <div style="text-align: center;"><div class="pet-avatar pet-avatar-sm pet-avatar-cat">M</div><div class="preview-label">Small</div></div>
+                    <div style="text-align: center;"><div class="pet-avatar pet-avatar-lg pet-avatar-dog">L</div><div class="preview-label">Large</div></div>
+                </div>
+
+                <div class="ds-code-block">&lt;!-- 宠物种类决定背景色 --&gt;
+&lt;div class="pet-avatar pet-avatar-cat"&gt;M&lt;/div&gt;
+&lt;div class="pet-avatar pet-avatar-dog"&gt;L&lt;/div&gt;
+&lt;div class="pet-avatar pet-avatar-rabbit"&gt;C&lt;/div&gt;
+
+&lt;!-- 尺寸 --&gt;
+&lt;div class="pet-avatar pet-avatar-sm pet-avatar-cat"&gt;M&lt;/div&gt;
+&lt;div class="pet-avatar pet-avatar-lg pet-avatar-dog"&gt;L&lt;/div&gt;
+
+&lt;!-- 选中态（hover 显示光环） --&gt;
+&lt;div class="pet-avatar pet-avatar-cat"&gt;
+  M
+  &lt;div class="pet-avatar-ring"&gt;&lt;/div&gt;
+&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Badge 标签</h3>
+                <p class="ds-desc">用于状态标识、分类标记。不使用 emoji，纯文字 + 色彩。</p>
+
+                <div class="preview-box">
+                    <span class="badge badge-brand">进行中</span>
+                    <span class="badge badge-success">已完成</span>
+                    <span class="badge badge-warning">即将到期</span>
+                    <span class="badge badge-danger">已逾期</span>
+                    <span class="badge badge-neutral">草稿</span>
+                </div>
+
+                <div class="ds-code-block">&lt;span class="badge badge-brand"&gt;进行中&lt;/span&gt;
+&lt;span class="badge badge-success"&gt;已完成&lt;/span&gt;
+&lt;span class="badge badge-warning"&gt;即将到期&lt;/span&gt;
+&lt;span class="badge badge-danger"&gt;已逾期&lt;/span&gt;
+&lt;span class="badge badge-neutral"&gt;草稿&lt;/span&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>List Item 列表项</h3>
+                <p class="ds-desc">列表项是 Care Home 的核心展示单元。左侧头像/图标，中间内容，右侧状态。</p>
+
+                <div class="preview-box" style="flex-direction: column; align-items: stretch; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <div class="list-item">
+                        <div class="pet-avatar pet-avatar-sm pet-avatar-cat">M</div>
+                        <div class="list-item-content">
+                            <div class="list-item-title">Milo 的用药</div>
+                            <div class="list-item-desc">每天 08:00 · 由 Alice 负责</div>
+                        </div>
+                        <span class="badge badge-warning">待完成</span>
+                    </div>
+                    <div class="list-item">
+                        <div class="pet-avatar pet-avatar-sm pet-avatar-dog">L</div>
+                        <div class="list-item-content">
+                            <div class="list-item-title">Luna 的散步</div>
+                            <div class="list-item-desc">今天 18:00 · 已完成</div>
+                        </div>
+                        <span class="badge badge-success">已完成</span>
+                    </div>
+                </div>
+
+                <div class="ds-code-block">&lt;div class="list-item"&gt;
+  &lt;div class="pet-avatar pet-avatar-sm pet-avatar-cat"&gt;M&lt;/div&gt;
+  &lt;div class="list-item-content"&gt;
+    &lt;div class="list-item-title"&gt;Milo 的用药&lt;/div&gt;
+    &lt;div class="list-item-desc"&gt;每天 08:00&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;span class="badge badge-warning"&gt;待完成&lt;/span&gt;
+&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Toggle 开关</h3>
+                <p class="ds-desc">用于二元状态的切换。使用 Spring 缓动，开关过程有弹性感。</p>
+
+                <div class="preview-box">
+                    <div style="text-align: center;">
+                        <div class="toggle"></div>
+                        <div class="preview-label">Off</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div class="toggle active"></div>
+                        <div class="preview-label">On</div>
+                    </div>
+                </div>
+
+                <div class="ds-code-block">&lt;div class="toggle"&gt;&lt;/div&gt;
+&lt;div class="toggle active"&gt;&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Bottom Navigation 底部导航</h3>
+                <p class="ds-desc">APP 的主导航。固定在底部，使用 backdrop-filter 实现毛玻璃效果。激活项顶部有品牌色指示条。</p>
+
+                <div class="preview-box" style="padding: 0; overflow: hidden; position: relative; height: 120px;">
+                    <div style="position: absolute; bottom: 0; left: 0; right: 0;">
+                        <div class="bottom-nav" style="position: relative;">
+                            <div class="bottom-nav-item active">
+                                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <span>Care</span>
+                            </div>
+                            <div class="bottom-nav-item">
+                                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <span>Plan</span>
+                            </div>
+                            <div class="bottom-nav-item">
+                                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                <span>Timeline</span>
+                            </div>
+                            <div class="bottom-nav-item">
+                                <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <span>Me</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ds-code-block">&lt;nav class="bottom-nav"&gt;
+  &lt;a href="#" class="bottom-nav-item active"&gt;
+    &lt;svg class="bottom-nav-icon"&gt;...&lt;/svg&gt;
+    &lt;span&gt;Care&lt;/span&gt;
+  &lt;/a&gt;
+  &lt;a href="#" class="bottom-nav-item"&gt;...&lt;/a&gt;
+  ...
+&lt;/nav&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Segmented Control 分段控制器</h3>
+                <p class="ds-desc">用于在同一页面内切换视图，如 All Pets / Family / Pet 视图切换。</p>
+
+                <div class="preview-box" style="max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <div class="segmented-control" style="width: 100%;">
+                        <div class="segmented-control-item active">All Pets</div>
+                        <div class="segmented-control-item">Family</div>
+                        <div class="segmented-control-item">Milo</div>
+                    </div>
+                </div>
+
+                <div class="ds-code-block">&lt;div class="segmented-control"&gt;
+  &lt;div class="segmented-control-item active"&gt;All Pets&lt;/div&gt;
+  &lt;div class="segmented-control-item"&gt;Family&lt;/div&gt;
+  &lt;div class="segmented-control-item"&gt;Milo&lt;/div&gt;
+&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Progress Bar 进度条</h3>
+                <p class="ds-desc">用于展示任务完成度、健康指标等进度信息。</p>
+
+                <div class="preview-box" style="flex-direction: column; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <div style="width: 100%;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2);">
+                            <span style="font-size: var(--text-sm); font-weight: var(--font-medium);">本周护理完成度</span>
+                            <span style="font-size: var(--text-sm); color: var(--color-brand-600); font-weight: var(--font-semibold);">75%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width: 75%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ds-code-block">&lt;div class="progress-bar"&gt;
+  &lt;div class="progress-bar-fill" style="width: 75%;"&gt;&lt;/div&gt;
+&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Skeleton 骨架屏</h3>
+                <p class="ds-desc">数据加载时的占位符。使用 shimmer 动画，避免白屏焦虑。</p>
+
+                <div class="preview-box" style="flex-direction: column; align-items: stretch; max-width: 300px; margin-left: auto; margin-right: auto; gap: var(--space-3);">
+                    <div style="display: flex; gap: var(--space-3); align-items: center;">
+                        <div class="skeleton" style="width: 48px; height: 48px; border-radius: var(--radius-full);"></div>
+                        <div style="flex: 1;">
+                            <div class="skeleton" style="width: 60%; height: 16px; margin-bottom: var(--space-2);"></div>
+                            <div class="skeleton" style="width: 40%; height: 12px;"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton" style="width: 100%; height: 80px; border-radius: var(--radius-lg);"></div>
+                    <div class="skeleton" style="width: 100%; height: 80px; border-radius: var(--radius-lg);"></div>
+                </div>
+
+                <div class="ds-code-block">&lt;div class="skeleton" style="width: 48px; height: 48px; border-radius: var(--radius-full);"&gt;&lt;/div&gt;
+&lt;div class="skeleton" style="width: 100%; height: 80px;"&gt;&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Toast 轻提示</h3>
+                <p class="ds-desc">用于操作反馈，从底部弹出，自动消失。不阻断用户操作。</p>
+
+                <div class="preview-box" style="position: relative; height: 120px;">
+                    <div class="toast show" style="position: absolute;">Alice 已完成 Milo 的用药</div>
+                </div>
+
+                <div class="ds-code-block">&lt;!-- 添加 .show 类显示 --&gt;
+&lt;div class="toast"&gt;操作成功&lt;/div&gt;
+&lt;div class="toast show"&gt;Alice 已完成 Milo 的用药&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Modal Sheet 底部弹窗</h3>
+                <p class="ds-desc">从底部滑出的模态框，用于表单、选择器等。顶部有拖拽指示条。</p>
+
+                <div class="preview-box" style="position: relative; height: 280px; overflow: hidden; padding: 0;">
+                    <div style="position: absolute; bottom: 0; left: 0; right: 0;">
+                        <div class="modal-sheet show" style="position: relative; transform: none; border: 1px solid var(--color-neutral-200); border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;">
+                            <div class="modal-sheet-handle"></div>
+                            <h4 style="margin-bottom: var(--space-4);">添加护理项目</h4>
+                            <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                                <input type="text" class="input" placeholder="项目名称">
+                                <div style="display: flex; gap: var(--space-3);">
+                                    <button class="btn btn-secondary" style="flex: 1;">取消</button>
+                                    <button class="btn btn-primary" style="flex: 1;">确认</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ds-code-block">&lt;div class="modal-overlay"&gt;&lt;/div&gt;
+&lt;div class="modal-sheet"&gt;
+  &lt;div class="modal-sheet-handle"&gt;&lt;/div&gt;
+  &lt;h4&gt;标题&lt;/h4&gt;
+  ...
+&lt;/div&gt;
+
+&lt;!-- 显示时添加 .show --&gt;
+&lt;div class="modal-overlay show"&gt;&lt;/div&gt;
+&lt;div class="modal-sheet show"&gt;...&lt;/div&gt;</div>
+            </div>
+        </section>
+
+        <!-- Section: 页面结构 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">10. 页面结构</h2>
+            <p class="ds-desc">所有页面遵循统一的结构模式：顶部导航 + 内容区 + 底部导航。内容区使用安全区内边距。</p>
+
+            <div class="ds-subsection">
+                <h3>基础布局</h3>
+                <div class="ds-code-block">&lt;div class="app"&gt;
+  &lt;!-- 顶部导航 --&gt;
+  &lt;header class="top-nav"&gt;
+    &lt;div class="top-nav-inner"&gt;
+      &lt;button class="btn btn-ghost"&gt;返回&lt;/button&gt;
+      &lt;h1 class="top-nav-title"&gt;页面标题&lt;/h1&gt;
+      &lt;button class="btn btn-ghost"&gt;更多&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;!-- 内容区 --&gt;
+  &lt;main class="page-content"&gt;
+    &lt;!-- 页面内容 --&gt;
+  &lt;/main&gt;
+
+  &lt;!-- 底部导航 --&gt;
+  &lt;nav class="bottom-nav"&gt;...&lt;/nav&gt;
+&lt;/div&gt;</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>Care Home 页面示例</h3>
+                <div class="page-mockup">
+                    <div class="top-nav" style="position: relative;">
+                        <div class="top-nav-inner">
+                            <h1 class="top-nav-title">Care Home</h1>
+                            <button class="btn btn-ghost" style="padding: var(--space-2);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="page-mockup-content">
+                        <div class="segmented-control" style="margin-bottom: var(--space-5);">
+                            <div class="segmented-control-item active">All Pets</div>
+                            <div class="segmented-control-item">Home</div>
+                            <div class="segmented-control-item">Milo</div>
+                        </div>
+
+                        <div style="margin-bottom: var(--space-5);">
+                            <h3 style="font-size: var(--text-lg); font-weight: var(--font-semibold); margin-bottom: var(--space-3); color: var(--color-neutral-800);">今日待办</h3>
+                            <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                                <div class="list-item">
+                                    <div class="pet-avatar pet-avatar-sm pet-avatar-cat">M</div>
+                                    <div class="list-item-content">
+                                        <div class="list-item-title">Milo 的用药</div>
+                                        <div class="list-item-desc">每天 08:00</div>
+                                    </div>
+                                    <span class="badge badge-warning">待完成</span>
+                                </div>
+                                <div class="list-item">
+                                    <div class="pet-avatar pet-avatar-sm pet-avatar-dog">L</div>
+                                    <div class="list-item-content">
+                                        <div class="list-item-title">Luna 的散步</div>
+                                        <div class="list-item-desc">今天 18:00</div>
+                                    </div>
+                                    <span class="badge badge-brand">进行中</span>
+                                </div>
+                                <div class="list-item">
+                                    <div class="pet-avatar pet-avatar-sm pet-avatar-cat">M</div>
+                                    <div class="list-item-content">
+                                        <div class="list-item-title">Milo 的喂食</div>
+                                        <div class="list-item-desc">今天 12:00 · 已完成</div>
+                                    </div>
+                                    <span class="badge badge-success">已完成</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 style="font-size: var(--text-lg); font-weight: var(--font-semibold); margin-bottom: var(--space-3); color: var(--color-neutral-800);">宠物状态</h3>
+                            <div style="display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2);">
+                                <div class="card" style="min-width: 140px; text-align: center;">
+                                    <div class="pet-avatar pet-avatar-cat" style="margin: 0 auto var(--space-3);">M</div>
+                                    <div style="font-weight: var(--font-semibold); margin-bottom: var(--space-1);">Milo</div>
+                                    <div style="font-size: var(--text-xs); color: var(--color-neutral-400);">2 项待办</div>
+                                </div>
+                                <div class="card" style="min-width: 140px; text-align: center;">
+                                    <div class="pet-avatar pet-avatar-dog" style="margin: 0 auto var(--space-3);">L</div>
+                                    <div style="font-weight: var(--font-semibold); margin-bottom: var(--space-1);">Luna</div>
+                                    <div style="font-size: var(--text-xs); color: var(--color-success-600);">状态良好</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bottom-nav" style="position: relative;">
+                        <div class="bottom-nav-item active">
+                            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <span>Care</span>
+                        </div>
+                        <div class="bottom-nav-item">
+                            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span>Plan</span>
+                        </div>
+                        <div class="bottom-nav-item">
+                            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span>Timeline</span>
+                        </div>
+                        <div class="bottom-nav-item">
+                            <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <span>Me</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: 前端开发规范 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">11. 前端开发规范</h2>
+
+            <div class="ds-subsection">
+                <h3>CSS 架构</h3>
+                <div class="ds-code-block">/* 1. 设计令牌 (tokens.css) */
+:root {
+  --color-brand-500: #F97316;
+  --space-4: 16px;
+  --radius-lg: 14px;
+  /* ... */
+}
+
+/* 2. 基础样式 (base.css) */
+/* Reset + 字体 + 基础排版 */
+
+/* 3. 工具类 (utilities.css) */
+/* 仅在必要时使用，优先使用组件类 */
+
+/* 4. 组件样式 (components/) */
+/* button.css, input.css, card.css ... */
+
+/* 5. 页面样式 (pages/) */
+/* care-home.css, pet-detail.css ... */</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>命名规范</h3>
+                <table class="ds-table">
+                    <thead><tr><th>类型</th><th>命名方式</th><th>示例</th></tr></thead>
+                    <tbody>
+                        <tr><td>CSS 变量</td><td>kebab-case，带前缀</td><td><span class="ds-code">--color-brand-500</span></td></tr>
+                        <tr><td>组件类名</td><td>kebab-case，语义化</td><td><span class="ds-code">.btn-primary</span></td></tr>
+                        <tr><td>工具类</td><td>kebab-case，简洁</td><td><span class="ds-code">.text-center</span></td></tr>
+                        <tr><td>JS 变量/函数</td><td>camelCase</td><td><span class="ds-code">handleSubmit</span></td></tr>
+                        <tr><td>常量</td><td>UPPER_SNAKE_CASE</td><td><span class="ds-code">MAX_PET_COUNT</span></td></tr>
+                        <tr><td>组件文件名</td><td>PascalCase</td><td><span class="ds-code">PetAvatar.tsx</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>响应式断点</h3>
+                <p class="ds-desc">PLANET 是移动优先的 APP。桌面端仅作为辅助查看，不做专门适配。</p>
+                <table class="ds-table">
+                    <thead><tr><th>断点</th><th>宽度</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td>Mobile</td><td>&lt; 768px</td><td>主要目标设备，全功能</td></tr>
+                        <tr><td>Tablet</td><td>768px - 1024px</td><td>居中显示，最大宽度 768px</td></tr>
+                        <tr><td>Desktop</td><td>&gt; 1024px</td><td>居中显示，最大宽度 768px</td></tr>
+                    </tbody>
+                </table>
+                <div class="ds-code-block">/* 移动端优先 */
+.app { max-width: 100%; }
+
+/* 平板及以上 */
+@media (min-width: 768px) {
+  .app {
+    max-width: var(--max-width-lg);
+    margin: 0 auto;
+    min-height: 100vh;
+    box-shadow: var(--shadow-xl);
+  }
+}</div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>性能规范</h3>
+                <div class="ds-grid ds-grid-2">
+                    <div class="ds-card">
+                        <h4>加载性能</h4>
+                        <ul style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed); padding-left: var(--space-4); list-style: disc;">
+                            <li>首屏加载 &lt; 2s（3G 网络）</li>
+                            <li>关键 CSS 内联，非关键 CSS 异步加载</li>
+                            <li>图片使用 WebP 格式，懒加载</li>
+                            <li>字体使用系统字体栈，不加载外部字体</li>
+                        </ul>
+                    </div>
+                    <div class="ds-card">
+                        <h4>运行时性能</h4>
+                        <ul style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed); padding-left: var(--space-4); list-style: disc;">
+                            <li>动画仅使用 transform 和 opacity</li>
+                            <li>列表虚拟滚动（超过 50 项）</li>
+                            <li>图片使用 Intersection Observer 懒加载</li>
+                            <li>避免不必要的重渲染</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ds-subsection">
+                <h3>无障碍规范</h3>
+                <div class="ds-grid ds-grid-2">
+                    <div class="ds-card">
+                        <h4>必须实现</h4>
+                        <ul style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed); padding-left: var(--space-4); list-style: disc;">
+                            <li>所有交互元素可键盘访问</li>
+                            <li>图片必须有 alt 文本</li>
+                            <li>颜色对比度 &gt; 4.5:1（正文）</li>
+                            <li>表单元素必须有 label 关联</li>
+                            <li>支持 prefers-reduced-motion</li>
+                        </ul>
+                    </div>
+                    <div class="ds-card">
+                        <h4>推荐实现</h4>
+                        <ul style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: var(--leading-relaxed); padding-left: var(--space-4); list-style: disc;">
+                            <li>ARIA 标签用于复杂组件</li>
+                            <li>焦点环清晰可见</li>
+                            <li>支持屏幕阅读器</li>
+                            <li>触摸目标最小 44x44px</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Z-Index 层级 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">12. Z-Index 层级</h2>
+            <table class="ds-table">
+                <thead><tr><th>层级</th><th>值</th><th>使用场景</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="ds-code">--z-base</span></td><td>0</td><td>普通内容</td></tr>
+                    <tr><td><span class="ds-code">--z-dropdown</span></td><td>100</td><td>下拉菜单、弹出选项</td></tr>
+                    <tr><td><span class="ds-code">--z-sticky</span></td><td>200</td><td>顶部导航、底部导航</td></tr>
+                    <tr><td><span class="ds-code">--z-modal</span></td><td>300</td><td>模态框、底部 Sheet</td></tr>
+                    <tr><td><span class="ds-code">--z-toast</span></td><td>400</td><td>Toast 提示</td></tr>
+                    <tr><td><span class="ds-code">--z-tooltip</span></td><td>500</td><td>Tooltip、引导层</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Section: 文件清单 -->
+        <section class="ds-section">
+            <h2 class="ds-section-title">13. 开发文件清单</h2>
+            <p class="ds-desc">基于本规范，前端项目应包含以下文件结构：</p>
+            <div class="ds-code-block">src/
+├── styles/
+│   ├── tokens.css          # CSS 变量（色彩、间距、字体、动效）
+│   ├── base.css            # Reset + 基础样式
+│   ├── utilities.css       # 工具类
+│   └── components/
+│       ├── button.css
+│       ├── input.css
+│       ├── card.css
+│       ├── avatar.css
+│       ├── badge.css
+│       ├── list-item.css
+│       ├── toggle.css
+│       ├── nav.css
+│       ├── segmented-control.css
+│       ├── progress.css
+│       ├── skeleton.css
+│       ├── toast.css
+│       └── modal.css
+├── components/
+│   ├── Button.tsx
+│   ├── Input.tsx
+│   ├── Card.tsx
+│   ├── PetAvatar.tsx
+│   ├── Badge.tsx
+│   ├── ListItem.tsx
+│   ├── Toggle.tsx
+│   ├── BottomNav.tsx
+│   ├── TopNav.tsx
+│   ├── SegmentedControl.tsx
+│   ├── ProgressBar.tsx
+│   ├── Skeleton.tsx
+│   ├── Toast.tsx
+│   └── ModalSheet.tsx
+├── pages/
+│   ├── CareHome.tsx
+│   ├── PetDetail.tsx
+│   ├── FamilyManage.tsx
+│   └── Settings.tsx
+└── icons/
+    └── index.tsx             # SVG 图标组件集合</div>
+        </section>
+
+        <!-- Footer -->
+        <footer style="margin-top: var(--space-20); padding-top: var(--space-8); border-top: 1px solid var(--color-neutral-200); text-align: center; color: var(--color-neutral-400); font-size: var(--text-sm);">
+            <p>PLANET Design System v1.0.0</p>
+            <p style="margin-top: var(--space-2);">面向开发仓库 · 冻结产品方向 · 严禁 Emoji</p>
+        </footer>
+    </div>
+</body>
+</html>

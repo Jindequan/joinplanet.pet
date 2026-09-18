@@ -6,9 +6,10 @@
 # Idempotent: unique email/family suffix per run (timestamp + PID).
 # Prints "PASS/FAIL <step>" per check, a final summary, and exits nonzero on any FAIL.
 #
-# NOTE on rate limits: auth IP limiter is 30/hour and each run consumes 6
-# (3 request-code + 3 verify-code); email limiter is 1/min per address (we
-# use fresh addresses each run). Do not re-run with the same emails rapidly.
+# NOTE on rate limits: the local DEV_AUTH_CODES posture uses generous
+# process-local buckets so repeated development runs remain possible. The
+# production posture and strict integration test still enforce the documented
+# IP/email limits; this script uses fresh addresses on every run.
 set -u
 
 BASE="${BASE:-http://localhost:8081}"
@@ -145,9 +146,15 @@ expect "1.2a A creates family" 201 'd["family"]["role"] == "owner" and len(d["in
 CIRCLE_A=$(jget 'd["family"]["id"]')
 CIRCLE_A_NAME="Family A $UNIQ"
 
+req GET "/api/v1/families/$CIRCLE_A/audit-records" "$A_TOK"
+expect "1.2b family audit records the creation" 200 'any(r["action"] == "family_created" for r in d["records"])'
+
 req POST "/api/v1/families/$CIRCLE_A/pets" "$A_TOK" '{"name":"Mochi","species":"cat"}'
 expect "1.3a A creates pet Mochi" 201 'd["pet"]["name"] == "Mochi" and d["pet"]["species"] == "cat"'
 PET_ID=$(jget 'd["pet"]["id"]')
+
+req GET "/api/v1/families/$CIRCLE_A/audit-records" "$A_TOK"
+expect "1.3b family audit records pet creation" 200 'any(r["action"] == "pet_created" and r["resource_id"] == "'"$PET_ID"'" for r in d["records"])'
 
 req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$A_TOK"
 expect "1.4a A today view empty" 200 'd["date"] == "'"$TODAY"'" and d["pets"] == []'
@@ -170,6 +177,9 @@ req POST "/api/v1/pets/$PET_ID/tasks" "$A_TOK" '{"title":"Feed dinner","time_of_
 expect "2.1a A creates daily task" 201 'd["task"]["title"] == "Feed dinner" and d["task"]["time_of_day"] == "18:30"'
 TASK1=$(jget 'd["task"]["id"]')
 
+req GET "/api/v1/families/$CIRCLE_A/audit-records" "$A_TOK"
+expect "2.1b family audit records care-plan creation" 200 'any(r["action"] == "care_plan_created" and r["metadata"].get("title") == "Feed dinner" for r in d["records"])'
+
 req POST "/api/v1/tasks/$TASK1/logs" "$A_TOK" '{"status":"done"}'
 expect "2.2a A logs task done (server returns 201)" 201 'd["log"]["status"] in ("done", "completed")'
 LOG1=$(jget 'd["log"]["id"]')
@@ -190,8 +200,26 @@ req POST "/api/v1/pets/$PET_ID/tasks" "$A_TOK" '{"title":"Morning walk","time_of
 expect "2.7a A creates a second shared task" 201 'd["task"]["title"] == "Morning walk"'
 TASK2=$(jget 'd["task"]["id"]')
 
+req POST "/api/v1/pets/$PET_ID/care-plans" "$A_TOK" '{"type":"custom","title":"Delete retry check","rule":{"type":"daily","time":"21:00"}}'
+expect "2.8a A creates a care plan for delete retry" 201 'd["care_plan"]["id"] and d["task"]["id"]'
+DELETE_PLAN_ID=$(jget 'd["care_plan"]["id"]')
+UPDATE_PLAN_KEY="e2e-care-plan-update-$UNIQ"
+req PATCH "/api/v1/care-plans/$DELETE_PLAN_ID" "$A_TOK" '{"description":"retry-safe update"}' "$UPDATE_PLAN_KEY"
+expect "2.8b update care plan -> 200" 200 'd["care_plan"]["description"] == "retry-safe update"'
+req PATCH "/api/v1/care-plans/$DELETE_PLAN_ID" "$A_TOK" '{"description":"retry-safe update"}' "$UPDATE_PLAN_KEY"
+expect "2.8c retry update care plan with same key -> 200" 200 'd["care_plan"]["description"] == "retry-safe update"'
+req GET "/api/v1/families/$CIRCLE_A/audit-records" "$A_TOK"
+expect "2.8d care-plan update retry writes one audit" 200 'len([r for r in d["records"] if r["resource_id"] == "'"$DELETE_PLAN_ID"'" and r["action"] == "care_plan_updated"]) == 1'
+DELETE_PLAN_KEY="e2e-care-plan-delete-$UNIQ"
+req DELETE "/api/v1/care-plans/$DELETE_PLAN_ID" "$A_TOK" "" "$DELETE_PLAN_KEY"
+expect "2.8e delete care plan -> 204" 204
+req DELETE "/api/v1/care-plans/$DELETE_PLAN_ID" "$A_TOK" "" "$DELETE_PLAN_KEY"
+expect "2.8f retry delete care plan with same key -> 204" 204
+req GET "/api/v1/pets/$PET_ID/care-plans?include_archived=true" "$A_TOK"
+expect "2.8g deleted care plan remains archived" 200 'any(p["care_plan_id"] == "'"$DELETE_PLAN_ID"'" and p.get("archived_at") is not None for p in d["care_plans"])'
+
 # ===========================================================================
-echo "== Scenario 3: timeline — 5 event types, newest-first, redundancy, PATCH/DELETE =="
+echo "== Scenario 3: timeline — event types, photo, newest-first, redundancy, PATCH/DELETE =="
 req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"note\",\"occurred_at\":\"${EV[0]}\",\"payload\":{\"text\":\"First note $UNIQ\"}}"
 expect "3.1a note event" 201 'd["event"]["type"] == "note" and d["event"]["source"] == "user"'
 EV_NOTE=$(jget 'd["event"]["id"]')
@@ -212,20 +240,34 @@ req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"vaccine\",\"occur
 expect "3.5a vaccine event with next_due" 201 'd["event"]["payload"]["name"] == "Rabies"'
 EV_VACCINE=$(jget 'd["event"]["id"]')
 
+PHOTO_DATA='data:image/jpeg;base64,ZmFrZS1waG90bw=='
+req POST "/api/v1/pets/$PET_ID/timeline" "$A_TOK" "{\"type\":\"photo\",\"occurred_at\":\"${EV[6]}\",\"payload\":{\"photo_data\":\"$PHOTO_DATA\",\"caption\":\"At the park\"}}"
+expect "3.5b photo event with caption" 201 'd["event"]["type"] == "photo" and d["event"]["payload"]["photo_data"] == "'"$PHOTO_DATA"'"'
+EV_PHOTO=$(jget 'd["event"]["id"]')
+
 req GET "/api/v1/pets/$PET_ID/timeline" "$A_TOK"
-expect "3.6a timeline returns 5 user events newest-first" 200 'len([e for e in d["events"] if e["id"] in ("'"$EV_VACCINE"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")]) == 5 and [e["type"] for e in d["events"] if e["id"] in ("'"$EV_VACCINE"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")] == ["vaccine","vet_visit","weight","symptom","note"]'
+expect "3.6a timeline returns 6 user events newest-first" 200 'len([e for e in d["events"] if e["id"] in ("'"$EV_PHOTO"'", "'"$EV_VACCINE"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")]) == 6 and [e["type"] for e in d["events"] if e["id"] in ("'"$EV_PHOTO"'", "'"$EV_VACCINE"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")] == ["photo","vaccine","vet_visit","weight","symptom","note"]'
 
 req GET "/api/v1/pets/$PET_ID" "$A_TOK"
 expect "3.7a pet weight_g == 5200 (redundancy rebuilt)" 200 'd["pet"]["weight_g"] == 5200'
 
-req PATCH "/api/v1/timeline-events/$EV_NOTE" "$A_TOK" "{\"occurred_at\":\"${EV[0]}\",\"payload\":{\"text\":\"Edited note $UNIQ\"}}"
+TIMELINE_UPDATE_KEY="timeline-update-${UNIQ}"
+req PATCH "/api/v1/timeline-events/$EV_NOTE" "$A_TOK" "{\"occurred_at\":\"${EV[0]}\",\"payload\":{\"text\":\"Edited note $UNIQ\"}}" "$TIMELINE_UPDATE_KEY"
 expect "3.8a PATCH note payload -> 200" 200 'd["event"]["payload"]["text"] == "Edited note '"$UNIQ"'" and d["event"].get("edited_at") is not None'
+req PATCH "/api/v1/timeline-events/$EV_NOTE" "$A_TOK" "{\"occurred_at\":\"${EV[0]}\",\"payload\":{\"text\":\"Edited note $UNIQ\"}}" "$TIMELINE_UPDATE_KEY"
+expect "3.8b retry PATCH note with same key -> 200" 200 'd["event"]["payload"]["text"] == "Edited note '"$UNIQ"'"'
 
-req DELETE "/api/v1/timeline-events/$EV_VACCINE" "$A_TOK"
+TIMELINE_DELETE_KEY="timeline-delete-${UNIQ}"
+req DELETE "/api/v1/timeline-events/$EV_VACCINE" "$A_TOK" "" "$TIMELINE_DELETE_KEY"
 expect "3.9a DELETE vaccine event -> 204" 204
 
+# A lost 204 must be safe to retry: the same key replays success after the
+# event has already been soft-deleted instead of turning into a misleading 404.
+req DELETE "/api/v1/timeline-events/$EV_VACCINE" "$A_TOK" "" "$TIMELINE_DELETE_KEY"
+expect "3.9a-retry DELETE vaccine event with same key -> 204" 204
+
 req GET "/api/v1/pets/$PET_ID/timeline" "$A_TOK"
-expect "3.9b timeline has 4 user events, vaccine gone" 200 'len([e for e in d["events"] if e["id"] in ("'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")]) == 4 and not any(e["type"] == "vaccine" for e in d["events"] if e["id"] in ("'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'"))'
+expect "3.9b timeline has 5 user events, vaccine gone" 200 'len([e for e in d["events"] if e["id"] in ("'"$EV_PHOTO"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'")]) == 5 and not any(e["type"] == "vaccine" for e in d["events"] if e["id"] in ("'"$EV_PHOTO"'", "'"$EV_VET"'", "'"$EV_WEIGHT"'", "'"$EV_SYMPTOM"'", "'"$EV_NOTE"'"))'
 
 # ===========================================================================
 echo "== Scenario 4: medications — auto timeline event + stop =="
@@ -242,6 +284,19 @@ expect "4.3a stop medication -> ended_on set" 200 'd["medication"]["ended_on"] i
 req GET "/api/v1/pets/$PET_ID/timeline" "$A_TOK"
 expect "4.4a auto medication ended event recorded" 200 'any(e["type"] == "medication" and e["source"] == "auto:med" and e["payload"]["action"] == "ended" for e in d["events"])'
 
+MED_UPDATE_KEY="medication-update-${UNIQ}"
+req PATCH "/api/v1/medications/$MED_ID" "$A_TOK" '{"note":"retry-safe medication edit"}' "$MED_UPDATE_KEY"
+expect "4.4b update medication -> 200" 200 'd["medication"]["note"] == "retry-safe medication edit"'
+req PATCH "/api/v1/medications/$MED_ID" "$A_TOK" '{"note":"retry-safe medication edit"}' "$MED_UPDATE_KEY"
+expect "4.4c retry update medication with same key -> 200" 200 'd["medication"]["note"] == "retry-safe medication edit"'
+
+MED_DELETE_KEY="medication-delete-${UNIQ}"
+req DELETE "/api/v1/medications/$MED_ID" "$A_TOK" "" "$MED_DELETE_KEY"
+expect "4.5a delete medication -> 204" 204
+
+req DELETE "/api/v1/medications/$MED_ID" "$A_TOK" "" "$MED_DELETE_KEY"
+expect "4.5b retry delete medication with same key -> 204" 204
+
 # ===========================================================================
 echo "== Scenario 5: invite + join + shared today + B completes A's task =="
 req POST "/api/v1/families/$CIRCLE_A/invite/refresh" "$A_TOK"
@@ -257,8 +312,27 @@ expect "5.3a B appears in members as caregiver" 200 'any(m["user_id"] == "'"$B_I
 req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
 expect "5.4a B token can read today" 200 'd["date"] == "'"$TODAY"'"'
 
+req GET "/api/v1/families/$CIRCLE_A/notification-prefs" "$A_TOK"
+expect "5.4a-notify default notification prefs" 200 'd["prefs"]["reminders"] is True and d["prefs"]["digest"] is True and d["prefs"]["alerts"] is True'
+req PUT "/api/v1/families/$CIRCLE_A/notification-prefs" "$A_TOK" '{"reminders":false}'
+expect "5.4a-notify disable reminders" 200 'd["prefs"]["reminders"] is False and d["prefs"]["digest"] is True'
+req PUT "/api/v1/families/$CIRCLE_A/notification-prefs" "$A_TOK" '{"digest":false}'
+expect "5.4a-notify partial update preserves reminders" 200 'd["prefs"]["reminders"] is False and d["prefs"]["digest"] is False and d["prefs"]["alerts"] is True'
+req PUT "/api/v1/families/$CIRCLE_A/notification-prefs" "$A_TOK" '{}'
+expect "5.4a-notify empty patch -> 400 VALIDATION_FAILED" 400 'd["error"]["code"] == "VALIDATION_FAILED"'
+
+ASSIGNMENT_SET_KEY="assignment-set-${UNIQ}"
+req PUT "/api/v1/care-plans/$TASK2/assignments/$B_ID" "$A_TOK" '{"role":"helper"}' "$ASSIGNMENT_SET_KEY"
+expect "5.4b A assigns the shared task to B" 200 'd["assignment"]["user_id"] == "'"$B_ID"'"'
+
+req PUT "/api/v1/care-plans/$TASK2/assignments/$B_ID" "$A_TOK" '{"role":"helper"}' "$ASSIGNMENT_SET_KEY"
+expect "5.4b-retry assignment with same key -> 200" 200 'd["assignment"]["user_id"] == "'"$B_ID"'"'
+
+req GET "/api/v1/families/$CIRCLE_A/audit-records" "$A_TOK"
+expect "5.4c family audit records assignment change once" 200 'len([r for r in d["records"] if r["action"] == "care_assignment_added" and r["metadata"].get("title") == "Morning walk" and r["metadata"].get("target_user_id") == "'"$B_ID"'"]) == 1'
+
 req POST "/api/v1/tasks/$TASK2/logs" "$B_TOK" '{"status":"done"}'
-expect "5.5a B completes A-family task" 201 'd["log"]["status"] in ("done", "completed") and d["log"]["done_by"] == "'"$B_ID"'"'
+expect "5.5a B completes the assigned A-family task" 201 'd["log"]["status"] in ("done", "completed") and d["log"]["done_by"] == "'"$B_ID"'"'
 
 req GET "/api/v1/families/$CIRCLE_A/today?date=$TODAY" "$B_TOK"
 expect "5.5b today (B token) shows B's completed log" 200 'any(it["task"]["id"] == "'"$TASK2"'" and it["log"] is not None and it["log"]["status"] in ("done", "completed") and it["log"]["done_by"] == "'"$B_ID"'" for g in d["pets"] for it in g["items"])'
@@ -277,8 +351,24 @@ SHARE2_TOKEN=$(jget 'd["token"]')
 req GET "/api/v1/shares/$SHARE1_TOKEN" ""
 expect "6.2a anonymous GET share (no auth) -> 200, no allergy/history fields" 200 'd["kind"] == "care_card" and d["data"]["pet"]["name"] == "Mochi" and "allergies" not in d["data"] and "conditions" not in d["data"] and "events" not in d["data"] and "allergies" not in d'
 
-req DELETE "/api/v1/shares/$SHARE1_ID" "$A_TOK"
+req POST "/api/v1/pets/$PET_ID/shares" "$A_TOK" '{"kind":"summary","ttl_hours":24,"options":{"days":90}}'
+expect "6.2b A creates photo-free summary by default" 201 'd["share"]["kind"] == "summary"'
+SUMMARY_NO_PHOTO_TOKEN=$(jget 'd["token"]')
+req GET "/api/v1/shares/$SUMMARY_NO_PHOTO_TOKEN" ""
+expect "6.2c summary omits photos unless selected" 200 'd["kind"] == "summary" and all("photo_data" not in e.get("payload", {}) for e in d["data"].get("events", []))'
+
+req POST "/api/v1/pets/$PET_ID/shares" "$A_TOK" '{"kind":"summary","ttl_hours":24,"options":{"days":90,"include_photos":true}}'
+expect "6.2d A explicitly includes summary photos" 201 'd["share"]["kind"] == "summary"'
+SUMMARY_WITH_PHOTO_TOKEN=$(jget 'd["token"]')
+req GET "/api/v1/shares/$SUMMARY_WITH_PHOTO_TOKEN" ""
+expect "6.2e selected summary includes photo" 200 'any(e.get("payload", {}).get("photo_data") == "'"$PHOTO_DATA"'" for e in d["data"].get("events", []))'
+
+SHARE_REVOKE_KEY="share-revoke-${UNIQ}"
+req DELETE "/api/v1/shares/$SHARE1_ID" "$A_TOK" "" "$SHARE_REVOKE_KEY"
 expect "6.3a A revokes share #1 -> 204" 204
+
+req DELETE "/api/v1/shares/$SHARE1_ID" "$A_TOK" "" "$SHARE_REVOKE_KEY"
+expect "6.3b retry revokes share #1 with same key -> 204" 204
 
 req GET "/api/v1/shares/$SHARE1_TOKEN" ""
 expect "6.4a revoked share token -> 410 SHARE_GONE" 410 'd["error"]["code"] == "SHARE_GONE"'
@@ -292,35 +382,40 @@ CIRCLE_B_NAME="Family B Renamed $UNIQ"
 
 TRANSFER_CREATE_KEY="e2e-transfer-create-$UNIQ"
 req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_family_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
-expect "7.2a A (source owner) initiates transfer" 201 'd["transfer"]["status"] == "PENDING" and d["transfer"]["to_family_id"] == "'"$CIRCLE_B"'"'
+expect "7.2a A (source owner) initiates transfer" 201 'd["transfer"]["status"] == "pending" and d["transfer"]["to_family_id"] == "'"$CIRCLE_B"'"'
 TRANSFER_ID=$(jget 'd["transfer"]["id"]')
 
 req POST "/api/v1/pets/$PET_ID/transfer" "$A_TOK" "{\"to_family_id\":\"$CIRCLE_B\"}" "$TRANSFER_CREATE_KEY"
 expect "7.2b retry returns the same transfer (idempotent)" 201 'd["transfer"]["id"] == "'"$TRANSFER_ID"'"'
 
 req GET "/api/v1/families/$CIRCLE_B/transfers?direction=incoming" "$B_TOK"
-expect "7.3a B sees incoming PENDING transfer" 200 'any(t["id"] == "'"$TRANSFER_ID"'" and t["status"] == "PENDING" for t in d["transfers"])'
+expect "7.3a B sees incoming pending transfer" 200 'any(t["id"] == "'"$TRANSFER_ID"'" and t["status"] == "pending" for t in d["transfers"])'
 
 TRANSFER_ACCEPT_KEY="e2e-transfer-accept-$UNIQ"
 req POST "/api/v1/transfers/$TRANSFER_ID/accept" "$B_TOK" "" "$TRANSFER_ACCEPT_KEY"
-expect "7.4a B accepts transfer" 200 'd["transfer"]["status"] == "ACCEPTED"'
+expect "7.4a B accepts transfer" 200 'd["transfer"]["status"] == "accepted"'
 
 req POST "/api/v1/transfers/$TRANSFER_ID/accept" "$B_TOK" "" "$TRANSFER_ACCEPT_KEY"
-expect "7.4b retry returns the accepted transfer (idempotent)" 200 'd["transfer"]["id"] == "'"$TRANSFER_ID"'" and d["transfer"]["status"] == "ACCEPTED"'
+expect "7.4b retry returns the accepted transfer (idempotent)" 200 'd["transfer"]["id"] == "'"$TRANSFER_ID"'" and d["transfer"]["status"] == "accepted"'
 
 req GET "/api/v1/families/$CIRCLE_B/pets" "$B_TOK"
 expect "7.5a pet now in B's family" 200 'any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
 
 req GET "/api/v1/families/$CIRCLE_A/pets" "$A_TOK"
-expect "7.5b old Family keeps historical Pet visibility" 200 'any(p["id"] == "'"$PET_ID"'" and p["current_owner_user_id"] == "'"$B_ID"'" for p in d["pets"])'
+expect "7.5b old Family no longer has live Pet visibility" 200 'not any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
 
 req GET "/api/v1/shares/$SHARE2_TOKEN" ""
 expect "7.6a share #2 auto-revoked by transfer -> 410 SHARE_GONE" 410 'd["error"]["code"] == "SHARE_GONE"'
 
 # ===========================================================================
 echo "== Scenario 8: governance — rename, leave, ownership transfer, delete/restore =="
-req PATCH "/api/v1/families/$CIRCLE_B" "$B_TOK" "{\"name\":\"Family B Renamed $UNIQ\"}"
+FAMILY_UPDATE_KEY="family-update-${UNIQ}"
+req PATCH "/api/v1/families/$CIRCLE_B" "$B_TOK" "{\"name\":\"Family B Renamed $UNIQ\"}" "$FAMILY_UPDATE_KEY"
 expect "8.1a B renames own family (PATCH exists)" 200 'd["family"]["name"] == "Family B Renamed '"$UNIQ"'"'
+req PATCH "/api/v1/families/$CIRCLE_B" "$B_TOK" "{\"name\":\"Family B Renamed $UNIQ\"}" "$FAMILY_UPDATE_KEY"
+expect "8.1b retry family rename with same key -> 200" 200 'd["family"]["name"] == "Family B Renamed '"$UNIQ"'"'
+req GET "/api/v1/families/$CIRCLE_B/audit-records" "$B_TOK"
+expect "8.1c family rename retry writes one audit" 200 'len([r for r in d["records"] if r["resource_id"] == "'"$CIRCLE_B"'" and r["action"] == "family_updated"]) == 1'
 
 req POST "/api/v1/families/$CIRCLE_A/leave" "$B_TOK"
 expect "8.2a B leaves A's family -> 204" 204
@@ -342,23 +437,53 @@ expect "8.3c B transfers family ownership to A" 200 'any(m["user_id"] == "'"$A_I
 req POST "/api/v1/families/$CIRCLE_B/transfer" "$B_TOK" "{\"to_user_id\":\"$A_ID\"}" "$FAMILY_TRANSFER_KEY"
 expect "8.3c2 retry returns the final Family ownership state (idempotent)" 200 'any(m["user_id"] == "'"$A_ID"'" and m["role"] == "owner" for m in d["members"]) and any(m["user_id"] == "'"$B_ID"'" and m["role"] == "caregiver" for m in d["members"])'
 
-req DELETE "/api/v1/pets/$PET_ID/families/$CIRCLE_A" "$B_TOK"
-expect "8.3d B removes the old Family visibility" 204
+FAMILY_LEAVE_KEY="family-leave-${UNIQ}"
+req POST "/api/v1/families/$CIRCLE_B/leave" "$B_TOK" "" "$FAMILY_LEAVE_KEY"
+expect "8.3c3 B leaves after transferring Family ownership" 204
 
-req DELETE "/api/v1/families/$CIRCLE_A" "$A_TOK" "{\"confirm\":\"$CIRCLE_A_NAME\"}"
+req POST "/api/v1/families/$CIRCLE_B/leave" "$B_TOK" "" "$FAMILY_LEAVE_KEY"
+expect "8.3c3-retry B leaves with same key -> 204" 204
+
+req GET "/api/v1/families/$CIRCLE_A/pets" "$A_TOK"
+expect "8.3d source Family remains empty after B leaves" 200 'not any(p["id"] == "'"$PET_ID"'" for p in d["pets"])'
+
+FAMILY_DELETE_A_KEY="family-delete-a-${UNIQ}"
+req DELETE "/api/v1/families/$CIRCLE_A" "$A_TOK" "{\"confirm\":\"$CIRCLE_A_NAME\"}" "$FAMILY_DELETE_A_KEY"
 expect "8.3e A deletes the now-empty old Family" 204
+
+req DELETE "/api/v1/families/$CIRCLE_A" "$A_TOK" "{\"confirm\":\"$CIRCLE_A_NAME\"}" "$FAMILY_DELETE_A_KEY"
+expect "8.3e-retry A deletes old Family with same key -> 204" 204
 
 req DELETE "/api/v1/families/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
 expect "8.4a delete family with pet present -> 409 FAMILY_NOT_EMPTY" 409 'd["error"]["code"] == "FAMILY_NOT_EMPTY"'
 
-req DELETE "/api/v1/pets/$PET_ID" "$B_TOK" "{\"confirm\":\"$PET_ID\"}"
+PET_DELETE_KEY="pet-delete-${UNIQ}"
+req DELETE "/api/v1/pets/$PET_ID" "$B_TOK" "{\"confirm\":\"$PET_ID\"}" "$PET_DELETE_KEY"
 expect "8.5a current Pet owner deletes pet (confirm=pet id) -> 204" 204
 
-req DELETE "/api/v1/families/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}"
+req DELETE "/api/v1/pets/$PET_ID" "$B_TOK" "{\"confirm\":\"$PET_ID\"}" "$PET_DELETE_KEY"
+expect "8.5a-retry current Pet owner deletes pet with same key -> 204" 204
+
+FAMILY_DELETE_B_KEY="family-delete-b-${UNIQ}"
+req DELETE "/api/v1/families/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}" "$FAMILY_DELETE_B_KEY"
 expect "8.6a A deletes now-empty family -> 204" 204
 
-req POST "/api/v1/families/$CIRCLE_B/restore" "$A_TOK"
+req DELETE "/api/v1/families/$CIRCLE_B" "$A_TOK" "{\"confirm\":\"$CIRCLE_B_NAME\"}" "$FAMILY_DELETE_B_KEY"
+expect "8.6a-retry A deletes family with same key -> 204" 204
+
+FAMILY_RESTORE_KEY="family-restore-${UNIQ}"
+req POST "/api/v1/families/$CIRCLE_B/restore" "$A_TOK" "" "$FAMILY_RESTORE_KEY"
 expect "8.7a 30-day restore route exists -> 200" 200 'd["family"]["id"] == "'"$CIRCLE_B"'"'
+
+req POST "/api/v1/families/$CIRCLE_B/restore" "$A_TOK" "" "$FAMILY_RESTORE_KEY"
+expect "8.7a-retry restore Family with same key -> 200" 200 'd["family"]["id"] == "'"$CIRCLE_B"'"'
+
+PET_RESTORE_KEY="pet-restore-${UNIQ}"
+req POST "/api/v1/pets/$PET_ID/restore" "$B_TOK" "" "$PET_RESTORE_KEY"
+expect "8.7b restore deleted Pet -> 200" 200 'd["pet"]["id"] == "'"$PET_ID"'" and d["pet"].get("deleted_at") is None'
+
+req POST "/api/v1/pets/$PET_ID/restore" "$B_TOK" "" "$PET_RESTORE_KEY"
+expect "8.7b-retry restore Pet with same key -> 200" 200 'd["pet"]["id"] == "'"$PET_ID"'"'
 
 # ===========================================================================
 echo "== Scenario 9: negative paths — isolation, quota, archived, malformed =="
@@ -381,7 +506,16 @@ expect "9.3c C pet 2 created" 201 'True'
 PET_C2=$(jget 'd["pet"]["id"]')
 
 req POST "/api/v1/families/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetThree","species":"dog"}'
-expect "9.3d C pet 3 -> 403 QUOTA_PETS_EXCEEDED (free pet_max=2)" 403 'd["error"]["code"] == "QUOTA_PETS_EXCEEDED" and d["usage"]["pet_max"] == 2'
+expect "9.3d C pet 3 created" 201 'True'
+
+req POST "/api/v1/families/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetFour","species":"dog"}'
+expect "9.3e C pet 4 created" 201 'True'
+
+req POST "/api/v1/families/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetFive","species":"dog"}'
+expect "9.3f C pet 5 created" 201 'True'
+
+req POST "/api/v1/families/$CIRCLE_C/pets" "$C_TOK" '{"name":"PetSix","species":"dog"}'
+expect "9.3g C pet 6 -> 403 QUOTA_PETS_EXCEEDED (free pet_max=5)" 403 'd["error"]["code"] == "QUOTA_PETS_EXCEEDED" and d["usage"]["pet_max"] == 5'
 
 req POST "/api/v1/pets/$PET_C1/archive" "$C_TOK"
 expect "9.4a C archives pet 1" 200 'd["pet"].get("archived_at") is not None'
@@ -395,10 +529,43 @@ expect "9.4c share of archived pet -> 409 PET_ARCHIVED" 409 'd["error"]["code"] 
 req POST "/api/v1/pets/$PET_C2/timeline" "$C_TOK" '{"type":"note","occurred_at":"not-a-date","payload":{"text":"bad date"}}'
 expect "9.5a malformed occurred_at -> 400 VALIDATION_FAILED" 400 'd["error"]["code"] == "VALIDATION_FAILED"'
 
+req GET /api/v1/care-requests/not-a-real-request "$C_TOK"
+expect "9.5b malformed care request deep link -> 400 VALIDATION_FAILED" 400 'd["error"]["code"] == "VALIDATION_FAILED"'
+
+req GET /api/v1/care-handoff-batches/not-a-real-batch "$C_TOK"
+expect "9.5c malformed handoff deep link -> 400 VALIDATION_FAILED" 400 'd["error"]["code"] == "VALIDATION_FAILED"'
+
+MISSING_ID="00000000-0000-0000-0000-000000000000"
+req GET "/api/v1/care-requests/$MISSING_ID" "$C_TOK"
+expect "9.5d stale care request deep link -> 404 RESOURCE_NOT_FOUND" 404 'd["error"]["code"] == "RESOURCE_NOT_FOUND"'
+
+req GET "/api/v1/care-handoff-batches/$MISSING_ID" "$C_TOK"
+expect "9.5e stale handoff deep link -> 404 RESOURCE_NOT_FOUND" 404 'd["error"]["code"] == "RESOURCE_NOT_FOUND"'
+
+req POST /api/v1/care-occurrences/not-a-real-occurrence/requests "$C_TOK" "{\"family_id\":\"$CIRCLE_C\",\"target_user_id\":\"$A_ID\"}"
+expect "9.5f malformed care action id -> 400 VALIDATION_FAILED" 400 'd["error"]["code"] == "VALIDATION_FAILED"'
+
+req POST /api/v1/care-handoff-batches/not-a-real-batch/accept "$C_TOK" '{}'
+expect "9.5g malformed batch action id -> 400 VALIDATION_FAILED" 400 'd["error"]["code"] == "VALIDATION_FAILED"'
+
 # ===========================================================================
 echo "== Scenario 10: account lifecycle — profile update + logout invalidation =="
-req PATCH /api/v1/me "$A_TOK" "{\"display_name\":\"Alice $UNIQ\"}"
-expect "10.1a A updates display_name" 200 'd["user"]["display_name"] == "Alice '"$UNIQ"'"'
+ME_KEY="e2e-me-${UNIQ}"
+req PATCH /api/v1/me "$A_TOK" "{\"display_name\":\"Alice $UNIQ\",\"locale\":\"zh-CN\"}" "$ME_KEY"
+expect "10.1a A updates display_name and locale atomically" 200 "d[\"user\"][\"display_name\"] == \"Alice $UNIQ\" and d[\"user\"][\"locale\"] == \"zh-CN\""
+
+req PATCH /api/v1/me "$A_TOK" "{\"display_name\":\"Alice $UNIQ\",\"locale\":\"zh-CN\"}" "$ME_KEY"
+expect "10.1b retry profile update with same key -> 200" 200 "d[\"user\"][\"display_name\"] == \"Alice $UNIQ\" and d[\"user\"][\"locale\"] == \"zh-CN\""
+
+PREF_KEY="e2e-pref-${UNIQ}"
+req PATCH /api/v1/me/preferences "$A_TOK" '{"default_family_id":null,"default_pet_id":null}' "$PREF_KEY"
+expect "10.1c A updates default scope" 200 'd["preferences"]["default_family_id"] is None and d["preferences"]["default_pet_id"] is None'
+
+req PATCH /api/v1/me/preferences "$A_TOK" '{"default_family_id":null,"default_pet_id":null}' "$PREF_KEY"
+expect "10.1d retry default scope with same key -> 200" 200 'd["preferences"]["default_family_id"] is None and d["preferences"]["default_pet_id"] is None'
+
+req PATCH /api/v1/me/preferences "$A_TOK" '{}'
+expect "10.1e empty default scope patch -> 400 VALIDATION_FAILED" 400 'd["error"]["code"] == "VALIDATION_FAILED"'
 
 req DELETE /api/v1/auth/session "$A_TOK"
 expect "10.2a A deletes session -> 204" 204

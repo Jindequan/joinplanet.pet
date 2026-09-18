@@ -1,8 +1,8 @@
 # PLANET 技术事实源
 
-状态：2026-08-23
+状态：2026-09-14
 
-本文是代码组织、数据库、业务边界、API、前端数据流、运行和验证方式的唯一技术事实源。产品目标和范围以 [PRODUCT.md](PRODUCT.md) 为准；原生 App 迁移约定以 [APP/docs/PLANET_APP_DESIGN_SYSTEM.md](../APP/docs/PLANET_APP_DESIGN_SYSTEM.md) 为准；主线 Web 应用（PWA）为 `mobile-v3/`，由 founder 直接驱动持续演进（2026-09 起为活跃主线）。
+本文是代码组织、数据库、业务边界、API、前端数据流、运行和验证方式的唯一技术事实源。产品目标和范围以 [PRODUCT.md](PRODUCT.md) 为准；原生 App 迁移约定以 [APP/docs/PLANET_APP_DESIGN_SYSTEM.md](../APP/docs/PLANET_APP_DESIGN_SYSTEM.md) 为准；当前可测试的 Web 与原生入口统一为 `APP/`。
 
 ## 1. 唯一真相与变更边界
 
@@ -14,9 +14,9 @@
 | **地基形态、延伸接入、API 稳定面** | **`docs/FOUNDATION.md`** |
 | 数据、API、代码分层、前后端数据流、运行验证 | `docs/ARCHITECTURE.md` |
 | 原生 App 迁移说明与组件约束 | `APP/docs/PLANET_APP_DESIGN_SYSTEM.md` |
-| 主线 Web 应用（PWA，活跃开发） | `mobile-v3/` |
+| Web 测试入口（Expo Web） | `APP/` |
 
-`README` 只做入口和启动索引；`planet-api/README.md` 只做后端仓库运行说明；研究、营销、商业和 archive 目录不覆盖以上事实源。出现冲突时，按上表处理。`mobile-v3` 是活跃主线（2026-09-08 更新：founder 拍板持续演进；生产部署规划为 `app.joinplanet.pet`，营销与分享/邀请预览页由 `www.joinplanet.pet` 承担）。
+`README` 只做入口和启动索引；`planet-api/README.md` 只做后端仓库运行说明；研究、营销、商业和 archive 目录不覆盖以上事实源。出现冲突时，按上表处理。`mobile-v3` 仅作为冻结视觉对照；生产部署规划为 `app.joinplanet.pet`，营销与分享/邀请预览页由 `www.joinplanet.pet` 承担。
 
 ## 2. Workspace 与运行时
 
@@ -24,7 +24,7 @@
 joinplanet.pet/
 ├─ docs/               跨仓产品与技术事实源
 ├─ APP/                Expo + React Native 原生 App（重建中）
-├─ mobile-v3/          主线 Web 应用（PWA）
+├─ mobile-v3/          冻结的 Web 视觉对照（只读）
 ├─ planet-api/         Go HTTP API + PostgreSQL
 ├─ www.joinplanet.pet/ 营销站和匿名分享查看页
 └─ scripts/            跨仓启动、状态和日志脚本
@@ -32,14 +32,22 @@ joinplanet.pet/
 
 三个代码目录是独立 Git 仓库；根仓库只追踪文档和跨仓脚本。
 
-本地默认：`planet-api → 0.0.0.0:8081`；`APP → Expo Go LAN / iOS / Android / Web`。
+本地默认：`planet-api → 0.0.0.0:8081`；`APP → Expo Web :5173 / Simulator Metro :8082 / iOS Simulator / Android Emulator`。仓库脚本不自动连接或安装实体设备。
+
+生产的 `api.joinplanet.pet` 同时承载两类后端，必须由 Caddy 按路径分流：`/api/v1/*`、
+`/healthz`、`/readyz` → `planet-api:8081`；Landing 的 `/progress`、`/checkout`、
+`/intake`、`/email-capture`、`/webhook`、`/membership/claim` → `lemon-webhook:8080`。
+部署 App API 时不能把整个域名直接反代到 8081，否则会切断收款和 webhook。
 
 ```bash
-./scripts/dev.sh start all device
+./scripts/dev.sh start all web
+./scripts/dev.sh start all simulator
 ./scripts/dev.sh status
 ./scripts/dev.sh logs backend
 ./scripts/dev.sh stop all
 ```
+
+`./scripts/dev.sh status` 以实际监听端口和进程工作目录为准，会自动修复过期的 PID/模式文件；`stop` 会先移除 `ios.sh` 可能提交的同用户 launchd 作业，再停止监听进程，避免旧 Metro/API 被系统重新拉起。重复执行 `start all simulator` 只复用现有的 `APP` Metro，不会创建第二个端口。
 
 脚本负责进程、health check、CORS 和 App API 地址。不要让页面、脚本或文档再引入第二套旧服务地址。
 
@@ -117,7 +125,7 @@ planet-api/
 | 照护业务 | `medications`、`care_plans`、`care_rules`、`care_plan_assignments`、`care_occurrences`、`pet_events` | 长期照护、规则、责任人、具体执行和事实记录 |
 | 对外分享 | `share_links` | Pet 级有时效只读分享，保存 token hash |
 | 身份基础设施 | `auth_challenges`、`sessions` | 验证码挑战和登录会话 |
-| 可靠性基础设施 | `idempotency_keys`、`transactional_outbox`、`audit_records` | 重试去重、事务后事件投递、治理审计；不是业务主体 |
+| 可靠性基础设施 | `idempotency_keys`、`notification_outbox`、`audit_records` | 重试去重、失败通知补发、治理审计；不是业务主体 |
 | 主动服务基础设施 | `push_tokens`、`job_runs`、`auth_rate_limits` | 推送设备、调度租约和认证限流 |
 | 权益配置 | `plans`、`quota_configs`、`subscriptions`、`entitlements`、`user_usage` | User 级套餐、额度、订阅和原子用量 |
 
@@ -163,11 +171,21 @@ Pet ──< Medication / PetEvent / ShareLink
 
 创建 Care Plan：创建 Plan、Rule、默认 Assignment，并按规则生成首个可执行 Occurrence；任何一步失败都不能留下半个计划。
 
-完成 Occurrence：锁定该 Occurrence，校验当前状态和用户能力，写入完成人/时间/备注，幂等地产生 Pet Event，并写入 outbox（若需要通知）。重复完成返回权威状态，不重复扣配额、不重复写事件。
+完成 Occurrence：锁定该 Occurrence，校验当前状态和用户能力，写入完成人/时间/备注，幂等地产生 Pet Event。需要通知时先直接尝试投递；提供商失败则写入 `notification_outbox`，由调度器租约领取并退避重试。重复完成返回权威状态，不重复扣配额、不重复写事件。
 
 删除或归档：业务数据先软删除/改变状态，关闭后续关系和执行；物理清理必须是独立的、可审计的保留策略，不能由普通 API 直接级联销毁 Pet 历史。
 
-所有创建型 POST 要求 8–200 字符的 `Idempotency-Key`。同一用户、同一命令、同一作用域和同一请求 hash 才能复用结果；同 key 不同 payload 必须拒绝。幂等表只解决网络重试和并发占用，不是业务领域对象。
+账号注销：共享照护请求、批次和事件保留责任链，但用户邮箱与姓名匿名化为“已删除账号”；会话、验证码、邮箱限流、设备令牌、偏好和幂等响应等账号专属数据在同一事务内清理。客户端同步清理该用户的离线队列、范围和 Today 快照。
+
+所有创建型 POST，以及会轮换邀请码/分享秘密的 POST，都要求 8–200 字符的 `Idempotency-Key`。同一用户、同一命令、同一作用域和同一请求 hash 才能复用结果；同 key 不同 payload 必须拒绝。带秘密响应的命令必须把可安全重放的响应片段绑定在幂等记录上，不能在重试时重新生成秘密。幂等表只解决网络重试和并发占用，不是业务领域对象。
+
+时间线手动事实的 DELETE 也支持可选 `Idempotency-Key`。移动端默认发送请求键；删除和幂等记录在同一事务内提交，因此第一次 204 丢失后的同键重试仍返回 204，不会把已成功的软删除误报为 404。旧客户端不带请求键时继续走原有一次性删除路径。
+
+照护计划 DELETE（归档语义）和未来开放任务/交接请求收束也支持可选 `Idempotency-Key`。归档、取消未来任务、关闭请求、审计和幂等绑定在同一事务内完成；重复重试只返回成功结果，不重复写审计记录。
+
+成员主动退出 Family 的 POST 同样支持可选请求键。退出、责任链收束、审计和幂等绑定在同一事务内完成；当前客户端默认发送请求键，重复重试只回放成功结果。
+
+删除 Family 与删除 Pet 也支持可选请求键。Family/Pet 的软删除、关联状态收束、配额更新和审计全部成功后才绑定请求键，避免丢失响应时重复触发生命周期副作用。
 
 ## 6. 照护与 Today 算法
 
@@ -215,7 +233,7 @@ POST /pets/{id}/transfer
 
 Care：
 POST/GET /pets/{id}/care-plans  PATCH/DELETE /care-plans/{id}
-GET/PUT/DELETE /care-plans/{id}/assignments[/{user_id}]
+GET/PUT/DELETE /care-plans/{id}/assignments[/{user_id}]；POST /care-plans/{id}/assignments/{user_id}/move 调整备用顺序
 POST /care-tasks/{id}/complete  GET /families/{id}/today
 GET /today?family_id=...|pet_id=...
 
@@ -225,6 +243,8 @@ POST/GET /pets/{id}/medications PATCH/DELETE /medications/{id}
 POST /medications/{id}/stop     POST/GET /pets/{id}/shares
 DELETE /shares/{id}             GET /shares/{token}  # 仅此读取端点允许匿名
 ```
+
+`DELETE /shares/{id}` 和 `DELETE /medications/{id}` 接受可选 `Idempotency-Key`；客户端默认生成请求键，删除状态、关联事实清理、审计记录和重试绑定在同一事务内，丢失 204 响应后重试仍返回成功。
 
 `/pets/{id}/tasks`、`/tasks/{id}` 和 `/tasks/{id}/logs` 是当前兼容入口；新客户端优先使用 `care-plans`、`care-tasks` 语义，不新增旧命名。
 
@@ -274,6 +294,8 @@ make run
 ```
 
 开发库需要重建时只针对本地 `planet` 数据库操作；生产不执行 drop/rebuild。生产顺序固定为：备份确认 → forward migration → schema 校验 → API 重启 → health check → 业务 smoke test。
+
+生产服务启动也必须 fail-closed：`PLANET_ENV=prod` 时，API 会拒绝缺失 `RESEND_API_KEY`、缺失明确 CORS 白名单、非 HTTPS `BASE_URL` 或非回环 `BIND`；`scripts/prod-preflight.sh` 对同一组条件提前检查。推送失败日志只保留不可逆设备令牌指纹，不记录完整 token 或通知正文。
 
 每次代码或契约改动至少执行：
 

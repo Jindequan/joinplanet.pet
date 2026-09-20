@@ -48,6 +48,8 @@
 
 **照片（2026-09-18 R2 化）**：`POST /pets/:id/photo-upload` 签发直传 URL（需该宠物写权限；返回 `key` / `thumb_key` / `upload_url` / `thumb_upload_url`，15 分钟有效）；客户端压缩后（长边 2048、质量 0.82 + 480 缩略图）直传 R2，再以 `{photo:{key,thumb_key,width,height,bytes,mime},caption}` 建事件。服务端写入前校验 ① 对象键属于该宠物目录 ② 对象真实存在（Stat），缺一即拒绝——不存在「有记录没照片」。读取：事件 DTO 附带 `photo_url` / `photo_thumb_url`（私有桶签名，1 小时）；公开分享快照剥离 `photo` 引用与 `photo_data`。未配置存储时新形态返回 503，旧内联形态仅迁移期可读。**客户端侧已于 2026-09-19 落地（M5 完成）**：`APP/src/core/media/photo-upload.ts`（压缩→领票→双 PUT→引用）+ 两个 composer 提交时上传（失败可重试不丢照片；离线队列要求引用先行）+ 事件卡优先 `photo_thumb_url`；本地真栈（本地 API + 真实 R2）端到端 8/8 通过。
 
+**照片存储配额（2026-09-20 Batch D，50MB/10GB 原值接线）**：`plans.storage_bytes`（free 50MB / pro 10GB，热调生效）为用户级照片存储上限。领票前查已用量：已用 ≥ 上限 → 402 `PHOTO_STORAGE_QUOTA_EXCEEDED`（票据无服务端状态，领票不占额度；硬闸在创建记账）。事件挂接成功按 original+thumb 两对象 Stat 实测和记账 `user_usage.storage_bytes`；删除/换图按事件行账面（`pet_events.photo_bytes`）精确回退/换记，幂等重放不重复记账；abandon 从未挂接不计。`GET /me/usage` 回显 used/limit。
+
 **身份与时间口径（2026-09-18 定稿，真实数据逐屏核对后固化）**：
 
 - **登录方式的唯一出处是服务端**（2026-09-18 裁决）：客户端登录页必须先读 `GET /api/v1/auth/methods`，只渲染 `enabled=true` 的方式。生产只开 Apple；Web 端没有 Apple 能力时给"需要 iPhone 客户端"的诚实说明与下一步，**不摆任何点了会失败的按钮**。邮件端点关闭时返回 410 `EMAIL_LOGIN_DISABLED`（不是 401/404），客户端据此提示"邮箱登录已停用，请改用 Apple 登录"。客户端在问不到服务端时按环境默认（dev 显示邮件登录、生产显示可重试错误态）。
@@ -65,7 +67,7 @@
 
 ## 3. 错误码注册表（前端 errors.ts 必须全覆盖；新码先登记此处）
 
-全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、ROLE_FORBIDDEN（仅真 owner 场景）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**/OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
+全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、**PHOTO_STORAGE_QUOTA_EXCEEDED**（照片存储配额，402——需付费动作解决，刻意不用 429：客户端按状态把 429 短路成重试提示，会埋掉升级引导文案）、ROLE_FORBIDDEN（仅真 owner 场景）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**/OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
 文案规则：中文三段式；未知码按 HTTP 语义兜底；实现层英文 message 禁止直出。
 
 ## 4. 失效图（写动作 → 必须刷新的查询面；改这里=改契约）

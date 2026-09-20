@@ -151,17 +151,20 @@ fi
 
 # founder 2026-09-17 裁决：Today 二次工具区为常驻 chips（临时照护/家庭摘要），
 # 折叠壳+说明卡形态被否。守门断言对齐裁决后的实现形态。
-if rg -q 'styles\.toolChip' "$APP/features/today/screen.tsx" && \
-   rg -q '临时照护' "$APP/features/today/screen.tsx" && \
-   rg -q '家庭摘要' "$APP/features/today/screen.tsx" && \
+# i18n 迁移（APP main@edbeae5）后锚点从中文字面改为字典键：临时照护=today.temporaryCare、
+# 家庭摘要=today.digest（zh 字典值与原字面逐字一致），chip 行容器 styles.toolsRow。
+if rg -q 'styles\.toolsRow' "$APP/features/today/screen.tsx" && \
+   rg -q "t\('today\.temporaryCare'\)" "$APP/features/today/screen.tsx" && \
+   rg -q "t\('today\.digest'\)" "$APP/features/today/screen.tsx" && \
    ! rg -q 'secondaryToolsOpen' "$APP/features/today/screen.tsx"; then
   pass "Today keeps secondary tools as persistent chips (founder ruling 2026-09-17)"
 else
   fail "Today secondary tools drifted from the persistent chips form or regressed to a collapsed shell"
 fi
 
+# 「更多」展开的 a11y 标签锚点：today.a11yShowMore（zh=展开其他安排方式）。
 if rg -q 'secondaryOpen' "$APP/features/today/cards.tsx" && \
-   rg -q '展开其他安排方式' "$APP/features/today/cards.tsx"; then
+   rg -q "t\('today\.a11yShowMore'\)" "$APP/features/today/cards.tsx"; then
   pass "collaboration cards keep alternate actions behind More"
 else
   fail "collaboration cards expose too many equal-priority actions"
@@ -173,7 +176,9 @@ else
   fail "More page duplicates the Requests workspace"
 fi
 
-if rg -q 'accessibilityLabel="查看请求详情"' "$APP/features/care-requests/incoming-request-toast.tsx" && \
+# 查看详情锚点：care.a11yViewRequest（zh=查看请求详情）。delegate 仍只能经
+# 详情路由参数（openDetail 的 'delegate' 形参）触达，不得在 toast 上直接暴露。
+if rg -q "t\('care\.a11yViewRequest'\)" "$APP/features/care-requests/incoming-request-toast.tsx" && \
    ! rg -q "openDetail\('delegate'\)" "$APP/features/care-requests/incoming-request-toast.tsx"; then
   pass "incoming request toast keeps reassignment behind request details"
 else
@@ -198,16 +203,19 @@ if rg -q 'accessibilityRole="switch"' "$APP/features/settings/notifications-scre
    rg -q 'accessibilityLabel=\{label\}' "$APP/features/settings/notifications-screen.tsx" && \
    rg -q 'accessibilityState=\{\{ checked: value, disabled, busy \}\}' "$APP/features/settings/notifications-screen.tsx" && \
    rg -q 'disabled=\{disabled\}' "$APP/features/settings/notifications-screen.tsx" && \
-   rg -q '正在保存' "$APP/features/settings/notifications-screen.tsx"; then
+   rg -q "t\('settings\.saving'\)" "$APP/features/settings/notifications-screen.tsx"; then
   pass "notification toggles expose label, hint, and checked state"
 else
   fail "notification toggles are ambiguous to assistive technology"
 fi
 
+# 有界输入锚点：date 字段 web 直键 maxLength=10；time 字段按裁决 00a1a20 改为
+# 只经 TimePickerSheet/原生选择器录入（无自由键入即天然有界，原行内 maxLength=5 输入框已删）；
+# 快速记录仍按类型截长，体重标签锚点=timeline.weightField（zh=体重（kg））。
 if rg -q 'maxLength=\{10\}' "$APP/ui/components/date-field.tsx" && \
-   rg -q 'maxLength=\{5\}' "$APP/ui/components/date-field.tsx" && \
+   rg -q 'TimePickerSheet' "$APP/ui/components/date-field.tsx" && \
    rg -q 'maxLength=\{type === "weight" \? 10 : type === "photo" \? 300 : 1000\}' "$APP/features/timeline/composer.tsx" && \
-   rg -q 'accessibilityLabel=\{type === "weight" \? "体重（kg）"' "$APP/features/timeline/composer.tsx"; then
+   rg -q 'accessibilityLabel=\{type === "weight" \? t\("timeline\.weightField"\)' "$APP/features/timeline/composer.tsx"; then
   pass "date, time, and quick-record inputs expose bounded values and meaningful labels"
 else
   fail "date, time, or quick-record inputs lack bounds or semantic labels"
@@ -220,12 +228,16 @@ else
   fail "runtime base URLs can generate double-slash routes"
 fi
 
-if rg -q 'LoadingState label="正在恢复登录状态"' "$ROOT/APP/app/_layout.tsx" && \
-   rg -q 'accessibilityLabel="正在加载家庭和宠物范围"' "$APP/ui/components/scope-cascade.tsx" && \
-   rg -q 'LoadingState label="正在加载分享链接"' "$APP/features/pets/sharing-section.tsx" && \
-   rg -q 'accessibilityLabel="正在加载更早的记录"' "$APP/features/timeline/screen.tsx" && \
-   rg -q 'LoadingState label="正在恢复登录状态"' "$ROOT/APP/app/index.tsx" && \
-   rg -q 'LoadingState label="正在准备照护工作区"' "$ROOT/APP/app/index.tsx"; then
+# 加载态文案锚点改为字典键（zh 字典值与原中文字面逐字一致）：
+# app.restoringSession=正在恢复登录状态、ui.scopeLoadingA11y=正在加载家庭和宠物范围、
+# pets.loadingShares=正在加载分享链接、timeline.a11yLoadingOlder=正在加载更早的记录、
+# app.preparingWorkspace=正在准备照护工作区。
+if rg -q "LoadingState label=\{t\('app\.restoringSession'\)\}" "$ROOT/APP/app/_layout.tsx" && \
+   rg -q "accessibilityLabel=\{t\('ui\.scopeLoadingA11y'\)\}" "$APP/ui/components/scope-cascade.tsx" && \
+   rg -q "LoadingState label=\{t\('pets\.loadingShares'\)\}" "$APP/features/pets/sharing-section.tsx" && \
+   rg -q "accessibilityLabel=\{t\('timeline\.a11yLoadingOlder'\)\}" "$APP/features/timeline/screen.tsx" && \
+   rg -q "LoadingState label=\{t\('app\.restoringSession'\)\}" "$ROOT/APP/app/index.tsx" && \
+   rg -q "LoadingState label=\{t\('app\.preparingWorkspace'\)\}" "$ROOT/APP/app/index.tsx"; then
   pass "inline loading states announce what is being loaded"
 else
   fail "inline loading states are visually present but semantically ambiguous"
@@ -238,7 +250,7 @@ else
 fi
 
 if rg -q 'accessibilityState=\{\{ disabled: busy, busy \}\}' "$APP/features/today/cards.tsx" && \
-   rg -q 'accessibilityLabel="正在同步最新照护状态"' "$APP/features/today/screen.tsx"; then
+   rg -q "accessibilityLabel=\{t\('today\.a11ySyncing'\)\}" "$APP/features/today/screen.tsx"; then
   pass "Today sync and completion actions expose busy semantics"
 else
   fail "Today sync or completion actions hide their busy state"
@@ -250,10 +262,18 @@ else
   fail "an inline dependency failure can be silent to assistive technology"
 fi
 
+# deploy 契约随 planet-api 演进重锚（非 i18n 失配）：
+# - landing 兜底后端 8080→8082（planet-api ba536d1「双后端分流修正」：8080 是另一产品的
+#   端口会把结账打成 404，Caddyfile 内注明 2026-09-18 上机实测）；
+# - deploy.sh 由 rsync 改为 scp 暂存 + install 落盘，实际 /etc/caddy 切换在
+#   install-and-restart.sh：caddy validate → reload → app_paths_ok 请求级分流门，
+#   失败自动回滚 Caddy（「caddy split routing regression」）。@app_api 路径集合与
+#   production-smoke 的 LANDING_PROGRESS_URL 探针保持不变。
 if rg -q '@app_api path /api/v1 /api/v1/\* /healthz /readyz' "$ROOT/planet-api/deploy/Caddyfile" && \
    rg -q 'reverse_proxy 127\.0\.0\.1:8081' "$ROOT/planet-api/deploy/Caddyfile" && \
-   rg -q 'reverse_proxy 127\.0\.0\.1:8080' "$ROOT/planet-api/deploy/Caddyfile" && \
-   rg -q 'rsync -av deploy/Caddyfile' "$ROOT/planet-api/deploy/deploy.sh" && \
+   rg -q 'reverse_proxy 127\.0\.0\.1:8082' "$ROOT/planet-api/deploy/Caddyfile" && \
+   rg -q 'install -m 0644 "\$STAGE_DIR/deploy/Caddyfile"' "$ROOT/planet-api/deploy/deploy.sh" && \
+   rg -q 'caddy split routing regression' "$ROOT/planet-api/deploy/install-and-restart.sh" && \
    rg -q 'LANDING_PROGRESS_URL' "$ROOT/scripts/production-smoke.sh"; then
   pass "App API and Landing payment routes keep an explicit Caddy split"
 else
@@ -383,18 +403,27 @@ else
   fail "session revoke can close before the server confirms the action"
 fi
 
-if rg -q 'label="显示名"[^\n]*maxLength=\{60\}' "$APP/features/account/screen.tsx" && \
+if rg -q "t\('account\.displayNameLabel'\)[^\n]*maxLength=\{60\}" "$APP/features/account/screen.tsx" && \
    rg -q 'display_name must be 1-60 chars' "$ROOT/planet-api/internal/modules/identity/service.go"; then
   pass "account display-name input matches the server validation boundary"
 else
   fail "account display-name input allows values the server will reject"
 fi
 
-if rg -q '数据来源 · 家庭成员记录的照护事实与宠物事件' "$APP/features/timeline/screen.tsx" && \
-   rg -q '内容来自分享人生成的只读快照' "$APP/features/settings/public-share-screen.tsx" && \
-   rg -q '数据来源 · .*时间线与照护记录' "$APP/features/trends/screen.tsx" && \
-   ! rg -q '错误档案已删除' "$APP/features/pets/medications-section.tsx" && \
-   rg -q '相关的自动记录也已移除' "$APP/features/pets/medications-section.tsx"; then
+# 事实说明锚点改为字典键（键值经五语核对）：
+# - 时间线页头来源说明 timeline.provenanceNote（E8 裁决后说人话，zh=由家庭成员记录，照护完成后自动归档到这里）；
+# - 分享快照时效说明 settings.snapshotDesc（五语均含「生成时点+向家庭确认」）；
+# - 趋势页按 info-design 裁决 f10f8cc（E7 归属不逐行复读/E8 开发者注脚不进卡片）删除
+#   逐卡「数据来源 ·」注脚，改为结论先行句子（trendStatLine）+ 卡尾「查看记录」入口
+#   （trends.viewRecords，通向带来源说明的时间线）；
+# - 用药删除的后果在确认弹层 pets.confirmDeleteMedConsequence 与完成 toast
+#   pets.medDeletedToast（五语均含「相关自动记录一并移除」，且不再误称「错误档案」）。
+if rg -q "t\('timeline\.provenanceNote'\)" "$APP/features/timeline/screen.tsx" && \
+   rg -q "t\('settings\.snapshotDesc'" "$APP/features/settings/public-share-screen.tsx" && \
+   rg -q 'trendStatLine' "$APP/features/trends/screen.tsx" && \
+   rg -q "t\('trends\.viewRecords'\)" "$APP/features/trends/screen.tsx" && \
+   rg -q "t\('pets\.confirmDeleteMedConsequence'\)" "$APP/features/pets/medications-section.tsx" && \
+   rg -q "t\('pets\.medDeletedToast'\)" "$APP/features/pets/medications-section.tsx"; then
   pass "timeline, trends, shares, and destructive feedback explain their facts"
 else
   fail "a factual view or destructive action hides important consequences"
@@ -428,7 +457,7 @@ fi
 if rg -q 'skipCommandIds' "$APP/features/today/screen.tsx" && \
    rg -q 'setError\(errorMessage\(reason\)\)' "$APP/features/today/screen.tsx" && \
    rg -q 'accessibilityRole="alert" variant="caption" color=\{theme\.colors\.danger\}' "$APP/features/today/screen.tsx" && \
-   rg -q 'label=\{choice \? skipChoiceLabel\(choice\) : .继续.\}' "$APP/features/today/screen.tsx"; then
+   rg -q "label=\{choice \? skipChoiceLabel\(choice\) : t\('today\.continue'\)\}" "$APP/features/today/screen.tsx"; then
   pass "skip actions preserve retry identity and keep failure recovery in context"
 else
   fail "skip actions close or lose retry context after a failed submission"
@@ -455,7 +484,7 @@ fi
 if rg -q 'const rereadToday = async' "$APP/features/today/screen.tsx" && \
    rg -q 'await rereadToday\(\)' "$APP/features/today/screen.tsx" && \
    rg -q 'todayRefreshFailures' "$APP/features/today/screen.tsx" && \
-   rg -q '重试同步今天清单' "$APP/features/today/screen.tsx"; then
+   rg -q "accessibilityLabel=\{t\('today\.a11yRetryTodaySync'\)\}" "$APP/features/today/screen.tsx"; then
   pass "Today execution writes reread authoritative state before success or retry reset"
 else
   fail "Today execution writes can report success before the current checklist is reread"
@@ -562,7 +591,7 @@ if rg -q 'refreshFailures' "$APP/features/handoffs/handoff-strip.tsx" && \
    rg -q 'queryKeys\.careResponsibility\(familyId\)' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
    rg -q 'syncError' "$APP/features/collaboration/care-risk-banner.tsx" && \
    rg -q 'queryKeys\.careRisks\(familyId\)' "$APP/features/collaboration/care-risk-banner.tsx" && \
-   rg -q '重试同步' "$APP/features/collaboration/care-risk-banner.tsx"; then
+   rg -q "t\('collaboration\.retrySync'\)" "$APP/features/collaboration/care-risk-banner.tsx"; then
   pass "handoff and care-risk writes reread authoritative responsibility state before closing or clearing retry keys"
 else
   fail "handoff or care-risk writes can close or clear retry state before authoritative reread"

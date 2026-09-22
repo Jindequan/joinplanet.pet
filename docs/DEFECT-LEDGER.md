@@ -107,6 +107,6 @@
 1. ~~L14 care_card 呈现~~ 已关闭（WO5，2026-09-17 创始人裁决改呈现，APP 98627f3）。
 2. 排程四动作/care-risk claim/timeline 改删的离线队列化 —— 设计决策待裁决（当前为诚实文案）。
 3. petshares Cancel 404/403 口径统一、ResolvedAt 死字段、ErrAlreadyMember 孤儿、B10 错误码三态混乱、care_plans 死枚举 completed（需迁移）。
-4. edit-screen base 侧 name/med_decision_maker 未 trim（带空格存量数据下假脏）；errors.ts CARE_REQUEST_RESPONSE_REQUIRED 文案含「等你回应」未入统一词表。
+4. ~~edit-screen base 侧 name/med_decision_maker 未 trim（带空格存量数据下假脏）；errors.ts CARE_REQUEST_RESPONSE_REQUIRED 文案含「等你回应」未入统一词表。~~ 已关闭（2026-09-22，APP 9f64726：serverBody 同口径 trim；zh 文案改「等待回应」入 §4.3 词表；Playwright 170 次执行 169 通过 + 1 条件跳过）。
 5. e2e 全 mock 层面缺一条真实后端冒烟（建议下轮加 smoke profile）。
 6. walk-through 脚本 diff 含本轮前的未提交改动，归属待 founder 提交时厘清。

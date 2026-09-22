@@ -38,12 +38,11 @@
 - 业务 walkthrough：`60/60`，覆盖认证、Family/Pet、照护计划、Today、Timeline、用药、分享撤销、授权撤销和删除保护。
 - Phase A 真实本地闭环：登录 → Family → Pet → Care Plan → Today → 完成 → Timeline 自动事件 → All 范围，脚本通过。
 - 前端产品契约：`64/64`（2026-09-22 复跑，0 FAIL）。
-- Playwright 回归（core-flows）：mobile390 + desktop1280 共 158 次执行，其中 157 通过、1 个按项目条件跳过（历史记录见 `APP/docs/UX-SPEC.md` 2026-09-22 条目；mock API 口径）。
-- Playwright zhSmoke：`12` 个 i18n 冒烟用例（`--list` 口径）。
+- Playwright 回归：core-flows（mobile390 + desktop1280）+ zhSmoke 共 170 次执行，169 通过、1 个按项目条件跳过（2026-09-22 复跑，含 §6-4 修复后的脏表单守卫用例；mock API 口径）。
 - TypeScript：通过。
 - ESLint：通过。
 - Web 导出：`npm run export:web:production` 成功生成 `APP/dist`。
-- 生产部署：2026-09-22 `deploy-app-web.sh` 上传 READY（`dpl_CSiMmYgN2V89npPqKaAeDL3o66FH`），线上 Web 与本地构建 entry hash 一致（`entry-d794123353225764e67d94dec822405a.js`）。
+- 生产部署：2026-09-22 `deploy-app-web.sh` 两次上传 READY，最新部署 `dpl_CUZtVfwKmduHFqZV4GLwmsi51gKy`；线上 Web 与本地构建 entry hash 一致（`entry-a309dd5f29cccbb4ac138b180c0f9926.js`）。
 - 生产 smoke：`production-smoke.sh` 全部公共入口通过；`api.joinplanet.pet/readyz`、`/healthz`、`/progress` 均 200，auth methods 返回 apple=true/email=false，登录路由 410 EMAIL_LOGIN_DISABLED 且 CORS 允许 `app.joinplanet.pet`。
 - 本地总入口：`cd APP && npm run verify:local` 通过，且没有启动额外服务。
 - 运行时：API `127.0.0.1:8081` 健康/就绪；Metro `127.0.0.1:8082` 正常；Simulator `PlanetBuildCheck` 已启动 `pet.joinplanet.app`。

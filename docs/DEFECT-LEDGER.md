@@ -126,3 +126,4 @@
 | L32 | ✔ | 「me.usage 配额显示」挂起，需产品决策后再排期：①落点不存在——照片内容之家在记录流，SharingSection 是分享链接管理，均无配额语境可挂；②`storage_bytes` 无格式化口径单源（MB/GB 换算无单一出口，各页自拼必然漂移）；③used/limit 常驻双数字与 402 `PHOTO_STORAGE_QUOTA_EXCEEDED` 升级引导构成同一事实两处口径，违反「信息只说一遍」。三项未解前不接 UI | audit §五 孤儿端点（me.usage，「照片配额只在 402 报错时才被用户感知」）；2026-09-22 本批补强调查后挂起 |
 | L33 | ✔ | 后端 care-risks 读端点现零消费方（前端链路已随 CareRiskBanner 删除收口），处置=保留端点待后续裁决或删除 | 2026-09-22 前端修复批：APP 侧 queryKeys.careRisks、cache.ts 5 处 'care-risks' 失效字面量、families.careRisks 方法 + CareRisk 类型全部删除，grep 全仓零引用；后端 GET /families/{id}/care-risks 端点保留不动 |
 | L34 | ✔ | photo-sweep 全桶枚举与引用快照随桶线性增长（media.ListDetailed 无上限载入内存），桶到百万级对象前需改按 petID 前缀分批枚举/流式处理；当前创业期量级无碍 | 2026-09-22 后端盲审 P3（media/media.go:215、photo_sweep.go），修复批裁决登记不实现 |
+| L35 | ✔ | photo-sweep 汇总行 movedDirs 无条件自增：目录内全部键移动失败时仍计入目录数（纯运维统计口径失真，无正确性影响；失败键下轮 sweep 重命中）。顺手修：`if moved > 0 { movedDirs++ }` | 2026-09-22 复审 P3 残留（planet-api 956556d photo_sweep.go:126） |

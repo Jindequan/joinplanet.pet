@@ -42,7 +42,8 @@
 | 档案保存 | PATCH /pets/:id/record | 乐观锁 version；**前端字段级合并：仅发用户改动字段，未改字段取最新服务端值（双快照 base/latest）** | 必需（内容指纹键） |
 | 归档/删除/恢复 | POST archive/unarchive/restore, DELETE | confirm=petId；取消置 deleted_at | 必需/可选 |
 | 跨家庭共享 | POST /pets/:id/families | 确认制（目标 owner≠发起人→pending）；归档宠禁发 | 必需 |
-| 共享确认 | POST /pet-share-requests/:id/accept·decline·cancel | 目标 owner/发起人；**全同事务+审计传播** | 必需（读回也 bind） |
+| 共享确认 | POST /pet-share-requests/:id/accept·decline·cancel | 目标 owner/发起人；**全同事务+审计传播**；归档宠接受→409 PET_ARCHIVED（2026-09-22 补复查）；删宠/转移接受联动取消相关 pending 请求 | 必需（读回也 bind） |
+| 跨家庭转移 | POST /pets/:id/transfer（+accept·decline·cancel） | **仅宠物现任全局 owner 可发起（且须为源家庭 owner）；共享家庭成员不可发起（403 ROLE_FORBIDDEN，2026-09-22 裁决）**；接受=目标 owner 单事务迁所有权；归档宠有意放行 | 必需 |
 | 停药 | POST /medications/:id/stop | 家庭时区当日；联动归档挂药计划+取消开放项 | 必需 |
 | 时间线写/改/删 | POST/PATCH/DELETE …/timeline… | auto 事件不可改删；weight 联动体重 | 必需（新建进离线队列；改删无队列） |
 | 家庭治理 | PATCH/DELETE /families/:id、/leave、/transfer、/restore… | 删家庭前置 409 FAMILY_NOT_EMPTY；角色改 viewer 联动收束照护 | 必需/可选 |
@@ -64,13 +65,13 @@
 **记录投影（2026-09-18 founder 裁决：记录展示事实，管理类默认不展示）**：`GET /timeline` 与 `GET /pets/:id/timeline` 支持 `scope=facts`（默认，白名单 FactTypes：note/photo/symptom/weight/vet_visit/vaccine/deworm/medication/care_task_completed）与 `scope=all`（含管理类 transfer / care_task_undone）；非法 scope 返回 400。类型过滤在 SQL 内完成（LIMIT 必须作用在可见行上，否则分页短页）。分享摘要 `ListForShare` 与记录页同口径。白名单新增事实类型时，必须同步本表与 `docs/PRODUCT.md` §4.4。
 
 ### 2.4 分享/导出/账户
-- 外部分享：创建=快照物化+token 仅返回一次（幂等重放可取回）；匿名查看 410 SHARE_GONE 不泄露；care_card 为**冻结快照**（UI 须呈现快照日期而非「今日」——遗留项 L14）；撤销同事务写审计。
+- 外部分享：创建=快照物化+token 仅返回一次（幂等重放可取回）；匿名查看 410 SHARE_GONE 不泄露；care_card 为**冻结快照**（UI 须呈现快照日期而非「今日」——遗留项 L14）；撤销同事务写审计。include_photos 快照的照片以**查看时签名 URL** 呈现（`photo_url` / `photo_thumb_url`，1 小时有效，与登录态 timeline DTO 同名字段）；匿名响应绝不携带裸对象键（photo.key/thumb_key），快照物化语义不变（2026-09-22 修复，此前 include_photos 半成品会把私有桶坐标写进匿名页）。
 - 数据导出：`GET /pets/{id}/export` 返回该宠物完整可携带记录；仅宠物当前 owner 可调用（普通家庭成员/查看授权均不足——完整历史是持久披露边界），单读事务内完成，不混用多个数据库快照。（2026-09-22 补登记，体检 P2-6：端点早已存在——planet-api pets/http.go 注册路由、pets/service.go `Export`，本契约此前漏登；前端是否有导出 UI 入口不在本契约断言范围。）
-- 账户：注销前置无 owned pets（409）；会话撤销/登出即失效；推送 token 注册失败有手动重试入口。
+- 账户：注销前置无 owned pets（409）；账号名下有**带其他活跃成员**的家庭时同样拒绝注销（409 **ACCOUNT_FAMILY_HAS_MEMBERS**，2026-09-22 新增——需先移交 owner 或移除成员；单成员家庭随注销自动清理，不在此列）；会话撤销/登出即失效；推送 token 注册失败有手动重试入口。
 
 ## 3. 错误码注册表（前端 errors.ts 必须全覆盖；新码先登记此处）
 
-全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、**PHOTO_STORAGE_QUOTA_EXCEEDED**（照片存储配额，402——需付费动作解决，刻意不用 429：客户端按状态把 429 短路成重试提示，会埋掉升级引导文案）、ROLE_FORBIDDEN（仅真 owner 场景）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**/OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
+全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、**PHOTO_STORAGE_QUOTA_EXCEEDED**（照片存储配额，402——需付费动作解决，刻意不用 429：客户端按状态把 429 短路成重试提示，会埋掉升级引导文案）、ROLE_FORBIDDEN（仅真 owner 场景）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**/OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、**PET_ALREADY_SHARED / PET_SHARE_PENDING**（共享请求创建判重 409，既有码 2026-09-22 补登记：petshares/service.go 创建口，前端 pet-share 失败 toast 分支用）、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**ACCOUNT_FAMILY_HAS_MEMBERS**（注销前置：名下家庭还有其他活跃成员时 409，先移交/移除成员）、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
 文案规则：中文三段式；未知码按 HTTP 语义兜底；实现层英文 message 禁止直出。
 
 ## 4. 失效图（写动作 → 必须刷新的查询面；改这里=改契约）

@@ -127,3 +127,20 @@
 | L33 | ✔ | 后端 care-risks 读端点现零消费方（前端链路已随 CareRiskBanner 删除收口），处置=保留端点待后续裁决或删除 | 2026-09-22 前端修复批：APP 侧 queryKeys.careRisks、cache.ts 5 处 'care-risks' 失效字面量、families.careRisks 方法 + CareRisk 类型全部删除，grep 全仓零引用；后端 GET /families/{id}/care-risks 端点保留不动 |
 | L34 | ✔ | photo-sweep 全桶枚举与引用快照随桶线性增长（media.ListDetailed 无上限载入内存），桶到百万级对象前需改按 petID 前缀分批枚举/流式处理；当前创业期量级无碍 | 2026-09-22 后端盲审 P3（media/media.go:215、photo_sweep.go），修复批裁决登记不实现 |
 | L35 | ✔ | photo-sweep 汇总行 movedDirs 无条件自增：目录内全部键移动失败时仍计入目录数（纯运维统计口径失真，无正确性影响；失败键下轮 sweep 重命中）。顺手修：`if moved > 0 { movedDirs++ }` | 2026-09-22 复审 P3 残留（planet-api 956556d photo_sweep.go:126） |
+
+## 八、MVP 六系统生命周期审计延期与待裁决项（2026-09-22 追加，来源=MVP-SIX-SYSTEMS 审计）
+
+审计全文：[audits/MVP-SIX-SYSTEMS-2026-09-22/](audits/MVP-SIX-SYSTEMS-2026-09-22/)（01 账户 / 02 家庭 / 03 宠物 / 04 照护调度 / 05 提醒 / 06 event）。P0/P1/P2 主体已当批修复（调度推送接线、注销身份清理、ACCOUNT_FAMILY_HAS_MEMBERS、转移全局 owner 守卫、共享请求三处收束、substitute 归属、离线队列告知、分享照片签名 URL 等）；以下为待 founder 裁决与登记项。
+
+| # | 状态 | 项 | 出处 |
+|---|---|---|---|
+| L36 | 待 founder 裁决 | **宠物离世语义**（生命周期唯一缺失终态）：方案一=归档正名「纪念」（0 迁移）；方案二=新增 deceased 终态（不可逆、免配额、只读保留）；方案三=完整纪念模式 | 03-pet.md F8 |
+| L37 | 待 founder 裁决 | 宠物「30 天恢复窗」无执行机制=事实无限期；裁决真窗口+purge 还是改口径（与 planet-cli purge TODO 合并） | 03-pet.md F4 |
+| L38 | 待 founder 裁决 | once 临时照护「无时段且已指派」零主动提醒：要不要提醒、何时提醒 | 05-reminders.md F2 |
+| L39 | 待产品口径 | 所有权移交候选含 viewer（一次确认获全部治理权）；邀请码无独立撤销（唯一出口=refresh 轮换，多设备互吊） | 02-family.md F8/F11 |
+| L40 | 待产品口径 | digest 仅邮件无推送（care_digest kind 死代码）；iOS 角标零管理；送达窗口语义（家庭时区/补发至凌晨 4 点/每小时桶全天重复）是否 by design | 05-reminders.md F5/F7/F8 |
+| L41 | 待 founder 裁决 | 「照片断网入队」承诺 vs 实现（照片必须在线先传 R2）：改文档还是做离线暂存 | 06-events.md E3 |
+| L42 | 文档口径 | 导出「完整」语义落字：照片仅引用无字节、含管理类事件（与 facts 投影口径不同）、不含请求/转移管理史 | 06-events.md E5 + 03-pet.md 备注 |
+| L43 | 处置裁决 | access-grants 后端完整但无产品定义无 UI：建议标注「预留能力（API 保留，无产品入口）」+删前端死方法 | 03-pet.md F7 |
+| L44 | 口径冲突 | 纪念态（归档）宠物转移：契约与后端放行、前端 UI 拦死——放开 UI（纪念转移）或收紧后端 | 03-pet.md F2 |
+| L45 | 登记（P3 尾巴，详见各审计文件） | ①V3 偏好悬空/V5 subscriptions+outbox 残留/V6 users.email 不刷新/V7 Apple 无限流/V8 注销幂等；②F2 被移除者无通知/F5 审计翻页/F6 邀请死列/F7 角色错误口径/F9 恢复计数滤注销/F10 邀请过期不透明；④F6 once 计划无终态/F8 注释漂移/F9 undo 按钮陈旧窗；⑤F9 outbox 保留策略/F10 token 周期校验；⑥E4 内联照片编辑指引/E6 trash 拖挂/E7 abandon 截断/E8 快照事务外 | 各审计文件漏洞清单 |

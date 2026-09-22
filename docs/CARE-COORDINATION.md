@@ -68,7 +68,21 @@ Devin 请求你照顾 Milo
 - **Care Request** 是附着在 Occurrence 上的责任转接记录，负责请求、响应和通知。
 - 不创建第二套 Todo、Relay Occurrence 或通知专用任务。
 
-Care Request 状态：
+Care Request 状态（与 [APP-BEHAVIOR-CONTRACT.md](APP-BEHAVIOR-CONTRACT.md) §1 一致；2026-09-22 对齐，体检 P2-4）：
+
+```text
+sent → seen → accepted
+            ├→ declined（拒绝后可由 reassign 在同一 Occurrence 上发起新请求）
+            ├→ delegated（转交后新请求重新从 sent 开始）
+            └→ expired（仅调度器写）
+任意开放请求可 → cancelled；终态封闭。
+```
+
+`reassign` / `delegate` 是动作，不是状态。Occurrence 的 `pending / missed / completed / skipped / cancelled` 状态仍由照护地基管理，不能由 Care Request 复制或覆盖；撤销（undo）是动作与事件（care_task_undone），不是 Occurrence 状态。
+
+### 4.1 规划中的扩展状态（未实现；2026-09-22 与契约对齐时移出）
+
+以下状态链与 `undone` 用词来自早期规划稿，现行实现与行为契约均不存在，仅作历史设计参考，不得当作现行状态机引用：
 
 ```text
 draft → sent → seen → accepted
@@ -77,7 +91,7 @@ draft → sent → seen → accepted
                   └→ expired → escalation
 ```
 
-终态还包括 `cancelled`。Occurrence 的 `pending / completed / skipped / undone` 状态仍由照护地基管理，不能由 Care Request 复制或覆盖。
+规划稿中 Occurrence 的 `undone` 同样未实现：现行契约里撤销是动作与事件，不是状态。
 
 产品上必须始终能回答：
 

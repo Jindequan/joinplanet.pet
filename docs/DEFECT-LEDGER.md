@@ -31,7 +31,7 @@
 | L9 | ✔ | ['family-pets',familyId] 裸键逃逸所有失效器：家庭详情宠物列表与全局 ['pets'] 双缓存不同步（新建宠物/接受共享/转移后 >30s 陈旧） | families/detail-screen.tsx:73-77 + cache.ts:166-181 |
 | L10 | ✅ | 撤销 7 天窗：30 天历史视图仍显示撤销按钮，超窗报 UNDO_WINDOW_EXPIRED **无映射**→「内容刚发生变化，请刷新后重试」误导死循环 | today/screen.tsx:564-573 + errors.ts 无此码（本体亲读 errors.ts 全文） |
 | L11 | ✔ | §4.3 状态词漂移：canonical 词表（等待回应/已确认负责/正在同步…）与实际文案（等你回应/由你负责/已接手/未能接手…）全站不一致 | care-requests/copy.ts:35-41,91,105-126 + today/cards.tsx:65-79 + timeline/screen.tsx:494-498 |
-| L12 | ✔ | 离线行为断层：complete/skip/undo/Today claim 有队列，而排程四动作/care-risk claim/timeline 编辑删除无队列——同屏两套离线行为（有可见报错，不违 §3.2，但违背预期）。本轮先做「需联网」诚实文案，队列化待裁决 | schedule-adjustment.tsx:76-83、care-risk-banner.tsx:54-84、foundation/writers.ts:65-77 |
+| L12 | ✔ | 离线行为断层：complete/skip/undo/Today claim 有队列，而排程四动作/timeline 编辑删除无队列——同屏两套离线行为（有可见报错，不违 §3.2，但违背预期）。本轮先做「需联网」诚实文案，队列化待裁决。〔2026-09-22 更新：care-risk claim 载体 CareRiskBanner 整组件零引用已删除（认领能力由 Today 未指派项的 claim 链路承担，care-risk-banner.tsx 证据随之移除）〕 | schedule-adjustment.tsx:76-83、foundation/writers.ts:65-77 |
 | L13 | ✔ | 错误码缺映射一批：UNDO_WINDOW_EXPIRED、FAMILY_NOT_EMPTY、CARE_ASSIGNMENT_OWNER_REQUIRED、AUTO_EVENT_IMMUTABLE、IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE（后三个低频） | errors.ts:12-44 逐码比对（本体亲读） |
 | L14 | 🔧 | care_card 冻结快照以「今日照护」呈现 | WO5（2026-09-17 创始人裁决改呈现）：标题→「照护快照」+ 生成日期诚实说明行 + 快照空态文案；typecheck/lint/契约 0 FAIL/e2e 114/114；APP 提交见仓内 log |
 
@@ -105,8 +105,23 @@
 ## 六、遗留（下轮，均 P3 或需裁决）
 
 1. ~~L14 care_card 呈现~~ 已关闭（WO5，2026-09-17 创始人裁决改呈现，APP 98627f3）。
-2. 排程四动作/care-risk claim/timeline 改删的离线队列化 —— 设计决策待裁决（当前为诚实文案）。
+2. 排程四动作/timeline 改删的离线队列化 —— 设计决策待裁决（当前为诚实文案）。（care-risk claim 载体 CareRiskBanner 已于 2026-09-22 删除，不再列。）
 3. petshares Cancel 404/403 口径统一、ResolvedAt 死字段、ErrAlreadyMember 孤儿、B10 错误码三态混乱、care_plans 死枚举 completed（需迁移）。
 4. ~~edit-screen base 侧 name/med_decision_maker 未 trim（带空格存量数据下假脏）；errors.ts CARE_REQUEST_RESPONSE_REQUIRED 文案含「等你回应」未入统一词表。~~ 已关闭（2026-09-22，APP 9f64726：serverBody 同口径 trim；zh 文案改「等待回应」入 §4.3 词表；Playwright 170 次执行 169 通过 + 1 条件跳过）。
 5. e2e 全 mock 层面缺一条真实后端冒烟（建议下轮加 smoke profile）。
 6. walk-through 脚本 diff 含本轮前的未提交改动，归属待 founder 提交时厘清。
+
+## 七、2026-09-22 全系统体检延期项（追加，来源=audit）
+
+来源：[audits/FULL-SYSTEM-AUDIT-2026-09-22.md](audits/FULL-SYSTEM-AUDIT-2026-09-22.md)；处置明细见 [audits/AUDIT-2026-09-22-REMEDIATION.md](audits/AUDIT-2026-09-22-REMEDIATION.md)。状态标记沿用上文（✔=审计/盲审亲读证据，本体未逐行复核）。
+
+| # | 状态 | 延期项 | 证据/来源 |
+|---|---|---|---|
+| L26 | ✔ | Families/Pets 列表页无离线快照或离线横幅（Today/Timeline 有），断网即整页错误态 | audit P2-8（2026-09-22，Families/Pets screen.tsx） |
+| L27 | ✔ | digest 手动发送无 UI 入口：`families.sendDigest` 为孤儿端点，目前仅调度器触发 | audit §五/§六.4（2026-09-22） |
+| L28 | ❌ | ~~数据导出无前端 UI 入口：`GET /pets/{id}/export` 端点已存在并已补登 APP-BEHAVIOR-CONTRACT §2.4（仅 owner），前端入口待排期~~ 已核实存在，无需做。2026-09-22 勘误：导出 UI 已存在于宠物工作区管理组（MoreRow「Export data」行，caps.export_json 门控），体检 P2-6 仅为文档口径问题已另行修复 | 勘误证据（2026-09-22 本批亲核）：APP src/features/pets/detail-screen.tsx Export 行 + e2e/core-flows.spec.ts「pet JSON export produces a downloadable file on web」真实用例；原登记 audit P2-6（pets/service.go:321-337） |
+| L29 | ✔ | 照片上传无服务端单对象大小上限：PresignPut 不带 content-length 条件（若 2026-09-22 后端修复批已落地则销号本条）。**2026-09-22 后端批调查结论：维持不落地**——R2 官方兼容表无 POST Object 行、且对 presigned POST content-length-range 不执行（假安全感比缺失更糟）；补偿=挂接 Stat ±20% 对账+配额硬闸+领票限速+photo-sweep 兜底；候选方案见 audits/AUDIT-2026-09-22-REMEDIATION.md §4.1 | audit P2-1 延期部分（2026-09-22，media/media.go:122-128）；调查结论与候选方案 audits/AUDIT-2026-09-22-REMEDIATION.md §4.1（2026-09-22） |
+| L30 | ✔ | 家庭时区迁移后历史/未来事件的解释语义未定义（跨国家庭场景才爆），待 founder 裁决 | audit §六.6（2026-09-22） |
+| L31 | ✔ | 纯日期事项「何时算逾期」缺统一定义，待 founder 裁决 | audit §六.6（2026-09-22） |
+| L32 | ✔ | 「me.usage 配额显示」挂起，需产品决策后再排期：①落点不存在——照片内容之家在记录流，SharingSection 是分享链接管理，均无配额语境可挂；②`storage_bytes` 无格式化口径单源（MB/GB 换算无单一出口，各页自拼必然漂移）；③used/limit 常驻双数字与 402 `PHOTO_STORAGE_QUOTA_EXCEEDED` 升级引导构成同一事实两处口径，违反「信息只说一遍」。三项未解前不接 UI | audit §五 孤儿端点（me.usage，「照片配额只在 402 报错时才被用户感知」）；2026-09-22 本批补强调查后挂起 |
+| L33 | ✔ | 后端 care-risks 读端点现零消费方（前端链路已随 CareRiskBanner 删除收口），处置=保留端点待后续裁决或删除 | 2026-09-22 前端修复批：APP 侧 queryKeys.careRisks、cache.ts 5 处 'care-risks' 失效字面量、families.careRisks 方法 + CareRisk 类型全部删除，grep 全仓零引用；后端 GET /families/{id}/care-risks 端点保留不动 |

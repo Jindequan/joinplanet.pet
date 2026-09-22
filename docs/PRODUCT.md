@@ -2,7 +2,7 @@
 
 状态：2026-09-14
 
-本文是 PLANET 当前产品目标、业务对象、核心流程、范围和验收标准的唯一事实源。技术实现、表结构和 API 以 [ARCHITECTURE.md](ARCHITECTURE.md) 为准；**地基形态与延伸层接入**以 [FOUNDATION.md](FOUNDATION.md) 为准；原生 App 重建与视觉对照约定以 [APP/docs/PLANET_APP_DESIGN_SYSTEM.md](../APP/docs/PLANET_APP_DESIGN_SYSTEM.md) 为准（视觉冻结基准为 `mobile-v3/`）。
+本文是 PLANET 当前产品目标、业务对象、核心流程、范围和验收标准的唯一事实源。技术实现、表结构和 API 以 [ARCHITECTURE.md](ARCHITECTURE.md) 为准；**地基形态与延伸层接入**以 [FOUNDATION.md](FOUNDATION.md) 为准；原生 App 重建与视觉约定以 [APP/docs/PLANET_APP_DESIGN_SYSTEM.md](../APP/docs/PLANET_APP_DESIGN_SYSTEM.md) 为准（唯一视觉锚点 = founder Pricing 参考图，2026-09-16 重锚定；`mobile-v3/` 降级为历史参考，不再约束现行配色/形态——2026-09-22 体检 P2-7 统一口径）。
 
 ## 0. Slogan 与分层
 
@@ -94,6 +94,40 @@ Family + Pet → Care Plan → Care Rule → Care Occurrence → Today
 
 Care Plan 是某个家庭针对某只宠物的长期照护意图；Care Rule 是循环规则；Care Occurrence 是一次真实执行。Reminder、Notification、Todo 都不是核心领域对象：提醒是 Occurrence 的下游通知，Todo 是 Today 的展示结果。
 
+### 3.2 北极星与漏斗指标（2026-09-22 补入，体检 P1-1）
+
+**北极星指标：Weekly Active Pets（周活宠物，WAP），不是 WAU。** 一只宠物 = 约 2 个照顾者、多项日常任务与持续事实流的活跃实体；以 Pet 为计量单位才符合「数字档案」的产品本质。
+
+**WAP 操作定义**：7 天内满足任一——≥3 次任务完成，或 ≥1 条时间线事件，或 ≥2 个照顾者有交互。
+
+**漏斗指标（安装 → 激活 → 留存，Phase 1 目标线）**：
+
+```text
+100 installs → 40 create pet → 20 create first task → 12 use 3+ days
+→ 8 invite another caregiver → 5 use 2+ weeks
+```
+
+关键服务端事件：激活（第二位照顾者被邀请率——北极星的前置环节）、留存（周任务完成 ≥4 天的宠物占比，即 WAP 的构成质量）、价值（生成过 Summary 且分享链接被打开 ≥1 次的宠物占比）。Phase 1 出口：漏斗走通到「5 只宠物持续使用 2+ 周」。
+
+出处：2026-08-17 评估重锚定（founder 批准）。
+
+### 3.3 功能总览（F1–F8；2026-09-22 归一入现行事实源，体检 P1-2）
+
+下表源自 2026-08 冻结的 Phase 1 功能定义（archive/APP-DESIGN.md §1.2），2026-09-22 归一入本事实源；**历史评审文档（含 research 目录中引用的已失效旧文档路径）一律以本节为准**。每行标注现行状态：
+
+| 编号 | 功能 | 类型 | 一句话定义 | 现行状态（2026-09-22） |
+|---|---|---|---|---|
+| F1 | 身份与访问 | 支撑 | 登录与会话管理 | 现行；2026-09-18 裁决后登录只支持 Apple（iOS），邮件验证码保留在代码中但产品不开放 |
+| F2 | 照护圈与成员 | 支撑 | 建圈、邀请、成员角色 | 现行（Family、邀请、owner/caregiver/viewer 三角色） |
+| F3 | 宠物档案 | 支撑 | 档案与用药清单 | 现行（基本资料、健康档案、用药、家庭关联与生命周期治理） |
+| F4 | 今日照护协作 | **核心** | 每日执行 + 完成人记录 + 协作 | 现行（Today 执行 + Care Request 责任链协作） |
+| F5 | 健康时间线 | **核心** | 事实流记录与沉淀 | 现行（note/photo/symptom/weight/visit/vaccine/deworm/medication 事实流） |
+| F6 | 就诊准备 Summary | **核心** | 从结构化数据拼装健康摘要 | 现行实现 =「健康摘要 digest/summary」（care_card/summary 分享快照与每日摘要）；独立「就诊准备」形态未单列交付 |
+| F7 | 临时分享 | **核心** | 限时只读链接、可撤销 | 现行（care_card/summary 分享、匿名查看、撤销与过期） |
+| F8 | 数据生命周期 | 支撑 | 编辑、撤回、删除、导出 | 现行（软删与恢复；导出 = `GET /pets/{id}/export`，仅宠物当前 owner，见 APP-BEHAVIOR-CONTRACT §2.4） |
+
+Phase C 新增能力（digest/alerts/trends）为 F4/F5 的延伸，不在原 8 功能编号内。
+
 ## 4. 核心体验
 
 ### 4.1 App 壳层
@@ -177,7 +211,7 @@ Timeline 是 Pet 的**事实流**，不是设置页，也不是操作日志。�
 - 公开社区、点赞、评论、陌生人关注。
 - AI 诊断或自动医疗建议。
 - 通用媒体库、批量附件/文档、独立医生后台、商城、保险、硬件接入；当前只承诺临时事件的一张压缩照片，不把它扩展成平行媒体系统。
-- V1 的付费订阅和复杂权益编排；计费数据结构预留，但不把未实现能力伪装成可用功能。
+- **V1 无应用内购买路径**：不做付费订阅和复杂权益编排。权益结构按 free/pro 双档预留（`plans` 表运行时热调）；照片存储配额 free 50MB / pro 10GB 已接线——超限返回 402 `PHOTO_STORAGE_QUOTA_EXCEEDED` 并给出升级引导，但产品内没有购买入口。配额数值以 planet-api/migrations/0001 的 seed 为实现出处（`plans.storage_bytes`：free 52428800 / pro 10737418240）。（2026-09-22 体检 P1-3 精确化：原「不做付费订阅」与行为契约的 free/pro 配额、402 升级引导现实不符，按代码现实改写。）
 
 ## 6. 关键业务流程
 
@@ -198,7 +232,9 @@ Timeline 是 Pet 的**事实流**，不是设置页，也不是操作日志。�
 - 删除 Pet：宠物所有者或任一关联 Family owner 可软删除 Pet，停止后续照护生成；历史保留，恢复由宠物所有者在保护期内完成。
 - 转移 Pet：以 pending → accepted / declined / cancelled 流程完成；接受后解除源 Family 的 live 可见关系，目标 Family 成为主 Family，宠物本体、时间线、照护事实和 Family-scoped 照护计划迁入目标 Family，旧分享失效。若旧 Family 还要继续查看，必须另行执行“共享”，不能把转移当共享。
 
-### 4.4 Timeline 的离线事实
+### 6.4 Timeline 的离线事实
+
+（2026-09-22 勘误，体检 P3：本节原文误挂在 §6 内沿用「### 4.4」编号，与 §4.4 重复，现归位为 §6.4。）
 
 临时记录是用户已经发生的事实，不应因为瞬时断网而丢失。新增笔记、照片、体重、症状、就诊或疫苗记录在服务端暂时不可达时，会连同宠物、家庭上下文、发生时间和幂等键保存在当前账户的本机队列；登录会话在恢复联网、回到前台或定时重试时按原顺序同步。明确的权限或内容失效会从队列移除并提示，网络失败继续保留；同步前不在页面上伪装成已经写入服务端。
 

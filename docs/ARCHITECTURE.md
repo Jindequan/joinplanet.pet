@@ -16,7 +16,7 @@
 | 原生 App 迁移说明与组件约束 | `APP/docs/PLANET_APP_DESIGN_SYSTEM.md` |
 | Web 测试入口（Expo Web） | `APP/` |
 
-`README` 只做入口和启动索引；`planet-api/README.md` 只做后端仓库运行说明；研究、营销、商业和 archive 目录不覆盖以上事实源。出现冲突时，按上表处理。`mobile-v3` 仅作为冻结视觉对照；生产部署规划为 `app.joinplanet.pet`，营销与分享/邀请预览页由 `www.joinplanet.pet` 承担。
+`README` 只做入口和启动索引；`planet-api/README.md` 只做后端仓库运行说明；研究、营销、商业和 archive 目录不覆盖以上事实源。出现冲突时，按上表处理。视觉唯一锚点为 founder Pricing 参考图（2026-09-16 重锚定），`mobile-v3` 为历史参考（只读对照，不再约束现行配色/形态——2026-09-22 体检 P2-7 统一口径）；生产部署规划为 `app.joinplanet.pet`，营销与分享/邀请预览页由 `www.joinplanet.pet` 承担。
 
 ## 2. Workspace 与运行时
 
@@ -24,7 +24,7 @@
 joinplanet.pet/
 ├─ docs/               跨仓产品与技术事实源
 ├─ APP/                Expo + React Native 原生 App（重建中）
-├─ mobile-v3/          冻结的 Web 视觉对照（只读）
+├─ mobile-v3/          历史视觉参考（只读，不约束现行配色/形态）
 ├─ planet-api/         Go HTTP API + PostgreSQL
 ├─ www.joinplanet.pet/ 营销站和匿名分享查看页
 └─ scripts/            跨仓启动、状态和日志脚本
@@ -191,8 +191,8 @@ Pet ──< Medication / PetEvent / ShareLink
 
 1. 读取活跃 Care Plan 和有效 Care Rule。
 2. 按 Rule 的 `effective_from/effective_to`、frequency、日期条件和 IANA timezone 计算业务日。
-3. 将 `local_time` 结合 timezone 转换为 UTC `due_at`，按 DST policy 处理夏令时歧义。
-4. 用 `occurrence_key` 做唯一去重，写入带 rule snapshot、title snapshot、timezone 和 due date 的 Occurrence。
+3. 将 `local_time` 结合 timezone 转换为 UTC `due_at`；夏令时歧义按规则时区的本地化时间语义处理——春令时缺口时刻（墙钟不存在）向后平移到过渡后的第一个有效时刻（如 02:30→03:30），秋令时歧义墙钟取较早一次（实现见 `planet-api` tasks/service.go `dueAt`；`care_rules.dst_policy` 列当前不被读取，其 CHECK 枚举为未实现的保留值）。（2026-09-22 勘误，体检 P3：原「按 DST policy 处理」引用了无定义的 policy 名词，按代码实况改写。）
+4. 唯一去重 = `uq_care_occurrences_rule_date`（`care_rule_id, due_date`）partial unique（`WHERE deleted_at IS NULL`）；`occurrence_key` 为冗余标识列，无约束。写入带 rule snapshot、title snapshot、timezone 和 due date 的 Occurrence。（2026-09-22 勘误，体检 P3：原「用 occurrence_key 做唯一去重」与实际约束载体不符。）
 5. Today 只查询当前日期范围内的 Occurrence；Family 过滤先求该用户可访问的 Pet 集合，Pet 过滤只查询该 Pet。
 6. 到期未执行的 Occurrence 才能进入 missed 判定；完成、跳过和撤销遵循状态机，不通过客户端直接改状态。
 7. 完成或跳过后写入对应 Pet Event；撤销时恢复 Occurrence 状态并写入撤销事实，历史不被删除。
@@ -227,6 +227,7 @@ POST /families/{id}/pets       GET /pets
 GET/PATCH /pets/{id}            PATCH /pets/{id}/record
 PATCH /pets/{id}/profile       POST /pets/{id}/archive|unarchive
 DELETE /pets/{id}               POST/DELETE /pets/{id}/families[/{family_id}]
+GET /pets/{id}/export           # 完整可携带档案导出；仅当前 owner，单读事务（2026-09-22 补登记，体检 P2-6）
 GET/POST /pets/{id}/access-grants
 DELETE /pets/{id}/access-grants/{grant_id}
 POST /pets/{id}/transfer
@@ -279,7 +280,7 @@ Query Cache + 页面
 - 本地校验停留在 editing；网络失败保留草稿；401 清理 session；403 显示原因；409 采用服务端权威对象；破坏性操作有独立确认态。
 - 所有按钮有 loading/disabled、accessibility label、成功反馈和失败重试；不可把关键状态只用颜色表达。
 
-表单与页面组件在 `APP/` 重建中；实现时对照冻结的 `mobile-v3` 视觉，业务仍经 `planet-api`。token 与共享 UI 落在 `APP/src/ui/`，页面不散落第二套品牌色。
+表单与页面组件在 `APP/` 重建中；视觉以唯一锚点（founder Pricing 参考图，2026-09-16 重锚定）与 `APP/src/ui/theme` tokens 为准，`mobile-v3` 仅作布局与交互的历史对照（2026-09-22 体检 P2-7 统一口径），业务仍经 `planet-api`。token 与共享 UI 落在 `APP/src/ui/`，页面不散落第二套品牌色。
 
 ## 9. 运行、迁移与验证
 

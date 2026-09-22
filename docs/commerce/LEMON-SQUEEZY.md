@@ -3,6 +3,10 @@
 日期：2026-08-09  
 状态：Landing Page 永久会员接入待配置 checkout URL
 
+## 与产品事实源的关系（2026-09-22 补，体检 P1-3）
+
+本文档描述的是**市场验证期的商业手段**（永久会员一次性买断预售），不是产品内权益机制的现行实现。其权益兑现机制（lifetime claim）与产品内 entitlement 的衔接（权益锚定模型）**待 founder 裁决**；在裁决落地之前，不得在任何页面、文案或客服口径中宣称购买后解锁任何现行产品内配额或能力（含照片存储 free 50MB / pro 10GB 与任何未来 Pro 能力）。现行产品付费边界以 [PRODUCT.md](../PRODUCT.md) §5 为准：V1 无应用内购买路径。
+
 ## 结论
 
 前期只做一件事：**收款并绑定邮箱**。页面采用 Lemon Squeezy Hosted Checkout，用户不需要先注册 PLANET，也不需要先成为 `saas-core` active member。
@@ -117,7 +121,7 @@ paid total >= 100 → 关闭 checkout 链接
 5. 生产模式完成一笔小额真实支付，确认订单、退款路径和收款主体信息。
 6. 记录每笔订单的产品、邮箱、来源和同意的交付/退款说明。
 7. 在预付款达到验证门槛前，不接入复杂的宠物数据和医疗功能开发。
-8. 在 Lemon Squeezy 后台 checkout 设置里，把条款链接指向站点政策页：`https://www.joinplanet.pet/terms`、`/privacy`、`/refund`（Settings → Store → 相关字段，或在产品 checkout 编辑器里配置）。
+8. 在 Lemon Squeezy 后台 checkout 设置里，把条款链接指向站点政策页：`https://www.joinplanet.pet/terms`、`https://www.joinplanet.pet/privacy`、`https://www.joinplanet.pet/refund`（Settings → Store → 相关字段，或在产品 checkout 编辑器里配置）。三页源码归属：`www.joinplanet.pet` 仓 `app/terms/`、`app/privacy/`、`app/refund/`（Next.js App Router，push 到 GitHub main 由 Vercel 自动部署）；页面带 TEMPLATE 标记（2026-09-22），法务审查通过前不作为对外承诺依据。
 
 ## 退款 SOP（用户邮件到 support@joinplanet.pet 时）
 

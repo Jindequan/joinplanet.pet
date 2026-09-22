@@ -45,6 +45,9 @@
 | 共享确认 | POST /pet-share-requests/:id/accept·decline·cancel | 目标 owner/发起人；**全同事务+审计传播** | 必需（读回也 bind） |
 | 停药 | POST /medications/:id/stop | 家庭时区当日；联动归档挂药计划+取消开放项 | 必需 |
 | 时间线写/改/删 | POST/PATCH/DELETE …/timeline… | auto 事件不可改删；weight 联动体重 | 必需（新建进离线队列；改删无队列） |
+| 家庭治理 | PATCH/DELETE /families/:id、/leave、/transfer、/restore… | 删家庭前置 409 FAMILY_NOT_EMPTY；角色改 viewer 联动收束照护 | 必需/可选 |
+
+（2026-09-22 勘误，体检 P3：「家庭治理」行原误挂在下方案后成孤立表行，已归位本表。）
 
 **照片（2026-09-18 R2 化）**：`POST /pets/:id/photo-upload` 签发直传 URL（需该宠物写权限；返回 `key` / `thumb_key` / `upload_url` / `thumb_upload_url`，15 分钟有效）；客户端压缩后（长边 2048、质量 0.82 + 480 缩略图）直传 R2，再以 `{photo:{key,thumb_key,width,height,bytes,mime},caption}` 建事件。服务端写入前校验 ① 对象键属于该宠物目录 ② 对象真实存在（Stat），缺一即拒绝——不存在「有记录没照片」。读取：事件 DTO 附带 `photo_url` / `photo_thumb_url`（私有桶签名，1 小时）；公开分享快照剥离 `photo` 引用与 `photo_data`。未配置存储时新形态返回 503，旧内联形态仅迁移期可读。**客户端侧已于 2026-09-19 落地（M5 完成）**：`APP/src/core/media/photo-upload.ts`（压缩→领票→双 PUT→引用）+ 两个 composer 提交时上传（失败可重试不丢照片；离线队列要求引用先行）+ 事件卡优先 `photo_thumb_url`；本地真栈（本地 API + 真实 R2）端到端 8/8 通过。
 
@@ -59,10 +62,10 @@
 - **入站排程严格、读库宽松**：请求体里 `schedule` 出现未知字段一律 400（典型误用：把时间写进 `schedule.time` 会静默落成 00:00）；数据库读路径必须宽松，历史行多字段不得把接口打成 400（2026-09-18 实测踩过：`/me/activation-summary` 500→整站进不去）。
 
 **记录投影（2026-09-18 founder 裁决：记录展示事实，管理类默认不展示）**：`GET /timeline` 与 `GET /pets/:id/timeline` 支持 `scope=facts`（默认，白名单 FactTypes：note/photo/symptom/weight/vet_visit/vaccine/deworm/medication/care_task_completed）与 `scope=all`（含管理类 transfer / care_task_undone）；非法 scope 返回 400。类型过滤在 SQL 内完成（LIMIT 必须作用在可见行上，否则分页短页）。分享摘要 `ListForShare` 与记录页同口径。白名单新增事实类型时，必须同步本表与 `docs/PRODUCT.md` §4.4。
-| 家庭治理 | PATCH/DELETE/leave/transfer/restore… | 删家庭前置 409 FAMILY_NOT_EMPTY；角色改 viewer 联动收束照护 | 必需/可选 |
 
 ### 2.4 分享/导出/账户
 - 外部分享：创建=快照物化+token 仅返回一次（幂等重放可取回）；匿名查看 410 SHARE_GONE 不泄露；care_card 为**冻结快照**（UI 须呈现快照日期而非「今日」——遗留项 L14）；撤销同事务写审计。
+- 数据导出：`GET /pets/{id}/export` 返回该宠物完整可携带记录；仅宠物当前 owner 可调用（普通家庭成员/查看授权均不足——完整历史是持久披露边界），单读事务内完成，不混用多个数据库快照。（2026-09-22 补登记，体检 P2-6：端点早已存在——planet-api pets/http.go 注册路由、pets/service.go `Export`，本契约此前漏登；前端是否有导出 UI 入口不在本契约断言范围。）
 - 账户：注销前置无 owned pets（409）；会话撤销/登出即失效；推送 token 注册失败有手动重试入口。
 
 ## 3. 错误码注册表（前端 errors.ts 必须全覆盖；新码先登记此处）

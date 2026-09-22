@@ -209,3 +209,21 @@ cd ../planet-api && TEST_DATABASE_URL=postgres:///postgres go test ./...
 - 2026-09-15 过期数据提示扩展：通知设置也加入统一的过期数据提示，所有已读列表在刷新失败时保留内容但明确标记并提供“重试更新”，避免用户误把旧设置当成最新设置。
 - 2026-09-15 前端契约同步：将直接 UI 恢复回归纳入产品契约守门，当前契约 `58/58`，避免后续改动移除这三类关键恢复证据。
 - 2026-09-15 stale-data 错误态补强：已有数据的查询刷新失败不再触发整页错误分支，时间线、分享、转移、账户、通知和已删除家庭列表保留当前操作上下文；仅首次无数据加载进入整页错误态。契约新增 1 条检查。
+
+## 2026-09-22 founder 九条裁决批（文档批）
+
+来源：founder 2026-09-22 九条裁决（对象为 MVP 六系统审计延期项，登记于 [DEFECT-LEDGER.md §八](DEFECT-LEDGER.md) L36–L45）。本批为文档批落点：口径落进事实源与台账；代码批 commit 由本体回填（下表「代码批 commit」列均为占位）。
+
+| 裁决对象 | 处置 | 文档落点 | 代码批 commit |
+|---|---|---|---|
+| L36 宠物离世语义 | deceased 特殊状态本批落地：占配额、数据保留只读、仅可删除、无恢复；纪念功能延后 | PRODUCT.md §5.0 裁决要点 + §4.3/§6.3 生命周期各补一句 | planet-api 8621d19 / APP d5fe9aa |
+| L37 宠物 30 天恢复窗 | 裁决真窗口+purge，本批落地（与 planet-cli purge TODO 合并） | DEFECT-LEDGER §八 L37 状态更新 | planet-api 8621d19 / APP d5fe9aa |
+| L38 once 无时段已指派零提醒 | 裁决 once 必须带时间，本批落地，「无时段且已指派」形态随之消失 | DEFECT-LEDGER §八 L38 状态更新 | planet-api 8621d19 / APP d5fe9aa |
+| L39 viewer 可被移交所有权 / 邀请码独立撤销 | 裁决不改动（人的行为），销号 | DEFECT-LEDGER §八 L39 销号留痕 | 不涉代码 |
+| L40 digest 通道 / 角标 / 送达窗口 | 摘要邮件默认停发（DIGEST_EMAIL_ENABLED 开关）；推送为必须（已由调度推送修复达成）；角标/时区窗口维持现状登记 | DEFECT-LEDGER §八 L40 状态更新 | planet-api 8621d19 / APP d5fe9aa |
+| L41 「照片断网入队」承诺 vs 实现 | 照片离线队列 MVP 不做，登记之后版本项；文档改为如实口径 | PRODUCT.md §6.4：文字类记录（note/symptom/weight/vet_visit/vaccine/deworm/medication，补齐此前遗漏的 deworm）断网入离线队列；照片=在线能力（先直传 R2 才能建记录，断网时表单保留待重试） | planet-api 8621d19 / APP d5fe9aa |
+| L42 导出「完整」语义 | 导出 MVP 搁置（之后版本项） | PRODUCT.md §5.0 之后版本项登记 + DEFECT-LEDGER §八 L42 | planet-api 8621d19 / APP d5fe9aa |
+| L43 access-grants 无产品定义 | 裁决仅 family；access-grants=预留能力（API 保留，无产品入口） | DEFECT-LEDGER §八 L43 状态更新 | planet-api 8621d19 / APP d5fe9aa |
+| L44 纪念态（归档）宠转移 UI 口径冲突 | 维持登记，随 deceased 落地复核休眠归档转移口径 | DEFECT-LEDGER §八 L44 维持登记 | 随 deceased 复核 |
+
+配套台账更新：[audits/MVP-SIX-SYSTEMS-2026-09-22/00-OVERVIEW.md](audits/MVP-SIX-SYSTEMS-2026-09-22/00-OVERVIEW.md) 第四节由「待 founder 裁决」改为「裁决结果（2026-09-22）」逐条一句话结果。本批未动 [APP-BEHAVIOR-CONTRACT.md](APP-BEHAVIOR-CONTRACT.md)（由并行代码批负责）。

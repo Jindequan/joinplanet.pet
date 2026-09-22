@@ -130,17 +130,17 @@
 
 ## 八、MVP 六系统生命周期审计延期与待裁决项（2026-09-22 追加，来源=MVP-SIX-SYSTEMS 审计）
 
-审计全文：[audits/MVP-SIX-SYSTEMS-2026-09-22/](audits/MVP-SIX-SYSTEMS-2026-09-22/)（01 账户 / 02 家庭 / 03 宠物 / 04 照护调度 / 05 提醒 / 06 event）。P0/P1/P2 主体已当批修复（调度推送接线、注销身份清理、ACCOUNT_FAMILY_HAS_MEMBERS、转移全局 owner 守卫、共享请求三处收束、substitute 归属、离线队列告知、分享照片签名 URL 等）；以下为待 founder 裁决与登记项。
+审计全文：[audits/MVP-SIX-SYSTEMS-2026-09-22/](audits/MVP-SIX-SYSTEMS-2026-09-22/)（01 账户 / 02 家庭 / 03 宠物 / 04 照护调度 / 05 提醒 / 06 event）。P0/P1/P2 主体已当批修复（调度推送接线、注销身份清理、ACCOUNT_FAMILY_HAS_MEMBERS、转移全局 owner 守卫、共享请求三处收束、substitute 归属、离线队列告知、分享照片签名 URL 等）；L36–L44 已由 founder 2026-09-22 裁决处置（下表「状态」列记载裁决结果与落点，planet-api 8621d19 / APP d5fe9aa），L45 维持登记。
 
 | # | 状态 | 项 | 出处 |
 |---|---|---|---|
-| L36 | 待 founder 裁决 | **宠物离世语义**（生命周期唯一缺失终态）：方案一=归档正名「纪念」（0 迁移）；方案二=新增 deceased 终态（不可逆、免配额、只读保留）；方案三=完整纪念模式 | 03-pet.md F8 |
-| L37 | 待 founder 裁决 | 宠物「30 天恢复窗」无执行机制=事实无限期；裁决真窗口+purge 还是改口径（与 planet-cli purge TODO 合并） | 03-pet.md F4 |
-| L38 | 待 founder 裁决 | once 临时照护「无时段且已指派」零主动提醒：要不要提醒、何时提醒 | 05-reminders.md F2 |
-| L39 | 待产品口径 | 所有权移交候选含 viewer（一次确认获全部治理权）；邀请码无独立撤销（唯一出口=refresh 轮换，多设备互吊） | 02-family.md F8/F11 |
-| L40 | 待产品口径 | digest 仅邮件无推送（care_digest kind 死代码）；iOS 角标零管理；送达窗口语义（家庭时区/补发至凌晨 4 点/每小时桶全天重复）是否 by design | 05-reminders.md F5/F7/F8 |
-| L41 | 待 founder 裁决 | 「照片断网入队」承诺 vs 实现（照片必须在线先传 R2）：改文档还是做离线暂存 | 06-events.md E3 |
-| L42 | 文档口径 | 导出「完整」语义落字：照片仅引用无字节、含管理类事件（与 facts 投影口径不同）、不含请求/转移管理史 | 06-events.md E5 + 03-pet.md 备注 |
-| L43 | 处置裁决 | access-grants 后端完整但无产品定义无 UI：建议标注「预留能力（API 保留，无产品入口）」+删前端死方法 | 03-pet.md F7 |
-| L44 | 口径冲突 | 纪念态（归档）宠物转移：契约与后端放行、前端 UI 拦死——放开 UI（纪念转移）或收紧后端 | 03-pet.md F2 |
+| L36 | 已裁决（founder 2026-09-22）→ deceased 特殊状态本批落地（占配额、数据保留只读、仅可删除、无恢复）；纪念功能延后 | **宠物离世语义**（生命周期唯一缺失终态）：方案一=归档正名「纪念」（0 迁移）；方案二=新增 deceased 终态（不可逆、免配额、只读保留）；方案三=完整纪念模式。落点：planet-api pets 模块 + APP 宠物页 + PRODUCT.md §4.3/§5.0/§6.3（planet-api 8621d19 / APP d5fe9aa） | 03-pet.md F8 |
+| L37 | 已裁决（founder 2026-09-22）→ 30 天恢复窗+purge 本批落地 | 宠物「30 天恢复窗」无执行机制=事实无限期；裁决真窗口+purge 还是改口径（与 planet-cli purge TODO 合并）。落点：planet-api 恢复窗 purge + planet-cli purge TODO（planet-api 8621d19 / APP d5fe9aa） | 03-pet.md F4 |
+| L38 | 已裁决（founder 2026-09-22）→ once 必须带时间，本批落地（不再存在「无时段且已指派」形态） | once 临时照护「无时段且已指派」零主动提醒：要不要提醒、何时提醒。落点：care-rules once 校验 + APP 临时照护表单（planet-api 8621d19 / APP d5fe9aa） | 05-reminders.md F2 |
+| L39 | 已裁决销号（founder 2026-09-22）→ 不改动（人的行为） | ~~所有权移交候选含 viewer（一次确认获全部治理权）；邀请码无独立撤销（唯一出口=refresh 轮换，多设备互吊）~~。落点：无代码改动，销号 | 02-family.md F8/F11 |
+| L40 | 已裁决（founder 2026-09-22）→ 摘要邮件默认停发（DIGEST_EMAIL_ENABLED 开关）；推送为必须（已由本批调度推送修复达成）；角标/时区窗口维持现状登记 | digest 仅邮件无推送（care_digest kind 死代码）；iOS 角标零管理；送达窗口语义（家庭时区/补发至凌晨 4 点/每小时桶全天重复）是否 by design。落点：digest 调度 DIGEST_EMAIL_ENABLED 开关 + 本批调度推送接线（planet-api 8621d19 / APP d5fe9aa） | 05-reminders.md F5/F7/F8 |
+| L41 | 已裁决（founder 2026-09-22）→ 照片离线队列不做（登记之后版本项），文档口径修正 | 「照片断网入队」承诺 vs 实现（照片必须在线先传 R2）：改文档还是做离线暂存。落点：PRODUCT.md §6.4 已改为如实口径（文字类记录断网入离线队列，照片在线直传 R2） | 06-events.md E3 |
+| L42 | 已裁决（founder 2026-09-22）→ 导出 MVP 搁置（之后版本项） | 导出「完整」语义落字：照片仅引用无字节、含管理类事件（与 facts 投影口径不同）、不含请求/转移管理史。落点：PRODUCT.md §5.0 之后版本项登记 | 06-events.md E5 + 03-pet.md 备注 |
+| L43 | 已裁决（founder 2026-09-22）→ 仅 family；access-grants=预留能力（API 保留，无产品入口） | access-grants 后端完整但无产品定义无 UI：建议标注「预留能力（API 保留，无产品入口）」+删前端死方法。落点：产品文档口径标注（planet-api 8621d19 / APP d5fe9aa） | 03-pet.md F7 |
+| L44 | 维持登记（founder 2026-09-22）→ 随 deceased 落地复核休眠归档转移口径 | 纪念态（归档）宠物转移：契约与后端放行、前端 UI 拦死——放开 UI（纪念转移）或收紧后端 | 03-pet.md F2 |
 | L45 | 登记（P3 尾巴，详见各审计文件） | ①V3 偏好悬空/V5 subscriptions+outbox 残留/V6 users.email 不刷新/V7 Apple 无限流/V8 注销幂等；②F2 被移除者无通知/F5 审计翻页/F6 邀请死列/F7 角色错误口径/F9 恢复计数滤注销/F10 邀请过期不透明；④F6 once 计划无终态/F8 注释漂移/F9 undo 按钮陈旧窗；⑤F9 outbox 保留策略/F10 token 周期校验；⑥E4 内联照片编辑指引/E6 trash 拖挂/E7 abandon 截断/E8 快照事务外 | 各审计文件漏洞清单 |

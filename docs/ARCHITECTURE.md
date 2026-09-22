@@ -230,6 +230,8 @@ DELETE /pets/{id}               POST/DELETE /pets/{id}/families[/{family_id}]
 GET /pets/{id}/export           # 完整可携带档案导出；仅当前 owner，单读事务（2026-09-22 补登记，体检 P2-6）
 GET/POST /pets/{id}/access-grants
 DELETE /pets/{id}/access-grants/{grant_id}
+# 预留能力：无产品入口，MVP 不承诺（founder 2026-09-22 裁决）。API 保留，
+# 客户端不得依赖。
 POST /pets/{id}/transfer
 
 Care：

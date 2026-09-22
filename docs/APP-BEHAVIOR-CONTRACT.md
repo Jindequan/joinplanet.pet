@@ -12,7 +12,7 @@
 | care_request | sent→seen→accepted/declined/delegated/expired/cancelled | 响应仅 target；终态封闭（409 NOT_ACTIONABLE）；reassign 仅 declined；expired 仅调度器写（due_at 到且 open 且 occurrence 未结）；每 occurrence 至多一条 open（部分唯一索引） |
 | care_occurrence | pending/missed→completed/skipped→(undo 7天)→pending；任意→cancelled | 完成仅 pending/missed（CAS 单赢家，败者 409 TASK_LOG_EXISTS 附权威 log）；undo=完成者或家庭 owner，civil ≤7 天（done_at 口径）；cancel 带 deleted_at 释放 (rule,date) 槽位 |
 | care_plan | active⇄paused；→archived(=DELETE) | paused 不物化、取消未来开放项并**收口规则**（effective_to=暂停日-1 + 同事务 paused 审计）；恢复（任一入口到 active）按暂停收口审计识别后重开规则（effective_from=恢复日）；once/带自然 end_date 规则不参与版本化（注释载明取舍） |
-| pet | active⇄archived→deleted(30天)→恢复 | 归档禁一切新写（timeline/meds/handoff/share/计划；转移有意放行）统一 409 PET_ARCHIVED；archive/delete 的取消均置 deleted_at；恢复=重新物化，归档恢复另有 cancelled→pending 复位兜底 |
+| pet | active⇄archived→deleted(30天)→恢复；active/archived→**deceased（终态）** | 归档禁一切新写（timeline/meds/handoff/share/计划；转移有意放行）统一 409 PET_ARCHIVED；archive/delete 的取消均置 deleted_at；恢复=重新物化，归档恢复另有 cancelled→pending 复位兜底。**deceased（离世封存，founder 2026-09-23 裁决）**：终态、不可逆（无恢复离世出口，unarchive/archive/restore 一律 409 PET_DECEASED）、**仍占配额**、数据全保留只读（读与导出放行）、不做任何纪念功能；封存后**唯一可做的操作是删除档案**（走既有软删+配额释放路径，30 天恢复窗照旧） |
 | pet_transfer | pending→accepted/declined/cancelled | 每宠一条 pending（部分唯一）；接受=单事务迁所有权/链接/计划/请求/分享全撤/配额；删宠/删家庭/注销联动取消 |
 | pet_share_request | pending→accepted/declined/cancelled | 目标圈 owner 确认；发起人=目标 owner 时即时建边；**状态迁移/ACL 边/审计/幂等全在同事务**；accepted 幂等重放读回 |
 | family | active→deleted(30天)→恢复 | 删除前置：单成员+无宠物链接（409 FAMILY_NOT_EMPTY）；恢复带配额复查 |
@@ -41,9 +41,11 @@
 |---|---|---|---|
 | 档案保存 | PATCH /pets/:id/record | 乐观锁 version；**前端字段级合并：仅发用户改动字段，未改字段取最新服务端值（双快照 base/latest）** | 必需（内容指纹键） |
 | 归档/删除/恢复 | POST archive/unarchive/restore, DELETE | confirm=petId；取消置 deleted_at | 必需/可选 |
+| 离世封存（2026-09-23） | POST /pets/:id/deceased | **confirm=petId（与删除同口径）**；单事务联动集：status→deceased + 开放 occurrence 墓碑化（deleted_at）+ 照护请求收束 + 值班终结 + pending 转移取消 + pending 共享请求取消 + share_links 全撤 + 审计 pet_deceased；**配额不释放**；已 deceased 重放读回 200 | 可选 |
+| 计划创建（2026-09-23） | POST /pets/:id/care-plans、POST /care-schedule/actions(add) | **once 必须带时间（提醒前提）**：kind=once 且无 time_of_day → 400（「提醒需要时间」）；无时间 once 是一条永不响的提醒 | 必需 |
 | 跨家庭共享 | POST /pets/:id/families | 确认制（目标 owner≠发起人→pending）；归档宠禁发 | 必需 |
-| 共享确认 | POST /pet-share-requests/:id/accept·decline·cancel | 目标 owner/发起人；**全同事务+审计传播**；归档宠接受→409 PET_ARCHIVED（2026-09-22 补复查）；删宠/转移接受联动取消相关 pending 请求 | 必需（读回也 bind） |
-| 跨家庭转移 | POST /pets/:id/transfer（+accept·decline·cancel） | **仅宠物现任全局 owner 可发起（且须为源家庭 owner）；共享家庭成员不可发起（403 ROLE_FORBIDDEN，2026-09-22 裁决）**；接受=目标 owner 单事务迁所有权；归档宠有意放行 | 必需 |
+| 共享确认 | POST /pet-share-requests/:id/accept·decline·cancel | 目标 owner/发起人；**全同事务+审计传播**；归档宠接受→409 PET_ARCHIVED、离世封存宠接受→409 PET_DECEASED（2026-09-22 补复查；deceased 扩查 2026-09-23）；删宠/转移接受联动取消相关 pending 请求 | 必需（读回也 bind） |
+| 跨家庭转移 | POST /pets/:id/transfer（+accept·decline·cancel） | **仅宠物现任全局 owner 可发起（且须为源家庭 owner）；共享家庭成员不可发起（403 ROLE_FORBIDDEN，2026-09-22 裁决）**；接受=目标 owner 单事务迁所有权；归档宠有意放行，离世封存宠禁发起（409 PET_DECEASED，2026-09-23 裁决；封存事务同步取消其 pending 转移） | 必需 |
 | 停药 | POST /medications/:id/stop | 家庭时区当日；联动归档挂药计划+取消开放项 | 必需 |
 | 时间线写/改/删 | POST/PATCH/DELETE …/timeline… | auto 事件不可改删；weight 联动体重 | 必需（新建进离线队列；改删无队列） |
 | 家庭治理 | PATCH/DELETE /families/:id、/leave、/transfer、/restore… | 删家庭前置 409 FAMILY_NOT_EMPTY；角色改 viewer 联动收束照护 | 必需/可选 |
@@ -71,7 +73,7 @@
 
 ## 3. 错误码注册表（前端 errors.ts 必须全覆盖；新码先登记此处）
 
-全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、**PHOTO_STORAGE_QUOTA_EXCEEDED**（照片存储配额，402——需付费动作解决，刻意不用 429：客户端按状态把 429 短路成重试提示，会埋掉升级引导文案）、ROLE_FORBIDDEN（仅真 owner 场景）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**/OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、**PET_ALREADY_SHARED / PET_SHARE_PENDING**（共享请求创建判重 409，既有码 2026-09-22 补登记：petshares/service.go 创建口，前端 pet-share 失败 toast 分支用）、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**ACCOUNT_FAMILY_HAS_MEMBERS**（注销前置：名下家庭还有其他活跃成员时 409，先移交/移除成员）、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
+全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、**PHOTO_STORAGE_QUOTA_EXCEEDED**（照片存储配额，402——需付费动作解决，刻意不用 429：客户端按状态把 429 短路成重试提示，会埋掉升级引导文案）、ROLE_FORBIDDEN（仅真 owner 场景）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、**PET_DECEASED**（离世封存宠的一切新写 409，founder 2026-09-23 裁决——封存只读、仅可删除档案）、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**/OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、**PET_ALREADY_SHARED / PET_SHARE_PENDING**（共享请求创建判重 409，既有码 2026-09-22 补登记：petshares/service.go 创建口，前端 pet-share 失败 toast 分支用）、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**ACCOUNT_FAMILY_HAS_MEMBERS**（注销前置：名下家庭还有其他活跃成员时 409，先移交/移除成员）、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
 文案规则：中文三段式；未知码按 HTTP 语义兜底；实现层英文 message 禁止直出。
 
 ## 4. 失效图（写动作 → 必须刷新的查询面；改这里=改契约）

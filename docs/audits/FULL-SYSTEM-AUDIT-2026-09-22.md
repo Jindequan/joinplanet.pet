@@ -44,6 +44,8 @@
 | P1-4 | **法务口径出处落空**：LEMON-SQUEEZY.md:120 引用 /terms /privacy /refund，但现行落地页仓 www.joinplanet.pet/app 仅剩 tools/、server/ 仅 lemon-webhook，法务页无源码归属（是否仅存于旧 dist 不可考） | ls 实测 2026-09-22 | ✅ |
 
 > P1-3 与记忆中「权益锚定模型待裁决」互为印证：付费这件事在产品事实源（不做）、行为契约（free/pro 配额+402）、商业文档（lifetime 预售）三个层面各说各话，是客服与商业纠纷的第一源头。
+>
+> **P1-4 勘误（2026-09-22 整改批）**：三页源码其实一直在 www 仓 git HEAD 中且线上仍在线（Aug 16 版）；「app/ 仅剩 tools」实为该仓 83 个文件的未提交删除（存量误操作，与本审计无关，已恢复）。整改=基于 HEAD 恢复并逐条事实核对改写至 2026-09 现状（www.joinplanet.pet f71ea52，每页带 TEMPLATE 待专业法律终审标注）。
 
 ## 三、P2 发现（头部 5 条经本体复核✅，其余附子代理证据）
 
@@ -114,3 +116,14 @@
 - planet-api/internal/platform/media/media.go（PresignPut）、keys.go 垃圾前缀注释、sweeper 全仓 grep
 - APP/src/features/today/screen.tsx（双数字两处原文）、app/pets/[petId]/sharing.tsx（Redirect 原文）、CareRiskBanner 全仓 grep
 - planet-api/migrations/0001_initial.up.sql occurrence_key 定义 + docs/ARCHITECTURE.md:195
+
+## 十、处置快照（2026-09-22 整改批收口）
+
+审计发布的同日，第八节建议清单已执行完毕（处置明细=[AUDIT-2026-09-22-REMEDIATION.md](AUDIT-2026-09-22-REMEDIATION.md)，登记项=[DEFECT-LEDGER.md](../DEFECT-LEDGER.md) 第七节 L26-L34）：
+
+- **定义收口批**：P1-1 北极星入 PRODUCT §3.2；P1-2 F1–F8 归一入 PRODUCT §3.3；P1-3 付费边界对齐代码现实+权益锚定待 founder 裁决（LEMON-SQUEEZY 加关系声明）；P1-4 法务页恢复并事实核对改写（勘误见第二节）。
+- **P2 修复批**：P2-1 photo-sweep 落地（含盲审 P1 TOCTOU 加固：apply 前逐目录 EXISTS 复核）/大小上限经调查不落地（R2 不执行 content-length-range，假安全感）→L29；P2-2 CareRiskBanner 删除（能力已可达）；P2-3/4/6/7/9 全部修复；P2-5 登记待排期；P2-8→L26。
+- **P3 清扫批**：教学文案×3、Today 双数字、时间收编×2、孤儿端点（cancel 接 UI、client 死方法删除）、文档腐坏 6 处+0027 结构收口——全部完成；me.usage 配额显示经评估挂起→L32（三项产品决策未解）。
+- **验收证据**：planet-api `go test ./...` 全绿（含真库 integration，两轮）；APP e2e 173 passed + 1 条件跳过、tsc 零错、五语 1971 键×5 一致；ui-reviewer 9 张渲染截图 9/9 PASS（assignments 页以零残留 grep+e2e 真实运行时覆盖为据，截图受浏览器工具面不稳所阻）；code-reviewer 两轮（首轮后端 FAIL→P1/P2 修复→复审闭环，首轮前端通过→P2 修复→复审闭环）。
+- **提交**：planet-api 956556d、APP 0ec9078+f93fe67、www f71ea52、docs 本仓。
+- **待 founder 裁决**：付费边界终局（权益锚定模型）、L30 时区迁移语义、L31 纯日期逾期定义、L32 配额显示、L33 care-risks 端点去留。

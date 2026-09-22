@@ -17,7 +17,7 @@
 | # | 处置 | 证据（文件:行 / 落点） |
 |---|---|---|
 | P2-1 照片孤儿对象无回收 + 预签名无大小上限 | 代码批修复（后端，2026-09-22 回填）：孤儿回收已落地——planet-cli 新增 `photo-sweep` 子命令（全桶枚举→宠物照片对象目录分组→pet_events.photo 引用判定→48h 宽限→MoveToTrash，默认 dry-run、--apply 执行；引用判定 SQL 集成测试 TestReferencedPhotoObjectKeys；运维口径与 systemd timer 建议见 media/keys.go 头注）；**大小上限未落地→延期登记 DEFECT-LEDGER L29**（调查结论与候选方案见本文件 §四.1） | 审计证据 media/media.go:122-128、keys.go:47-51、timeline/http.go:217；落点 cmd/planet-cli/photo_sweep.go、timeline/sweep.go、media/keys.go、media/media.go(ListDetailed) |
-| P2-2 CareRiskBanner 整组件零引用 | 代码批修复（前端：挂载 Today 或正式删除） | 审计证据：全仓 grep 除组件自身零命中；注意 DEFECT-LEDGER L12 仍当其为活跃修复点，代码批处置后同步台账 |
+| P2-2 CareRiskBanner 整组件零引用 | 代码批修复（前端，2026-09-22 落地，APP f93fe67）：判定=能力已可达（Today 逾期段每行 onClaim→planetApi.careRequests.claim，与 banner 的 claimCareRisk 同一端点；canClaim 投影 screen.tsx:807-814）→删除组件及专属包装（readCareRisks/claimCareRisk/writers.ts）；盲审 P3 清尾（queryKeys.careRisks、cache 失效字面量、client 方法+类型）与后端端点处置登记 DEFECT-LEDGER L33；DEFECT-LEDGER L12 表述已同步 | 证据链：planet-api.ts:435→readers.ts readCareRisks→CareRiskBanner 零挂载；Today claim 链路 today/screen.tsx:948-958,1381 |
 | P2-3 sharing 路由口径漂移 | 本批修复 | docs/APP-PAGE-MAP.md §1 改为 5 个重定向（实况核对：/pets/[petId]/medications、/pets/[petId]/sharing、/(tabs)/family、/activation/welcome、/activation/setup-care）；§3.5 sharing 行改为重定向至宠物工作区（src/features/pets/detail-screen.tsx SharingSection，detail-screen.tsx:65/665 实读） |
 | P2-4 状态机两份现行规范冲突 | 本批修复 | docs/CARE-COORDINATION.md §4 状态图改为与 APP-BEHAVIOR-CONTRACT.md §1 一致（sent→seen→accepted/declined/delegated/expired，cancelled 封闭；reassign/delegate 是动作不是状态；occurrence 无 undone 态）；原 draft→…→escalation 链与 undone 移入 §4.1「规划（未实现，2026-09-22 与契约对齐时移出）」 |
 | P2-5 照片无关系型台账 | 登记待办（结构性改造待排期，现状设计自洽） | 审计证据 timeline/registry.go:201-249、media/keys.go:165-170、0026 迁移 |
@@ -33,13 +33,13 @@
 | 6.1 教学文案五语残留 3 处 | 代码批修复（前端 P3 清扫批） | pets.medsIntro、pets.assignmentsSubtitle、auth 页头第二句+口号 footer |
 | 6.2 Today 全完成态双数字 | 代码批修复（前端 P3 清扫批） | today/screen.tsx:1049/1318 |
 | 6.3 时间格式化未收编 2 处 | 代码批修复（前端 P3 清扫批） | today/screen.tsx:103-107、pets/detail-screen.tsx:883-913 |
-| 6.4 孤儿端点 6 个 | 部分延期登记（digest 手动发送 UI→DEFECT-LEDGER L27；导出 UI 入口→L28），其余（me.usage、families.usage、pets.update、pets.updateProfile、petShareRequests.cancel）登记待办（接 UI 或删定义，二选一待裁决） | 审计第五节 |
-| 6.5 文档腐坏小项 | 本批修复 6 处；其余登记待办 | 已修：PRODUCT.md §6 错挂「### 4.4」→归位 §6.4；APP-BEHAVIOR-CONTRACT.md:62 孤立「家庭治理」表行→归位 §2.3；APP-PAGE-MAP.md:127 转移行 4 列对 3 列表头、L151 /invite/[code] 无表头→修表；docs/README.md 索引补全现行文档并改「两份事实源」为三层事实源；ARCHITECTURE.md:195 occurrence_key→uq_care_occurrences_rule_date。待办：users.timezone 死列、subscriptions 三个预留状态无 writer 未标注、family_invitations 无单活唯一（涉迁移/代码，不属文档批） |
+| 6.4 孤儿端点 6 个 | 已处置 4：petShareRequests.cancel 已接 UI（2026-09-22，APP f93fe67「我发出的」撤回入口+失败路径 e2e）；pets.update / pets.updateProfile 客户端方法已删（后端端点与契约保留）；导出 UI 经勘误证伪（L28 ❌）。挂起 2：me.usage→DEFECT-LEDGER L32（三项产品决策未解）；families.usage→随配额展示产品决策与 L32 一并裁决；digest 手动发送 UI→L27 | 审计第五节；f93fe67 |
+| 6.5 文档腐坏小项 | 全部关闭：本批修复 6 处文档项；三项结构待办由后端代码批 0027 迁移收口（users.timezone 死列 COMMENT、subscriptions.status 预留状态 COMMENT、family_invitations 单活 partial unique 含存量去重），盲审 P3（迁移去重防护）同轮加固 | 已修：PRODUCT.md §6.4 归位、BEHAVIOR-CONTRACT L62 归位、PAGE-MAP 修表×2、README 三层事实源重建、ARCHITECTURE occurrence_key 写实；后端落点 migrations/0027_*、schema_test、migration_0027_test |
 | 6.6 定义层模糊点 | DST policy 悬空名词→本批修复（ARCHITECTURE.md §6 按 tasks/service.go dueAt 实况改写）；时区迁移语义→延期登记 DEFECT-LEDGER L30；纯日期事项逾期时刻定义→延期登记 L31 | tasks/service.go:399-419（春令时缺口后移、秋令时取较早；dst_policy 列不被读取） |
 
 ## 四、遗留与移交
 
-- 代码批（后端/前端）完成后须回填本表处置状态；P2-2 CareRiskBanner 一项在前端代码批落地前保持「代码批修复」在途状态（P2-1、P2-9 后端半边已由后端代码批于 2026-09-22 回填，见上表）。
+- ~~代码批（后端/前端）完成后须回填本表处置状态~~ 已全部回填（2026-09-22）：后端批=planet-api 956556d（含盲审 P1 photo-sweep TOCTOU/P2 PATCH 排程预检修复），前端批=APP f93fe67（含盲审 P2 撤回幂等键修复）；两轮盲审均复审闭环。
 - 本批未改任何代码、未动 docs/audits/FULL-SYSTEM-AUDIT-2026-09-22.md 本体；APP/ 内仅按任务授权编辑 APP/docs/PLANET_APP_DESIGN_SYSTEM.md 一个文件。
 - 后端代码批（2026-09-22）改动范围：planet-api 的 tasks/digest/timeline/media/families 相关代码与迁移 0027；未动 FULL-SYSTEM-AUDIT 本体。
 

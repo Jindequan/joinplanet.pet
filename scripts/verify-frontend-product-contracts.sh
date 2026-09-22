@@ -162,12 +162,16 @@ else
   fail "Today secondary tools drifted from the persistent chips form or regressed to a collapsed shell"
 fi
 
-# 「更多」展开的 a11y 标签锚点：today.a11yShowMore（zh=展开其他安排方式）。
-if rg -q 'secondaryOpen' "$APP/features/today/cards.tsx" && \
-   rg -q "t\('today\.a11yShowMore'\)" "$APP/features/today/cards.tsx"; then
-  pass "collaboration cards keep alternate actions behind More"
+# Today 的次级动作使用封闭的 Arrange sheet：主动作留在卡面，调整/转交/跳过
+# 进入同一份弹层，避免多枚同权按钮挤在照护卡内。旧版 secondaryOpen 已删除，
+# 不能再用不存在的折叠实现作为验收锚点。
+if rg -q 'const \[arrangeOpen' "$APP/features/today/cards.tsx" && \
+   rg -q 'function ArrangeSheet' "$APP/features/today/cards.tsx" && \
+   rg -q "t\('today\.arrange'\)" "$APP/features/today/cards.tsx" && \
+   rg -q 'styles\.featureSecondaryRow' "$APP/features/today/cards.tsx"; then
+  pass "Today cards keep alternate actions behind Arrange"
 else
-  fail "collaboration cards expose too many equal-priority actions"
+  fail "Today cards expose too many equal-priority actions"
 fi
 
 if ! rg -q 'queryKeys\.careRequestInbox|careRequests\.inbox|照护请求' "$APP/features/more/screen.tsx"; then
@@ -410,15 +414,17 @@ else
   fail "account display-name input allows values the server will reject"
 fi
 
-# 事实说明锚点改为字典键（键值经五语核对）：
-# - 时间线页头来源说明 timeline.provenanceNote（E8 裁决后说人话，zh=由家庭成员记录，照护完成后自动归档到这里）；
+# 事实说明锚点改为当前页面契约（键值经五语核对）：
+# - 时间线由记录行保留记录者/家庭归属，范围只读时说明如何恢复写权限；
 # - 分享快照时效说明 settings.snapshotDesc（五语均含「生成时点+向家庭确认」）；
 # - 趋势页按 info-design 裁决 f10f8cc（E7 归属不逐行复读/E8 开发者注脚不进卡片）删除
 #   逐卡「数据来源 ·」注脚，改为结论先行句子（trendStatLine）+ 卡尾「查看记录」入口
 #   （trends.viewRecords，通向带来源说明的时间线）；
 # - 用药删除的后果在确认弹层 pets.confirmDeleteMedConsequence 与完成 toast
 #   pets.medDeletedToast（五语均含「相关自动记录一并移除」，且不再误称「错误档案」）。
-if rg -q "t\('timeline\.provenanceNote'\)" "$APP/features/timeline/screen.tsx" && \
+if rg -q 'const timelineSubtitle' "$APP/features/timeline/screen.tsx" && \
+   rg -q 'timelineActorLine\(event\.recorded_by_name\)' "$APP/features/timeline/event-card.tsx" && \
+   rg -q "t\('timeline\.scopeViewOnlyDesc'\)" "$APP/features/timeline/screen.tsx" && \
    rg -q "t\('settings\.snapshotDesc'" "$APP/features/settings/public-share-screen.tsx" && \
    rg -q 'trendStatLine' "$APP/features/trends/screen.tsx" && \
    rg -q "t\('trends\.viewRecords'\)" "$APP/features/trends/screen.tsx" && \
@@ -584,11 +590,9 @@ else
   fail "care-request or batch writes can report success before authoritative state is reread"
 fi
 
-if rg -q 'refreshFailures' "$APP/features/handoffs/handoff-strip.tsx" && \
-   rg -q 'queryKeys\.careResponsibility\(familyId\)' "$APP/features/handoffs/handoff-strip.tsx" && \
-   rg -q 'queryKeys\.handoffSummary\(familyId\)' "$APP/features/handoffs/handoff-strip.tsx" && \
-   rg -q 'refreshFailures' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
+if rg -q 'refreshFailures' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
    rg -q 'queryKeys\.careResponsibility\(familyId\)' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
+   rg -q 'queryKeys\.handoffSummary\(familyId\)' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
    rg -q 'syncError' "$APP/features/collaboration/care-risk-banner.tsx" && \
    rg -q 'queryKeys\.careRisks\(familyId\)' "$APP/features/collaboration/care-risk-banner.tsx" && \
    rg -q "t\('collaboration\.retrySync'\)" "$APP/features/collaboration/care-risk-banner.tsx"; then

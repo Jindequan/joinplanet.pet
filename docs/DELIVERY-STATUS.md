@@ -1,6 +1,6 @@
 # PLANET 交付状态
 
-更新时间：2026-09-15
+更新时间：2026-09-22
 
 这是一页式交付账本。它只记录已经落到代码、能被命令或运行环境验证的结果；详细决策和历史变更见 [REMEDIATION.md](REMEDIATION.md)。
 
@@ -37,19 +37,22 @@
 - API 回归：`26/26`。
 - 业务 walkthrough：`60/60`，覆盖认证、Family/Pet、照护计划、Today、Timeline、用药、分享撤销、授权撤销和删除保护。
 - Phase A 真实本地闭环：登录 → Family → Pet → Care Plan → Today → 完成 → Timeline 自动事件 → All 范围，脚本通过。
-- 前端产品契约：`65/65`。
-- Playwright 桌面/移动回归：`104/104`。
+- 前端产品契约：`64/64`（2026-09-22 复跑，0 FAIL）。
+- Playwright 回归（core-flows）：mobile390 + desktop1280 共 158 次执行，其中 157 通过、1 个按项目条件跳过（历史记录见 `APP/docs/UX-SPEC.md` 2026-09-22 条目；mock API 口径）。
+- Playwright zhSmoke：`12` 个 i18n 冒烟用例（`--list` 口径）。
 - TypeScript：通过。
 - ESLint：通过。
-- Web 导出：`npm run export:web` 成功生成 `APP/dist`。
+- Web 导出：`npm run export:web:production` 成功生成 `APP/dist`。
+- 生产部署：2026-09-22 `deploy-app-web.sh` 上传 READY（`dpl_CSiMmYgN2V89npPqKaAeDL3o66FH`），线上 Web 与本地构建 entry hash 一致（`entry-d794123353225764e67d94dec822405a.js`）。
+- 生产 smoke：`production-smoke.sh` 全部公共入口通过；`api.joinplanet.pet/readyz`、`/healthz`、`/progress` 均 200，auth methods 返回 apple=true/email=false，登录路由 410 EMAIL_LOGIN_DISABLED 且 CORS 允许 `app.joinplanet.pet`。
 - 本地总入口：`cd APP && npm run verify:local` 通过，且没有启动额外服务。
 - 运行时：API `127.0.0.1:8081` 健康/就绪；Metro `127.0.0.1:8082` 正常；Simulator `PlanetBuildCheck` 已启动 `pet.joinplanet.app`。
 
 ## 明确未完成
 
 - iOS 系统通知中心的自定义按钮仍未完成可操作 UI 证据；当前只有原生 action 注册、推送送达和业务 ID 回读证据。通知点击应用内兜底路径已实现。
-- 远程 `api.joinplanet.pet` 仍未切换到当前后端版本；线上 `/readyz` 和登录路由仍返回 404，因此不能宣称线上业务可用。本轮没有改生产。
 - 本轮未把“世界第一”作为完成标准；视觉和交互已有统一基线，但真实用户研究、可用性实验和多轮外部测试尚未发生。
+- 真实账号端到端冒烟尚未执行：`production-smoke.sh` 只验证公共入口，前端 e2e 仍是 Playwright mock API；线上可用性不等于真实业务全链路已验证。
 
 ## 本地测试入口
 

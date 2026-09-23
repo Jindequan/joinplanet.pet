@@ -7,7 +7,7 @@
 
 ## 执行状态
 
-**09-18(发帖日):限流第七天,夜焦虑帖试发仍被静默丢弃(33 评论,帖子继续升温)。⬇️ 协议再降级:发帖尝试改为每周两次(周二/周五),下次 09-22;Reddit 线正式转为"被动触点+低频补弹"模式,增量重心正式移向 FB 线(文档已就绪)与 landing SEO 内容。触点:全部静默(09-18 检查)。情报:①老年慢病监测有垂直竞品(Cardiapp/Cardalis、Maven、CKD 追踪 app)——按病种细分有人在做,通用+家庭协同仍是空位;②保姆漏药可致死于 r/legaladvice(有狗因无视用药说明去世)——handoff 叙事的分量是安全级,不是便利级。**
+**09-19(停发日):触点静默(第 14 天,会话有效)。搜索无新目标;纸质/Notion 宠物用药记录表在 Etsy/Pinterest 有真实交易与模板——纸笔需求再实证。Reddit 限流依旧(下次尝试 09-22)。今日主产出:landing 第一篇 SEO 内容页上线 → /learn/remember-dog-monthly-medication("How to Remember Your Dog's Monthly Medications — 7 Systems"),承接 /tools/schedule 免费工具与试点;补 app/sitemap.ts(9 URL)。Vercel rootDirectory 设置再次复发已被清掉(此设置会反复恢复,每次部署前留意)。**
 
 | 目标帖 | 状态 |
 |---|---|

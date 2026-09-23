@@ -144,3 +144,4 @@
 | L43 | 已裁决（founder 2026-09-22）→ 仅 family；access-grants=预留能力（API 保留，无产品入口） | access-grants 后端完整但无产品定义无 UI：建议标注「预留能力（API 保留，无产品入口）」+删前端死方法。落点：产品文档口径标注（planet-api 8621d19 / APP d5fe9aa） | 03-pet.md F7 |
 | L44 | 维持登记（founder 2026-09-22）→ 随 deceased 落地复核休眠归档转移口径 | 纪念态（归档）宠物转移：契约与后端放行、前端 UI 拦死——放开 UI（纪念转移）或收紧后端 | 03-pet.md F2 |
 | L45 | 登记（P3 尾巴，详见各审计文件） | ①V3 偏好悬空/V5 subscriptions+outbox 残留/V6 users.email 不刷新/V7 Apple 无限流/V8 注销幂等；②F2 被移除者无通知/F5 审计翻页/F6 邀请死列/F7 角色错误口径/F9 恢复计数滤注销/F10 邀请过期不透明；④F6 once 计划无终态/F8 注释漂移/F9 undo 按钮陈旧窗；⑤F9 outbox 保留策略/F10 token 周期校验；⑥E4 内联照片编辑指引/E6 trash 拖挂/E7 abandon 截断/E8 快照事务外 | 各审计文件漏洞清单 |
+| L46 | ✔ | 请求中心 owner 判定为每条 handoff 计划一条 8s 轮询（useQueries），inbox 增大时请求数线性放大（30 条≈225 req/min）——候选：降频 30-60s 或批量端点取 owner 集合 | 2026-09-23 白底/树状/归属批盲审 P3（panel.tsx:594），修复批裁决登记不实现 |

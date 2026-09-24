@@ -7,7 +7,7 @@
 
 ## 执行状态
 
-**09-19(停发日):触点静默(第 14 天,会话有效)。搜索无新目标;纸质/Notion 宠物用药记录表在 Etsy/Pinterest 有真实交易与模板——纸笔需求再实证。Reddit 限流依旧(下次尝试 09-22)。今日主产出:landing 第一篇 SEO 内容页上线 → /learn/remember-dog-monthly-medication("How to Remember Your Dog's Monthly Medications — 7 Systems"),承接 /tools/schedule 免费工具与试点;补 app/sitemap.ts(9 URL)。Vercel rootDirectory 设置再次复发已被清掉(此设置会反复恢复,每次部署前留意)。**
+**09-20(停发日):触点第 15 天全部静默(会话有效)。搜索无新目标;r/petsitting 日刷:保姆侧运营话题为主,无我方靶子。下次发帖:09-22(队头=夜焦虑帖)。**
 
 | 目标帖 | 状态 |
 |---|---|

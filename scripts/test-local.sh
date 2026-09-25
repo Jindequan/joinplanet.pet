@@ -18,7 +18,7 @@ BASE="$API_BASE" "$ROOT_DIR/scripts/api-logic-test.sh"
 BASE="$API_BASE" "$ROOT_DIR/scripts/api-walkthrough.sh"
 
 echo "== frontend contracts =="
-(cd "$ROOT_DIR/APP" && npm run typecheck && npm run lint && npm run verify:frontend)
+(cd "$ROOT_DIR/APP" && npm run typecheck && npm run check:design && npm run lint && npm run verify:frontend)
 
 echo "== result =="
 echo "PASS — local regression completed without starting additional services"

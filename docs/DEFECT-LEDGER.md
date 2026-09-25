@@ -145,3 +145,12 @@
 | L44 | 维持登记（founder 2026-09-22）→ 随 deceased 落地复核休眠归档转移口径 | 纪念态（归档）宠物转移：契约与后端放行、前端 UI 拦死——放开 UI（纪念转移）或收紧后端 | 03-pet.md F2 |
 | L45 | 登记（P3 尾巴，详见各审计文件） | ①V3 偏好悬空/V5 subscriptions+outbox 残留/V6 users.email 不刷新/V7 Apple 无限流/V8 注销幂等；②F2 被移除者无通知/F5 审计翻页/F6 邀请死列/F7 角色错误口径/F9 恢复计数滤注销/F10 邀请过期不透明；④F6 once 计划无终态/F8 注释漂移/F9 undo 按钮陈旧窗；⑤F9 outbox 保留策略/F10 token 周期校验；⑥E4 内联照片编辑指引/E6 trash 拖挂/E7 abandon 截断/E8 快照事务外 | 各审计文件漏洞清单 |
 | L46 | ✔ | 请求中心 owner 判定为每条 handoff 计划一条 8s 轮询（useQueries），inbox 增大时请求数线性放大（30 条≈225 req/min）——候选：降频 30-60s 或批量端点取 owner 集合 | 2026-09-23 白底/树状/归属批盲审 P3（panel.tsx:594），修复批裁决登记不实现 |
+| L47 | ✔ | 尺度×层级 Wave 3 清单（盲审扫出、自绘钮非标魔数，收敛到五档）：batch-panel.tsx:1488（行 50+钮 44）、incoming-request-toast.tsx:595-597（44 盒钮带）、scope-tree.tsx:725（36）、digest-card.tsx:389（48）、today/temporary-care.tsx:303（48）；另 tokens 六项结构尺寸（rowCardMinHeight 等）已立法未接线，随 Wave 3 逐屏定族消费 | 2026-09-24 尺度规范落地批盲审 P2/P3，规范见 APP/docs/PLANET_APP_DESIGN_SYSTEM.md「尺度与层级」 |
+
+## 九、机器巡逻线第一批登记（2026-09-24，来源=巡逻线 B 批 S1/S5/S4 亲核）
+
+| # | 状态 | 项 | 证据/来源 |
+|---|---|---|---|
+| L48 | ✔ 待裁决 | `GET /families/{id}/alerts` 双孤儿：后端路由已注册且 APP client `planetApi.families.alerts` 方法在案，但全仓（src/app/e2e）零调用方、契约 §2 未登记——处置仿 L33：保留端点待裁决或删除（裁决前不动代码） | planet-api internal/modules/alerts/http.go:17；APP src/core/api/planet-api.ts:436 + grep 全仓零消费方（2026-09-24 本批亲核） |
+| L49 | ✔ 待裁决 | `GET /families/{id}/usage` 双孤儿：后端路由 + client `families.usage` 均零调用方（与 L32 me.usage 配额显示同源同题）——随 L32 产品裁决一并处置 | planet-api internal/modules/families/http.go:34；APP src/core/api/planet-api.ts:426 + grep 全仓零消费方（2026-09-24 本批亲核） |
+| L50 | ✔ 建议标 deprecated | 后端旧 CRUD 旁路（契约 §2 未登记、APP client 无对应方法，全部零消费方）：`PATCH /pets/{id}`（裸更新旁路 /record 字段级合并口径）、`PATCH /pets/{id}/profile`、`GET/POST /pets/{id}/tasks`、`PATCH/DELETE /tasks/{id}`（tasks 旧别名）、`POST /tasks/{id}/logs`（旧完成别名）。建议后端标 deprecated 并排期移除，防止新调用经旁路绕开契约动作面 | planet-api internal/modules/pets/http.go:25,30；internal/modules/tasks/http.go:32-35,40（2026-09-24 本批亲读路由表 + 契约 grep 未登记） |

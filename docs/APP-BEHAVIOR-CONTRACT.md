@@ -22,19 +22,22 @@
 ### 2.1 执行域（Today）
 | 动作 | 端点 | 数据变更 | 幂等 | 离线 | 成功所见 | 失败/逆向 |
 |---|---|---|---|---|---|---|
-| 完成/跳过 | POST /care-tasks/:id/complete | occurrence→completed/skipped + pet_events(auto,dedupe) + 关联 open request 取消 | 必需 | 队列（pending-today） | 权威回读后清单更新+沉底+toast | caregiver 未认领→403 CARE_OCCURRENCE_ASSIGNMENT_REQUIRED（UI 主按钮切换为「我来做」）；重放语义在指派移除后仍成立 |
+| 完成/跳过 | POST /care-tasks/:id/complete | occurrence→completed/skipped + pet_events(auto,dedupe) + 关联 open request 取消 | 必需 | 队列（pending-today） | 权威回读后清单更新+沉底+toast | **完成放开（2026-09-23 founder 裁决）**：该家庭 caregiver 及以上任一活跃成员可直接完成任意事项，不要求指派给自己或先认领（「老婆点完成」案例）；`completed_by`=实际完成人，`assigned_to`/计划归属不动；viewer/read_only 仍 403 ROLE_FORBIDDEN；他人已接受的移交（accepted 责任）不旁路→409 CARE_OCCURRENCE_ASSIGNED、目标本人待响应→409 CARE_REQUEST_RESPONSE_REQUIRED；认领 claim 保留为可选「认领责任」动作（端点不删）；CARE_OCCURRENCE_ASSIGNMENT_REQUIRED 不再出现在完成路径（仅排程调整闸保留，见排程行）；重放语义在指派移除后仍成立 |
 | 撤销 | POST /task-logs/:id/undo | occurrence→pending + **撤回该次 care_task_completed（软删，含 occurred_at 精确匹配）** + pet_events(undone) | 必需 | 队列 | 回到待处理 | >7 天：后端 409 UNDO_WINDOW_EXPIRED（前端按 done_at 预藏按钮）；非完成者非 owner 不显示；完成→撤销→再完成时只撤回被撤销的那一次 |
-| 我来做 | POST …/care-occurrences/:id/claim | occurrence.assigned_to=me | 必需 | 队列 | 责任条=已确认负责 | 已指派他人 409 ASSIGNED |
-| 排程调整/临时/替代 | POST /care-schedule/actions | overrides + occurrence 增改 | 必需 | 无队列（文案明示需联网） | Today 回读 | 过去≤7天/未来≤366 天外 400 |
+| 我来做 | POST …/care-occurrences/:id/claim | occurrence.assigned_to=me | 必需 | 队列 | 责任条=已确认负责 | 已指派他人 409 ASSIGNED；**定位改为可选「认领责任」动作（2026-09-23），不再是完成的前置** |
+| 排程调整/临时/替代 | POST /care-schedule/actions | overrides + occurrence 增改 | 必需 | 无队列（文案明示需联网） | Today 回读 | 过去≤7天/未来≤366 天外 400；caregiver 未加入责任链调排程仍 403 CARE_OCCURRENCE_ASSIGNMENT_REQUIRED（该码唯一存留点） |
 | 跳过弹窗两选项 | complete(skipped) / actions(skip,this) | 见上 | — | 有队列 / 无队列 | 弹窗关闭 | 离线时文案区分两种能力 |
+
+Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_plan_owner_user_id`（计划现任主 owner=assignments role='owner'，legacy 回退计划创建者）——前端移交入口资格判定的唯一来源，换主后随 Today 回读更新。
 
 ### 2.2 协作域（care-requests / batches / handoffs）
 | 动作 | 端点 | 关键守卫 | 幂等/离线 | 备注 |
 |---|---|---|---|---|
-| 发起/转交/再安排 | POST …/requests, /delegate, /reassign | 仅当前负责 caregiver；declined 成员不可复用 | 必需/队列 | 前序 accepted 自动转 delegated |
-| 接受/拒绝 | POST /accept,/decline | 仅 target、状态机封闭；**接受批量逐项复检宠物资格（失格→not_actionable/eligibility_lost，请求保持 open）** | 必需/队列 | 接受后 invalidate 含 care-responsibility |
-| 批量交班 | POST /care-handoff-batches… | 1-50 项、时间窗预校验、家庭时区 | 必需/队列 | results.outcome 前端逐项呈现 |
+| 发起/转交/再安排 | POST …/requests, /delegate, /reassign | **仅计划现任主 owner（归属者，founder 2026-09-23 裁决：单次+批量+delegate/reassign 同口径；非归属者 403 ROLE_FORBIDDEN，取代原「仅当前负责 caregiver」的 409 ASSIGNED 闸）**；declined 成员不可复用 | 必需/队列 | 前序 accepted 自动转 delegated（归属者改主意重排时，现任负责人（无论其是谁）的 accepted 责任同事务收口，不产生双重负责人）；被移交人的出口=接受/拒绝，「再转出去」仅新 owner 可做 |
+| 接受/拒绝 | POST /accept,/decline | 仅 target、状态机封闭；**接受批量逐项复检宠物资格（失格→not_actionable/eligibility_lost，请求保持 open）** | 必需/队列 | 接受后 invalidate 含 care-responsibility；**接受只改 occurrence.assigned_to（接手责任），不改计划归属** |
+| 批量交班 | POST /care-handoff-batches… | 1-50 项、时间窗预校验、家庭时区；**发起人须为每个所选事项计划的现任主 owner（逐项校验，任一越权整体 403）**；批量 delegate/reassign 同口径 | 必需/队列 | results.outcome 前端逐项呈现 |
 | 值班 claim/release | POST /pets/:id/handoff(+/release) | 非 viewer；release 仅值班者 | 必需/无队列 | 归档宠 release 有意豁免 |
+| 计划归属改任 | PUT /care-plans/:id/assignments/:user_id `{role:"owner"}` | **移交归属（founder 2026-09-23 裁决：谁创建的归属谁，后续可改给其他人）**：现任主 owner 本人或计划管理者（家庭 owner/宠物 owner）可发起；目标须为可参与成员；旧 owner 降为 helper 末位（保留在责任链）；移交权随之转移（旧 owner 失去移交入口，新 owner 获得）；审计 care_plan_ownership_transferred（from/to）；现 owner 不可直接 DELETE（409 CARE_ASSIGNMENT_OWNER_REQUIRED，先换主再删） | 必需 | 前端 assignments-screen「设为主负责人」带轻确认；today/panel 归属判定随 `care_plan_owner_user_id` 刷新 |
 
 ### 2.3 档案域（pets/families/meds/timeline）
 | 动作 | 端点 | 关键语义 | 幂等 |
@@ -42,6 +45,7 @@
 | 档案保存 | PATCH /pets/:id/record | 乐观锁 version；**前端字段级合并：仅发用户改动字段，未改字段取最新服务端值（双快照 base/latest）** | 必需（内容指纹键） |
 | 归档/删除/恢复 | POST archive/unarchive/restore, DELETE | confirm=petId；取消置 deleted_at | 必需/可选 |
 | 离世封存（2026-09-23） | POST /pets/:id/deceased | **confirm=petId（与删除同口径）**；单事务联动集：status→deceased + 开放 occurrence 墓碑化（deleted_at）+ 照护请求收束 + 值班终结 + pending 转移取消 + pending 共享请求取消 + share_links 全撤 + 审计 pet_deceased；**配额不释放**；已 deceased 重放读回 200 | 可选 |
+| 设置/移除头像（2026-09-23，0029） | PUT /pets/:id/avatar `{key}`、DELETE /pets/:id/avatar | **显式头像取代「最近照片自动派生」（旧行为已废除）**：守卫=改档案同级（owner/editor；viewer 403、归档/离世 409）；key 只认本宠照片对象目录形状（`pets/<petID>/photos/<objectID>/<文件名>`，否则 400）+ Stat 对象存在（不存在 404）；`avatar_url`=存储键签名 URL（存储口径=上传管线 thumb_key；传 original 则签 original），**仅在显式设置后返回，未设置字段缺省（前端回退手绘插画）**；移除只清引用不删 R2 对象（孤儿对象前端调既有 abandon）；软删随行保留，purge 随行消失；avatar_media_key 计入 abandon/photo-sweep 引用判定（事件已删头像仍引用的对象不回收） | 天然幂等（同 key 重放 200 / 已空移除 204），无 Idempotency-Key |
 | 计划创建（2026-09-23） | POST /pets/:id/care-plans、POST /care-schedule/actions(add) | **once 必须带时间（提醒前提）**：kind=once 且无 time_of_day → 400（「提醒需要时间」）；无时间 once 是一条永不响的提醒 | 必需 |
 | 跨家庭共享 | POST /pets/:id/families | 确认制（目标 owner≠发起人→pending）；归档宠禁发 | 必需 |
 | 共享确认 | POST /pet-share-requests/:id/accept·decline·cancel | 目标 owner/发起人；**全同事务+审计传播**；归档宠接受→409 PET_ARCHIVED、离世封存宠接受→409 PET_DECEASED（2026-09-22 补复查；deceased 扩查 2026-09-23）；删宠/转移接受联动取消相关 pending 请求 | 必需（读回也 bind） |
@@ -73,7 +77,9 @@
 
 ## 3. 错误码注册表（前端 errors.ts 必须全覆盖；新码先登记此处）
 
-全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、**PHOTO_STORAGE_QUOTA_EXCEEDED**（照片存储配额，402——需付费动作解决，刻意不用 429：客户端按状态把 429 短路成重试提示，会埋掉升级引导文案）、ROLE_FORBIDDEN（仅真 owner 场景）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、**PET_DECEASED**（离世封存宠的一切新写 409，founder 2026-09-23 裁决——封存只读、仅可删除档案）、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**/OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、**PET_ALREADY_SHARED / PET_SHARE_PENDING**（共享请求创建判重 409，既有码 2026-09-22 补登记：petshares/service.go 创建口，前端 pet-share 失败 toast 分支用）、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**ACCOUNT_FAMILY_HAS_MEMBERS**（注销前置：名下家庭还有其他活跃成员时 409，先移交/移除成员）、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
+全量清单（含本轮新增**粗体**）：QUOTA_FAMILIES/MEMBERS/PETS_EXCEEDED、**PHOTO_STORAGE_QUOTA_EXCEEDED**（照片存储配额，402——需付费动作解决，刻意不用 429：客户端按状态把 429 短路成重试提示，会埋掉升级引导文案）、ROLE_FORBIDDEN（真 owner 场景；**2026-09-23 起兼指「仅计划现任主 owner」的移交/改归属越权**）、LAST_OWNER、ALREADY_MEMBER、PET_ARCHIVED、**PET_DECEASED**（离世封存宠的一切新写 409，founder 2026-09-23 裁决——封存只读、仅可删除档案）、CARE_PLAN_ARCHIVED、TASK_LOG_EXISTS、CARE_REQUEST_OPEN/ALREADY_ACCEPTED/TARGET_PREVIOUSLY_DECLINED/NOT_ACTIONABLE/NOT_REASSIGNABLE/RESPONSE_REQUIRED、CARE_OCCURRENCE_RESOLVED/ASSIGNED/**ASSIGNMENT_REQUIRED**（2026-09-23 完成放开后仅存于排程调整闸）、OUTSIDE_HANDOFF_WINDOW、IDEMPOTENCY_KEY_REUSED、VERSION_CONFLICT、TRANSFER_PENDING_EXISTS/NOT_PENDING/CONFLICT、**PET_ALREADY_SHARED / PET_SHARE_PENDING**（共享请求创建判重 409，既有码 2026-09-22 补登记：petshares/service.go 创建口，前端 pet-share 失败 toast 分支用）、SHARE_GONE、ACCOUNT_HAS_OWNED_PETS、**ACCOUNT_FAMILY_HAS_MEMBERS**（注销前置：名下家庭还有其他活跃成员时 409，先移交/移除成员）、**UNDO_WINDOW_EXPIRED**、**FAMILY_NOT_EMPTY**、**CARE_ASSIGNMENT_OWNER_REQUIRED**、**AUTO_EVENT_IMMUTABLE**、**IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE**、UNAUTHENTICATED、AUTH/JOIN/SHARE_RATE_LIMITED、PAYLOAD_TOO_LARGE、INTERNAL。
+**机器巡逻线 S5-1（2026-09-24 补登记并已在 errors.ts 全映射）**：**EMAIL_LOGIN_DISABLED**（410，邮箱登录开关关闭 identity/http.go:201——契约承诺专属文案「邮箱登录已停用，请使用 Apple 登录」）、**APPLE_LOGIN_UNAVAILABLE**（503，identity/service.go:215、apple.go:72）、**ACTIVATION_SUMMARY_UNAVAILABLE**（501，identity/http.go:87）、**TODAY_AGGREGATE_UNAVAILABLE / CARE_STATS_UNAVAILABLE**（500，tasks/service.go:1551/2318）、**TIMELINE_AGGREGATE_UNAVAILABLE**（500，timeline/service.go:652）、**AUDIT_UNAVAILABLE**（503，families/audit.go:85）、**PHOTO_STORAGE_UNAVAILABLE**（503，timeline/service.go:256/377/448 + pets/service.go:430）、**PHOTO_STORAGE_ERROR**（502，timeline/service.go:412/463/487）、**PHOTO_UPLOAD_RATE_LIMITED**（429，timeline/http.go:218）、**HANDOFF_FORBIDDEN**（403，handoffs/service.go:164「仅值班成员可释放」）。通用码 **VALIDATION_FAILED / RESOURCE_NOT_FOUND / RESOURCE_CONFLICT** 不配专属文案，维持既有 HTTP 语义兜底（400/404/409 分支）；逐场景拆分随实需再登记。**petshares 口径统一（同批）**：取消权限（service.go:219）、列表成员闸（:266）、接受/拒绝目标家庭 owner 闸（:307）三处原裸 `FORBIDDEN` 码统一为 ROLE_FORBIDDEN，不新增码。
+
 文案规则：中文三段式；未知码按 HTTP 语义兜底；实现层英文 message 禁止直出。
 
 ## 4. 失效图（写动作 → 必须刷新的查询面；改这里=改契约）
@@ -89,16 +95,18 @@
 
 | 动作 | owner | caregiver | viewer |
 |---|---|---|---|
-| 完成已指派给自己事项 | ✓ | ✓ | ✗ |
-| 完成/认领未指派事项 | ✓（直接完成） | 主按钮=我来做，认领后完成 | ✗（只读说明） |
-| 建/改/暂停计划、负责人 | ✓（家庭 owner 或宠物 owner） | ✗ | ✗ |
-| 发起/响应请求、批量交班 | ✓ | ✓ | ✗ |
+| 完成任意事项（完成放开 2026-09-23） | ✓ | ✓（直接完成，无需指派/认领） | ✗（只读说明） |
+| 认领未指派事项（可选「认领责任」动作） | ✓ | ✓ | ✗（只读说明） |
+| 建/改/暂停计划、增删备选负责人 | ✓（家庭 owner 或宠物 owner） | ✗ | ✗ |
+| **移交归属（换主 owner，2026-09-23）** | ✓（计划现任主 owner 本人或计划管理者） | ✓（仅限本人为该计划现任主 owner 时） | ✗ |
+| 发起移交/批量交班/继续转交（delegate/reassign） | ✓（仅计划现任主 owner） | ✓（仅限本人为该计划现任主 owner 时） | ✗ |
+| 响应请求（accept/decline）、直接完成他人事项 | ✓ | ✓ | ✗ |
 | 建宠、家庭治理、转移、分享创建 | ✓（对应 owner） | ✗ | ✗ |
 | 时间线写/用药写 | 编辑权者 | 编辑权者 | ✗ |
 
 ## 6. e2e ↔ 契约映射（回归防线；57 用例全 mock，桌面 1280 + 移动 390 双视口跑 = 114 次执行，2026-09-18 复核）
 
-认证边界/邀请深链→§2.4；**caregiver 主按钮=我来做**→§5；**pet-share 失败 toast+同键重放**→§2.3 共享确认；**超 7 天无撤销按钮**→§2.1 撤销；权威回读系列（档案/用药/归档/治理/时间线/Today/请求/值班）→§4 失效图；viewer 边界系列→§5；离线队列系列→§2.1/2.2 离线列；尾斜杠/能力接口→运行时配置。真实后端契约防线=planet-api 集成测试（含本轮 defect_closeout_test.go 十一项）+ api-walkthrough.sh（62 步，含确认制）。
+认证边界/邀请深链→§2.4；**caregiver 完成放开（主按钮=完成，认领降为可选动作）→§5**；**移交入口仅计划主 owner 可见（today/panel 同源 care_plan_owner_user_id）→§2.2/§5**；**pet-share 失败 toast+同键重放**→§2.3 共享确认；**超 7 天无撤销按钮**→§2.1 撤销；权威回读系列（档案/用药/归档/治理/时间线/Today/请求/值班）→§4 失效图；viewer 边界系列→§5；离线队列系列→§2.1/2.2 离线列；尾斜杠/能力接口→运行时配置。真实后端契约防线=planet-api 集成测试（含本轮 defect_closeout_test.go 与 care_ownership_test.go 归属语义六场景）+ api-walkthrough.sh（62 步，含确认制）。
 
 ## 7. 已知接受的边界（改动前先读）
 

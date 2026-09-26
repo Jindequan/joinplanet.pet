@@ -134,12 +134,15 @@ OWNER_DELETE_STATUS="${R##*$'\n'}"
 OWNER_DELETE_BODY="${R%$'\n'*}"
 [ "$OWNER_DELETE_STATUS" = "409" ] && expect "care plan cannot lose its owner" '.error.code == "CARE_ASSIGNMENT_OWNER_REQUIRED"' "$OWNER_DELETE_BODY" || fail "care plan cannot lose its owner"
 expect "care plan owner assignment remains intact" ".assignments | any(.user_id == \"$USER_A\" and .role == \"owner\")" "$(get "/api/v1/care-plans/$CARE_ITEM/assignments" "$TOKEN")"
-R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$TASK" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":true}')
-expect "archive care plan" ".task.archived_at != null" "$R"
-expect "archived care plan is discoverable when requested" ".tasks | any(.care_plan_id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/tasks?include_archived=true" "$TOKEN")"
-R=$(curl -sS -X PATCH "$BASE/api/v1/tasks/$CARE_ITEM" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":false}')
-expect "restore care plan" ".task.archived_at == null" "$R"
-TODAY=$(get "/api/v1/families/$CIRCLE/today" "$TOKEN")
+# 清缴批（founder 2026-09-26 裁决 A）已删 PATCH /api/v1/tasks/{id} 孤儿端点：
+# 归档/恢复的现行契约是 PATCH /api/v1/care-plans/{id}（响应 care_plan 键）。
+R=$(curl -sS -X PATCH "$BASE/api/v1/care-plans/$CARE_ITEM" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"archived":true}')
+expect "archive care plan" ".care_plan.archived_at != null" "$R"
+expect "archived care plan is discoverable when requested" ".care_plans | any(.id == \"$CARE_ITEM\" and .archived_at != null)" "$(get "/api/v1/pets/$PET/care-plans?include_archived=true" "$TOKEN")"
+R=$(curl -sS -X PATCH "$BASE/api/v1/care-plans/$CARE_ITEM" -H "$JSON" -H "Authorization: Bearer $TOKEN" -d '{"status":"active"}')
+expect "restore care plan" ".care_plan.archived_at == null" "$R"
+# 清缴批已删 GET /families/{id}/today 孤儿端点：现行契约 GET /today?family_id=。
+TODAY=$(get "/api/v1/today?family_id=$CIRCLE" "$TOKEN")
 expect "Today contains the care task" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$TODAY"
 TASK=$(jq -r '.pets[].items[] | select(.task.care_plan_id == "'"$CARE_ITEM"'") | .task.id' <<<"$TODAY")
 expect "directly granted user sees Pet Today" ".pets[].items[] | select(.task.care_plan_id == \"$CARE_ITEM\")" "$(get "/api/v1/today?pet_id=$PET" "$TOKEN_C")"
@@ -159,7 +162,8 @@ expect "timeline returns the record" '.events | any(.type == "symptom")' "$(get 
 R=$(post "/api/v1/pets/$PET/timeline" "$TOKEN_B" '{"type":"note","occurred_at":"2026-08-21T09:00:00Z","payload":{"text":"B checked the morning walk"}}' "$(key)")
 expect "second caregiver can record a note" ".event.recorded_by_name == \"$DISPLAY_B\"" "$R"
 expect "timeline keeps the real recorder name" ".events | any(.recorded_by_name == \"$DISPLAY_B\" and .payload.text == \"B checked the morning walk\")" "$(get "/api/v1/pets/$PET/timeline" "$TOKEN")"
-expect "alerts endpoint returns a collection" '.alerts | type == "array"' "$(get "/api/v1/families/$CIRCLE/alerts" "$TOKEN")"
+# GET /families/{id}/alerts 已删（清缴批 founder 2026-09-26 裁决 A，L5 孤儿
+# 端点——告警现在走推送链路，无 HTTP 读面）；digest 读端点保留。
 expect "daily digest returns the Family view" '.date and (.pets | type == "array")' "$(get "/api/v1/families/$CIRCLE/digest" "$TOKEN")"
 
 echo "== F3b 用药生命周期 =="

@@ -75,10 +75,16 @@ else
 fi
 
 echo "== 配额与归档 =="
-R=$(request POST /api/v1/families "$TA" '{"name":"Logic Family","timezone":"Asia/Singapore"}' "logic-family-$TS")
-CIRCLE=$(jq -r '.family.id' <<<"$R")
+# QB1/0032 数字（founder 2026-09-26：free=1 家庭 / 2 宠物 / 2 成员）：
+# 上面幂等段的 Concurrent Family 已占用 owner 唯一的家庭名额，本节复用它。
+# 超额宽免口径：只挡新增写入，存量读/归档/删除不受限。
+CIRCLE="$CONCURRENT_ID_ONE"
+[ -n "$CIRCLE" ] || { echo "FATAL: concurrent phase produced no family"; exit 1; }
+R=$(request_with_status POST /api/v1/families "$TA" '{"name":"Logic Family","timezone":"Asia/Singapore"}' "logic-family-$TS")
+STATUS=$(status_part <<<"$R"); check "second owned Family blocked at free=1" '.error.code == "QUOTA_FAMILIES_EXCEEDED"' "$(body_part <<<"$R")"; [ "$STATUS" = 403 ] && ok "family quota returns 403" || bad "family quota returns 403" "$STATUS"
+R=$(request POST "/api/v1/families/$CIRCLE/invite/refresh" "$TA" "" "logic-invite-$TS")
 INVITE=$(jq -r '.invite_code' <<<"$R")
-check "create Family" '.family.id and .invite_code' "$R"
+check "invite code refreshed on the single owned Family" '.invite_code' "$R"
 R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"LogicFox","species":"dog"}' "logic-pet-$TS-1")
 PET1=$(jq -r '.pet.id' <<<"$R")
 check "create first Pet" '.pet.id and .pet.name == "LogicFox"' "$R"
@@ -88,23 +94,18 @@ R=$(request_with_status POST /api/v1/families/join "$TC" "{\"code\":\"$INVITE\"}
 STATUS=$(status_part <<<"$R"); check "member quota is enforced" '.error.code == "QUOTA_MEMBERS_EXCEEDED"' "$(body_part <<<"$R")"; [ "$STATUS" = 403 ] && ok "member quota returns 403" || bad "member quota returns 403" "$STATUS"
 R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Second","species":"cat"}' "logic-pet-$TS-2")
 PET2=$(jq -r '.pet.id' <<<"$R")
-R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Third","species":"cat"}' "logic-pet-$TS-3")
-PET3=$(jq -r '.pet.id' <<<"$R")
-R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Fourth","species":"cat"}' "logic-pet-$TS-4")
-PET4=$(jq -r '.pet.id' <<<"$R")
-R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Fifth","species":"cat"}' "logic-pet-$TS-5")
-PET5=$(jq -r '.pet.id' <<<"$R")
-R=$(request_with_status POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Overflow","species":"cat"}' "logic-pet-$TS-6")
-STATUS=$(status_part <<<"$R"); check "Pet quota is enforced" '.error.code == "QUOTA_PETS_EXCEEDED"' "$(body_part <<<"$R")"; [ "$STATUS" = 403 ] && ok "Pet quota returns 403" || bad "Pet quota returns 403" "$STATUS"
+check "second Pet succeeds at free=2" '.pet.id and .pet.name == "Second"' "$R"
+R=$(request_with_status POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Overflow","species":"cat"}' "logic-pet-$TS-overflow")
+STATUS=$(status_part <<<"$R"); check "third Pet blocked at free=2" '.error.code == "QUOTA_PETS_EXCEEDED"' "$(body_part <<<"$R")"; [ "$STATUS" = 403 ] && ok "Pet quota returns 403" || bad "Pet quota returns 403" "$STATUS"
 R=$(request POST "/api/v1/pets/$PET2/archive" "$TA")
 check "archive frees an active slot" '.pet.archived_at != null' "$R"
-R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Overflow","species":"cat"}' "logic-pet-$TS-6-replacement")
-PET6=$(jq -r '.pet.id' <<<"$R")
+R=$(request POST "/api/v1/families/$CIRCLE/pets" "$TA" '{"name":"Replacement","species":"cat"}' "logic-pet-$TS-replacement")
+PET3=$(jq -r '.pet.id' <<<"$R")
 check "archived Pet frees quota" '.pet.id' "$R"
 R=$(request_with_status POST "/api/v1/pets/$PET2/unarchive" "$TA" "" "logic-unarchive-$TS-over")
 STATUS=$(status_part <<<"$R"); check "unarchive cannot exceed quota" '.error.code == "QUOTA_PETS_EXCEEDED"' "$(body_part <<<"$R")"; [ "$STATUS" = 403 ] && ok "unarchive quota returns 403" || bad "unarchive quota returns 403" "$STATUS"
 R=$(request DELETE "/api/v1/pets/$PET3" "$TA" "{\"confirm\":\"$PET3\"}")
-[ -z "$R" ] && ok "permanent Pet delete requires explicit confirmation" || bad "permanent Pet delete" "$R"
+[ -z "$R" ] && ok "explicit confirmation deletes the Pet (204)" || bad "Pet delete with confirm" "$R"
 R=$(request POST "/api/v1/pets/$PET2/unarchive" "$TA" "" "logic-unarchive-$TS-final")
 check "unarchive succeeds after freeing slot" '.pet.archived_at == null' "$R"
 
@@ -133,9 +134,15 @@ echo "== 导出、清理 =="
 R=$(request GET "/api/v1/pets/$PET1/export" "$TA")
 check "export includes the Pet" '.pet.id == "'"$PET1"'"' "$R"
 check "export includes timeline" '.timeline' "$R"
-R=$(request GET "/api/v1/families/$CIRCLE/usage" "$TA")
-check "usage exposes quota state" '.pet_max and .member_max' "$R"
-for pet_id in "$PET1" "$PET2" "$PET3" "$PET4" "$PET5" "$PET6"; do
+# 清缴批已删 GET /families/{id}/usage（founder 裁决 A）；配额读面统一走
+# GET /me/usage（QB1 扩展 families/members 域后的形状）。
+R=$(request GET "/api/v1/me/usage" "$TA")
+check "me/usage echoes free plan" '.plan == "free"' "$R"
+check "me/usage pets quota (free=2, used=2)" '.resources.pets_created.used == 2 and .resources.pets_created.limit == 2' "$R"
+check "me/usage families quota (free=1)" '.families.used == 1 and .families.limit == 1' "$R"
+check "me/usage member seats per family" "[.members[] | select(.family_id == \"$CIRCLE\" and .used == 2 and .limit == 2)] | length == 1" "$R"
+check "me/usage storage ledger present" '.resources.storage_bytes.used == 0 and .resources.storage_bytes.limit == 52428800' "$R"
+for pet_id in "$PET1" "$PET2"; do
   request DELETE "/api/v1/pets/$pet_id" "$TA" "{\"confirm\":\"$pet_id\"}" >/dev/null
 done
 # 注销顺序必须成员在前、owner 最后：ACCOUNT_FAMILY_HAS_MEMBERS 守卫会正确拒绝

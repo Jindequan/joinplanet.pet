@@ -1,6 +1,6 @@
 # PLANET 限额体系设计 v1（2026-09-26）
 
-状态：**v1.1——Codex 核对已回（6 处实况纠偏全部采纳、Q2/Q4 改判、Q6 部分采纳），待 founder 批准 §6 数字与决策后实施**。
+状态：**v1.1——founder 已批准 §6 数字（收紧为 free=1 家庭/2 宠物，2026-09-26 裁决，落迁移 0032 + contracts.DefaultPlans）；QB1 后端已落地（单文件闸 FILE_TOO_LARGE、402→403 统一、pets on-read 收口、/me/usage 扩 families/members、grant CLI），QB2 前端在途（账户›用量页 + 预检 + errors.ts 状态码映射）。**
 来源：founder 2026-09-26 裁决（L32 升级立项）：「现在都是默认的免费版，都必须有限额：宠物数量、family 数量、family 成员数量、资源消耗额度。需要完整系统性设计，参考企业坐席额度设计理念。」
 产品边界不变：MVP 无付费（PRODUCT.md 六系统裁决）——本体系=**免费档完整限额 + 升级挂钩预留**。
 

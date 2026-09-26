@@ -165,7 +165,7 @@
 | L52 | 🔧 已修复待复验 | 软删宠物经 delegation 泄露进 GET /pets：pets/repo.go:274-285 SQL 优先级使 delegation EXISTS 逃出 `deleted_at IS NULL` 括号组；DeletePet（repo.go:461-479）不撤销 pet_user_delegations（注销/transfer/purge 三处都撤，删宠漏）。实际暴露需 owner 经 access-grants API 手建 grant（L43 无产品入口），故潜伏。修=括号+DeletePet 补撤销 | 本体亲读 SQL 全文+DeletePet |
 | L53 | 🔧 已修复待复验 | care_occurrences 缺 (care_plan_id) 索引：四条热点按 plan 找 occurrence（tasks/repo.go:457/545、carecoord/repo.go:421、alerts 用药 feed）随数据线性退化。建议 (care_plan_id, due_date) WHERE deleted_at IS NULL，staging EXPLAIN 复核后落迁移 | 本体亲核迁移索引清单 |
 | L54 | 🔧 已修复待复验 | care_requests ListSent 无界+缺 (from_user_id) 索引：carecoord/repo.go:241-270 无 state 过滤无 LIMIT 无分页；sent 侧零索引（inbox 有）。建议 partial (from_user_id, updated_at DESC)+服务层窗口 | 本体亲核 SQL 尾段+迁移 |
-| L55 | 🔧 已修复待复验 | Caddy 无 HSTS/X-Content-Type-Options（api 同域承载 landing 收钱页，SSL-strip 场景成立） | 本体亲核 deploy/Caddyfile 零命中 |
+| L55 | ✅ 已修复（生产实证：外网 curl 响应头 strict-transport-security: max-age=31536000 + x-content-type-options: nosniff）| Caddy 无 HSTS/X-Content-Type-Options（api 同域承载 landing 收钱页，SSL-strip 场景成立） | 本体亲核 deploy/Caddyfile 零命中 |
 | L56 | ⏸ 延期（客户端必传 nonce 需端到端协同+挑战表，安全专项批） | Apple nonce 客户端可选（identity/apple.go:95-99 仅带 nonce 才比对）：截获 identity_token ≤5min 有效期内可重放登录。修复=客户端必传+挑战一次性消费，或 threat model 明示余量 | 安全路亲读 |
 | L57 | 🔧 已修复待复验 | 邀请 join×refresh 轮换毫秒级 TOCTOU（families/service.go:353-369 lookup 在拿锁前）：旧码在轮换提交后仍可插入一名 caregiver/viewer，无提权。修=拿锁后同 hash 复查一行 EXISTS | 后端路推演 |
 | L58 | ⏸ 豁免留痕（at-least-once=宁重发不丢；如收紧需发送前落已投递名单） | digest at-least-once 重发窗：SendDigestOnce 认领→发送→CompleteRun 非原子（digest/service.go:177-204），租约过期重认领即全员重发邮件 | 后端路推演 |

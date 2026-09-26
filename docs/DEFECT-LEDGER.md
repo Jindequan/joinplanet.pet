@@ -166,8 +166,7 @@
 | L53 | 🔧 已修复待复验 | care_occurrences 缺 (care_plan_id) 索引：四条热点按 plan 找 occurrence（tasks/repo.go:457/545、carecoord/repo.go:421、alerts 用药 feed）随数据线性退化。建议 (care_plan_id, due_date) WHERE deleted_at IS NULL，staging EXPLAIN 复核后落迁移 | 本体亲核迁移索引清单 |
 | L54 | 🔧 已修复待复验 | care_requests ListSent 无界+缺 (from_user_id) 索引：carecoord/repo.go:241-270 无 state 过滤无 LIMIT 无分页；sent 侧零索引（inbox 有）。建议 partial (from_user_id, updated_at DESC)+服务层窗口 | 本体亲核 SQL 尾段+迁移 |
 | L55 | ✅ 已修复（生产实证：外网 curl 响应头 strict-transport-security: max-age=31536000 + x-content-type-options: nosniff）| Caddy 无 HSTS/X-Content-Type-Options（api 同域承载 landing 收钱页，SSL-strip 场景成立） | 本体亲核 deploy/Caddyfile 零命中 |
-| L56 | ⏸ 延期（客户端必传 nonce 需端到端协同+挑战表，安全专项批） | Apple nonce 客户端可选（identity/apple.go:95-99 仅带 nonce 才比对）：截获 identity_token ≤5min 有效期内可重放登录。修复=客户端必传+挑战一次性消费，或 threat model 明示余量 | 安全路亲读 |
-| L57 | 🔧 已修复待复验 | 邀请 join×refresh 轮换毫秒级 TOCTOU（families/service.go:353-369 lookup 在拿锁前）：旧码在轮换提交后仍可插入一名 caregiver/viewer，无提权。修=拿锁后同 hash 复查一行 EXISTS | 后端路推演 |
+| L56 | ✅ 已落地（终局批 2026-09-26/27）：POST /auth/apple 可选 raw_nonce→SHA256==claim 且永久一次性消费（auth_nonce_claims 0034，复审抓出代理原 15min 窗=可重放区间改 DO NOTHING）；客户端生成 CSPRNG nonce（apple-nonce.ts 纯 TS，3327 向量对拍），无 CSPRNG 诚实走旧形态不冒充；三条旧形态兼容红线钉桩+延窗重放 401 回归；TestFlight 旧版无感。api 8b0a6db/APP 8f32288 || L57 | 🔧 已修复待复验 | 邀请 join×refresh 轮换毫秒级 TOCTOU（families/service.go:353-369 lookup 在拿锁前）：旧码在轮换提交后仍可插入一名 caregiver/viewer，无提权。修=拿锁后同 hash 复查一行 EXISTS | 后端路推演 |
 | L58 | ⏸ 豁免留痕（at-least-once=宁重发不丢；如收紧需发送前落已投递名单） | digest at-least-once 重发窗：SendDigestOnce 认领→发送→CompleteRun 非原子（digest/service.go:177-204），租约过期重认领即全员重发邮件 | 后端路推演 |
 | L59 | 🔧 已修复待复验 | photo-upload 裸 json.NewDecoder 绕过 1MB 闸（timeline/http.go:222-226）；有认证+30/h 限流+ReadTimeout 兜底。修=换 httpx.DecodeJSON | 本体亲读 |
 | L60 | 🔧 已修复待复验 | 后台无界/无清理批：job_runs、notification_outbox（注销也不清）、sessions 过期行、auth_challenges 四表无清理任务（purge-deleted 清单不含）；unassignedCareRisks civilDate NULL 时无下界扫描（tasks/service.go:1883-1941）。建议统一 nightly 清理 | 后端+DB 路合查 |
@@ -182,11 +181,12 @@
 | L69 | ✔ P3 | 三写动作无 Idempotency-Key（updateNotificationPrefs/registerPushToken/careRequests.seen）——天然幂等，纪律偏差 | UX/交互路亲读 |
 | L70 | ✔ P3 | 死列/死枚举批：users.timezone、subscriptions.status 预留值、users.status='suspended'、pet_events.source 'system'/'care_occurrence'、family_invitations.role='owner'（0001:157）、idempotency_keys.scope 半死 | DB 路亲读 |
 | L71 | ✅ 已裁决（founder 2026-09-26）：B 维持无 TTL | transfers/pet-shares pending 无 TTL：出口齐全无卡死，目标永不响应时仅发起方手动撤回 | 业务路亲读 |
-| L72 | 🔧 部分修复（migrate/psql argv 密码清剿）；无盐哈希/JWKS kid ⏸ 安全专项批 | 安全尾巴批：登录码 sha256 无盐（在线已被 5 次+限流兜住）、migrate DSN 密码进 argv、JWKS 未知 kid 缓存期不刷新（最长 1h 不可用）、DevSender 打印验证码（仅非 prod）、photo key 进 Warn 日志（可接受） | 安全路亲读 |
-| L73 | 🔧 部分修复（guided 死参链删除）；角色单源化/垫片路由删除 ⏸ 排期 | UX 结构批：角色推导四处收口 core/presentation（today:258-270/requests:64-82/两 detail 只读判定）；内部垫片路由 3 个可删（activation/welcome、activation/setup-care、(tabs)/family，删除优于兼容）；pets/new guided 死参数链 4 处 | UX 路亲读 |
+| L72 | ✅ 已落地（终局批）：CODE_PEPPER HMAC-SHA256 登录码哈希（双候选 constant-time 兼容 10min 内 legacy 行）+**本体抓出并修真漏洞——attempts 锁死线随 401 回滚永不生效（6 位码 TTL 内可无限猜）**，计数移事务外+上限单源+失败留观测，钉桩 TestLoginCodeAttemptLockoutRejectsValidCode；JWKS 未知 kid 限频强刷。**dev.sh/ios.sh 已注入 CODE_PEPPER 默认值——重启 dev 后端方可跑邮件登录（生产无影响）** || L73 | 🔧 部分修复（guided 死参链删除）；角色单源化/垫片路由删除 ⏸ 排期 | UX 结构批：角色推导四处收口 core/presentation（today:258-270/requests:64-82/两 detail 只读判定）；内部垫片路由 3 个可删（activation/welcome、activation/setup-care、(tabs)/family，删除优于兼容）；pets/new guided 死参数链 4 处 | UX 路亲读 |
 
 | L74 | ✔ 登记 | verify:frontend 静态契约检查器陈旧：13 条 FAIL 与 HEAD 逐条相同（本批零新增），其中多条 grep 已删除文件（scope-cascade.tsx/digest-card.tsx/care-risk-banner.tsx）——需逐条裁决真实违例 vs 断言过时并收口；另：pets.json guidedSubtitle 五语孤儿键、e2e 6 处 ?guided=1 残留 URL | 2026-09-26 整改批 stash 归因实测（HEAD 13 FAIL=本批 13 FAIL；check:design HEAD=2 本批=0 转绿） |
 | L75 | 🔧 已修复 | 两个真实栈测试脚本注销清理段过时：2026-09-22 ACCOUNT_FAMILY_HAS_MEMBERS 守卫落地后「owner 先删」必 409，>/dev/null 吞响应使 api-logic-test/api-walkthrough 自该日起静默变红——已修：注销顺序成员在前 owner 最后+每笔断言 204 | 2026-09-26 整改批现场归因（失败运行 DB 实证：owner 仍 active+活会话、成员已墓碑化） |
 
-| L76 | 🔧 已修复待部署复验（2026-09-26 QB2：复审自产 P1「内联→keyed 换图躲闸躲账」一并收口——keysReplaced 改「新 keyed 对且旧账面未持有该对」，闸⇔账同 bool；钉桩三态同键 200/换 oversized 413/内联→oversized 413；队列 403-留队列+abandon 对照 400 e2e 已建）| QB1 复审两条窄场景（下批 QB2 收口）：①照片**同键对编辑**（只改 caption/时间）仍被单文件闸误判——档位热降后连改说明都被 413；修法=Update 路径 GetForUpdate 锁后再算 old/new keys，键对未变跳第五道闸（与 Batch D 记账同判据），注意读-锁时序不可用锁前旧行；②队列 403-QUOTA 保留重试逻辑无自动化测试，补 mock 403 PHOTO_STORAGE_QUOTA_EXCEEDED→事件留队列 e2e | 2026-09-26 QB1 复审（P2×2） |
-| L77 | 🔧 已修复待部署复验（0033 纯 DELETE 清账：静态钉桩+行为钉桩，down 不可逆声明；随 QB2 部署复验）| QB1 后 user_usage.pets_created 存量行永久遗留（写入已全删、读数不消费）——随下一次 plans 窗迁移 DELETE 清账，或永久忽略（行小无碍） | QB1 偏离④+transfers 僵尸块已在收口批删除（transfers/service.go:422） |
+| L76 | ✅ 已落地复验（终局批+前端终局）：内联→keyed 换图闸回归修复（keysReplaced 判据覆盖旧非 keyed 形态，闸⇔账同 bool），三态钉桩（同键 200/换 oversized 413/内联→oversized 413）；队列 403-留队列+abandon 对照 400 e2e 已建 || L77 | ✅ 已落地复验（0033 纯 DELETE 清账，静态+行为钉桩；随 QB2 后端部署复验通过） |
+
+
+

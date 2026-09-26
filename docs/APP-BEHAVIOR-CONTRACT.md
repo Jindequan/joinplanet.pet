@@ -63,6 +63,7 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 **身份与时间口径（2026-09-18 定稿，真实数据逐屏核对后固化）**：
 
 - **登录方式的唯一出处是服务端**（2026-09-18 裁决）：客户端登录页必须先读 `GET /api/v1/auth/methods`，只渲染 `enabled=true` 的方式。生产只开 Apple；Web 端没有 Apple 能力时给"需要 iPhone 客户端"的诚实说明与下一步，**不摆任何点了会失败的按钮**。邮件端点关闭时返回 410 `EMAIL_LOGIN_DISABLED`（不是 401/404），客户端据此提示"邮箱登录已停用，请改用 Apple 登录"。客户端在问不到服务端时按环境默认（dev 显示邮件登录、生产显示可重试错误态）。
+- **`POST /auth/apple` 的 `raw_nonce`（L56 防重放，2026-09-26 契约变更）**：请求体新增**可选**字段 `raw_nonce`。行为矩阵——①带 `raw_nonce`：服务端计算 SHA256(raw_nonce)，必须等于 identity token 的 `nonce` claim（不等 401），并在签发会话的同一事务里**一次性消费**（存储 `auth_nonce_claims`，同一 raw_nonce 重复使用一律 401；客户端每次登录必须新生成随机值，传给 Apple 的是 SHA256(raw_nonce) 本体）；②不带 `raw_nonce`：维持旧形态（body `nonce` 非空才与 claim 逐字比对；TestFlight 已装旧客户端的行为逐字不变，包括旧形态仍可重放这一点——服务端刻意不要求必填，渐进强制）；③token 无 nonce claim 且不带任何 nonce 字段：放行（现状）。失败请求不消费 nonce；同一 raw_nonce **永久一次性**（不设复用窗——identity token 实际约 1h 有效，任何短于它的窗口都留下可重放区间，2026-09-26 终局复审把旧「15 分钟窗」设计改为 `ON CONFLICT DO NOTHING`），消费行由 `planet-cli purge-deleted` 固定 2 天清理（届时 token 早已过期）。错误码复用 401 `UNAUTHENTICATED`，客户端无需新增文案分支（登录失败提示路径不变）。
 - **绝不把邮箱/账号串当人名**：接口在缺显示名时返回空串（`COALESCE(NULLIF(display_name,''),'')`），不再回退邮箱；客户端统一经 `memberName()` 兜底为「一位家庭成员」。**本人一律显示「你」**（按 user_id 判定，不是按名字字符串）。
 - **时间显示取实际到点时间 `due_at`**（按家庭时区格式化，`core/presentation/task-time.ts::taskTimeLabel`），不是规则里的 `time_of_day`；「调整这一次」后两者会分叉，只显示规则时间就是错的信息。
 - **逾期是一等状态**：记录/今天页把逾期项单独成段（「已逾期」+ 数量），卡片带强调条与**逾期时长**（`taskOverdueText`），不与未来事项混列。

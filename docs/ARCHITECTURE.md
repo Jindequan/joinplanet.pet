@@ -124,10 +124,10 @@ planet-api/
 | Pet 资产与访问 | `pets`、`pet_ownerships`、`family_pet_links`、`pet_user_delegations`、`pet_transfers` | Pet 本体、owner 历史、Family 可见边、临时授权和转移 |
 | 照护业务 | `medications`、`care_plans`、`care_rules`、`care_plan_assignments`、`care_occurrences`、`pet_events` | 长期照护、规则、责任人、具体执行和事实记录 |
 | 对外分享 | `share_links` | Pet 级有时效只读分享，保存 token hash |
-| 身份基础设施 | `auth_challenges`、`sessions` | 验证码挑战和登录会话 |
+| 身份基础设施 | `auth_challenges`、`sessions`、`auth_nonce_claims` | 验证码挑战和登录会话；`auth_nonce_claims`（0034）存 Apple raw_nonce 的一次性消费哈希（L56 防重放：15 分钟窗口内拦截重复使用，purge-deleted 固定 2 天清行，随账号硬删 FK 级联） |
 | 可靠性基础设施 | `idempotency_keys`、`notification_outbox`、`audit_records` | 重试去重、失败通知补发、治理审计；不是业务主体 |
 | 主动服务基础设施 | `push_tokens`、`job_runs`、`auth_rate_limits` | 推送设备、调度租约和认证限流 |
-| 权益配置 | `plans`、`quota_configs`、`subscriptions`、`entitlements`、`user_usage` | User 级套餐、额度、订阅和原子用量 |
+| 权益配置 | `plans`、`quota_configs`、`subscriptions`、`entitlements`、`user_usage` | User 级套餐、额度、订阅和原子用量；手动权益的收回=软删 `entitlements.deleted_at`（L3 收口批：全部权益读面统一 `deleted_at IS NULL`，`planet-cli entitlements revoke` 唯一收回入口，不触碰订阅） |
 
 静态配置、业务主体、关系、规则、动态事实和基础设施必须按上述职责区分。不能把 `audit_records` 当业务历史，不能用 `job_runs` 代替规则，不能把 `idempotency_keys` 当订单或业务记录。
 

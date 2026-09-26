@@ -57,6 +57,7 @@ if ! curl -fsS --max-time 2 "http://127.0.0.1:${API_PORT}/healthz" >/dev/null 2>
       cd "$ROOT_DIR/planet-api"
       PLANET_ENV=dev DATABASE_URL="${DATABASE_URL:-postgres:///planet}" \
         BIND="0.0.0.0:${API_PORT}" DEV_AUTH_CODES=1 \
+        CODE_PEPPER="${CODE_PEPPER:-dev-login-code-pepper-change-me}" \
         nohup "$API_BIN" >>"$ROOT_DIR/.dev/backend.log" 2>&1 &
       echo $! >"$ROOT_DIR/.dev/backend.pid"
     )

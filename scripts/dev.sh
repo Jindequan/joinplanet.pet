@@ -117,6 +117,10 @@ start_backend() {
   if pid_alive "$pid"; then echo "backend: pid $pid is running but unhealthy; see $BACKEND_LOG"; return 1; fi
   echo "backend: starting on 0.0.0.0:${API_PORT}"
   database_url="${DATABASE_URL:-postgres:///planet}"
+  # 登录码 HMAC 盐占位（L72a）：仅本机 dev 姿态（EMAIL_LOGIN 默认开）用。
+  # 服务器不依赖此行——prod 邮件登录默认关，需要时在 /etc/planet-api.env 显式配
+  # CODE_PEPPER（.env.example / deploy/env.example 有说明）。真实环境变量优先于默认值。
+  code_pepper="${CODE_PEPPER:-dev-login-code-pepper-change-me}"
   dev_migrate "$database_url"
   prepare_log "$BACKEND_LOG"
   lan_ip="${LAN_IP:-$(detect_lan_ip)}"
@@ -127,17 +131,17 @@ start_backend() {
   if [ -n "$lan_ip" ]; then cors_origins="${cors_origins},http://${lan_ip}:${EXPO_PORT}"; fi
   # shellcheck disable=SC2016
   if command -v setsid >/dev/null 2>&1; then
-    nohup setsid bash -c 'cd "$1" && exec env DATABASE_URL="$2" BIND="$3" CORS_ORIGINS="$4" DEV_AUTH_CODES="$5" go run ./cmd/planet-api' \
-      bash "$ROOT_DIR/planet-api" "$database_url" "0.0.0.0:${API_PORT}" "$cors_origins" "${DEV_AUTH_CODES:-1}" \
+    nohup setsid bash -c 'cd "$1" && exec env DATABASE_URL="$2" BIND="$3" CORS_ORIGINS="$4" DEV_AUTH_CODES="$5" CODE_PEPPER="$6" go run ./cmd/planet-api' \
+      bash "$ROOT_DIR/planet-api" "$database_url" "0.0.0.0:${API_PORT}" "$cors_origins" "${DEV_AUTH_CODES:-1}" "${code_pepper}" \
       >>"$BACKEND_LOG" 2>&1 < /dev/null &
   elif command -v perl >/dev/null 2>&1; then
     nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV or die $!;' -- \
-      bash -c 'cd "$1" && exec env DATABASE_URL="$2" BIND="$3" CORS_ORIGINS="$4" DEV_AUTH_CODES="$5" go run ./cmd/planet-api' \
-      bash "$ROOT_DIR/planet-api" "$database_url" "0.0.0.0:${API_PORT}" "$cors_origins" "${DEV_AUTH_CODES:-1}" \
+      bash -c 'cd "$1" && exec env DATABASE_URL="$2" BIND="$3" CORS_ORIGINS="$4" DEV_AUTH_CODES="$5" CODE_PEPPER="$6" go run ./cmd/planet-api' \
+      bash "$ROOT_DIR/planet-api" "$database_url" "0.0.0.0:${API_PORT}" "$cors_origins" "${DEV_AUTH_CODES:-1}" "${code_pepper}" \
       >>"$BACKEND_LOG" 2>&1 < /dev/null &
   else
-    nohup bash -c 'cd "$1" && exec env DATABASE_URL="$2" BIND="$3" CORS_ORIGINS="$4" DEV_AUTH_CODES="$5" go run ./cmd/planet-api' \
-      bash "$ROOT_DIR/planet-api" "$database_url" "0.0.0.0:${API_PORT}" "$cors_origins" "${DEV_AUTH_CODES:-1}" \
+    nohup bash -c 'cd "$1" && exec env DATABASE_URL="$2" BIND="$3" CORS_ORIGINS="$4" DEV_AUTH_CODES="$5" CODE_PEPPER="$6" go run ./cmd/planet-api' \
+      bash "$ROOT_DIR/planet-api" "$database_url" "0.0.0.0:${API_PORT}" "$cors_origins" "${DEV_AUTH_CODES:-1}" "${code_pepper}" \
       >>"$BACKEND_LOG" 2>&1 < /dev/null &
   fi
   pid=$!; write_pid "$API_PID_FILE" "$pid"

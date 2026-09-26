@@ -17,9 +17,12 @@ if ((${#missing[@]})); then
 fi
 # 邮件登录是产品开关（2026-09-18 裁决：生产只支持 Apple 登录）：
 # 关闭时不需要邮件服务商；显式开启就必须有 key，否则等于给用户一个收不到验证码的登录入口。
+# CODE_PEPPER（L72a）同判：邮件登录开着就必须有盐，config.Load 也会拒绝，
+# preflight 提前在部署门现形。
 case "${EMAIL_LOGIN:-}" in
   enabled|1|true)
     [[ -n "${RESEND_API_KEY:-}" ]] || fail "EMAIL_LOGIN=enabled requires RESEND_API_KEY"
+    [[ -n "${CODE_PEPPER:-}" ]] || fail "EMAIL_LOGIN=enabled requires CODE_PEPPER (login-code HMAC pepper)"
     ;;
   ''|disabled|0|false) ;;
   *) fail "EMAIL_LOGIN must be enabled or disabled (got ${EMAIL_LOGIN})" ;;

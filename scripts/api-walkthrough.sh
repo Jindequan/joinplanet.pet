@@ -205,9 +205,15 @@ delete "/api/v1/pets/$PET" "$TOKEN" "{\"confirm\":\"$PET\"}"
 expect "deleted Pet disappears from Family" ".pets | all(.id != \"$PET\")" "$(get "/api/v1/families/$CIRCLE/pets" "$TOKEN")"
 
 echo "== 清理测试账号 =="
-delete "/api/v1/account" "$TOKEN" "{\"confirm\":\"$EMAIL\"}" >/dev/null
-delete "/api/v1/account" "$TOKEN_B" "{\"confirm\":\"$EMAIL_B\"}" >/dev/null
-delete "/api/v1/account" "$TOKEN_C" "{\"confirm\":\"$EMAIL_C\"}" >/dev/null
+# 注销受 ACCOUNT_FAMILY_HAS_MEMBERS 守卫约束（owner 名下家庭不得有其他在册
+# 成员）：B 已在 F2 段把 A 移出 CIRCLE_2，故按 C→B→A 注销（B 先于 owner，
+# CIRCLE 才能成员清空）；每笔注销断言 204，不再吞响应（守卫 409 曾被
+# >/dev/null 掩盖，本场景自守卫上线起静默变红）。
+for pair in "$TOKEN_C:$EMAIL_C" "$TOKEN_B:$EMAIL_B" "$TOKEN:$EMAIL"; do
+  old_token="${pair%%:*}"; old_email="${pair##*:}"
+  status=$(curl -sS -w '%{http_code}' -o /dev/null -X DELETE "$BASE/api/v1/account" -H "Authorization: Bearer $old_token" -H "$JSON" -d "{\"confirm\":\"$old_email\"}")
+  [ "$status" = 204 ] || fail "account deletion ($old_email) got $status"
+done
 for pair in "$TOKEN:$EMAIL" "$TOKEN_B:$EMAIL_B" "$TOKEN_C:$EMAIL_C"; do
   old_token="${pair%%:*}"
   status=$(curl -sS -w '%{http_code}' -o /dev/null "$BASE/api/v1/me" -H "Authorization: Bearer $old_token")

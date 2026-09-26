@@ -138,9 +138,15 @@ check "usage exposes quota state" '.pet_max and .member_max' "$R"
 for pet_id in "$PET1" "$PET2" "$PET3" "$PET4" "$PET5" "$PET6"; do
   request DELETE "/api/v1/pets/$pet_id" "$TA" "{\"confirm\":\"$pet_id\"}" >/dev/null
 done
-request DELETE /api/v1/account "$TA" "{\"confirm\":\"$OWNER\"}" >/dev/null
-request DELETE /api/v1/account "$TB" "{\"confirm\":\"$CAREGIVER\"}" >/dev/null
-request DELETE /api/v1/account "$TC" "{\"confirm\":\"$THIRD\"}" >/dev/null
+# 注销顺序必须成员在前、owner 最后：ACCOUNT_FAMILY_HAS_MEMBERS 守卫会正确拒绝
+# 带在册成员的 owner 注销（2026-09-22 落地）。这里对每笔注销断言 204——此前
+# >/dev/null 吞掉守卫 409，让本场景自守卫上线起静默变红。
+DEL_STATUS=$(request_with_status DELETE /api/v1/account "$TB" "{\"confirm\":\"$CAREGIVER\"}" | status_part)
+[ "$DEL_STATUS" = 204 ] || { bad "caregiver account deletion" "$DEL_STATUS"; exit 1; }
+DEL_STATUS=$(request_with_status DELETE /api/v1/account "$TC" "{\"confirm\":\"$THIRD\"}" | status_part)
+[ "$DEL_STATUS" = 204 ] || { bad "third account deletion" "$DEL_STATUS"; exit 1; }
+DEL_STATUS=$(request_with_status DELETE /api/v1/account "$TA" "{\"confirm\":\"$OWNER\"}" | status_part)
+[ "$DEL_STATUS" = 204 ] || { bad "owner account deletion (must be last, family member-empty)" "$DEL_STATUS"; exit 1; }
 for token in "$TA" "$TB" "$TC"; do
   R=$(request_with_status GET /api/v1/me "$token")
   STATUS=$(status_part <<<"$R")

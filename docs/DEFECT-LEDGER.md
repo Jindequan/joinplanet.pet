@@ -154,3 +154,36 @@
 | L48 | ✔ 待裁决 | `GET /families/{id}/alerts` 双孤儿：后端路由已注册且 APP client `planetApi.families.alerts` 方法在案，但全仓（src/app/e2e）零调用方、契约 §2 未登记——处置仿 L33：保留端点待裁决或删除（裁决前不动代码） | planet-api internal/modules/alerts/http.go:17；APP src/core/api/planet-api.ts:436 + grep 全仓零消费方（2026-09-24 本批亲核） |
 | L49 | ✔ 待裁决 | `GET /families/{id}/usage` 双孤儿：后端路由 + client `families.usage` 均零调用方（与 L32 me.usage 配额显示同源同题）——随 L32 产品裁决一并处置 | planet-api internal/modules/families/http.go:34；APP src/core/api/planet-api.ts:426 + grep 全仓零消费方（2026-09-24 本批亲核） |
 | L50 | ✔ 建议标 deprecated | 后端旧 CRUD 旁路（契约 §2 未登记、APP client 无对应方法，全部零消费方）：`PATCH /pets/{id}`（裸更新旁路 /record 字段级合并口径）、`PATCH /pets/{id}/profile`、`GET/POST /pets/{id}/tasks`、`PATCH/DELETE /tasks/{id}`（tasks 旧别名）、`POST /tasks/{id}/logs`（旧完成别名）。建议后端标 deprecated 并排期移除，防止新调用经旁路绕开契约动作面 | planet-api internal/modules/pets/http.go:25,30；internal/modules/tasks/http.go:32-35,40（2026-09-24 本批亲读路由表 + 契约 grep 未登记） |
+
+## 十、2026-09-26 全系统深度体检登记（追加，来源=audit）
+
+来源：[audits/FULL-SYSTEM-AUDIT-2026-09-26.md](audits/FULL-SYSTEM-AUDIT-2026-09-26.md)（六路外派+本体逐条复核 P0/P1）。体检总判定：**无 P0，主干健康度优**；交互真实性 100%、十域状态机封闭、IDOR 抽查零越权、secrets 零命中、既有修复 L1-L41 全在位。以下为全部新增项（豁免基线=L1-L50，均不重复登记）。
+
+| # | 状态 | 项 | 证据/来源 |
+|---|---|---|---|
+| L51 | 🔧 已修复待复验（repo 侧闭环） | 30 天恢复窗 purge-pets 与 photo-sweep 无任何部署入口：timer 样例 ExecStart 只跑 purge-deleted（家庭），purge_pets.go:30 注释自称被覆盖但实际不含；deploy/README 零提及——L37 裁决闭环卡在最后一公里。需 founder 确认生产服务器 systemd 实况 | 本体亲核 deploy/planet-cli-purge.service.example + cmd/planet-cli/purge_pets.go |
+| L52 | 🔧 已修复待复验 | 软删宠物经 delegation 泄露进 GET /pets：pets/repo.go:274-285 SQL 优先级使 delegation EXISTS 逃出 `deleted_at IS NULL` 括号组；DeletePet（repo.go:461-479）不撤销 pet_user_delegations（注销/transfer/purge 三处都撤，删宠漏）。实际暴露需 owner 经 access-grants API 手建 grant（L43 无产品入口），故潜伏。修=括号+DeletePet 补撤销 | 本体亲读 SQL 全文+DeletePet |
+| L53 | 🔧 已修复待复验 | care_occurrences 缺 (care_plan_id) 索引：四条热点按 plan 找 occurrence（tasks/repo.go:457/545、carecoord/repo.go:421、alerts 用药 feed）随数据线性退化。建议 (care_plan_id, due_date) WHERE deleted_at IS NULL，staging EXPLAIN 复核后落迁移 | 本体亲核迁移索引清单 |
+| L54 | 🔧 已修复待复验 | care_requests ListSent 无界+缺 (from_user_id) 索引：carecoord/repo.go:241-270 无 state 过滤无 LIMIT 无分页；sent 侧零索引（inbox 有）。建议 partial (from_user_id, updated_at DESC)+服务层窗口 | 本体亲核 SQL 尾段+迁移 |
+| L55 | 🔧 已修复待复验 | Caddy 无 HSTS/X-Content-Type-Options（api 同域承载 landing 收钱页，SSL-strip 场景成立） | 本体亲核 deploy/Caddyfile 零命中 |
+| L56 | ⏸ 延期（客户端必传 nonce 需端到端协同+挑战表，安全专项批） | Apple nonce 客户端可选（identity/apple.go:95-99 仅带 nonce 才比对）：截获 identity_token ≤5min 有效期内可重放登录。修复=客户端必传+挑战一次性消费，或 threat model 明示余量 | 安全路亲读 |
+| L57 | 🔧 已修复待复验 | 邀请 join×refresh 轮换毫秒级 TOCTOU（families/service.go:353-369 lookup 在拿锁前）：旧码在轮换提交后仍可插入一名 caregiver/viewer，无提权。修=拿锁后同 hash 复查一行 EXISTS | 后端路推演 |
+| L58 | ⏸ 豁免留痕（at-least-once=宁重发不丢；如收紧需发送前落已投递名单） | digest at-least-once 重发窗：SendDigestOnce 认领→发送→CompleteRun 非原子（digest/service.go:177-204），租约过期重认领即全员重发邮件 | 后端路推演 |
+| L59 | 🔧 已修复待复验 | photo-upload 裸 json.NewDecoder 绕过 1MB 闸（timeline/http.go:222-226）；有认证+30/h 限流+ReadTimeout 兜底。修=换 httpx.DecodeJSON | 本体亲读 |
+| L60 | 🔧 已修复待复验 | 后台无界/无清理批：job_runs、notification_outbox（注销也不清）、sessions 过期行、auth_challenges 四表无清理任务（purge-deleted 清单不含）；unassignedCareRisks civilDate NULL 时无下界扫描（tasks/service.go:1883-1941）。建议统一 nightly 清理 | 后端+DB 路合查 |
+| L61 | 🔧 已修复待复验（sharing/timeline 改；transfers/tasks 论证不改，注释在案） | by-id 读缺 deleted_at 四处（sharing/transfers/timeline/tasks repo）：Guard 兜底，唯 Revoke 已撤销判定把软删行误读为 already-revoked | DB 路亲读 |
+| L62 | 🔧 已修复待复验 | 注销不清理本人发起 pending pet_share_requests（lifecycle/service.go 零命中）：pending 槽被占+对方卡显「Deleted Member」，目标可 decline 兜底 | 业务路亲读 |
+| L63 | 🔧 已修复待复验 | 注销不收束目标为本人 pending care_handoff_batches：底层 requests 调度器到期兜底，仅发起方 sent 批次行陈旧 | 业务路亲读 |
+| L64 | 🔧 已修复待复验 | pets/[petId]/care 路由把无家庭/多家庭业务态错挂 QueryErrorState+重试钮（重试指向 families.refetch，语义错位） | UX 路亲读 care.tsx:89-104 |
+| L65 | 🔧 已修复待复验 | 文案法违例批：membersEmptyOnlyYou 教学祈使句、邀请弹层三重句（invite-sheet.tsx:118-124）、settings.pageDescNoPush+noPushDesc 跨屏说三遍、families.emptyHeaderDescription 页头第二句、trends.emptyDesc 祈使句且空态无 action 槽；错误文案 errIdempotencyKeyReused 内部术语/errIncompleteCareRequest 实现文案直出/errPhotoStorageError 偏系统名 | UX 路亲读+本体抽查 zh 字典 |
+| L66 | 🔧 已修复待复验 | trends 空态无 CTA（全 App 唯一）；families 列表唯一无下拉刷新 | UX 路亲读 |
+| L67 | ⏸ 排期（四屏拆分专项） | 四屏超 500 行红线：today/screen.tsx 2044、families/detail-screen.tsx 1757、pets/detail-screen.tsx 1465、pets/care-section.tsx 1290 | UX 路实测 |
+| L68 | ✔ P3 待裁决 | client 孤儿 families.today/pets.today（planet-api.ts:435/457）+后端 GET /families/{id}/today 无 APP 消费（APP 走 GET /today?family_id=）——仿 L48/L49 随批裁决 | 本体亲核零调用方 |
+| L69 | ✔ P3 | 三写动作无 Idempotency-Key（updateNotificationPrefs/registerPushToken/careRequests.seen）——天然幂等，纪律偏差 | UX/交互路亲读 |
+| L70 | ✔ P3 | 死列/死枚举批：users.timezone、subscriptions.status 预留值、users.status='suspended'、pet_events.source 'system'/'care_occurrence'、family_invitations.role='owner'（0001:157）、idempotency_keys.scope 半死 | DB 路亲读 |
+| L71 | ✔ P3 | transfers/pet-shares pending 无 TTL：出口齐全无卡死，目标永不响应时仅发起方手动撤回 | 业务路亲读 |
+| L72 | 🔧 部分修复（migrate/psql argv 密码清剿）；无盐哈希/JWKS kid ⏸ 安全专项批 | 安全尾巴批：登录码 sha256 无盐（在线已被 5 次+限流兜住）、migrate DSN 密码进 argv、JWKS 未知 kid 缓存期不刷新（最长 1h 不可用）、DevSender 打印验证码（仅非 prod）、photo key 进 Warn 日志（可接受） | 安全路亲读 |
+| L73 | 🔧 部分修复（guided 死参链删除）；角色单源化/垫片路由删除 ⏸ 排期 | UX 结构批：角色推导四处收口 core/presentation（today:258-270/requests:64-82/两 detail 只读判定）；内部垫片路由 3 个可删（activation/welcome、activation/setup-care、(tabs)/family，删除优于兼容）；pets/new guided 死参数链 4 处 | UX 路亲读 |
+
+| L74 | ✔ 登记 | verify:frontend 静态契约检查器陈旧：13 条 FAIL 与 HEAD 逐条相同（本批零新增），其中多条 grep 已删除文件（scope-cascade.tsx/digest-card.tsx/care-risk-banner.tsx）——需逐条裁决真实违例 vs 断言过时并收口；另：pets.json guidedSubtitle 五语孤儿键、e2e 6 处 ?guided=1 残留 URL | 2026-09-26 整改批 stash 归因实测（HEAD 13 FAIL=本批 13 FAIL；check:design HEAD=2 本批=0 转绿） |
+| L75 | 🔧 已修复 | 两个真实栈测试脚本注销清理段过时：2026-09-22 ACCOUNT_FAMILY_HAS_MEMBERS 守卫落地后「owner 先删」必 409，>/dev/null 吞响应使 api-logic-test/api-walkthrough 自该日起静默变红——已修：注销顺序成员在前 owner 最后+每笔断言 204 | 2026-09-26 整改批现场归因（失败运行 DB 实证：owner 仍 active+活会话、成员已墓碑化） |

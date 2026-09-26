@@ -121,9 +121,9 @@
 | L27 | ✔ | digest 手动发送无 UI 入口：`families.sendDigest` 为孤儿端点，目前仅调度器触发 | audit §五/§六.4（2026-09-22） |
 | L28 | ❌ | ~~数据导出无前端 UI 入口：`GET /pets/{id}/export` 端点已存在并已补登 APP-BEHAVIOR-CONTRACT §2.4（仅 owner），前端入口待排期~~ 已核实存在，无需做。2026-09-22 勘误：导出 UI 已存在于宠物工作区管理组（MoreRow「Export data」行，caps.export_json 门控），体检 P2-6 仅为文档口径问题已另行修复 | 勘误证据（2026-09-22 本批亲核）：APP src/features/pets/detail-screen.tsx Export 行 + e2e/core-flows.spec.ts「pet JSON export produces a downloadable file on web」真实用例；原登记 audit P2-6（pets/service.go:321-337） |
 | L29 | ✔ | 照片上传无服务端单对象大小上限：PresignPut 不带 content-length 条件（若 2026-09-22 后端修复批已落地则销号本条）。**2026-09-22 后端批调查结论：维持不落地**——R2 官方兼容表无 POST Object 行、且对 presigned POST content-length-range 不执行（假安全感比缺失更糟）；补偿=挂接 Stat ±20% 对账+配额硬闸+领票限速+photo-sweep 兜底；候选方案见 audits/AUDIT-2026-09-22-REMEDIATION.md §4.1 | audit P2-1 延期部分（2026-09-22，media/media.go:122-128）；调查结论与候选方案 audits/AUDIT-2026-09-22-REMEDIATION.md §4.1（2026-09-22） |
-| L30 | ✔ | 家庭时区迁移后历史/未来事件的解释语义未定义（跨国家庭场景才爆），待 founder 裁决 | audit §六.6（2026-09-22） |
-| L31 | ✔ | 纯日期事项「何时算逾期」缺统一定义，待 founder 裁决 | audit §六.6（2026-09-22） |
-| L32 | ✔ | 「me.usage 配额显示」挂起，需产品决策后再排期：①落点不存在——照片内容之家在记录流，SharingSection 是分享链接管理，均无配额语境可挂；②`storage_bytes` 无格式化口径单源（MB/GB 换算无单一出口，各页自拼必然漂移）；③used/limit 常驻双数字与 402 `PHOTO_STORAGE_QUOTA_EXCEEDED` 升级引导构成同一事实两处口径，违反「信息只说一遍」。三项未解前不接 UI | audit §五 孤儿端点（me.usage，「照片配额只在 402 报错时才被用户感知」）；2026-09-22 本批补强调查后挂起 |
+| L30 | ✅ 已裁决（founder 2026-09-26）：UTC 铁法（DB 永存 UTC、时区只在服务/用户层）+「规则随迁/已物化冻结」=现状立法，PRODUCT/ARCHITECTURE 已写 | 家庭时区迁移后历史/未来事件的解释语义未定义（跨国家庭场景才爆），待 founder 裁决 | audit §六.6（2026-09-22） |
+| L31 | ✅ 已裁决（founder 2026-09-26）：A 立法「家庭时区次日才算逾期（非 UTC 次日）」，实测现状已符合（dateAt(date,familyTZ)），零代码 | 纯日期事项「何时算逾期」缺统一定义，待 founder 裁决 | audit §六.6（2026-09-22） |
+| L32 | ✅ 已裁决升级（founder 2026-09-26）：做完整限额体系（四域），设计稿=docs/commerce/QUOTA-SYSTEM-DESIGN.md（Codex 核对中），原三项挂起理由由设计解（用量之家/ humanBytes 单源/ 数字一家） | 「me.usage 配额显示」挂起，需产品决策后再排期：①落点不存在——照片内容之家在记录流，SharingSection 是分享链接管理，均无配额语境可挂；②`storage_bytes` 无格式化口径单源（MB/GB 换算无单一出口，各页自拼必然漂移）；③used/limit 常驻双数字与 402 `PHOTO_STORAGE_QUOTA_EXCEEDED` 升级引导构成同一事实两处口径，违反「信息只说一遍」。三项未解前不接 UI | audit §五 孤儿端点（me.usage，「照片配额只在 402 报错时才被用户感知」）；2026-09-22 本批补强调查后挂起 |
 | L33 | ✔ | 后端 care-risks 读端点现零消费方（前端链路已随 CareRiskBanner 删除收口），处置=保留端点待后续裁决或删除 | 2026-09-22 前端修复批：APP 侧 queryKeys.careRisks、cache.ts 5 处 'care-risks' 失效字面量、families.careRisks 方法 + CareRisk 类型全部删除，grep 全仓零引用；后端 GET /families/{id}/care-risks 端点保留不动 |
 | L34 | ✔ | photo-sweep 全桶枚举与引用快照随桶线性增长（media.ListDetailed 无上限载入内存），桶到百万级对象前需改按 petID 前缀分批枚举/流式处理；当前创业期量级无碍 | 2026-09-22 后端盲审 P3（media/media.go:215、photo_sweep.go），修复批裁决登记不实现 |
 | L35 | ✔ | photo-sweep 汇总行 movedDirs 无条件自增：目录内全部键移动失败时仍计入目录数（纯运维统计口径失真，无正确性影响；失败键下轮 sweep 重命中）。顺手修：`if moved > 0 { movedDirs++ }` | 2026-09-22 复审 P3 残留（planet-api 956556d photo_sweep.go:126） |
@@ -142,7 +142,7 @@
 | L41 | 已裁决（founder 2026-09-22）→ 照片离线队列不做（登记之后版本项），文档口径修正 | 「照片断网入队」承诺 vs 实现（照片必须在线先传 R2）：改文档还是做离线暂存。落点：PRODUCT.md §6.4 已改为如实口径（文字类记录断网入离线队列，照片在线直传 R2） | 06-events.md E3 |
 | L42 | 已裁决（founder 2026-09-22）→ 导出 MVP 搁置（之后版本项） | 导出「完整」语义落字：照片仅引用无字节、含管理类事件（与 facts 投影口径不同）、不含请求/转移管理史。落点：PRODUCT.md §5.0 之后版本项登记 | 06-events.md E5 + 03-pet.md 备注 |
 | L43 | 已裁决（founder 2026-09-22）→ 仅 family；access-grants=预留能力（API 保留，无产品入口） | access-grants 后端完整但无产品定义无 UI：建议标注「预留能力（API 保留，无产品入口）」+删前端死方法。落点：产品文档口径标注（planet-api 8621d19 / APP d5fe9aa） | 03-pet.md F7 |
-| L44 | 维持登记（founder 2026-09-22）→ 随 deceased 落地复核休眠归档转移口径 | 纪念态（归档）宠物转移：契约与后端放行、前端 UI 拦死——放开 UI（纪念转移）或收紧后端 | 03-pet.md F2 |
+| L44 | ✅ 已裁决+已落地（founder 2026-09-26 裁决 A）：后端收紧 archived 禁发起转移（Create/Accept 双点锁内 409 PET_ARCHIVED），迁移 0031 收束存量 pending，前端维持拦死；planet-api 清缴批 commit | 03-pet.md F2 + 清缴批复审 PASS | 03-pet.md F2 |
 | L45 | 登记（P3 尾巴，详见各审计文件） | ①V3 偏好悬空/V5 subscriptions+outbox 残留/V6 users.email 不刷新/V7 Apple 无限流/V8 注销幂等；②F2 被移除者无通知/F5 审计翻页/F6 邀请死列/F7 角色错误口径/F9 恢复计数滤注销/F10 邀请过期不透明；④F6 once 计划无终态/F8 注释漂移/F9 undo 按钮陈旧窗；⑤F9 outbox 保留策略/F10 token 周期校验；⑥E4 内联照片编辑指引/E6 trash 拖挂/E7 abandon 截断/E8 快照事务外 | 各审计文件漏洞清单 |
 | L46 | ✔ | 请求中心 owner 判定为每条 handoff 计划一条 8s 轮询（useQueries），inbox 增大时请求数线性放大（30 条≈225 req/min）——候选：降频 30-60s 或批量端点取 owner 集合 | 2026-09-23 白底/树状/归属批盲审 P3（panel.tsx:594），修复批裁决登记不实现 |
 | L47 | ✔ | 尺度×层级 Wave 3 清单（盲审扫出、自绘钮非标魔数，收敛到五档）：batch-panel.tsx:1488（行 50+钮 44）、incoming-request-toast.tsx:595-597（44 盒钮带）、scope-tree.tsx:725（36）、digest-card.tsx:389（48）、today/temporary-care.tsx:303（48）；另 tokens 六项结构尺寸（rowCardMinHeight 等）已立法未接线，随 Wave 3 逐屏定族消费 | 2026-09-24 尺度规范落地批盲审 P2/P3，规范见 APP/docs/PLANET_APP_DESIGN_SYSTEM.md「尺度与层级」 |
@@ -151,9 +151,9 @@
 
 | # | 状态 | 项 | 证据/来源 |
 |---|---|---|---|
-| L48 | ✔ 待裁决 | `GET /families/{id}/alerts` 双孤儿：后端路由已注册且 APP client `planetApi.families.alerts` 方法在案，但全仓（src/app/e2e）零调用方、契约 §2 未登记——处置仿 L33：保留端点待裁决或删除（裁决前不动代码） | planet-api internal/modules/alerts/http.go:17；APP src/core/api/planet-api.ts:436 + grep 全仓零消费方（2026-09-24 本批亲核） |
-| L49 | ✔ 待裁决 | `GET /families/{id}/usage` 双孤儿：后端路由 + client `families.usage` 均零调用方（与 L32 me.usage 配额显示同源同题）——随 L32 产品裁决一并处置 | planet-api internal/modules/families/http.go:34；APP src/core/api/planet-api.ts:426 + grep 全仓零消费方（2026-09-24 本批亲核） |
-| L50 | ✔ 建议标 deprecated | 后端旧 CRUD 旁路（契约 §2 未登记、APP client 无对应方法，全部零消费方）：`PATCH /pets/{id}`（裸更新旁路 /record 字段级合并口径）、`PATCH /pets/{id}/profile`、`GET/POST /pets/{id}/tasks`、`PATCH/DELETE /tasks/{id}`（tasks 旧别名）、`POST /tasks/{id}/logs`（旧完成别名）。建议后端标 deprecated 并排期移除，防止新调用经旁路绕开契约动作面 | planet-api internal/modules/pets/http.go:25,30；internal/modules/tasks/http.go:32-35,40（2026-09-24 本批亲读路由表 + 契约 grep 未登记） |
+| L48 | ✅ 已裁决+已删除（founder 2026-09-26 裁决 A）：GET /families/{id}/alerts 端点链已摘除（alerts 生成链保留） | `GET /families/{id}/alerts` 双孤儿：后端路由已注册且 APP client `planetApi.families.alerts` 方法在案，但全仓（src/app/e2e）零调用方、契约 §2 未登记——处置仿 L33：保留端点待裁决或删除（裁决前不动代码） | planet-api internal/modules/alerts/http.go:17；APP src/core/api/planet-api.ts:436 + grep 全仓零消费方（2026-09-24 本批亲核） |
+| L49 | ✅ 已裁决+已删除（founder 2026-09-26 裁决 A）：GET /families/{id}/usage + client families.usage 全删 | `GET /families/{id}/usage` 双孤儿：后端路由 + client `families.usage` 均零调用方（与 L32 me.usage 配额显示同源同题）——随 L32 产品裁决一并处置 | planet-api internal/modules/families/http.go:34；APP src/core/api/planet-api.ts:426 + grep 全仓零消费方（2026-09-24 本批亲核） |
+| L50 | ✅ 已裁决+已删除（founder 2026-09-26 裁决 A）：legacy tasks CRUD×5 + PATCH /pets/{id}(/profile) 全删，/record 与 care-schedule 契约面为唯一入口 | 后端旧 CRUD 旁路（契约 §2 未登记、APP client 无对应方法，全部零消费方）：`PATCH /pets/{id}`（裸更新旁路 /record 字段级合并口径）、`PATCH /pets/{id}/profile`、`GET/POST /pets/{id}/tasks`、`PATCH/DELETE /tasks/{id}`（tasks 旧别名）、`POST /tasks/{id}/logs`（旧完成别名）。建议后端标 deprecated 并排期移除，防止新调用经旁路绕开契约动作面 | planet-api internal/modules/pets/http.go:25,30；internal/modules/tasks/http.go:32-35,40（2026-09-24 本批亲读路由表 + 契约 grep 未登记） |
 
 ## 十、2026-09-26 全系统深度体检登记（追加，来源=audit）
 
@@ -178,10 +178,10 @@
 | L65 | 🔧 已修复待复验 | 文案法违例批：membersEmptyOnlyYou 教学祈使句、邀请弹层三重句（invite-sheet.tsx:118-124）、settings.pageDescNoPush+noPushDesc 跨屏说三遍、families.emptyHeaderDescription 页头第二句、trends.emptyDesc 祈使句且空态无 action 槽；错误文案 errIdempotencyKeyReused 内部术语/errIncompleteCareRequest 实现文案直出/errPhotoStorageError 偏系统名 | UX 路亲读+本体抽查 zh 字典 |
 | L66 | 🔧 已修复待复验 | trends 空态无 CTA（全 App 唯一）；families 列表唯一无下拉刷新 | UX 路亲读 |
 | L67 | ⏸ 排期（四屏拆分专项） | 四屏超 500 行红线：today/screen.tsx 2044、families/detail-screen.tsx 1757、pets/detail-screen.tsx 1465、pets/care-section.tsx 1290 | UX 路实测 |
-| L68 | ✔ P3 待裁决 | client 孤儿 families.today/pets.today（planet-api.ts:435/457）+后端 GET /families/{id}/today 无 APP 消费（APP 走 GET /today?family_id=）——仿 L48/L49 随批裁决 | 本体亲核零调用方 |
+| L68 | ✅ 已裁决+已删除（founder 2026-09-26 裁决 A）：GET /families/{id}/today 别名+client families.today/pets.today 全删（APP 一律全局 GET /today） | client 孤儿 families.today/pets.today（planet-api.ts:435/457）+后端 GET /families/{id}/today 无 APP 消费（APP 走 GET /today?family_id=）——仿 L48/L49 随批裁决 | 本体亲核零调用方 |
 | L69 | ✔ P3 | 三写动作无 Idempotency-Key（updateNotificationPrefs/registerPushToken/careRequests.seen）——天然幂等，纪律偏差 | UX/交互路亲读 |
 | L70 | ✔ P3 | 死列/死枚举批：users.timezone、subscriptions.status 预留值、users.status='suspended'、pet_events.source 'system'/'care_occurrence'、family_invitations.role='owner'（0001:157）、idempotency_keys.scope 半死 | DB 路亲读 |
-| L71 | ✔ P3 | transfers/pet-shares pending 无 TTL：出口齐全无卡死，目标永不响应时仅发起方手动撤回 | 业务路亲读 |
+| L71 | ✅ 已裁决（founder 2026-09-26）：B 维持无 TTL | transfers/pet-shares pending 无 TTL：出口齐全无卡死，目标永不响应时仅发起方手动撤回 | 业务路亲读 |
 | L72 | 🔧 部分修复（migrate/psql argv 密码清剿）；无盐哈希/JWKS kid ⏸ 安全专项批 | 安全尾巴批：登录码 sha256 无盐（在线已被 5 次+限流兜住）、migrate DSN 密码进 argv、JWKS 未知 kid 缓存期不刷新（最长 1h 不可用）、DevSender 打印验证码（仅非 prod）、photo key 进 Warn 日志（可接受） | 安全路亲读 |
 | L73 | 🔧 部分修复（guided 死参链删除）；角色单源化/垫片路由删除 ⏸ 排期 | UX 结构批：角色推导四处收口 core/presentation（today:258-270/requests:64-82/两 detail 只读判定）；内部垫片路由 3 个可删（activation/welcome、activation/setup-care、(tabs)/family，删除优于兼容）；pets/new guided 死参数链 4 处 | UX 路亲读 |
 

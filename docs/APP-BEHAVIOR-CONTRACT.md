@@ -86,7 +86,7 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 
 - 完成/撤销/claim → today、timeline、digest、care-stats、care-requests、care-responsibility
 - 请求接受/拒绝 → inbox、sent、chain、today、care-responsibility
-- 停药 → medications、**care-plans**、today、timeline、care-stats、care-risks
+- 停药 → medications、**care-plans**、today、timeline、care-stats（care-risks 读面已随 2026-09-26 L5 清缴删除，仅剩调度推送链路，无客户端失效面）
 - 共享接受 → pet-share-requests、pets 根、families、family-pets 根、today
 - 宠物/家庭生命周期 → familyScopedRoots（families、pets、family-pets、today、timeline、care-requests、handoff…全根）
 - 全局轮询：today 15s、inbox 常驻、sent/chain/batch 8s——invalidate 只造成一次额外 refetch，不构成风暴。

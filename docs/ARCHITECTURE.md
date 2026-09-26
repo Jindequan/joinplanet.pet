@@ -152,6 +152,7 @@ Pet ──< Medication / PetEvent / ShareLink
 - Care Plan 是长期意图，Care Rule 是可版本化规则，Care Occurrence 是一次执行；不能用 Today 查询临时拼出没有唯一键的执行记录。
 - Pet Event 是事实记录；由完成 Care Occurrence 自动产生的事件必须带来源和 occurrence 关联，重复请求不能重复写入。
 - 所有外键使用明确的 `RESTRICT`、`CASCADE` 或 `SET NULL` 语义；软删除时由 service 关闭关系，不能依赖数据库级联替代业务流程。
+- **时间存储铁法（founder 2026-09-26 裁决）**：数据库永远记录 UTC（`timestamptz` 绝对时间）；时区概念只存在于服务层（物化、日界、逾期判定按 Family 时区计算）与用户层（显示格式化）。家庭时区迁移只改写 `care_rules.timezone` 的解释基准（`families/service.go` Update 同事务迁移），已物化 occurrence 的 due_at 是既成事实不重算；逾期判定唯一口径=Family 时区次日零点（`tasks/repo.go MarkMissedBeforeFamilyAt`，边界由 `dateAt(date, familyTZ)` 计算，禁止用 UTC 日界替代）。
 
 ## 5. 权限与资产安全
 
@@ -217,15 +218,14 @@ POST /families                 POST /families/join
 GET  /families                 GET  /families/{id}
 PATCH /families/{id}           GET  /families/{id}/pets
 POST /families/{id}/invite/refresh
-GET  /families/{id}/usage      POST /families/{id}/transfer
+POST /families/{id}/transfer
 DELETE /families/{id}/members/{userId}
 POST /families/{id}/leave      DELETE /families/{id}
 POST /families/{id}/restore
 
 Pet：
 POST /families/{id}/pets       GET /pets
-GET/PATCH /pets/{id}            PATCH /pets/{id}/record
-PATCH /pets/{id}/profile       POST /pets/{id}/archive|unarchive
+GET /pets/{id}                 PATCH /pets/{id}/record        POST /pets/{id}/archive|unarchive
 DELETE /pets/{id}               POST/DELETE /pets/{id}/families[/{family_id}]
 GET /pets/{id}/export           # 完整可携带档案导出；仅当前 owner，单读事务（2026-09-22 补登记，体检 P2-6）
 GET/POST /pets/{id}/access-grants
@@ -237,7 +237,7 @@ POST /pets/{id}/transfer
 Care：
 POST/GET /pets/{id}/care-plans  PATCH/DELETE /care-plans/{id}
 GET/PUT/DELETE /care-plans/{id}/assignments[/{user_id}]；POST /care-plans/{id}/assignments/{user_id}/move 调整备用顺序
-POST /care-tasks/{id}/complete  GET /families/{id}/today
+POST /care-tasks/{id}/complete
 GET /today?family_id=...|pet_id=...
 
 Pet facts and sharing：
@@ -249,7 +249,7 @@ DELETE /shares/{id}             GET /shares/{token}  # 仅此读取端点允许�
 
 `DELETE /shares/{id}` 和 `DELETE /medications/{id}` 接受可选 `Idempotency-Key`；客户端默认生成请求键，删除状态、关联事实清理、审计记录和重试绑定在同一事务内，丢失 204 响应后重试仍返回成功。
 
-`/pets/{id}/tasks`、`/tasks/{id}` 和 `/tasks/{id}/logs` 是当前兼容入口；新客户端优先使用 `care-plans`、`care-tasks` 语义，不新增旧命名。
+`/pets/{id}/tasks`、`/tasks/{id}`、`/tasks/{id}/logs`、`GET /families/{id}/today`、`GET /families/{id}/care-risks`、`GET /families/{id}/alerts`、`GET /families/{id}/usage`、`PATCH /pets/{id}` 与 `PATCH /pets/{id}/profile` 等 legacy/孤儿入口已于 2026-09-26 删除（founder 裁决 A，L5 清缴）：照护计划一律走 `care-plans`/`care-tasks` 语义，today 一律走 `GET /today`，档案写唯一入口是 `PATCH /pets/{id}/record`。
 
 API 统一返回结构化错误：客户端至少区分 401（会话失效）、403（角色/额度）、404（不可见资源）、409（并发/状态冲突）、410（分享过期）和 429（限流）。客户端不得把 409 当普通网络错误，也不得在 401 后继续重试原请求。
 

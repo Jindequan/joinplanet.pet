@@ -69,18 +69,23 @@ else
   fail "navigation surfaces still create duplicate polling loops"
 fi
 
-if rg -q 'primaryAction: \{ minHeight: 44' "$APP/features/care-requests/incoming-request-toast.tsx" && \
-   rg -q 'claimButton: \{ minHeight: 44' "$APP/features/collaboration/care-risk-banner.tsx"; then
-  pass "care response actions meet the 44pt touch target"
+# 审计 L74（founder 裁决：修断言不动产品）：care-risk-banner.tsx 已于 09-22 删除、
+# toast primaryAction 已随 PR-A 尺度执法迁 Button 档位。「我来做/认领」44 热区执法
+# 上收 Button 档位体系（button.tsx featured=theme.layout.buttonFeaturedHeight，
+# tokens.ts buttonFeaturedHeight=44）+ e2e patrol-A/E 权威覆盖，
+# 见 APP/docs/PLANET_APP_DESIGN_SYSTEM.md L130-135（五档尺度表）。断言改查档位制度本身。
+if rg -q 'buttonFeaturedHeight: 44' "$APP/ui/theme/tokens.ts" && \
+   rg -q 'minHeight: theme.layout.buttonFeaturedHeight' "$APP/ui/components/button.tsx"; then
+  pass "care response actions meet the 44pt touch target (enforced via Button featured tier)"
 else
   fail "care response actions have a sub-44pt touch target"
 fi
 
-if rg -q 'expandButton: \{ minHeight: 44' "$APP/features/digest/digest-card.tsx" && \
-   rg -q 'itemButton: \{ minHeight: 44' "$APP/features/digest/digest-card.tsx" && \
-   rg -q 'revokeButton: \{ minHeight: 44' "$APP/features/account/screen.tsx" && \
-   rg -q 'assignmentButton: \{ minHeight: 44' "$APP/features/pets/care-section.tsx" && \
-   rg -q 'historyToggle: \{ minHeight: 44' "$APP/features/care-requests/panel.tsx"; then
+# 审计 L74：digest-card.tsx 已删（→digest-overview.tsx，家庭行为卡内导航行族豁免 54）、
+# care-section assignmentButton / panel historyToggle 已迁 Button featured 档
+#（见两文件内 PR-A 尺度执法注释）。44 热区执法上收 Button 档位体系+e2e patrol，
+# 见 PLANET_APP_DESIGN_SYSTEM.md L130-135。保留仍自绘 44 的现存锚点：账户设备撤销钮。
+if rg -q 'revokeButton: \{ minHeight: 44' "$APP/features/account/screen.tsx"; then
   pass "secondary actions meet the 44pt mobile touch target"
 else
   fail "secondary actions have a sub-44pt mobile touch target"
@@ -100,10 +105,11 @@ else
   fail "scaled pressables can be invisible to screen readers"
 fi
 
-if rg -q 'close: \{ width: 44, height: 44' "$ROOT/APP/src/ui/navigation/app-menu-button.tsx" && \
-   rg -q 'width: 44,' "$ROOT/APP/src/ui/components/scope-cascade.tsx" && \
-   rg -q 'height: 44,' "$ROOT/APP/src/ui/components/scope-cascade.tsx" && \
-   rg -q 'close: \{ width: 44, height: 44' "$APP/features/care-requests/incoming-request-toast.tsx" && \
+# 审计 L74：app-menu-button.tsx 已删、scope-cascade.tsx→scope-tree.tsx（动作钮迁
+# Button/hitSlop 形态，不再自绘 44 盒，见 scope-tree 内豁免注释）。44 热区执法上收
+# Button 档位体系+e2e patrol，见 PLANET_APP_DESIGN_SYSTEM.md L130-135。
+# 保留仍自绘 44 的现存锚点：toast close、modal-sheet 关闭/动作钮热区。
+if rg -q 'close: \{ width: 44, height: 44' "$APP/features/care-requests/incoming-request-toast.tsx" && \
    rg -q 'width: 44,' "$APP/ui/components/modal-sheet.tsx" && \
    rg -q 'height: 44,' "$APP/ui/components/modal-sheet.tsx"; then
   pass "icon close and scope actions keep a full mobile hit target"
@@ -165,10 +171,12 @@ fi
 # Today 的次级动作使用封闭的 Arrange sheet：主动作留在卡面，调整/转交/跳过
 # 进入同一份弹层，避免多枚同权按钮挤在照护卡内。旧版 secondaryOpen 已删除，
 # 不能再用不存在的折叠实现作为验收锚点。
+# 审计 L74：featureSecondaryRow 已改名 featureSecondary(:1059)/rowActions(:1166)，锚点跟改名。
 if rg -q 'const \[arrangeOpen' "$APP/features/today/cards.tsx" && \
    rg -q 'function ArrangeSheet' "$APP/features/today/cards.tsx" && \
    rg -q "t\('today\.arrange'\)" "$APP/features/today/cards.tsx" && \
-   rg -q 'styles\.featureSecondaryRow' "$APP/features/today/cards.tsx"; then
+   rg -q 'styles\.featureSecondary\b' "$APP/features/today/cards.tsx" && \
+   rg -q 'styles\.rowActions\b' "$APP/features/today/cards.tsx"; then
   pass "Today cards keep alternate actions behind Arrange"
 else
   fail "Today cards expose too many equal-priority actions"
@@ -196,8 +204,10 @@ else
   fail "account route can bypass the authenticated navigation boundary"
 fi
 
+# 审计 L74：重试钮 minHeight 已 token 化（error-boundary.tsx:58 = lightTheme.layout.
+# buttonFeaturedHeight=44），断言接受 44 字面或 token 引用两种形态。
 if rg -q 'accessibilityRole="alert"' "$APP/ui/components/error-boundary.tsx" && \
-   rg -q 'minHeight: 44,' "$APP/ui/components/error-boundary.tsx"; then
+   rg -q 'minHeight: (44,|lightTheme\.layout\.buttonFeaturedHeight,)' "$APP/ui/components/error-boundary.tsx"; then
   pass "global crash recovery exposes alert semantics and a 44pt retry target"
 else
   fail "global crash recovery has an inaccessible or undersized retry action"
@@ -236,8 +246,9 @@ fi
 # app.restoringSession=正在恢复登录状态、ui.scopeLoadingA11y=正在加载家庭和宠物范围、
 # pets.loadingShares=正在加载分享链接、timeline.a11yLoadingOlder=正在加载更早的记录、
 # app.preparingWorkspace=正在准备照护工作区。
+# 审计 L74：scope-cascade.tsx 已更名 scope-tree.tsx（:283/:483 锚点原样保留），路径跟改名。
 if rg -q "LoadingState label=\{t\('app\.restoringSession'\)\}" "$ROOT/APP/app/_layout.tsx" && \
-   rg -q "accessibilityLabel=\{t\('ui\.scopeLoadingA11y'\)\}" "$APP/ui/components/scope-cascade.tsx" && \
+   rg -q "accessibilityLabel=\{t\('ui\.scopeLoadingA11y'\)\}" "$APP/ui/components/scope-tree.tsx" && \
    rg -q "LoadingState label=\{t\('pets\.loadingShares'\)\}" "$APP/features/pets/sharing-section.tsx" && \
    rg -q "accessibilityLabel=\{t\('timeline\.a11yLoadingOlder'\)\}" "$APP/features/timeline/screen.tsx" && \
    rg -q "LoadingState label=\{t\('app\.restoringSession'\)\}" "$ROOT/APP/app/index.tsx" && \
@@ -253,7 +264,9 @@ else
   fail "an unlabeled LoadingState leaves the user without loading context"
 fi
 
-if rg -q 'accessibilityState=\{\{ disabled: busy, busy \}\}' "$APP/features/today/cards.tsx" && \
+# 审计 L74：cards.tsx 撤销链接现为 accessibilityState={disabled ? { disabled: true, busy: true } : undefined}
+#（:206），完成/同步钮 busy 已上收 Button 内部——断言跟形态。
+if rg -q 'accessibilityState=\{disabled \? \{ disabled: true, busy: true \}' "$APP/features/today/cards.tsx" && \
    rg -q "accessibilityLabel=\{t\('today\.a11ySyncing'\)\}" "$APP/features/today/screen.tsx"; then
   pass "Today sync and completion actions expose busy semantics"
 else
@@ -284,10 +297,11 @@ else
   fail "App API deployment can steal or lose Landing payment routes"
 fi
 
+# 审计 L74：grants 客户端方法 grantAccess 已下线（后端 handler GrantAccessWithIdempotency
+# 保留，L43 裁决预留能力），删去客户端死锚；其余分享/撤销锚点不变。
 if rg -q 'ShareWithFamilyWithIdempotency' "$ROOT/planet-api/internal/modules/pets/http.go" && \
    rg -q "shareFamily: .*Idempotency-Key" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'GrantAccessWithIdempotency' "$ROOT/planet-api/internal/modules/pets/http.go" && \
-   rg -q "grantAccess: .*Idempotency-Key" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'revokeShare\(shareId, idempotencyKey\)' "$ROOT/APP/src/core/extension/writers.ts" && \
    rg -q 'revokeCommandIds' "$ROOT/APP/src/features/pets/sharing-section.tsx"; then
   pass "pet sharing and access grants are retry-safe across API and client"
@@ -314,6 +328,8 @@ else
   fail "a care-plan edit or destructive care action can repeat on network retry"
 fi
 
+# 审计 L74：grants 客户端方法 revokeAccess 已下线（后端 handler RevokeAccessWithIdempotency
+# 保留，L43 裁决预留能力），删去客户端死锚；其余治理写锚点不变。
 if rg -q 'UpdateWithIdempotency' "$ROOT/planet-api/internal/modules/families/http.go" && \
    rg -q "update: \\(familyId:.*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'planetApi\.families\.update\(family\.id' "$ROOT/APP/src/features/families/detail-screen.tsx" && \
@@ -327,7 +343,6 @@ if rg -q 'UpdateWithIdempotency' "$ROOT/planet-api/internal/modules/families/htt
    rg -q 'RemoveFromFamilyWithIdempotency' "$ROOT/planet-api/internal/modules/pets/http.go" && \
    rg -q "removeFromFamily: .*Idempotency-Key" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'RevokeAccessWithIdempotency' "$ROOT/planet-api/internal/modules/pets/http.go" && \
-   rg -q "revokeAccess: .*Idempotency-Key" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'RemoveAssignmentWithIdempotency' "$ROOT/planet-api/internal/modules/tasks/http.go" && \
    rg -q "removeAssignment: .*Idempotency-Key" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'SetAssignmentWithIdempotency' "$ROOT/planet-api/internal/modules/tasks/http.go" && \
@@ -380,8 +395,9 @@ else
   fail "family role or pet-family governance writes can repeat on network retry"
 fi
 
+# 审计 L74：setAssignment 第三实参由 helper 文案改名 role（assignments-screen.tsx:148），锚点跟改名。
 if rg -q 'assignmentCommandIds' "$APP/features/pets/assignments-screen.tsx" && \
-   rg -q 'setAssignment\(planId, userId, .helper., requestKey\)' "$APP/features/pets/assignments-screen.tsx" && \
+   rg -q 'setAssignment\(planId, userId, role, requestKey\)' "$APP/features/pets/assignments-screen.tsx" && \
    rg -q 'rethrowOnError' "$APP/features/pets/assignments-screen.tsx" && \
    rg -q 'actionCommandIds' "$APP/features/pets/medications-section.tsx" && \
    rg -q 'medications\.stop\(' "$APP/features/pets/medications-section.tsx" && \
@@ -391,10 +407,10 @@ else
   fail "assignment or medication actions can lose retry identity or close on failure"
 fi
 
+# 审计 L74：locale 编辑器已按 b71f164 裁决改去抖同步——PATCH {locale} 按值幂等、
+# 无重试路径，不再需要命令键（localeCommandId 已删）。断言只守 name 半边重试身份。
 if rg -q 'nameCommandId\.current' "$APP/features/account/screen.tsx" && \
-   rg -q 'localeCommandId\.current' "$APP/features/account/screen.tsx" && \
-   rg -q 'me\.update\(\{ display_name: displayName \}, nameCommandId\.current\)' "$APP/features/account/screen.tsx" && \
-   rg -q 'me\.update\(\{ locale: value \}, localeCommandId\.current\)' "$APP/features/account/screen.tsx"; then
+   rg -q 'me\.update\(\{ display_name: displayName \}, nameCommandId\.current\)' "$APP/features/account/screen.tsx"; then
   pass "account editors reuse one command key until the save is confirmed"
 else
   fail "account editors regenerate a command key before the save is confirmed"
@@ -590,19 +606,24 @@ else
   fail "care-request or batch writes can report success before authoritative state is reread"
 fi
 
+# 审计 L74：care-risk-banner.tsx 已删（09-22），care-risk 的 syncError/careRisks/retrySync
+# 契约由 care-responsibility-banner.tsx 承接（:43 refreshFailures、:72-73 权威 reread、
+# :83 仅在 reread 成功后清 retry key、claim/release 写路径）——锚点迁移到承接文件。
 if rg -q 'refreshFailures' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
    rg -q 'queryKeys\.careResponsibility\(familyId\)' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
    rg -q 'queryKeys\.handoffSummary\(familyId\)' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
-   rg -q 'syncError' "$APP/features/collaboration/care-risk-banner.tsx" && \
-   rg -q 'queryKeys\.careRisks\(familyId\)' "$APP/features/collaboration/care-risk-banner.tsx" && \
-   rg -q "t\('collaboration\.retrySync'\)" "$APP/features/collaboration/care-risk-banner.tsx"; then
+   rg -q 'claimHandoff' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
+   rg -q 'releaseHandoff' "$APP/features/collaboration/care-responsibility-banner.tsx" && \
+   rg -q 'refreshFailures\.current\.delete' "$APP/features/collaboration/care-responsibility-banner.tsx"; then
   pass "handoff and care-risk writes reread authoritative responsibility state before closing or clearing retry keys"
 else
   fail "handoff or care-risk writes can close or clear retry state before authoritative reread"
 fi
 
+# 审计 L74：stale-data-notice 重试钮自绘 button:{minHeight:44} 已迁 Button ghost featured 档
+#（44 由档位补齐，见 stale-data-notice.tsx:22-24），断言跟形态。
 if rg -q 'StaleDataNotice' "$APP/features/pets/care-section.tsx" "$APP/features/pets/medications-section.tsx" "$APP/features/pets/sharing-section.tsx" "$APP/features/timeline/screen.tsx" "$APP/features/families/transfers-screen.tsx" "$APP/features/settings/notifications-screen.tsx" && \
-   rg -q 'button: \{ minHeight: 44 \}' "$APP/ui/components/stale-data-notice.tsx" && \
+   rg -q 'variant="ghost" size="featured"' "$APP/ui/components/stale-data-notice.tsx" && \
    rg -q 'await query\.refetch\(\{ throwOnError: true \}\)' "$APP/features/families/transfers-screen.tsx" && \
    rg -q 'commandKeys\.current\.delete\(commandScope\)' "$APP/features/families/transfers-screen.tsx"; then
   pass "stale-data refreshes are visible and transfer confirmations keep retry keys until reread"

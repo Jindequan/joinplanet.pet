@@ -1,6 +1,6 @@
 # PLANET 限额体系设计 v1（2026-09-26）
 
-状态：**v1.1——founder 已批准 §6 数字（收紧为 free=1 家庭/2 宠物，2026-09-26 裁决，落迁移 0032 + contracts.DefaultPlans）；QB1 后端已落地（单文件闸 FILE_TOO_LARGE、402→403 统一、pets on-read 收口、/me/usage 扩 families/members、grant CLI），QB2 前端在途（账户›用量页 + 预检 + errors.ts 状态码映射）。**
+状态：**v1.1——founder 已批准 §6 数字（收紧为 free=1 家庭/2 宠物，2026-09-26 裁决，落迁移 0032 + contracts.DefaultPlans）；QB1 后端已落地（单文件闸 FILE_TOO_LARGE、402→403 统一、pets on-read 收口、/me/usage 扩 families/members、grant CLI），QB2 前端已落地（账户›用量页+创建预检+队列 meUsage 失效；离线队列 403-留队列 e2e 钉桩；复审 P1/P2/P3 全收口——含 families 预检文案与 30 天软删占额矛盾的去除）。剩余=升级体系（付费墙/402 回归时点，V1 冻结外）。**
 来源：founder 2026-09-26 裁决（L32 升级立项）：「现在都是默认的免费版，都必须有限额：宠物数量、family 数量、family 成员数量、资源消耗额度。需要完整系统性设计，参考企业坐席额度设计理念。」
 产品边界不变：MVP 无付费（PRODUCT.md 六系统裁决）——本体系=**免费档完整限额 + 升级挂钩预留**。
 

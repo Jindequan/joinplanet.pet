@@ -187,6 +187,4 @@
 | L75 | 🔧 已修复 | 两个真实栈测试脚本注销清理段过时：2026-09-22 ACCOUNT_FAMILY_HAS_MEMBERS 守卫落地后「owner 先删」必 409，>/dev/null 吞响应使 api-logic-test/api-walkthrough 自该日起静默变红——已修：注销顺序成员在前 owner 最后+每笔断言 204 | 2026-09-26 整改批现场归因（失败运行 DB 实证：owner 仍 active+活会话、成员已墓碑化） |
 
 | L76 | ✅ 已落地复验（终局批+前端终局）：内联→keyed 换图闸回归修复（keysReplaced 判据覆盖旧非 keyed 形态，闸⇔账同 bool），三态钉桩（同键 200/换 oversized 413/内联→oversized 413）；队列 403-留队列+abandon 对照 400 e2e 已建 || L77 | ✅ 已落地复验（0033 纯 DELETE 清账，静态+行为钉桩；随 QB2 后端部署复验通过） |
-
-
-
+| L78 | ✅ 已修复（2026-09-26/27 QB2+Record 批）：①同键 caption 编辑被单文件闸误伤（keysReplaced 判据+锁内计算+三态钉桩，复审又抓出代理自产「内联→keyed 躲闸躲账」回归一并收口）；②队列 403-留队列 e2e 已建（+abandon 对照 400）；③founder 报障「take a photo 无法使用」=web 解码失败(HEIC→0×0)被静默 return（composer+头像两处，errorUnreadablePhoto 五语+e2e 钉桩）；④Record 重设计全链（详情页/零按钮/滑动删）APP 08c0b09..修复批 | QB2/QB3 双复审+founder 报障 |

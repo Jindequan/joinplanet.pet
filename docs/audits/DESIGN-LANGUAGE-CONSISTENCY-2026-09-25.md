@@ -81,3 +81,13 @@
 ## 五、边界（不重复既往台账）
 
 已知已登记项不在本报告重复：DEFECT-LEDGER 第七节 L26-L35、UX-SWEEP-2026-09-22 五项待裁决、深色主题/字体等已否决遗留。本次新增发现均为 09-22 整改后的存量或新增漂移。
+
+## 六、2026-09-28 页面评议会（follow-up）
+
+founder 令「每个页面都要跟 codex 商议——功能布局交互样式」。8 批 31 页逐页终局裁决（codex 亲读源码、file:line 证据），实施已全部落地并上线（b0be479）：
+
+- 六批裁决全量实施：Today/Records/Families/Requests/个人系统族/公开页（含邀请 join）。
+- **Pets 域（批3/4：宠物主干+照护协作）因 codex 中转 429 未出裁决**，按既有法条临时裁决：care 段头「Custom」降 row 档 icon-only（同屏双 hero 填充消除）；edit 吸底 Save 保留（B16 裁决在先，长表单防遮挡理由仍成立）。**codex 复核待补**，恢复后优先补审这 7 页。
+- 实施中发现 codex 裁决一处误判并驳回：notifications 路由 familyId 参数「删除」——仓库实际存在调用方（family-groups.tsx:168 家庭工作区深链），按事实保留。
+- codex 全量 diff 复审：0 P1、3 P2（rail a11y 标签/空态钮档位/JSON 尾换行）全部已修。
+- 验证：typecheck/check:design/check:i18n 绿；e2e 260/262（2 个 digest 用例随 Today 摘要入口删除退役）；49 张设计基线截图同步。

@@ -134,3 +134,22 @@ Data is per-family and never shared across accounts. Deleting the account anonym
 - [ ] 决定 iPad 路线（`supportsTablet: false` 或补原生验证）
 - [ ] 发布前用脚本复核 Keywords 长度 ≤100（写入后 ASC 不即时拦截）
 - [ ] `whatsNew` 与版本号在提审时对齐
+
+---
+
+## 六、提交记录
+
+**2026-09-29 已提交审核**（`submittedDate 2026-09-29T10:35:07Z`），v1.0 状态 **WAITING_FOR_REVIEW**。提交前逐项回读确认：
+
+| 项 | 值 |
+|---|---|
+| build | **83**（VALID；`TARGETED_DEVICE_FAMILY=1`，v1 仅 iPhone） |
+| 类别 | 主 Lifestyle · 次 Health & Fitness |
+| 内容版权 | `DOES_NOT_USE_THIRD_PARTY_CONTENT` |
+| 价格 | 免费（价格表已建，USA 基准全地区继承） |
+| 截图 | iPhone 6.5″（1284×2778）6 张，en-US 集 |
+| 五语元数据 | appInfo name/subtitle/privacyPolicyUrl + versionLocalizations keywords/promo/description/supportUrl/marketingUrl |
+| 审核备注 | 照实版（"Sign in with any Apple ID…"）；`demoAccountRequired=false` |
+| 审核联系人 | Devin Jin · +8618217150781 · jindeq@126.com |
+
+**后续注意**：①审核期间**截图被锁**、新 locale 不能加，但**文字元数据可改**；②若要改截图或加语言，需先在 ASC 撤出审核（版本转 `DEVELOPER_REJECTED`）→ 改完重提，队列位置重置；③结果邮件发 Apple ID 邮箱，通常 ≤48h；④v1.1 起 `whatsNew` 才会有值（首发版本该字段不存在）。

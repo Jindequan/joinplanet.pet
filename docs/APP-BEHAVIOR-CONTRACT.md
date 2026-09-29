@@ -9,7 +9,8 @@
 
 | 对象 | 合法状态 | 迁移与守卫（全部经同事务验证） |
 |---|---|---|
-| care_request | sent→seen→accepted/declined/delegated/expired/cancelled | 响应仅 target；终态封闭（409 NOT_ACTIONABLE）；reassign 仅 declined；expired 仅调度器写（due_at 到且 open 且 occurrence 未结）；每 occurrence 至多一条 open（部分唯一索引） |
+| care_request | sent→seen→accepted/declined/delegated/expired/cancelled | 响应仅 target；终态封闭（409 NOT_ACTIONABLE）；reassign 仅 declined；expired 仅调度器写（due_at 到且 open 且 occurrence 未结）；**cancelled 有两个来源：系统收束（occurrence 结束/宠物与家庭生命周期/成员离场，见 CancelReason* 码）与发起人撤回（`withdrawn_by_sender`，2026-09-28 L11）**；每 occurrence 至多一条 open（部分唯一索引 `WHERE state IN ('sent','seen')`——cancelled 立即释放槽位，且不进 PreviouslyDeclinedTarget：撤回不封死同一目标） |
+| care_handoff_batch | 无独立状态列：派生状态 = 其 requests 的聚合（open/accepted/declined/resolved 计数），全部收束即终态 | 批次本身不可执行；回应/继续交班逐项校验并把结果写进 `results.outcome`；**撤回=对仍 open 的项逐项 cancelled（已决策项原样保留，回报 already_resolved），整批已无 open 项 → 409 CARE_REQUEST_NOT_ACTIONABLE**；可见性=活跃家庭成员且（发起人或目标），撤回权=发起人或家庭 owner（越权 403 ROLE_FORBIDDEN），非成员 404 |
 | care_occurrence | pending/missed→completed/skipped→(undo 7天)→pending；任意→cancelled | 完成仅 pending/missed（CAS 单赢家，败者 409 TASK_LOG_EXISTS 附权威 log）；undo=完成者或家庭 owner，civil ≤7 天（done_at 口径）；cancel 带 deleted_at 释放 (rule,date) 槽位 |
 | care_plan | active⇄paused；→archived(=DELETE) | paused 不物化、取消未来开放项并**收口规则**（effective_to=暂停日-1 + 同事务 paused 审计）；恢复（任一入口到 active）按暂停收口审计识别后重开规则（effective_from=恢复日）；once/带自然 end_date 规则不参与版本化（注释载明取舍） |
 | pet | active⇄archived→deleted(30天)→恢复；active/archived→**deceased（终态）** | 归档禁一切新写（timeline/meds/handoff/share/计划；转移有意放行）统一 409 PET_ARCHIVED；archive/delete 的取消均置 deleted_at；恢复=重新物化，归档恢复另有 cancelled→pending 复位兜底。**deceased（离世封存，founder 2026-09-23 裁决）**：终态、不可逆（无恢复离世出口，unarchive/archive/restore 一律 409 PET_DECEASED）、**仍占配额**、数据全保留只读（读与导出放行）、不做任何纪念功能；封存后**唯一可做的操作是删除档案**（走既有软删+配额释放路径，30 天恢复窗照旧） |
@@ -35,6 +36,8 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 |---|---|---|---|---|
 | 发起/转交/再安排 | POST …/requests, /delegate, /reassign | **仅计划现任主 owner（归属者，founder 2026-09-23 裁决：单次+批量+delegate/reassign 同口径；非归属者 403 ROLE_FORBIDDEN，取代原「仅当前负责 caregiver」的 409 ASSIGNED 闸）**；declined 成员不可复用 | 必需/队列 | 前序 accepted 自动转 delegated（归属者改主意重排时，现任负责人（无论其是谁）的 accepted 责任同事务收口，不产生双重负责人）；被移交人的出口=接受/拒绝，「再转出去」仅新 owner 可做 |
 | 接受/拒绝 | POST /accept,/decline | 仅 target、状态机封闭；**接受批量逐项复检宠物资格（失格→not_actionable/eligibility_lost，请求保持 open）** | 必需/队列 | 接受后 invalidate 含 care-responsibility；**接受只改 occurrence.assigned_to（接手责任），不改计划归属** |
+| 撤回（单条，2026-09-28 L11） | DELETE /care-requests/:id | **发起人或家庭 owner**（越权 403 ROLE_FORBIDDEN；非成员 404 不泄露存在）；**仅 sent/seen** 可撤回（其余 409 CARE_REQUEST_NOT_ACTIONABLE，同 transfers cancel 的 not-pending 口径）；同事务写 state=cancelled + cancel_reason_code=`withdrawn_by_sender` + 一条 cancelled 事件（actor=操作者）；撤回不是「回应」——responded_at 不落时间 | 可选键（老客户端无键也可用；同键重放读回，新键重复 → 409）；无离线队列 | 撤回释放 occurrence 的 open 槽位，同一目标可立即重新发起；回执（kind=care_handoff，无动作钮）发给非操作者的当事双方 |
+| 撤回整批（2026-09-28 L11） | POST /care-handoff-batches/:id/cancel | **发起人或家庭 owner**；逐项收束仍 open 的请求，**已决策项一律保留并回报 already_resolved**；整批无 open 项 → 409 CARE_REQUEST_NOT_ACTIONABLE；返回 accept/decline 同形信封（batch + results） | 必需 | 前端入口只住批次详情、仅发起人可见、且 `open_count>0` 时才渲染（L6 一个动作一个家） |
 | 批量交班 | POST /care-handoff-batches… | 1-50 项、时间窗预校验、家庭时区；**发起人须为每个所选事项计划的现任主 owner（逐项校验，任一越权整体 403）**；批量 delegate/reassign 同口径 | 必需/队列 | results.outcome 前端逐项呈现 |
 | 值班 claim/release | POST /pets/:id/handoff(+/release) | 非 viewer；release 仅值班者 | 必需/无队列 | 归档宠 release 有意豁免 |
 | 计划归属改任 | PUT /care-plans/:id/assignments/:user_id `{role:"owner"}` | **移交归属（founder 2026-09-23 裁决：谁创建的归属谁，后续可改给其他人）**：现任主 owner 本人或计划管理者（家庭 owner/宠物 owner）可发起；目标须为可参与成员；旧 owner 降为 helper 末位（保留在责任链）；移交权随之转移（旧 owner 失去移交入口，新 owner 获得）；审计 care_plan_ownership_transferred（from/to）；现 owner 不可直接 DELETE（409 CARE_ASSIGNMENT_OWNER_REQUIRED，先换主再删） | 必需 | 前端 assignments-screen「设为主负责人」带轻确认；today/panel 归属判定随 `care_plan_owner_user_id` 刷新 |
@@ -83,10 +86,13 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 
 文案规则：中文三段式；未知码按 HTTP 语义兜底；实现层英文 message 禁止直出。
 
+**撤回（2026-09-28 L11）不新增错误码**：越权复用 `ROLE_FORBIDDEN`、非 open 复用 `CARE_REQUEST_NOT_ACTIONABLE`、键冲突复用 `IDEMPOTENCY_KEY_REUSED`；新增的只是关闭原因码 `withdrawn_by_sender`（care_request.cancel_reason_code 与事件 payload.reason_code，客户端字典键 `care.cancelReason.withdrawn_by_sender`，五语同步）。
+
 ## 4. 失效图（写动作 → 必须刷新的查询面；改这里=改契约）
 
 - 完成/撤销/claim → today、timeline、digest、care-stats、care-requests、care-responsibility
 - 请求接受/拒绝 → inbox、sent、chain、today、care-responsibility
+- **请求撤回（单条/整批，2026-09-28）→ inbox、sent、chain、today、care-responsibility、care-handoff-batches**（前端统一走 `invalidateAfterCareRequestChange`：对方动作卡消失必须双向刷新）
 - 停药 → medications、**care-plans**、today、timeline、care-stats（care-risks 读面已随 2026-09-26 L5 清缴删除，仅剩调度推送链路，无客户端失效面）
 - 共享接受 → pet-share-requests、pets 根、families、family-pets 根、today
 - 宠物/家庭生命周期 → familyScopedRoots（families、pets、family-pets、today、timeline、care-requests、handoff…全根）
@@ -102,6 +108,7 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 | **移交归属（换主 owner，2026-09-23）** | ✓（计划现任主 owner 本人或计划管理者） | ✓（仅限本人为该计划现任主 owner 时） | ✗ |
 | 发起移交/批量交班/继续转交（delegate/reassign） | ✓（仅计划现任主 owner） | ✓（仅限本人为该计划现任主 owner 时） | ✗ |
 | 响应请求（accept/decline）、直接完成他人事项 | ✓ | ✓ | ✗ |
+| **撤回照护请求/交班批次（2026-09-28 L11）** | ✓（本人为发起人时；此外家庭 owner 可收回本家庭任一 pending 请求，作为成员离场/归属改任后的治理出口） | ✓（同口径：本人为发起人，或本人为该家庭 owner） | ✗ |
 | 建宠、家庭治理、转移、分享创建 | ✓（对应 owner） | ✗ | ✗ |
 | 时间线写/用药写 | 编辑权者 | 编辑权者 | ✗ |
 

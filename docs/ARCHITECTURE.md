@@ -240,6 +240,19 @@ GET/PUT/DELETE /care-plans/{id}/assignments[/{user_id}]；POST /care-plans/{id}/
 POST /care-tasks/{id}/complete
 GET /today?family_id=...|pet_id=...
 
+Care coordination（照护协作；2026-09-28 L11 补撤回出口）：
+POST   /care-occurrences/{id}/requests          # 发起移交（仅计划现任主 owner）
+GET    /care-requests/inbox|sent                # 收件 / 已发起
+GET    /care-requests/{id}[/chain]              # 详情 / 责任链
+POST   /care-requests/{id}/seen|accept|decline|delegate|reassign
+DELETE /care-requests/{id}                      # 发起人撤回仍在等待的请求（可选 Idempotency-Key，204）
+POST   /families/{family_id}/care-handoff-batches
+GET    /care-handoff-batches/inbox              # 批次收件
+GET    /care-handoff-batches/{id}               # 批次详情（含逐项 requests 与计数）
+POST   /care-handoff-batches/{id}/accept|decline|cancel|delegate|reassign
+                                                # cancel = 发起人撤回整批仍未回应项（必需 Idempotency-Key）
+POST   /families/{family_id}/care-occurrences/{id}/claim   # 认领责任（可选动作，非完成前置）
+
 Pet facts and sharing：
 POST/GET /pets/{id}/timeline    PATCH/DELETE /timeline-events/{id}
 POST/GET /pets/{id}/medications PATCH/DELETE /medications/{id}
@@ -248,6 +261,8 @@ DELETE /shares/{id}             GET /shares/{token}  # 仅此读取端点允许�
 ```
 
 `DELETE /shares/{id}` 和 `DELETE /medications/{id}` 接受可选 `Idempotency-Key`；客户端默认生成请求键，删除状态、关联事实清理、审计记录和重试绑定在同一事务内，丢失 204 响应后重试仍返回成功。
+
+`DELETE /care-requests/{id}` 同样是可选键撤销：老客户端不发 `Idempotency-Key` 也能撤回，重复撤回按状态机拒绝（409 `CARE_REQUEST_NOT_ACTIONABLE`），同键重放读回绑定结果；`POST /care-handoff-batches/{id}/cancel` 是 POST 形态的批量撤回，按本模块写路径纪律**必需** `Idempotency-Key`（同键重放返回绑定的批次视图）。两条路径的审计轨迹与其它状态迁移同源：`care_request_events`（actor + from/to + 状态原因码 `withdrawn_by_sender`），carecoord 不另写 `audit_records` 副本。
 
 `/pets/{id}/tasks`、`/tasks/{id}`、`/tasks/{id}/logs`、`GET /families/{id}/today`、`GET /families/{id}/care-risks`、`GET /families/{id}/alerts`、`GET /families/{id}/usage`、`PATCH /pets/{id}` 与 `PATCH /pets/{id}/profile` 等 legacy/孤儿入口已于 2026-09-26 删除（founder 裁决 A，L5 清缴）：照护计划一律走 `care-plans`/`care-tasks` 语义，today 一律走 `GET /today`，档案写唯一入口是 `PATCH /pets/{id}/record`。
 

@@ -75,8 +75,12 @@ sent → seen → accepted
             ├→ declined（拒绝后可由 reassign 在同一 Occurrence 上发起新请求）
             ├→ delegated（转交后新请求重新从 sent 开始）
             └→ expired（仅调度器写）
-任意开放请求可 → cancelled；终态封闭。
+任意开放请求可 → cancelled（系统收束：Occurrence 结束/宠物与家庭生命周期/成员离场；
+                          或发起人撤回：2026-09-28 起 DELETE /care-requests/{id}，
+                          cancel_reason_code=withdrawn_by_sender）；终态封闭。
 ```
+
+撤回释放「每 Occurrence 至多一条 open」的唯一槽位，也不把同一目标记入「已放弃」名单（那是 decline/expire 的语义）：发起人改主意后同一事项可以立刻重发、同一目标可以再被请求。批次是同一规则的聚合视图——批次本身没有状态列，撤回即逐项收束仍 open 的请求，已决策项保留。
 
 `reassign` / `delegate` 是动作，不是状态。Occurrence 的 `pending / missed / completed / skipped / cancelled` 状态仍由照护地基管理，不能由 Care Request 复制或覆盖；撤销（undo）是动作与事件（care_task_undone），不是 Occurrence 状态。
 
@@ -193,8 +197,10 @@ Care Request 只附着在现有 `care_occurrences` 上，客户端不创建第�
 | 我也不行 | POST | `/care-requests/{id}/decline` |
 | 给其他人 | POST | `/care-requests/{id}/delegate` |
 | 拒绝后继续转交 | POST | `/care-requests/{id}/reassign` |
+| 发起人撤回（仍在等待） | DELETE | `/care-requests/{id}` |
+| 发起人撤回整批（仍在等待） | POST | `/care-handoff-batches/{id}/cancel` |
 
-所有写请求都要求 `Idempotency-Key`。`decline` 保留拒绝事实，`reassign` 创建同一照护事项上的下一张行动卡，保证“我也不行”不会成为流程终点。
+写请求都要求 `Idempotency-Key`，唯一例外是 `DELETE /care-requests/{id}`（可选键，与 `DELETE /transfers/{id}` 同形态：老客户端无键也能撤回，重复撤回按状态机 409 拒绝，同键重放读回绑定结果）。`decline` 保留拒绝事实，`reassign` 创建同一照护事项上的下一张行动卡，保证“我也不行”不会成为流程终点；两条撤回是「发出去收不回来」的出口（2026-09-28 L11 补齐）——发起人或该家庭 owner 可收回，撤回后同一事项可立即重新发起。
 
 整段交班沿用同一条责任链：批量接班人可以对全部或部分开放事项调用 `POST /care-handoff-batches/{id}/delegate`，也可以在批量拒绝后调用 `POST /care-handoff-batches/{id}/reassign`；旧批次保留 `delegated/declined` 历史，新批次继续绑定原 Occurrence，服务端在同一事务中保证不会留下两个开放请求。批量状态通知点击后，即使旧批次已离开收件箱，也必须展示原批次的只读逐项结果。
 

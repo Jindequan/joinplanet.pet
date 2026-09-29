@@ -181,10 +181,59 @@
 | L69 | ✔ P3 | 三写动作无 Idempotency-Key（updateNotificationPrefs/registerPushToken/careRequests.seen）——天然幂等，纪律偏差 | UX/交互路亲读 |
 | L70 | ✔ P3 | 死列/死枚举批：users.timezone、subscriptions.status 预留值、users.status='suspended'、pet_events.source 'system'/'care_occurrence'、family_invitations.role='owner'（0001:157）、idempotency_keys.scope 半死 | DB 路亲读 |
 | L71 | ✅ 已裁决（founder 2026-09-26）：B 维持无 TTL | transfers/pet-shares pending 无 TTL：出口齐全无卡死，目标永不响应时仅发起方手动撤回 | 业务路亲读 |
-| L72 | ✅ 已落地（终局批）：CODE_PEPPER HMAC-SHA256 登录码哈希（双候选 constant-time 兼容 10min 内 legacy 行）+**本体抓出并修真漏洞——attempts 锁死线随 401 回滚永不生效（6 位码 TTL 内可无限猜）**，计数移事务外+上限单源+失败留观测，钉桩 TestLoginCodeAttemptLockoutRejectsValidCode；JWKS 未知 kid 限频强刷。**dev.sh/ios.sh 已注入 CODE_PEPPER 默认值——重启 dev 后端方可跑邮件登录（生产无影响）** || L73 | 🔧 部分修复（guided 死参链删除）；角色单源化/垫片路由删除 ⏸ 排期 | UX 结构批：角色推导四处收口 core/presentation（today:258-270/requests:64-82/两 detail 只读判定）；内部垫片路由 3 个可删（activation/welcome、activation/setup-care、(tabs)/family，删除优于兼容）；pets/new guided 死参数链 4 处 | UX 路亲读 |
+| L72 | ✅ 已落地（终局批）：CODE_PEPPER HMAC-SHA256 登录码哈希（双候选 constant-time 兼容 10min 内 legacy 行）+**本体抓出并修真漏洞——attempts 锁死线随 401 回滚永不生效（6 位码 TTL 内可无限猜）**，计数移事务外+上限单源+失败留观测，钉桩 TestLoginCodeAttemptLockoutRejectsValidCode；JWKS 未知 kid 限频强刷。**dev.sh/ios.sh 已注入 CODE_PEPPER 默认值——重启 dev 后端方可跑邮件登录（生产无影响）** || L73 | 🔧 部分修复（guided 死参链删除）；角色单源化/垫片路由删除 ⏸ 排期 | UX 结构批：角色推导四处收口 core/presentation（today:258-270/requests:64-82/两 detail 只读判定）；内部垫片路由 3 个可删（activation/welcome、activation/setup-care、(tabs)/family，删除优于兼容）；pets/new guided 死参数链 4 处。**【L73 身份变更留痕 2026-09-28——勿再当垫片删除】本行点名的 `/activation/setup-care` 已不是垫片：IA 整改第 10 条把 `/pets/[petId]/care?setup=1` 的照护设置向导整体迁来，该路径现为向导的真实实现（`APP/app/activation/setup-care.tsx` → `src/features/activation/setup-care-screen.tsx`，六态工作区：宠物不可见/无家庭/宠物未关联任何家庭/带 familyId 无权限/多家庭点选/正式设置页，承担全部 e2e 覆盖）；同名旧垫片（只做 `<Redirect href="/activation" />`）已彻底删除，两者不是同物。真删除对象只有 `activation/welcome` 与 `(tabs)/family` 两条（均早已删除）。下一轮 IA 巡检若再按本行旧口径把 `/activation/setup-care` 判为可删垫片，即为误删。** | UX 路亲读 |
 
 | L74 | ✔ 登记 | verify:frontend 静态契约检查器陈旧：13 条 FAIL 与 HEAD 逐条相同（本批零新增），其中多条 grep 已删除文件（scope-cascade.tsx/digest-card.tsx/care-risk-banner.tsx）——需逐条裁决真实违例 vs 断言过时并收口；另：pets.json guidedSubtitle 五语孤儿键、e2e 6 处 ?guided=1 残留 URL | 2026-09-26 整改批 stash 归因实测（HEAD 13 FAIL=本批 13 FAIL；check:design HEAD=2 本批=0 转绿） |
 | L75 | 🔧 已修复 | 两个真实栈测试脚本注销清理段过时：2026-09-22 ACCOUNT_FAMILY_HAS_MEMBERS 守卫落地后「owner 先删」必 409，>/dev/null 吞响应使 api-logic-test/api-walkthrough 自该日起静默变红——已修：注销顺序成员在前 owner 最后+每笔断言 204 | 2026-09-26 整改批现场归因（失败运行 DB 实证：owner 仍 active+活会话、成员已墓碑化） |
 
 | L76 | ✅ 已落地复验（终局批+前端终局）：内联→keyed 换图闸回归修复（keysReplaced 判据覆盖旧非 keyed 形态，闸⇔账同 bool），三态钉桩（同键 200/换 oversized 413/内联→oversized 413）；队列 403-留队列+abandon 对照 400 e2e 已建 || L77 | ✅ 已落地复验（0033 纯 DELETE 清账，静态+行为钉桩；随 QB2 后端部署复验通过） |
 | L78 | ✅ 已修复（2026-09-26/27 QB2+Record 批）：①同键 caption 编辑被单文件闸误伤（keysReplaced 判据+锁内计算+三态钉桩，复审又抓出代理自产「内联→keyed 躲闸躲账」回归一并收口）；②队列 403-留队列 e2e 已建（+abandon 对照 400）；③founder 报障「take a photo 无法使用」=web 解码失败(HEIC→0×0)被静默 return（composer+头像两处，errorUnreadablePhoto 五语+e2e 钉桩）；④Record 重设计全链（详情页/零按钮/滑动删）APP 08c0b09..修复批 | QB2/QB3 双复审+founder 报障 |
+
+## 十一、2026-09-28 C 端可用性体检登记（追加，来源=四路只读体检：前端交互 / 前后端契约 / 台账汇总 / MVP 六系统完整性）
+
+**本轮绿面（防止下轮重复报告）**：129 后端路由 vs 60+ 客户端方法逐条对齐，**零契约错配**（含 `DisallowUnknownFields` 字段名）；后端实发 57 码中 54 个有专属文案，仅 3 个通用码走状态兜底（见 L89）；全仓**零空 catch**、12 个 useMutation 全部有 onError、乐观更新全部有回滚、ConfirmDialog 恒有 Cancel、深链页均有 fallbackHref、ModalSheet 四条关闭路径、抽查 8 处 disabled 均有相邻文字说明；五语键集 1868×5 完全对齐且代码字面键 100% 命中 en 字典。**故本批不登记「静默吞错 / 无取消确认框 / 未回滚乐观更新 / 无解释禁用」四类。**
+
+### P1（主流程断裂，建议进修复清单）
+
+| # | 状态 | 项 | 证据/来源 |
+|---|---|---|---|
+| L79 | ✅ 本体亲核 P1 | **激活关键步「邀请第二位照顾者」在首次运行体验里零入口**：SetupJourney 仅 family→pet→care 三段、无邀请段（`setup-journey.tsx:55-77` 三分支穷尽），Today feature 对 `/families` 零路由（仅 `setup-journey.tsx:41/56/109` 三处且仅在 phase≠ready 渲染），邀请链唯一入口是家庭详情 hero 底部文字链（`family-hero.tsx:141-146`）需 4 击；单人家庭交班入口被 `familyHasMultipleMembers` 过滤（`today-rows.ts:218-222`），负责人页 CTA 需 4 层下钻（`assignments-screen.tsx:305-319`）。北极星前置环节（`PRODUCT.md:110`）零提示零反馈面 → 第二人不进来，请求/交班/责任链对真实用户全部不存在 | 本体亲核 `APP/src/features/today/` 全量 grep + `screen.tsx:114-138` |
+| L80 | ✅ 本体亲核 P1 | **Today 深链/推送落地丢失目标日期与高亮**：`focus_date`/`focus_task_id` 经 React state 承载（`screen.tsx:65-66`），挂载首帧 effect 顺序为「写 focus（:92-95）」→「清 focus（:135-138）」，清理 effect 依赖 `[scopeKey, scope.type]` 在挂载时必然执行、同 commit 内后声明者胜出，而写 focus 的 effect 不随 scopeKey 重跑 → focus 永不恢复。Records 详情「打开照护任务」与推送点击均落到今天而非那天 | 本体亲核 `screen.tsx:81-95,135-138`；同库正确范式 `timeline/screen.tsx:109-118`（ref + 一次性 setParams） |
+| L81 | ✅ 本体亲核 P1 | **照片直传 PUT 无超时，且上传期间弹层锁死全部关闭出口**：web `fetch` 无 signal（`photo-upload.ts:184-188`）、原生 `uploadAsync` 无 timeout（`:192-196`）；composer 上传期 `busy=true`，而 ModalSheet 的失焦自收起、下滑关闭、抓手手势、关闭钮四条路径全部以 `!busy` 为前提（`modal-sheet.tsx:85,118`），`unsaved-changes-guard` busy 直接 return（`:129`）→ 弱网/切网即「保存钮永久灰 + 弹层关不掉」，唯一出路=强杀 App，正文与照片意图全丢 | 本体亲核三处代码；对照普通 API 调用有 15s 超时且走离线队列 |
+| L82 | ✅ 本体亲核 P1 | **照护计划归档后无 UI 恢复入口，但后端支持且有审计动作**：`tasks/service.go:1074`（`care_plan_restored`）、`:1123-1132`（两条恢复入口）；前端 `care-plan-card.tsx`/`care-section.tsx` grep `restore` 零命中。且「停药」自动归档关联计划（`meds/service.go:437-440`，注释明写「恢复后按需重建 fresh pending」=恢复是被预设的正常路径）。两条高频路径：误删计划、停药 | 本体亲核前后端；契约 §1 只写 `→archived(=DELETE)` 漏反向迁移 |
+| L83 | ✅ 本体亲核 P1 | **「每日照护摘要」开关是空开关**（触犯 founder 红线「点了没反应的按钮不该存在」）：digest 唯一投递通道是邮件（`digest/service.go:136` `Mail.SendText`），而 `DIGEST_EMAIL_ENABLED` 留空默认 off（`config.go:118-119`）、off 时调度器整档不进判定（`notify/scheduler.go:35-36,109`）；无推送通道、in-app digest 不读该偏好 → 用户拨动开关无任何可观测变化 | 本体亲核三处；**L40 裁决了「邮件停发」但未处置这个已存在的开关** |
+| L86 | ✅ 本体亲核 P1/P2 | **注销终结归档宠所有权，使其进入无出口状态**：`lifecycle/service.go:62-64` 对全部 `valid_to IS NULL` 的 ownership 置 `valid_to=now()`+`ended_reason='owner_account_deleted'`，而注销守卫 `:37` 只统计 `status IN ('active','deceased')` → 归档宠**不挡注销却永久无主**；反归档/恢复均要求全局 owner（`pets/service.go:985-987`），家人只能删除。注销页未告知，且删除确认文案「只有宠物所有者可以恢复」在此路径为假 | 本体亲核；`:30-33` 注释自认「纪念态宠物的所有权就此终结」 |
+| L87 | ✔ 盲审证实 P1 | **幂等键失败不轮换 + 服务端按 body hash 绑定 ⇒ 写成功但响应丢失后改内容重存永久 409**（刷新/重进不解，只能杀 App）：7 处仍「成功才轮换」——`composer.tsx:674/688/710`、`care-plan-form.tsx:186`、`care-plan-edit.tsx:136`、`medications-section.tsx:368/402`、`family-sheets.tsx:48`、`account/screen.tsx:79`、`sharing-section.tsx:383`；同库已有 fingerprint 正确范式三处（`settings/screen.tsx:99-103` 等）。**L21 只修了 edit-screen** | 契约路亲读；后端 hash 绑定 `identity/service.go:445`、`timeline/service.go:144-146` 等 |
+| L91 | ✔ 盲审证实 P1/P2 | **跨家庭共享请求无推送、无底栏徽标，且徽标数与页头数不同源**：后端 petshares 零 `NotifyUser` 调用；徽标只算 careRequest/handoff 两类（`floating-tab-bar.tsx:47-56`、`web-workspace-rail.tsx:59-68`），而页头计数含 shareIncoming（`requests-screen.tsx:103-104`）→ 用户看到「页头说 1 件事、底栏是空的」，不知道去哪找 | 契约路亲读（**C10 已登记「无 pending 提醒面」；徽标/页头不同源 + 后端无推送为本轮新证据**） |
+
+### P2（体验降级 / 状态半成品）
+
+| # | 状态 | 项 | 证据/来源 |
+|---|---|---|---|
+| L84 | ✅ 本体亲核 P2 | **Today 全部完成后清单区渲染 null 且无结论句**：`today-lists.tsx:157` `remaining===0 && items.length>0 && !items.some(canUndo) ? null : …`；唯一产出「已处理完」的组件单组即 `return null`（`cards.tsx:628` `groups.size<2`），`today.overviewAllDone` 五语齐备但只有该组件消费 → 单宠家庭 / 他人已完成 / viewer 看到一片空白 | 本体亲核 |
+| L85 | ✅ 本体亲核 P2 | **记录域零 `deceased` 判定**：timeline 全 feature grep `deceased` 零命中（pets 域 46 处），composer 入口/列表编辑删除/详情编辑删除只看 `archived_at` → 离世宠上照常渲染写入口，点击必 409「档案为只读」。与 `PRODUCT §4.3`「离世=封存只读」及 pets 域全量 gate 口径不一致 | 本体亲核 grep + `timeline/screen.tsx:292,311`、`detail-screen.tsx:170` |
+| L88 | ✔ 盲审证实 P2 | **会话过期无任何提示且销毁在途上下文**：401 → 清 token + `queryClient.clear()` + 卸载整组受保护屏（`session-provider.tsx:105-126`、`_layout.tsx:121,148`），无 toast（`errUnauthenticated` 文案此刻屏已卸载）；`secure-storage` 不存 `expires_at`，用户无法预知 | 契约路亲读 |
+| L89 | ✔ 盲审证实 P2 | **`VALIDATION_FAILED`(400) 无专属映射**——后端**最高频码（242 处实发点）**与「未知字段」契约漂移在 UI 上同形为「刚才那步没成功，检查一下再试」，无字段级信息、亦无可观测信号 | 契约路亲读 `errors.ts:113` + `httpx/respond.go:26-45` |
+| L90 | ✔ 盲审证实 P2 | **后端 `Extra` 载荷被前端整包丢弃**：`ApiError.details` 全仓零消费（`api-client.ts:18-29` 存了不用）→ 配额 `usage`（还差多少）、`VERSION_CONFLICT.current`（最新版本）、`TASK_LOG_EXISTS.log`（谁哪天完成）等可行动数据全部不可达 | 契约路亲读 `httpx/errors.go:23-29,62-74` |
+| L92 | ✔ 盲审证实 P2 | **`GET /care-requests/inbox` 无 LIMIT 无窗口**且前端整数组非虚拟渲染（`carecoord/repo.go:220-235`，对照 sent 侧已加 `LIMIT 200` `:241-261`）——**L54 只收了 sent 侧** | 契约路亲读 |
+| L93 | ✔ 盲审证实 P2 | **L9 修复不完整**：`invalidateAfterPetChange` 失效集**不含** `'family-pets'`（`cache.ts:145-157`），而 `invalidateAfterFamilyChange` 含（`:185-200`）→ 家庭页新建宠物 / 解绑 / 归档后返回家庭详情 ≤30s 显示旧状态 | 契约路亲读（**L9 已登记为「已修」**） |
+| L94 | ✔ 盲审证实 P2 | **override（skip/move/replace）无撤销动作，且后端报错文案指引用户执行一个不存在的动作**：`schedule_actions.go:236/246`「restore the slot or use substitute」而动作白名单无 restore（`:50-62`）；前端已诚实披露不可逆 | 六系统路亲读 |
+| L95 | ✔ 盲审证实 P2 | **停药是单向门**：meds Update 只接受 name/dose/schedule/note，无 resume；Stop 写 `ended_on` 后无反向（`meds/service.go:188/195/250-300`）。误点「确认停用」只能新建用药记录，叠加 L82 则历史责任链与提醒一并断 | 六系统路亲读 |
+| L98 | ✔ 盲审证实 P2 | **web 端全站无手动刷新**：RNW 的 `RefreshControl` 是空壳（剔除 `refreshing/onRefresh` 后 `return <View {...rest}/>`），本仓只在原生挂（`screen.tsx:97-108`），而唯一 web 可见的刷新条已随 75d614c 删除 → web 数据停在旧值只能重载标签页 | 前端路亲读 + RNW 源码实证 |
+| L99 | ✔ 盲审证实 P2 | **iOS 系统权限弹窗文案硬编码中文**（`app.json:22-23` + `ios/PLANET/Info.plist:55-58`），五语用户 en/ja/es/pt 一律见中文；无 `InfoPlist.strings`、无 `*.lproj` | 前端路亲读 |
+| L100 | ✔ 盲审证实 P2 | **首次运行在认证成功瞬间请求系统推送授权**（`session-provider.tsx:282-306`）：用户此时无宠物、无任务、未见任何价值，无前置说明屏 | 前端路亲读 |
+| L101 | ✔ 盲审证实 P2 | **全局错误边界无路由逃生口**：唯一控件 Retry 且边界包住整个导航器（`error-boundary.tsx:19-40`、`app/_layout.tsx:210-213`）——确定性崩渲染的路由会陷入 Retry 循环，无底栏/无返回/无回首页。**结构性风险，确定性触发条件未证实** | 前端路亲读 |
+
+### P3（顺手修 / 技术债）
+
+| # | 状态 | 项 | 证据/来源 |
+|---|---|---|---|
+| L96 | ✔ 盲审证实 P3 | **归档宠不撤匿名分享链接**（对比：删除撤 `repo.go:470-472`、离世撤 `:1184-1188`，归档不撤 `service.go:936-1028`）→ 外部链接继续有效至自然到期（ttl 上限 720h） | 六系统路亲读 |
+| L97 | ✔ 盲审证实 P3 | **「解除共享」（宠物 owner）与「移出家庭」（家庭 owner）联动不对称**：前者只解链、不取消 occurrence、不收束请求、不终结值班（`pets/service.go:609-639` vs `:686-695`）→ 留下永不终结的 pending occurrence（Today 因缺 link 不可见、亦永不判 missed）；宠物日后重新共享回该家庭时化石行复活成可完成待办 | 六系统路亲读 |
+| L102 | ✔ 盲审证实 P3 | **建照护计划无成功反馈**：`care-plan-form.tsx:213-259` save 内零 `useToast`，而同级动作（暂停/恢复/删除）均有（`care-section.tsx:57,142,375`） | 前端路亲读 |
+| L103 | ✔ 盲审证实 P3 | **L67 登记不完整**：四屏已拆，但现存 **15 个文件**超 500 行（`care-requests/panel.tsx:1755`、`batch-panel.tsx:1536`、`today/cards.tsx:1139`、`timeline/composer.tsx:1126`、`session-provider.tsx:847`、`scope-tree.tsx:828` 等）——**L67 只登记了已拆掉的 4 个** | 前端路实测行数 |
+| L104 | ✔ 登记（流程） | **台账与代码状态矛盾 10 处，需回写以免下轮审计重复报告**：L33（台账「保留」vs 端点已删）、L32（「前端在途」vs `/account/usage` 已存在）、L67/L73（「排期」vs 已落地）、L74（「13 FAIL」vs c41559a「64 PASS 0 FAIL」）、L51（「timer 样例只跑 purge」vs 三条 ExecStart 已齐）、L14（§一 🔧 待复验 vs §六.1 已关闭）、⑥E4（MVP 总览「全落地」vs L45 仍登记）、L12/L33（CareRiskBanner 已删但 09-22 体检仍以活跃口吻引用）、页面评议会（正文列约 40 处违例「待裁后开工」vs §六称六批全量实施） | 台账汇总路亲核 |
+
+### 附：本批确认「已被修掉、不再登记」的项（防二次派工）
+
+L3（`needsClaim` 已按 2026-09-23 裁决改为任何可参与成员可直接完成）、L10/L13（错误码已映射）、L26/L66（Families 已有 `useManualRefresh`、trends 已有 CTA）、L64（care 路由六种业务态逐条渲染）、L65（错误文案已重写）、L67（四屏已拆）、L73（垫片路由已删）、L54-sent 侧（已加 `LIMIT 200`）。

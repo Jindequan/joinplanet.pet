@@ -13,7 +13,7 @@
 | 多人照护责任不清 | 请求中心、接手、拒绝、转交、批量交班和责任链状态统一回到原照护事项 | `APP/src/features/care-requests/`、`APP/src/features/handoffs/`；协同验收 |
 | 网络抖动导致重复操作 | 关键写入使用事务和 `Idempotency-Key`；前端在失败或丢响应时保留同一意图的请求键 | `APP/src/core/extension/`、`planet-api` handlers/services；API walkthrough |
 | 删除或退出误操作 | 删除账户、Family、Pet、计划、用药、分享和退出设备均有明确后果确认；失败时保留恢复路径 | 各 feature `ConfirmDialog`；前端契约 |
-| 恢复误删家庭时可能重复提交 | 已删除家庭列表按家庭复用同一恢复请求键，丢响应后重试不会生成第二次恢复意图 | `APP/src/features/settings/deleted-families-screen.tsx`；前端契约 |
+| 恢复误删家庭时可能重复提交 | 已删除家庭列表按家庭复用同一恢复请求键，丢响应后重试不会生成第二次恢复意图 | `APP/src/features/families/screen.tsx`（恢复入口 2026-09-28 由已删的 `settings/deleted-families-screen.tsx` 回归家族列表 Deleted 段）；前端契约 |
 | 修改默认家庭/宠物时可能重复写入 | 设置页按完整偏好意图复用同一请求键，服务端确认后才允许下一次意图生成新键 | `APP/src/features/settings/screen.tsx`；前端契约 |
 | Today 成功提示可能早于清单刷新 | 调整一次安排、替代事项和临时照护都先重新读取 Today，刷新失败时保留弹层并允许重试 | `APP/src/features/today/schedule-adjustment.tsx`、`temporary-care.tsx`；Today E2E |
 | 宠物档案保存后页面可能先跳走 | 档案写入后先重新读取宠物权威记录；读取失败时保留编辑上下文，不提前导航 | `APP/src/features/pets/edit-screen.tsx`；前端产品契约 |

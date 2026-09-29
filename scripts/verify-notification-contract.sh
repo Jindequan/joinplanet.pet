@@ -29,9 +29,10 @@ assert.equal(contract.careNotificationAction('care_batch_decline'), 'decline')
 assert.equal(contract.careNotificationAction('care_delegate'), 'delegate')
 assert.equal(contract.careNotificationAction('care_batch_delegate'), 'delegate')
 assert.equal(contract.careNotificationAction('expo.notifications.DEFAULT_ACTION'), 'open')
-assert.equal(contract.careNotificationCategory('care_request'), 'care_request')
-assert.equal(contract.careNotificationCategory('care_handoff_batch'), 'care_handoff_batch')
-assert.equal(contract.careNotificationCategory('care_completed'), undefined)
+// careNotificationCategory() 断言已删（2026-09-28）：该导出于 09-25 死代码清剿
+// （PATROL-A，APP commit 2b0ec64）删除，锚点留在脚本里会让本脚本在第一步就
+// TypeError 中断、后面所有 category/action 锚点永远跑不到。类别归属由上面
+// CARE_NOTIFICATION_CATEGORY 断言 + 下方服务端 marker 检查共同持有。
 assert.deepEqual(
   contract.careNotificationRoute({ kind: 'care_request', care_request_id: 'req-1' }, 'decline'),
   { surface: 'request', requestId: 'req-1', careAction: 'reassign' },
@@ -116,7 +117,10 @@ for script in "$ROOT_DIR/scripts/acceptance-care-notification-sim.sh" "$ROOT_DIR
 done
 echo 'PASS — simulator notification permission failures explain recovery'
 
-for marker in 'registerCareNotificationCategories' 'identifier: "care_request"' 'identifier: "care_handoff_batch"' 'title: "我来做"' 'title: "我也不行"' 'title: "给其他人"'; do
+# 原生通知 category 标题 = 五语 core.json 的中文列（careAccept/careDecline/
+# careDelegate 的 zh 值）。措辞收口（L12 一词一义，2026-09-28）：accept 动作钮
+# 是「接受」（core.careAccept），不得回退为认领正典「我来做」（care.claimAction）。
+for marker in 'registerCareNotificationCategories' 'identifier: "care_request"' 'identifier: "care_handoff_batch"' 'title: "接受"' 'title: "我也不行"' 'title: "给其他人"'; do
   if ! rg -q "$marker" "$APP_DIR/ios/PLANET/AppDelegate.swift"; then
     echo "FAIL — native iOS notification category contract drift: $marker" >&2
     exit 1
@@ -132,12 +136,45 @@ if ! rg -q 'CARE_ACTION_LABELS' "$APP_DIR/src/core/presentation/terminology.ts";
   echo 'FAIL — care action labels are not centralized' >&2
   exit 1
 fi
-for label in "accept: '我来做'" "decline: '我也不行'" "delegate: '给其他人'"; do
-  if ! rg -q "$label" "$APP_DIR/src/core/presentation/terminology.ts"; then
-    echo "FAIL — care action label drift: $label" >&2
+# 术语单源 2026-09-27 起为 getter 形态：terminology.ts 只做「动作 → core 键」的
+# 映射，文案本体在五语 core.json（en 唯一事实源）。原「terminology.ts 内含中文
+# 字面量」锚点随迁移失效，按现状重锚为两条：映射单源 + zh 文案值。
+for marker in "t('core.careAccept')" "t('core.careDecline')" "t('core.careDelegate')"; do
+  if ! rg -q --fixed-strings "$marker" "$APP_DIR/src/core/presentation/terminology.ts"; then
+    echo "FAIL — care action label lost its single source: $marker" >&2
     exit 1
   fi
 done
+# 接受的措辞只此一句；英文列不得再与认领正典 care.claimAction 同形。
+for marker in '"careAccept": "Accept"' '"careDecline": "I can’t either"' '"careDelegate": "Give to someone else"'; do
+  if ! rg -q --fixed-strings "$marker" "$APP_DIR/src/i18n/en/core.json"; then
+    echo "FAIL — care action copy drift in en dictionary: $marker" >&2
+    exit 1
+  fi
+done
+for marker in '"careAccept": "接受"' '"careDecline": "我也不行"' '"careDelegate": "给其他人"'; do
+  if ! rg -q --fixed-strings "$marker" "$APP_DIR/src/i18n/zh/core.json"; then
+    echo "FAIL — care action copy drift in zh dictionary: $marker" >&2
+    exit 1
+  fi
+done
+# 一词一义（L12）：认领正典 care.claimAction 与接受措辞 core.careAccept 在五语
+# 都必须是两个词——否则推送动作钮（接受）与行内认领 pill 又回到同形。
+node -e '
+const fs = require("node:fs")
+const dir = process.argv[1]
+let failed = false
+for (const locale of ["en", "zh", "ja", "es", "pt"]) {
+  const claim = JSON.parse(fs.readFileSync(`${dir}/${locale}/care.json`, "utf8")).care.claimAction
+  const accept = JSON.parse(fs.readFileSync(`${dir}/${locale}/core.json`, "utf8")).core.careAccept
+  if (!claim || !accept || claim === accept) {
+    console.error(`FAIL — claim/accept wording collision in ${locale}: claim=${claim} accept=${accept}`)
+    failed = true
+  }
+}
+if (failed) process.exit(1)
+console.log("PASS — claim and accept keep distinct wording in all five locales")
+' "$APP_DIR/src/i18n"
 if rg -n '暂时不行' "$APP_DIR/src/features/today" "$APP_DIR/src/features/care-requests"; then
   echo 'FAIL — stale decline copy remains in Today/care request UI' >&2
   exit 1

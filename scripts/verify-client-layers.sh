@@ -10,7 +10,9 @@ if rg -n "from ['\"].*features/" "$ROOT/APP/src/features" --glob '*.tsx' --glob 
   FAIL=1
 fi
 
-for dir in trends handoffs pets/sharing-section.tsx collaboration; do
+# features/handoffs 整目录已删（批量交班并入 features/care-requests/batch-panel.tsx），
+# 从本清单移除——它已靠 `[ -e ]` 静默跳过，留在清单里只会烂成陈旧锚点。
+for dir in trends pets/sharing-section.tsx collaboration; do
   target="$ROOT/APP/src/features/$dir"
   if [ -e "$target" ] && rg -n "planetApi\." "$target" 2>/dev/null; then
     echo "FAIL: direct planetApi in extension feature $dir" >&2

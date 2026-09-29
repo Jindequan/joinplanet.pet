@@ -81,7 +81,8 @@ else
   fail "care response actions have a sub-44pt touch target"
 fi
 
-# 审计 L74：digest-card.tsx 已删（→digest-overview.tsx，家庭行为卡内导航行族豁免 54）、
+# 审计 L74：digest 组件族已整族删除（digest-card.tsx → digest-overview.tsx → 2026-09-28
+# IA 清缴连 overview 一起删，`features/digest/` 目录与五语 digest.json 均不存在）、
 # care-section assignmentButton / panel historyToggle 已迁 Button featured 档
 #（见两文件内 PR-A 尺度执法注释）。44 热区执法上收 Button 档位体系+e2e patrol，
 # 见 PLANET_APP_DESIGN_SYSTEM.md L130-135。保留仍自绘 44 的现存锚点：账户设备撤销钮。
@@ -273,7 +274,10 @@ else
   fail "Today sync or completion actions hide their busy state"
 fi
 
-if rg -q 'accessibilityRole="alert"[^>]*variant="caption"' "$APP/features/digest/digest-card.tsx" "$APP/features/pets/care-section.tsx" "$APP/features/pets/detail-screen.tsx" "$APP/features/care-requests/panel.tsx"; then
+# 审计 L74 + IA 清缴 2026-09-28：digest-card.tsx 路径已从本断言的文件清单移除
+# （该文件已删，留在清单里会让 rg 每次报 No such file 的陈旧锚点噪音）；
+# 其余三处 alert 语义锚点保持原样。
+if rg -q 'accessibilityRole="alert"[^>]*variant="caption"' "$APP/features/pets/care-section.tsx" "$APP/features/pets/detail-screen.tsx" "$APP/features/care-requests/panel.tsx"; then
   pass "inline dependency failures expose alert semantics"
 else
   fail "an inline dependency failure can be silent to assistive technology"
@@ -370,13 +374,17 @@ else
   fail "default scope editor regenerates a request key before confirmation"
 fi
 
+# IA 2026-09-28 裁决第 3 条：恢复入口由 settings 独立屏回对象列表，旧家
+# features/settings/deleted-families-screen.tsx 已删；幂等键契约原样搬到
+# features/families/screen.tsx 的 restoreFamily（键按 family.id 复用、服务器
+# 确认后才 delete）——锚点跟搬家，判据不变。
 if rg -q 'destructiveCommandId\.current' "$APP/features/families/detail-screen.tsx" && \
    rg -q 'lifecycleCommandId\.current' "$APP/features/pets/detail-screen.tsx" && \
    rg -q 'function cancelDestructive' "$APP/features/families/detail-screen.tsx" && \
    rg -q 'function cancelLifecycle' "$APP/features/pets/detail-screen.tsx" && \
    rg -q 'restoreCommandIds\.current' "$APP/features/pets/screen.tsx" && \
-   rg -q 'restoreCommandIds\.current' "$APP/features/settings/deleted-families-screen.tsx" && \
-   rg -q 'families\.restore\(family\.id, requestKey\)' "$APP/features/settings/deleted-families-screen.tsx" && \
+   rg -q 'restoreCommandIds\.current' "$APP/features/families/screen.tsx" && \
+   rg -q 'families\.restore\(family\.id, requestKey\)' "$APP/features/families/screen.tsx" && \
    rg -q "archive: .*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts"; then
   pass "lifecycle confirmations reuse one command key after a lost response"
 else
@@ -581,10 +589,17 @@ else
   fail "direct UI regression is missing profile, medication, or lifecycle reread recovery"
 fi
 
+# 已删家庭恢复入口（IA 2026-09-28 第 3 条）新家 = families/screen.tsx 的
+# DeletedFamiliesSection，判据形态随之改变：旧家 settings/deleted-families-screen.tsx
+# 的「query.error && !query.data ⇒ 错误面」会被新形态误读——新形态是**段非空仍渲染
+# 行、仅在空段时才给错误面**（刷新失败不得把可恢复的行换成一整面错误）。故判据拆成
+# 两半：①错误面只在空段返回（多行锚定该 return）；②非空段照旧渲染行（恢复窗倒计时
+# 与 Restore 动作在段内）。覆盖意图不变：破坏性/恢复上下文的活行不被陈旧刷新错误顶掉。
 if rg -q 'if \(query\.error && !query\.data\)' "$APP/features/timeline/screen.tsx" && \
    rg -q 'if \(query\.error && !query\.data\)' "$APP/features/families/transfers-screen.tsx" && \
    rg -q 'if \(query\.error && !query\.data\)' "$APP/features/pets/sharing-section.tsx" && \
-   rg -q 'query\.error && !query\.data' "$APP/features/settings/deleted-families-screen.tsx" && \
+   rg -q -U 'if \(families\.length === 0\) \{\n    return error \? \(' "$APP/features/families/screen.tsx" && \
+   rg -q 'restoreWindowCaption\(family\.deleted_at\)' "$APP/features/families/screen.tsx" && \
    rg -q 'if \(!user\)' "$APP/features/account/screen.tsx"; then
   pass "stale-data refresh errors preserve active editors and destructive contexts"
 else

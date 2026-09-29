@@ -3,9 +3,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# IA 2026-09-28：features/handoffs 整目录已删（批量交班并入
+# features/care-requests/batch-panel.tsx），TARGETS 同步清该行——它在
+# `2>/dev/null` 下静默空跑，是会烂在清单里的那类锚点。
 TARGETS=(
   "$ROOT/APP/src/features/trends"
-  "$ROOT/APP/src/features/handoffs"
   "$ROOT/APP/src/features/settings/public-share-screen.tsx"
   "$ROOT/APP/src/features/pets/sharing-section.tsx"
 )

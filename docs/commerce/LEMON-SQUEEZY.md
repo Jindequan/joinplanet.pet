@@ -121,7 +121,7 @@ paid total >= 100 → 关闭 checkout 链接
 5. 生产模式完成一笔小额真实支付，确认订单、退款路径和收款主体信息。
 6. 记录每笔订单的产品、邮箱、来源和同意的交付/退款说明。
 7. 在预付款达到验证门槛前，不接入复杂的宠物数据和医疗功能开发。
-8. 在 Lemon Squeezy 后台 checkout 设置里，把条款链接指向站点政策页：`https://www.joinplanet.pet/terms`、`https://www.joinplanet.pet/privacy`、`https://www.joinplanet.pet/refund`（Settings → Store → 相关字段，或在产品 checkout 编辑器里配置）。三页源码归属：`www.joinplanet.pet` 仓 `app/terms/`、`app/privacy/`、`app/refund/`（Next.js App Router，push 到 GitHub main 由 Vercel 自动部署）；页面带 TEMPLATE 标记（2026-09-22），法务审查通过前不作为对外承诺依据。
+8. 在 Lemon Squeezy 后台 checkout 设置里，把条款链接指向站点政策页：`https://www.joinplanet.pet/terms`、`https://www.joinplanet.pet/privacy`、`https://www.joinplanet.pet/refund`（Settings → Store → 相关字段，或在产品 checkout 编辑器里配置）。三页源码归属：`www.joinplanet.pet` 仓 `app/terms/`、`app/privacy/`、`app/refund/`（Next.js App Router，push 到 GitHub main 由 Vercel 自动部署）；三页已于 2026-09-28 定稿为正式文本（Version 1.0，逐条事实核对至 2026-09 的产品现状；早先那份 TEMPLATE 待法务终审标记已随定稿移除，`www.joinplanet.pet` 的 `tests/rendered-html.test.mjs` 断言其不得回归）。**注意：定稿不等于法务审查——这几页尚未经执业律师审阅**，在该审阅完成前，它们只作为产品事实说明，不作为对外承诺的法律依据。
 
 ## 退款 SOP（用户邮件到 support@joinplanet.pet 时）
 

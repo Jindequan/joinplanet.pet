@@ -16,40 +16,41 @@
 | L86 | **注销时归档宠所有权自动移交剩余家庭 owner**；注销人=唯一成员时归档宠随账号终结（无从移交，物理事实）；注销页确认文案同步改写（现文案「只有宠物所有者可以恢复」在该路径为假） | 归档宠=纪念态，家人保留纪念优先于删号洁净；移交后反归档/恢复的 owner 门不再坍塌。守卫是否扩到「归档宠存在即拦截」**不采纳**——给删号人强加清理义务过苛 |
 | L91 | **双管齐下**：①后端 petshares 创建时 `NotifyUser` 推送（复用 care_requests 既有 APNs 通路与失效清理）②前端底栏徽标类目补 `shareIncoming`，且徽标与 Requests 页头计数**收敛为同一单源函数**，两处只消费 | 徽标/页头不同源=「页头说 1 件事底栏是空的」；共享请求零触达=确认制半边瘫痪。法条核对点：「一数一家」允许底栏徽标（既有先例=careRequest/handoff），本项是把**两个家合成一个家**，不是新增复述 |
 
-## 波次派工（同仓并行以文件所有权不相交为界）
+## 波次派工（同仓并行以文件所有权不相交为界；2026-09-30 门禁修订后五波文件互不相交，A1/A2/A3/B1/B2 可全并行）
 
 | 波次 | 代理 | 仓库 | 文件所有权（不得越界写） |
 |---|---|---|---|
-| A1 | 后端组 | planet-api | `lifecycle/`、`petshares/`（或等价通知挂点）、通知契约测试 |
-| A2 | 前端机械可靠性组 | APP | `today/screen.tsx`、`core/photo-upload.ts`、L87 清单 7 文件（composer/care-plan-form/care-plan-edit/medications-section/family-sheets/account/sharing-section）、对应 e2e |
+| A1 | 后端组 | planet-api | `lifecycle/`、`petshares/`、通知测试；L86+L91 后端 |
+| A2 | 前端机械可靠性组 | APP | `today/screen.tsx`（L80）、`core/photo-upload.ts` + `ui/components/modal-sheet.tsx` + `ui/components/unsaved-changes-guard.tsx`（L81，opt-in 解耦）+ `timeline/composer.tsx`（L81 竞态+L87）、L87 其余清单文件（care-plan-form/care-plan-edit/medications-section/family-sheets/account/sharing-section）、对应 e2e |
 | A3 | 原生本地化组 | APP ios/ + app.json | `ios/PLANET/Info.plist`、`ios/PLANET/*.lproj/InfoPlist.strings`、`project.pbxproj`、`app.json` 插件串 |
-| B1 | 邀请入口组 | APP | `setup-journey.tsx`、journey 邀请步相关新文件、对应 e2e（**只消费** InviteSheet，不得改 `invite-sheet.tsx` 本体） |
-| B2 | 产品正确性组 | APP | `care-section.tsx`/`care-plan-card.tsx`、`notifications-screen.tsx`、`floating-tab-bar.tsx`、`web-workspace-rail.tsx`、`requests-screen.tsx`、注销页文案、对应 e2e |
+| B1 | 邀请入口组 | APP | `core/activation/`（`screen.tsx` ready 拦截 + 新 kv 完成标记文件）、`setup-journey.tsx`（只读参照）、对应 e2e；**只消费 InviteSheet，不得改 `invite-sheet.tsx` 本体** |
+| B2 | 产品正确性组 | APP | `care-section.tsx`/`care-plan-card.tsx`、`notifications-screen.tsx` + `core/api/planet-api.ts`（仅 L83 拆类型）、`floating-tab-bar.tsx`、`web-workspace-rail.tsx`、`requests-screen.tsx`、`core/notifications/contract.ts`、注销文案 `src/i18n/*/account.json`、对应 e2e |
 
-A1∥A2∥A3 并行；B 波次等 A2 落地后开（B1/B2 文件互不相交可并行）。**冲突红线：波次间不得改同一文件；e2e fixture 公共文件（`e2e/` helpers）改动须在简报中显式声明。**
+**i18n 命名空间纪律（防跨波同文件双写）**：A2 只动 settings.json、B1 只动 activation.json（或 today.json）、B2 只动 account.json 与删除的 digest 键（settings.json 的 digestRow/digestDesc 删除归 B2——B2 是唯一动 settings.json 的波次，A2 确认无新文案则不碰）。**e2e 公共 helper 只准追加式改动并在报告里声明**；任何代理**不得执行 git commit/checkout/stash**（提交由本体统一收口）。
 
 ## 逐项施工卡
 
 ### L79 邀请第二位照顾者入口（B1，设计重）——**Codex 修订：原语从 petshares 换成家庭邀请 InviteSheet**
 - Codex 结论：petshares 是跨家庭宠物访问原语——只有目标家庭 owner 能接受、只授予宠物访问权、**不使对方成为家庭成员**，用于「邀请照顾者」语义错误。正确原语=已存在的 `src/features/families/invite-sheet.tsx`（邀请码+caregiver/viewer 角色+系统分享+重新生成，重试幂等键语义齐全）+ `families.refreshInvite`。hero 底部邀请钮已是 icon-first（Users glyph + `families.inviteMembers`，`family-hero.tsx:136-147`），**无需升级**。
 - 落点：`setup-journey.tsx:55-77`（三分支穷尽、无邀请段）；`today-rows.ts:218-222`（单人家庭交班被门控——邀请解决后自然消解，本批**不**改门控）。
-- 做法：SetupJourney 在照护段后新增**可跳过**的邀请步——渲染既有 InviteSheet（familyId+familyName 注入，role 默认 caregiver），跳过=直达完成，关 sheet=继续完成；**不新建邀请机制、不改 InviteSheet 本体**（若必须动它，先在简报声明理由）。
-- 法条核对：无教学文案（步骤副题只准一句动作语义）；新文案五语字典键齐；`check:design` 过。
-- 验收：e2e——新用户 journey 走到邀请步可完成可跳过；邀请步能出邀请码（mock 或真实链路按 e2e 既有口径）；跳过后重进仍能从家庭页发起。
+- 做法：**门禁修订——宿主从 SetupJourney 换到 activation ready 拦截**。状态机实锤：activation 只有 4 相（`core/activation/state.ts` deriveActivationPhase），照护一完成 phase=ready 即卸载跳转（`activation/screen.tsx:72` Redirect；`setup-care-screen.tsx:44` 完成即 replace 离场；today 宿主 `today/screen.tsx:255`+`today-lists.tsx:113` 同门），**SetupJourney 挂着时不可能「齐活」，原方案零渲染窗口**。修订做法：`activation/screen.tsx` ready 分支拦截——`phase==='ready' && !kv邀请步完成标记` 时先渲染邀请步（内嵌既有 InviteSheet，familyId/familyName 由宿主注入，role 默认 caregiver）再 Redirect；跳过/关闭即写 kv 标记（新文件，持久化），保证「跳过后重进不再出」可测且只打扰一次。hero 邀请钮已是 icon-first，不动。
+- 法条核对：无教学文案（步骤副题只准一句动作语义）；新文案五语字典键齐（B1 命名空间=activation.json）；`check:design` 过。
+- 验收：e2e——首次 ready 时邀请步出现，可完成可跳过；跳过后重进不再出；既有 activation 各相 e2e 不回归。
 
 ### L80 深链/推送丢目标日期与高亮（A2）
 - 落点：`today/screen.tsx:65-66,81-95,135-138`（写 focus 的 effect 不随 scopeKey 重跑、清理 effect 挂载即执行且后声明者胜出）。同库正确范式=`timeline/screen.tsx:109-118`（ref + 一次性 setParams）。
 - 做法：照 timeline 范式重写 focus 承载，深链参数挂载一次落位、不被清 effect 抹掉。
 - 验收：e2e——Records 详情「打开照护任务」与 `?focus_date=` 深链落到**目标日**且高亮目标卡； Today 冷启动不受影响。
 
-### L81 照片直传无超时 + 弹层锁死（A2）
-- 落点：`photo-upload.ts:184-188`（web fetch 无 signal）、`:192-196`（原生 uploadAsync 无超时）；`modal-sheet.tsx:85,118` 四条关闭路径全以 `!busy` 为前提；`unsaved-changes-guard:129` busy 直接 return。
-- 做法：①web=AbortController + 15s（与普通 API 超时对齐）②原生=超时竞速兜底（uploadAsync 不可真取消则至少：到时置失败、UI 解锁、错误可见可重试）③**busy 与弹层关闭解耦**：任何时刻四条关闭路径可用；上传中关闭=明确语义（取消上传+保留/丢弃草稿二者取一，在简报里定死并写注释）④守卫 busy 分支改为可通行并给确认文案。
-- 验收：e2e——`route.abort()` 模拟弱网：上传失败 toast 可见、弹层可关、可重试；正常上传不回归（既有照片 e2e 全绿）。
+### L81 照片直传无超时 + 弹层锁死（A2）——**门禁修订：真取消原语 + opt-in 解耦**
+- 落点：`photo-upload.ts:184-188`（web fetch 无 signal）、`:192-196`（原生 uploadAsync）；`modal-sheet.tsx` 五路关闭前提 `!busy`（:85/:118/:151/:166/:211-213，**33 个文件消费此基座**）；`unsaved-changes-guard.tsx:129` busy 直接 return（同 guard :81/:148 联动）；composer 卸载补偿 `composer.tsx:581-586`。
+- **门禁勘误**：仓内 expo-file-system@~19 legacy 已有真取消原语 `createUploadTask` + `UploadTask.cancelAsync`（`node_modules/expo-file-system/build/legacy/FileSystem.d.ts:167-186`）。Promise.race 方案**弃用**——留僵尸连接（iOS NSURLSession ~60s 才死），且超时后 abandon 先落、僵尸 PUT 后落会在 R2 复活孤儿对象且台账已销。
+- 做法：①web=AbortController + 15s；②原生=改 `createUploadTask`，超时 `cancelAsync()` 真断连→置败解锁→错误可见可重试（重试走既有票据复用）；③busy 与弹层关闭解耦做成 **opt-in 新 prop**（默认保持现语义，仅 composer 显式启用，禁止全局翻转基座契约）；④语义定死并注释：上传中关闭=先 `cancelAsync()`/abort → abandon 票据 → **保留草稿**（时序必须 cancel 在 abandon 前，闭合 `composer.tsx:581-586` 的在途竞态）；⑤guard busy 分支同单元改掉。
+- 验收：e2e——`route.abort()` 模拟弱网：失败 toast 可见、弹层可关、可重试、重试不产生孤儿对象；正常上传既有 e2e 全绿；其他 32 个弹层消费方零行为变化（改的是 opt-in 默认关）。
 
 ### L82 计划归档无恢复入口（B2）
 - 落点：后端已备 `tasks/service.go:1074`（`care_plan_restored` 审计）与 `:1123-1132`（两条恢复入口）；前端 `care-plan-card.tsx`/`care-section.tsx` grep `restore` 零命中；停药自动归档 `meds/service.go:437-440`。
-- 做法：照护段归档计划分组内提供恢复动作（icon-first，次级入口长在作用对象旁=归档卡自身）；恢复后 toast 反馈（对齐同级暂停/恢复既有 toast 模式 `care-section.tsx:57,142,375`）。
+- 做法：照护段归档计划分组内提供恢复动作（icon-first，次级入口长在作用对象旁=归档卡自身）；恢复后 toast 反馈（对齐同级暂停/恢复既有 toast 模式 `care-section.tsx:57,142`）。
 - 验收：e2e——归档→恢复往返；恢复后计划回活跃列表；审计动作落库。
 
 ### L83 摘要死开关（B2）——默认裁定见上表；**Codex 修订：拆类型，不收窄**
@@ -57,15 +58,15 @@ A1∥A2∥A3 并行；B 波次等 A2 落地后开（B1/B2 文件互不相交可�
 - 做法：删 `notifications-screen.tsx:196-204` digest 行与 `savingKind` digest 分支；更新体走 `NotificationPrefsUpdate`；字典键 `settings.digestRow/digestDesc` 五语同删（check:i18n 过）。后端字段/端点不动。
 - 验收：设置通知页无该行；e2e 无回归；五语键集对齐；typecheck 过。
 
-### L86 注销孤儿归档宠（A1 后端 + B2 前端文案）——默认裁定见上表；**Codex 修订：选人必须确定性**
-- Codex 结论：①移交目标选择必须**确定性**（不得依赖 map 迭代序等非确定源）②注销守卫现状=用户 owner 名下家庭尚有其他成员时**拒绝删号**——移交设计与该守卫天然互补（能删号时家庭成员结构受限），须在测试里同时钉住两条路径。
-- 选人规则（确定性）：候选=该宠所在各家庭的现任 owner（按家庭加入时间最早者优先）；无任何候选 → 归档宠随账号终结（维持现路径，注释写明物理事实）。
-- 落点：`lifecycle/service.go:62-64`（所有权终结处）、`:37`（守卫统计）；前端注销确认文案（grep「只有宠物所有者可以恢复」）。
-- 做法：注销事务内按上述规则移交（`ended_reason` 写移交语义而非 `owner_account_deleted`）；前端确认文案照实改写（移交/终结两种去向说清，不新增教学句）。
-- 验收：后端集成测试——多家庭多 owner 时选最早加入者（断言确定性）；唯一候选移交成功且可被其恢复；无候选路径不变；owner-名下有成员家庭被拒路径不回归；前端文案五语。
+### L86 注销孤儿归档宠（A1 后端 + B2 前端文案）——默认裁定见上表；**门禁修订：补插行半步 + 候选池实形 + 文案真落点**
+- 实现勘误（门禁）：`pets.current_owner_user_id` 不是物理列，是派生子查询（`pets/repo.go:31-35`）——只改 `ended_reason` 宠物依然无主。必须两步：终结旧 ownership 行 **+ INSERT 新 pet_ownerships 行**（owner=继任者，valid_from=now()）。
+- 候选池实形：守卫保证注销时自建家庭单成员→同事务内家庭被删（`lifecycle/service.go:47-61/68`）、链接被撤（`:82-87`）→**仅存于自建家庭的归档宠必然无候选**（fallback=随账号终结，正确）；有候选的场景=经 petshares 接受产生的共链家庭（`petshares/repo.go:149` 建 family_pet_links，该类链接 `:82-87` 不撤）。确定性选人=存活共链家庭的现任 owner，`ORDER BY joined_at ASC, user_id ASC` 双键防并列。
+- 文案落点勘误：真落点=`src/i18n/*/account.json` 的 `confirmDeleteConsequence`（消费点 `account/screen.tsx:268`，现文「名下资源按服务端保护期处理」）——改写为移交/终结两去向照实陈述（不新增教学句）。**`src/i18n/zh/pets.json:59`「只有宠物所有者可以恢复」在宠物删除路径上陈述仍为真，禁改。**
+- 做法：注销事务内按上述两步+规则移交；集成测试钉住三路径：唯一候选移交成功且可被其恢复 / 自建家庭宠无候选随账号终结 / owner-名下有成员家庭拒删路径不回归。
+- 验收：见上；另有共链家庭时断言选了 joined_at 最早者；前端文案五语。
 
 ### L87 幂等键失败不轮换（A2）——**Codex 修订：个别挂点要按操作+范围分键，不只 fingerprint**
-- Codex 结论：个别挂点（如 composer 照片上传与事件创建共用一个键的场景）**一个键服务两个操作**——部分失败后改内容重试，fingerprint 轮换也救不了，必须**按操作+范围各持一键**。
+- Codex 结论：个别挂点**一个键服务两个操作**——部分失败后改内容重试，fingerprint 轮换也救不了，必须**按操作+范围各持一键**。门禁勘误（例子改准）：composer 里真正一键两操作的是 **EventForm 的 update(:313)/create(:322) 共用同一 commandId ref**（照片上传走票据 objectID 不消费幂等键，别按错误示例修出多余抽象）。
 - 落点（ledger 清单，代理以 grep 复核为准）：`composer.tsx:674/688/710`、`care-plan-form.tsx:186`、`care-plan-edit.tsx:136`、`medications-section.tsx:368/402`、`family-sheets.tsx:48`、`account/screen.tsx:79`、`sharing-section.tsx:383`。正确范式=`settings/screen.tsx:99-103` 与 `invite-sheet.tsx:48-56`（fingerprint/失败保留键）。
 - 做法：逐挂点判定——单操作挂点改 fingerprint 范式；多操作共用键的拆成每操作一键（键名带操作域）。同 payload 重试复用键（幂等保持）、payload 变化才轮换。
 - 验收：e2e——保存失败→改内容→重存成功不 409；同内容连点不产生双条目；照片+正文组合场景不互相踩键。
@@ -86,7 +87,7 @@ A1∥A2∥A3 并行；B 波次等 A2 落地后开（B1/B2 文件互不相交可�
 2. planet-api：全量集成测试绿；无迁移、无契约破坏（`DisallowUnknownFields` 字段面不变）。
 3. **复审门不可省**：全部落地后 code-reviewer 过一遍（前科：实现代理连续三批自产 P1）。
 4. 新文案 100% 走五语字典；祈使句教学文案零新增；icon-first 合规。
-5. 收尾提交：APP 仓先单独落库 09-28 遗留两文件（`AppDelegate.swift` 通知文案 L12 收口 + `control-sweep.cjs` 清行——IA 批收尾，与本批分开 commit），再落本批；docs 仓落施工单+台账销号。
+5. 收尾提交：~~09-28 遗留两文件单独落库~~（**已完成**，APP 仓 commit 90eb1b0，两仓 working tree 干净）→ 本体统一按波次分 commit 落库本批；docs 仓落施工单+台账销号。**代理一律不执行 git commit/checkout/stash。**
 
 ## 遗留登记（不阻塞本批）
 

@@ -234,26 +234,26 @@
 | L103 | ✔ 盲审证实 P3 | **L67 登记不完整**：四屏已拆，但现存 **15 个文件**超 500 行（`care-requests/panel.tsx:1755`、`batch-panel.tsx:1536`、`today/cards.tsx:1139`、`timeline/composer.tsx:1126`、`session-provider.tsx:847`、`scope-tree.tsx:828` 等）——**L67 只登记了已拆掉的 4 个** | 前端路实测行数 |
 | L104 | ✔ 登记（流程） | **台账与代码状态矛盾 10 处，需回写以免下轮审计重复报告**：L33（台账「保留」vs 端点已删）、L32（「前端在途」vs `/account/usage` 已存在）、L67/L73（「排期」vs 已落地）、L74（「13 FAIL」vs c41559a「64 PASS 0 FAIL」）、L51（「timer 样例只跑 purge」vs 三条 ExecStart 已齐）、L14（§一 🔧 待复验 vs §六.1 已关闭）、⑥E4（MVP 总览「全落地」vs L45 仍登记）、L12/L33（CareRiskBanner 已删但 09-22 体检仍以活跃口吻引用）、页面评议会（正文列约 40 处违例「待裁后开工」vs §六称六批全量实施） | 台账汇总路亲核 |
 | L105 | ✔ 盲审证实 P3（2026-09-30 复审门新登记） | **后端推送文案无 i18n**：carecoord 既有五处 notify（`carecoord/service.go:1938-1983`）与 petshares 新挂点（`petshares/service.go:107-113`）title/body 均硬编码中文——en/ja/es/pt 用户收到的推送一律中文。非 v1.1 批引入（本批与既有口径一致），独立立项：推送文案按设备语言或收件人偏好本地化 | 复审门 2026-09-30（petShare 推送落地时顺带暴露） |
-| L106 | 🔴 P1（2026-09-30 体检，本体亲核） | **L79 邀请步挂点孤儿：自然激活旅程全部绕开 ready 态 /activation**——index.tsx:38 仅 phase≠ready 导向 /activation、setup-care 完成直 replace Today、登录直 /(tabs)；InviteStep 唯一消费点在 activation/screen，目标人群实际永远看不到，原始 L79 对其依旧成立 | APP app/index.tsx:37-38 + setup-care-screen.tsx:42-46 + 全仓消费点 grep；全文见 docs/audits/FULL-SYSTEM-AUDIT-2026-09-30.md |
-| L107 | P2（体检，本体亲核；两路盲审交叉命中） | **注销终结语句不带宠物状态条件**：守卫读取后亚秒窗内并发反归档/离世封存 → 该宠翻 active/deceased 后被无条件终终权限 → 永久无主（purge 不清、恢复需全局 owner） | lifecycle/service.go:112-114；修=终语句加 status='archived' EXISTS 条件或锁后重跑守卫 |
-| L108 | P2（体检，本体亲核） | **恢复入口不关规则：归档窗回看补生成幻影 missed**。归档只改 status（暂停分支有 CloseRuleAt+RuleClosedByPause 标记，归档无）；恢复后回看 30 天补物化 pending→次日翻 missed，污染完成率。与 L6 同形不同门（恢复入口 2026-09-30 新日常化） | tasks/service.go:983-990 vs :1151/:1173；修=归档同 pause 口径关规则+独立标记，恢复按标记 re-arm |
-| L109 | P2（体检，本体亲核） | **停药挂药计划无闸恢复：计划与用药事实发散**。恢复路径零 medication 检查（medication_id 全文件仅创建口 :183）；恢复后 Today 按日重建已停药的待办 | tasks/service.go 恢复分支 grep 零命中；修=409 或恢复时解挂降级 |
-| L110 | P2（体检，本体亲核） | **POST /auth/apple 无限流**：全站唯一裸奔敏感端点（RSA-2048 验签+2MB 解码/请求），与收钱 landing 同机 | identity/http.go:164-186 无 h.allow（对照 :126 verify-code 有闸）；修=复用同型 per-IP 闸 |
-| L111 | P2（体检，本体亲核；需 founder 裁） | **Apple S2N 端点缺失**：用户在 Apple 侧撤销授权后服务端无感知，会话按 90 天滑动续期继续可用（5.1.1(v) 精神）。非应用内吊销问题（该面是全的） | 全仓 grep 零命中；修=公开 S2N 回调验签消费 consent-revoked→撤该 sub 会话 |
+| L106 | 🔧 已修（2026-09-30 v1.1.1 收口批，APP b3420de，D1 重挂 Today gate）| **L79 邀请步挂点孤儿：自然激活旅程全部绕开 ready 态 /activation**——index.tsx:38 仅 phase≠ready 导向 /activation、setup-care 完成直 replace Today、登录直 /(tabs)；InviteStep 唯一消费点在 activation/screen，目标人群实际永远看不到，原始 L79 对其依旧成立 | APP app/index.tsx:37-38 + setup-care-screen.tsx:42-46 + 全仓消费点 grep；全文见 docs/audits/FULL-SYSTEM-AUDIT-2026-09-30.md |
+| L107 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，D2 锁全部宠行+重跑守卫，竞态有确定性测试）| **注销终结语句不带宠物状态条件**：守卫读取后亚秒窗内并发反归档/离世封存 → 该宠翻 active/deceased 后被无条件终终权限 → 永久无主（purge 不清、恢复需全局 owner） | lifecycle/service.go:112-114；修=终语句加 status='archived' EXISTS 条件或锁后重跑守卫 |
+| L108 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，D3 归档关规则+恢复 re-arm，DELETE 路径同收）| **恢复入口不关规则：归档窗回看补生成幻影 missed**。归档只改 status（暂停分支有 CloseRuleAt+RuleClosedByPause 标记，归档无）；恢复后回看 30 天补物化 pending→次日翻 missed，污染完成率。与 L6 同形不同门（恢复入口 2026-09-30 新日常化） | tasks/service.go:983-990 vs :1151/:1173；修=归档同 pause 口径关规则+独立标记，恢复按标记 re-arm |
+| L109 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，D4 恢复 409 MEDICATION_ENDED）| **停药挂药计划无闸恢复：计划与用药事实发散**。恢复路径零 medication 检查（medication_id 全文件仅创建口 :183）；恢复后 Today 按日重建已停药的待办 | tasks/service.go 恢复分支 grep 零命中；修=409 或恢复时解挂降级 |
+| L110 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，per-IP 30/h）| **POST /auth/apple 无限流**：全站唯一裸奔敏感端点（RSA-2048 验签+2MB 解码/请求），与收钱 landing 同机 | identity/http.go:164-186 无 h.allow（对照 :126 verify-code 有闸）；修=复用同型 per-IP 闸 |
+| L111 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，D7 scope；限流超限 429 留 Apple 重投=复审 P2 修正）| **Apple S2N 端点缺失**：用户在 Apple 侧撤销授权后服务端无感知，会话按 90 天滑动续期继续可用（5.1.1(v) 精神）。非应用内吊销问题（该面是全的） | 全仓 grep 零命中；修=公开 S2N 回调验签消费 consent-revoked→撤该 sub 会话 |
 | L112 | P2（体检，本体亲核；founder 手工项） | **照片不在备份域+备份 timer 疑似从未安装**：备份实现完整（backup.go）但 install-and-restart.sh 零 backup 字样=模板未自动装；DB RPO=24h；R2 对象无版本化/复制证据 | planet-cli/backup.go vs deploy/install-and-restart.sh；待办=服务器 systemctl enable backup.timer + R2 控制台版本化（与 trash 规则同一趟） |
-| L113 | P3（体检，代理亲核） | archived→paused 旁路：同迁移两扇门两套守卫，可经 paused→active legacy 路径绕开恢复标记闸 | tasks/http.go:264 + service.go:1137 |
-| L114 | P3（体检，代理亲核；需 founder 裁） | L86 移交静默：继任者无声接管纪念宠（仅审计可查），无通知 | lifecycle/service.go；修=复用 L91 通路发一条 |
-| L115 | P3（体检，代理亲核；随 L106 同修） | 邀请步无角色/成员数前置：非 owner 被拦一次且 mint 403 | activation/screen.tsx:114；修=inviteTarget 限 owner+member_count===1 |
-| L116 | P3（体检，代理亲核） | 注销/登出不清理照片票据台账（全局单键不按 user 隔离）：下一账号身份发 abandon 403、旧账号 R2 孤儿只靠 sweep 兜底；无越权删除 | photo-upload.ts:355 vs account/screen.tsx:177-186 + session-provider.tsx:814-827 |
-| L117 | P3（体检，代理亲核） | share_links 缺 (pet_id) partial 索引：按宠列/撤链全表扫，行单调增长 | migrations/0001:679 + sharing/repo.go:90 |
-| L118 | P3（体检，代理亲核） | pet_share_requests 缺 (requested_by_user_id) partial 索引 | migrations/0022 + petshares/repo.go:166-191 |
-| L119 | P3（体检，代理亲核） | petshares struct json tag 与 wire DTO 分叉（requested_by_user_id vs requested_by）：今日 wire 正确，但直 marshal struct 即静默改契约 | petshares/repo.go:22 vs http.go:22-30 |
-| L120 | P3（体检，代理亲核） | petshare 接受不失效 activation-summary：激活期 ≤30s 陈旧窗（staleTime 封顶） | pet-share-requests.tsx:135-153 |
-| L121 | P3（体检，代理亲核） | APNs 429/503 部分失败即返回 nil 不重试：outbox 指数退避仅在全部失败触发，偶发丢推送 | notify/apns.go:113-145 + notify/repo.go:342-356 |
-| L122 | P3（体检，代理亲核） | 部署自动触发文档漂移：脚本宣称 merge main 自动部署，实际 workflow 仅 workflow_dispatch | deploy/deploy.sh:2 vs .github/workflows/backend-deploy.yml |
-| L123 | P3（体检，代理亲核） | bootstrap-root.sh：密码内插进 psql heredoc SQL（自/env 输入非外部，形态问题）+ APNs .p8 注释 0600 实际 0640 漂移 | deploy/bootstrap-root.sh:111-127,61-62 |
-| L124 | P3（体检，代理亲核） | prod-preflight.sh 未接任何自动化（CI 只跑 production-smoke），纯手动闸与 env.example 宣称不符 | scripts/prod-preflight.sh + deploy 脚本 |
-| L125 | P3（体检，代理亲核） | web localStorage 持久化照护数据（离线队列/scope/today 快照）：XSS 可读面登记；凭据面干净（token 走 sessionStorage） | kv.ts:125 + pending-today.ts:61 + live-sync.ts:72 |
+| L113 | 🔧 已修（2026-09-30 v1.1.1，14e42b0）| archived→paused 旁路：同迁移两扇门两套守卫，可经 paused→active legacy 路径绕开恢复标记闸 | tasks/http.go:264 + service.go:1137 |
+| L114 | 🔧 已修（2026-09-30 v1.1.1，14e42b0+APP 4a0f9cb，D5 载荷）| L86 移交静默：继任者无声接管纪念宠（仅审计可查），无通知 | lifecycle/service.go；修=复用 L91 通路发一条 |
+| L115 | 🔧 已修（2026-09-30 v1.1.1，随 L106 gate 前置）| 邀请步无角色/成员数前置：非 owner 被拦一次且 mint 403 | activation/screen.tsx:114；修=inviteTarget 限 owner+member_count===1 |
+| L116 | 🔧 已修（2026-09-30 v1.1.1，APP 4a0f9cb，只清本地不 abandon）| 注销/登出不清理照片票据台账（全局单键不按 user 隔离）：下一账号身份发 abandon 403、旧账号 R2 孤儿只靠 sweep 兜底；无越权删除 | photo-upload.ts:355 vs account/screen.tsx:177-186 + session-provider.tsx:814-827 |
+| L117 | 🔧 已修（2026-09-30 v1.1.1，迁移 0035）| share_links 缺 (pet_id) partial 索引：按宠列/撤链全表扫，行单调增长 | migrations/0001:679 + sharing/repo.go:90 |
+| L118 | 🔧 已修（2026-09-30 v1.1.1，迁移 0035）| pet_share_requests 缺 (requested_by_user_id) partial 索引 | migrations/0022 + petshares/repo.go:166-191 |
+| L119 | 🔧 已修（2026-09-30 v1.1.1，tag→requested_by）| petshares struct json tag 与 wire DTO 分叉（requested_by_user_id vs requested_by）：今日 wire 正确，但直 marshal struct 即静默改契约 | petshares/repo.go:22 vs http.go:22-30 |
+| L120 | 🔧 已修（2026-09-30 v1.1.1，APP 4a0f9cb）| petshare 接受不失效 activation-summary：激活期 ≤30s 陈旧窗（staleTime 封顶） | pet-share-requests.tsx:135-153 |
+| L121 | ⏸ 豁免留痕（2026-09-30 v1.1.1 D8 调查后不做）| APNs 429/503 部分失败即返回 nil 不重试：outbox 指数退避仅在全部失败触发，偶发丢推送 | notify/apns.go:113-145 + notify/repo.go:342-356 |
+| L122 | ❌ 已证伪（2026-09-30 本体复核：deploy.yml 实有 on:push:main，生产自动部署为真且当天实证；审计误引不存在的 backend-deploy.yml）| 部署自动触发文档漂移：脚本宣称 merge main 自动部署，实际 workflow 仅 workflow_dispatch | deploy/deploy.sh:2 vs .github/workflows/backend-deploy.yml |
+| L123 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，口令字符集校验非 -v 绑定——口令不进 argv 红线）| bootstrap-root.sh：密码内插进 psql heredoc SQL（自/env 输入非外部，形态问题）+ APNs .p8 注释 0600 实际 0640 漂移 | deploy/bootstrap-root.sh:111-127,61-62 |
+| L124 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，PLANET_SKIP_PREFLIGHT=1 应急通道）| prod-preflight.sh 未接任何自动化（CI 只跑 production-smoke），纯手动闸与 env.example 宣称不符 | scripts/prod-preflight.sh + deploy 脚本 |
+| L125 | ⏸ 豁免留痕（信任模型登记，凭据面干净，不改代码）| web localStorage 持久化照护数据（离线队列/scope/today 快照）：XSS 可读面登记；凭据面干净（token 走 sessionStorage） | kv.ts:125 + pending-today.ts:61 + live-sync.ts:72 |
 
 ### 附：本批确认「已被修掉、不再登记」的项（防二次派工）
 

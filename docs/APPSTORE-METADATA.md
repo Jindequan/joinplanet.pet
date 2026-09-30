@@ -137,6 +137,16 @@ Data is per-family and never shared across accounts. Deleting the account anonym
 
 ---
 
+## 五·五、v1.1 whatsNew 预填（2026-09-30 起草，提审 v1.1 时粘贴 ASC）
+
+- en: Inviting a second caregiver is now part of first-time setup. Archived care plans can be restored. Shared-pet requests now send push notifications. Photo uploads are more reliable on weak networks. System permission prompts are localized in all five languages — plus dozens of fixes across Today, Records and family management.
+- zh: 首次设置新增「邀请第二位照顾者」一步；归档的照护计划可以恢复了；共享请求会推送提醒；弱网下照片上传更可靠；系统权限弹窗完成五语本地化——并修复了今天、记录与家庭管理中的大量细节。
+- ja: 初回セットアップに「2人目のケア担当を招待」ステップを追加。アーカイブしたケアプランを復元可能に。ペット共有リクエストのプッシュ通知に対応。弱い回線でも写真アップロードがより安定。システム権限ダイアログを5言語にローカライズ——ほか、今日・記録・ファミリー管理の細かい修正多数。
+- es: Invitar a un segundo cuidador ahora forma parte de la configuración inicial. Los planes de cuidado archivados ya se pueden restaurar. Las solicitudes de mascotas compartidas envían notificaciones push. Las subidas de fotos son más fiables con red débil. Los avisos de permisos del sistema ya están en cinco idiomas — además de decenas de correcciones en Hoy, Registros y gestión familiar.
+- pt: Convidar um segundo cuidador agora faz parte da configuração inicial. Planos de cuidados arquivados podem ser restaurados. Pedidos de pets compartilhados agora enviam notificações push. Uploads de fotos são mais confiáveis em redes fracas. Os avisos de permissão do sistema estão localizados em cinco idiomas — além de dezenas de correções em Hoje, Registros e gestão familiar.
+
+（长度均在 ASC whatsNew 上限内；提审时如有新增用户可见面，按实增删。）
+
 ## 六、提交记录
 
 **2026-09-29 已提交审核**（`submittedDate 2026-09-29T10:35:07Z`），v1.0 状态 **WAITING_FOR_REVIEW**。提交前逐项回读确认：

@@ -254,6 +254,8 @@
 | L123 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，口令字符集校验非 -v 绑定——口令不进 argv 红线）| bootstrap-root.sh：密码内插进 psql heredoc SQL（自/env 输入非外部，形态问题）+ APNs .p8 注释 0600 实际 0640 漂移 | deploy/bootstrap-root.sh:111-127,61-62 |
 | L124 | 🔧 已修（2026-09-30 v1.1.1，14e42b0，PLANET_SKIP_PREFLIGHT=1 应急通道）| prod-preflight.sh 未接任何自动化（CI 只跑 production-smoke），纯手动闸与 env.example 宣称不符 | scripts/prod-preflight.sh + deploy 脚本 |
 | L125 | ⏸ 豁免留痕（信任模型登记，凭据面干净，不改代码）| web localStorage 持久化照护数据（离线队列/scope/today 快照）：XSS 可读面登记；凭据面干净（token 走 sessionStorage） | kv.ts:125 + pending-today.ts:61 + live-sync.ts:72 |
+| L126 | 🐛→🔧 已修（2026-09-30 真实栈走查实伤，APP 285d3b9） | **五语 pets.json `%%{name}` 转义病 135 处**：i18n-js 里 %% 是字面 % 转义 → 渲染「%毛毛 宠物工作区」「由 %a 固定负责」「%毛毛 已添加」等（含 en 事实源，五语全可见；7+ 处 UI 表面）。check:i18n 门测占位符配对测不出多写一个 % | 浏览器实走发现；根因=翻译批把 %{name} 误写为 %%{name}；全量归位 + e2e 282/0 |
+| L127 | 🐛→🔧 已修（2026-09-30 真实栈走查实伤，APP 285d3b9） | **活跃用药时长午后翻倍**：medDuration 活跃药终点取 new Date()（当前时刻），午后 round 进位令「今天开始的药」显示已用 2 天；停用路径用 ended_on 零点所以一直正确（同一只药两个阶段口径不一致，走查现场对质） | medications-section.tsx:491；修=活跃终点改今天零点，与阶段叙事同 civil 日口径 |
 
 ### 附：本批确认「已被修掉、不再登记」的项（防二次派工）
 

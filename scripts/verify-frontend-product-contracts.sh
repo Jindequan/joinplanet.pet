@@ -47,9 +47,17 @@ else
   fail "timeline replay can overwrite concurrent local events"
 fi
 
+# 审计 2026-09-30（L87 指纹范式重锚，法律实质健在且增强）：composer 编辑幂等键
+# 由「commandId.current 一键挂 session」重写为按操作分键的 fingerprint 范式
+#（同 settings/screen.tsx:99-103）：updateCommandRef 记 {fingerprint,key}，同
+# payload 重试复用同键（composer.tsx:203/:349-352，服务端按 key+body hash 绑定，
+# 重放不产生重复），payload 变化才轮换（修复旧范式「丢响应后改内容重试必 409」），
+# 写确认后清空 ref（:360，下次保存=新意图新键）。后端/API 两锚不变。
 if rg -q 'UpdateWithIdempotency' "$ROOT/planet-api/internal/modules/timeline/http.go" && \
-   rg -q "update: \\(eventId:.*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts" && \
-   rg -q 'idempotencyKey: commandId\.current' "$ROOT/APP/src/features/timeline/composer.tsx"; then
+   rg -q "update: \(eventId:.*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts" && \
+   rg -q 'updateCommandRef = useRef<\{ fingerprint: string; key: string \}' "$ROOT/APP/src/features/timeline/composer.tsx" && \
+   rg -q 'updateCommandRef\.current\?\.fingerprint === fingerprint' "$ROOT/APP/src/features/timeline/composer.tsx" && \
+   rg -q 'idempotencyKey: requestKey' "$ROOT/APP/src/features/timeline/composer.tsx"; then
   pass "timeline edits reuse a stable idempotency key across retries"
 else
   fail "timeline edits can lose their outcome after a network retry"
@@ -92,8 +100,12 @@ else
   fail "secondary actions have a sub-44pt mobile touch target"
 fi
 
-if rg -q 'roleButton: \{' "$APP/features/families/detail-screen.tsx" && \
-   rg -q 'minWidth: 44,' "$APP/features/families/detail-screen.tsx" && \
+# 审计 L74：成员名单组件族拆出（detail-screen → family-groups.tsx FamilyMembersGroup，
+# 行为零变化），roleButton 44 热区定义随迁（family-groups.tsx styles.roleButton
+# minWidth/minHeight:44，样式上方留「热区 44（touchTarget 基准）」注释）——锚点跟搬家，
+# 判定不变；assignments moveButton 44×44 原地保留。
+if rg -q 'roleButton: \{' "$APP/features/families/family-groups.tsx" && \
+   rg -q 'minWidth: 44,' "$APP/features/families/family-groups.tsx" && \
    rg -q 'moveButton: \{ width: 44, height: 44' "$APP/features/pets/assignments-screen.tsx"; then
   pass "family role and assignment reorder actions meet the 44pt mobile touch target"
 else
@@ -156,14 +168,19 @@ else
   fail "mobile release configuration can drift without a preflight gate"
 fi
 
-# founder 2026-09-17 裁决：Today 二次工具区为常驻 chips（临时照护/家庭摘要），
-# 折叠壳+说明卡形态被否。守门断言对齐裁决后的实现形态。
-# i18n 迁移（APP main@edbeae5）后锚点从中文字面改为字典键：临时照护=today.temporaryCare、
-# 家庭摘要=today.digest（zh 字典值与原字面逐字一致），chip 行容器 styles.toolsRow。
-if rg -q 'styles\.toolsRow' "$APP/features/today/screen.tsx" && \
-   rg -q "t\('today\.temporaryCare'\)" "$APP/features/today/screen.tsx" && \
-   rg -q "t\('today\.digest'\)" "$APP/features/today/screen.tsx" && \
-   ! rg -q 'secondaryToolsOpen' "$APP/features/today/screen.tsx"; then
+# founder 2026-09-17 裁决：Today 二次工具区为常驻 chips，折叠壳+说明卡形态被否。
+# 审计 2026-09-30（锚点跟 L67 拆分搬家，照 :74 先例）：screen.tsx 拆分后工具行落
+# today-lists.tsx（toolsRow :307/:332、temporaryCare chip :320），两个正锚跟搬家。
+# 删去 today.digest 锚，逐条理由：家庭摘要 chip 已被其后的 batch1 终局裁决②整卷
+# 删除（Today 不是跨家庭报告入口，逐家庭摘要的家在 Family Detail；见
+# today-lists.tsx:303-305、today-rows.ts:201-202 与 src/i18n/index.ts:21-23
+# 「digest ns 整卷删除、勿按名单回加」）——属显式产品裁决而非漂移，回加 chip 反而
+# 违法，该锚守的对象已不存在。裁决存续的法律实质=常驻 chips、无折叠壳：
+# toolsRow+temporaryCare 双正锚守「行在」，负锚 secondaryToolsOpen 从单文件扩到
+# 整个 today/ 目录守「不折叠」（拆分后折叠态可能落任何新文件，收窄才是弱化）。
+if rg -q 'styles\.toolsRow' "$APP/features/today/today-lists.tsx" && \
+   rg -q "t\('today\.temporaryCare'\)" "$APP/features/today/today-lists.tsx" && \
+   ! rg -q 'secondaryToolsOpen' "$APP/features/today"; then
   pass "Today keeps secondary tools as persistent chips (founder ruling 2026-09-17)"
 else
   fail "Today secondary tools drifted from the persistent chips form or regressed to a collapsed shell"
@@ -266,9 +283,12 @@ else
 fi
 
 # 审计 L74：cards.tsx 撤销链接现为 accessibilityState={disabled ? { disabled: true, busy: true } : undefined}
-#（:206），完成/同步钮 busy 已上收 Button 内部——断言跟形态。
+#（:214），完成/同步钮 busy 已上收 Button 内部——断言跟形态。
+# 审计 2026-09-30（锚点跟 L67 拆分搬家）：a11ySyncing 刷新条随 screen.tsx 拆分落
+# today-notices.tsx:151（经 TodayLists:111 挂载进 Today），busy 法律实质健在，
+# 锚点跟搬家，判据不变。
 if rg -q 'accessibilityState=\{disabled \? \{ disabled: true, busy: true \}' "$APP/features/today/cards.tsx" && \
-   rg -q "accessibilityLabel=\{t\('today\.a11ySyncing'\)\}" "$APP/features/today/screen.tsx"; then
+   rg -q "accessibilityLabel=\{t\('today\.a11ySyncing'\)\}" "$APP/features/today/today-notices.tsx"; then
   pass "Today sync and completion actions expose busy semantics"
 else
   fail "Today sync or completion actions hide their busy state"
@@ -313,6 +333,10 @@ else
   fail "pet sharing or access grants can duplicate after a lost response"
 fi
 
+# 审计 L74：两处客户端调用的保键形态已迁 fingerprint/操作表范式（键仍真实复用）——
+# medications update：commandRef 同 payload 复用同键、写确认才清空（medications-section
+# :417-421）；care-plan update/delete：planCommandIds 按操作 get-or-create、成功才 delete
+#（care-section :135-139/:410-412）。旧「尾参 commandId.current」形态锚换新判据，语义不变。
 if rg -q 'MoveAssignmentWithIdempotency' "$ROOT/planet-api/internal/modules/tasks/http.go" && \
    rg -q "moveAssignment: .*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'StopForFamilyWithIdempotency' "$ROOT/planet-api/internal/modules/meds/http.go" && \
@@ -320,11 +344,11 @@ if rg -q 'MoveAssignmentWithIdempotency' "$ROOT/planet-api/internal/modules/task
    rg -q 'UpdateWithIdempotency' "$ROOT/planet-api/internal/modules/meds/http.go" && \
    rg -q "update: \\(medicationId:.*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'planetApi\.medications\.update\(initial\.id' "$ROOT/APP/src/features/pets/medications-section.tsx" && \
-   rg -q '\}, commandId\.current\)' "$ROOT/APP/src/features/pets/medications-section.tsx" && \
+   rg -q 'commandRef\.current\?\.fingerprint === fingerprint' "$ROOT/APP/src/features/pets/medications-section.tsx" && \
    rg -q 'UpdateWithIdempotency' "$ROOT/planet-api/internal/modules/tasks/http.go" && \
    rg -q "update: \\(carePlanId:.*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'planetApi\.carePlans\.update\(plan\.id' "$ROOT/APP/src/features/pets/care-section.tsx" && \
-   rg -q '\}, commandId\.current\)' "$ROOT/APP/src/features/pets/care-section.tsx" && \
+   rg -q 'planCommandIds\.current\.get\(operation\) \?\? createIdempotencyKey\(\)' "$ROOT/APP/src/features/pets/care-section.tsx" && \
    rg -q 'DeleteWithIdempotency' "$ROOT/planet-api/internal/modules/tasks/http.go" && \
    rg -q "delete: .*care-plans/.*Idempotency-Key" "$ROOT/APP/src/core/api/planet-api.ts"; then
   pass "assignment reorder, care-plan update/delete, and medication stop are retry-safe"
@@ -334,10 +358,13 @@ fi
 
 # 审计 L74：grants 客户端方法 revokeAccess 已下线（后端 handler RevokeAccessWithIdempotency
 # 保留，L43 裁决预留能力），删去客户端死锚；其余治理写锚点不变。
+# 审计 L74：家庭改名编辑拆出（detail-screen → family-sheets.tsx，L87 fingerprint 范式：
+# 同 {familyId, body} 复用同键、写确认才清空）——update 调用锚点跟搬家，旧
+#「尾参 commandId.current」形态锚换 fingerprint 复用判据；其余治理写锚点不变。
 if rg -q 'UpdateWithIdempotency' "$ROOT/planet-api/internal/modules/families/http.go" && \
    rg -q "update: \\(familyId:.*createIdempotencyKey" "$ROOT/APP/src/core/api/planet-api.ts" && \
-   rg -q 'planetApi\.families\.update\(family\.id' "$ROOT/APP/src/features/families/detail-screen.tsx" && \
-   rg -q '\}, commandId\.current\)' "$ROOT/APP/src/features/families/detail-screen.tsx" && \
+   rg -q 'planetApi\.families\.update\(family\.id' "$ROOT/APP/src/features/families/family-sheets.tsx" && \
+   rg -q 'commandRef\.current\?\.fingerprint === fingerprint' "$ROOT/APP/src/features/families/family-sheets.tsx" && \
    rg -q 'RemoveMemberWithIdempotency' "$ROOT/planet-api/internal/modules/families/http.go" && \
    rg -q "removeMember: .*Idempotency-Key" "$ROOT/APP/src/core/api/planet-api.ts" && \
    rg -q 'UpdateMemberRoleWithIdempotency' "$ROOT/planet-api/internal/modules/families/http.go" && \
@@ -391,13 +418,17 @@ else
   fail "lifecycle confirmations can issue a new command after a lost response"
 fi
 
+# 审计 L74：宠物侧家庭共享管理区拆出（pets/detail-screen → pet-family-links.tsx
+# FamilyLinksSection，L67 行为零变化：familyCommandIds 按 add:/remove: 操作 get-or-create、
+# onChanged 成功才删键）——share/unshare/familyCommandIds 三锚点跟搬家；家庭侧四锚点
+#（roleCommandIds/updateMemberRole/removePetCommand/removeFromFamily）原地保留。
 if rg -q 'roleCommandIds' "$APP/features/families/detail-screen.tsx" && \
    rg -q 'updateMemberRole\(family\.id, member\.user_id, nextRole, requestKey\)' "$APP/features/families/detail-screen.tsx" && \
    rg -q 'removePetCommand' "$APP/features/families/detail-screen.tsx" && \
    rg -q 'removeFromFamily\(petToRemove\.id, family\.id, requestKey\)' "$APP/features/families/detail-screen.tsx" && \
-   rg -q 'familyCommandIds' "$APP/features/pets/detail-screen.tsx" && \
-   rg -q 'shareFamily\(pet\.id, selectedFamily\.id, requestKey\)' "$APP/features/pets/detail-screen.tsx" && \
-   rg -q 'unshareFamily\(pet\.id, familyToRemove\.id, requestKey\)' "$APP/features/pets/detail-screen.tsx"; then
+   rg -q 'familyCommandIds' "$APP/features/pets/pet-family-links.tsx" && \
+   rg -q 'shareFamily\(pet\.id, selectedFamily\.id, requestKey\)' "$APP/features/pets/pet-family-links.tsx" && \
+   rg -q 'unshareFamily\(pet\.id, familyToRemove\.id, requestKey\)' "$APP/features/pets/pet-family-links.tsx"; then
   pass "family role and pet-family governance writes reuse one command key"
 else
   fail "family role or pet-family governance writes can repeat on network retry"
@@ -417,8 +448,11 @@ fi
 
 # 审计 L74：locale 编辑器已按 b71f164 裁决改去抖同步——PATCH {locale} 按值幂等、
 # 无重试路径，不再需要命令键（localeCommandId 已删）。断言只守 name 半边重试身份。
-if rg -q 'nameCommandId\.current' "$APP/features/account/screen.tsx" && \
-   rg -q 'me\.update\(\{ display_name: displayName \}, nameCommandId\.current\)' "$APP/features/account/screen.tsx"; then
+# 审计 L74：账户改名键由 nameCommandId 单键升级为 L87 fingerprint 范式（nameCommandRef：
+# 同 display_name 复用同键、写确认才清空 ref、失败保留键）——键复用语义不变
+#（同内容同键，比单键更强：payload 变化自动轮换），锚点跟形态。
+if rg -q 'nameCommandRef\.current\?\.fingerprint === fingerprint' "$APP/features/account/screen.tsx" && \
+   rg -q 'me\.update\(\{ display_name: displayName \}, requestKey\)' "$APP/features/account/screen.tsx"; then
   pass "account editors reuse one command key until the save is confirmed"
 else
   fail "account editors regenerate a command key before the save is confirmed"
@@ -446,9 +480,15 @@ fi
 #   （trends.viewRecords，通向带来源说明的时间线）；
 # - 用药删除的后果在确认弹层 pets.confirmDeleteMedConsequence 与完成 toast
 #   pets.medDeletedToast（五语均含「相关自动记录一并移除」，且不再误称「错误档案」）。
+# 审计 L74：两锚点跟 2026-09-28 形态——①timelineActorLine helper 内联为
+# timeline.rowActor 字典行（记录者标注仍在行上，降噪为仅「他人手动记录」时显示）；
+# ②scopeViewOnlyDesc 教学句按 L7「教学为零」裁决删除（timeline/screen.tsx 代码注释留痕），
+# 只读范围标识 scopeViewOnly 以「可见文案 + 容器 a11y 标签」双形态承接事实说明——
+# 锚点改守现存标识（readOnlyScope 条件渲染 + a11y 标签），未减断言对象数。
 if rg -q 'const timelineSubtitle' "$APP/features/timeline/screen.tsx" && \
-   rg -q 'timelineActorLine\(event\.recorded_by_name\)' "$APP/features/timeline/event-card.tsx" && \
-   rg -q "t\('timeline\.scopeViewOnlyDesc'\)" "$APP/features/timeline/screen.tsx" && \
+   rg -q "t\('timeline\.rowActor', \{ name: displayName\(event\.recorded_by_name\) \}\)" "$APP/features/timeline/event-card.tsx" && \
+   rg -q 'readOnlyScope \?' "$APP/features/timeline/screen.tsx" && \
+   rg -q "accessibilityLabel=\{t\('timeline\.scopeViewOnly'\)\}" "$APP/features/timeline/screen.tsx" && \
    rg -q "t\('settings\.snapshotDesc'" "$APP/features/settings/public-share-screen.tsx" && \
    rg -q 'trendStatLine' "$APP/features/trends/screen.tsx" && \
    rg -q "t\('trends\.viewRecords'\)" "$APP/features/trends/screen.tsx" && \
@@ -484,19 +524,31 @@ else
   fail "timeline deletion can issue a second command after a lost response"
 fi
 
-if rg -q 'skipCommandIds' "$APP/features/today/screen.tsx" && \
-   rg -q 'setError\(errorMessage\(reason\)\)' "$APP/features/today/screen.tsx" && \
-   rg -q 'accessibilityRole="alert" variant="caption" color=\{theme\.colors\.danger\}' "$APP/features/today/screen.tsx" && \
-   rg -q "label=\{choice \? skipChoiceLabel\(choice\) : t\('today\.continue'\)\}" "$APP/features/today/screen.tsx"; then
+# 审计 2026-09-30（锚点跟 L67 拆分搬家，法律实质逐项核验健在，条件数 4→5 只增不减）：
+# 重试身份落 use-today-queue.ts（skipCommandIds 键复用 commandIdForSkip :64-71，
+# 写服务端确认后才删键）；删键时机落 today-actions.ts（:156/:200，均在 await
+# mutateAsync/applyScheduleAction 成功之后）；失败不关窗+就地报错落
+# today-skip-dialog.tsx（perform() catch 只 setError 不 onClose :64-68、
+# alert caption :129、确认钮标签 :144）——弹层保留供重试，上下文不丢。
+if rg -q 'skipCommandIds' "$APP/features/today/use-today-queue.ts" && \
+   rg -q 'skipCommandIds\.current\.delete' "$APP/features/today/today-actions.ts" && \
+   rg -q 'setError\(errorMessage\(reason\)\)' "$APP/features/today/today-skip-dialog.tsx" && \
+   rg -q 'accessibilityRole="alert" variant="caption" color=\{theme\.colors\.danger\}' "$APP/features/today/today-skip-dialog.tsx" && \
+   rg -q "label=\{choice \? skipChoiceLabel\(choice\) : t\('today\.continue'\)\}" "$APP/features/today/today-skip-dialog.tsx"; then
   pass "skip actions preserve retry identity and keep failure recovery in context"
 else
   fail "skip actions close or lose retry context after a failed submission"
 fi
 
-if rg -q 'careCommandIds' "$APP/features/today/screen.tsx" && \
-   rg -q "commandIdForCare\('undo'" "$APP/features/today/screen.tsx" && \
-   rg -q "commandIdForCare\('claim'" "$APP/features/today/screen.tsx" && \
-   rg -q "commandIdForCare\('complete'" "$APP/features/today/screen.tsx"; then
+# 审计 2026-09-30（锚点跟 L67 拆分搬家，法律实质健在）：命令键生成/复用落
+# use-today-queue.ts（careCommandIds :55、commandIdForCare :73-80、undo :373、
+# complete :418），键只在 onSuccess 的 rereadToday 成功后才删（:271/:379-382）；
+# claim 落 today-actions.ts:83（同样先 await rereadToday 再删键 :89-90）。
+# complete/undo/claim 三操作锚点逐一跟搬家，条件数不变。
+if rg -q 'careCommandIds' "$APP/features/today/use-today-queue.ts" && \
+   rg -q "commandIdForCare\('undo'" "$APP/features/today/use-today-queue.ts" && \
+   rg -q "commandIdForCare\('claim'" "$APP/features/today/today-actions.ts" && \
+   rg -q "commandIdForCare\('complete'" "$APP/features/today/use-today-queue.ts"; then
   pass "Today completion, undo, and claim actions preserve retry identity"
 else
   fail "Today completion, undo, or claim can duplicate after a lost response"
@@ -511,10 +563,15 @@ else
   fail "notification fallback actions can close or route before request state is reread"
 fi
 
-if rg -q 'const rereadToday = async' "$APP/features/today/screen.tsx" && \
-   rg -q 'await rereadToday\(\)' "$APP/features/today/screen.tsx" && \
-   rg -q 'todayRefreshFailures' "$APP/features/today/screen.tsx" && \
-   rg -q "accessibilityLabel=\{t\('today\.a11yRetryTodaySync'\)\}" "$APP/features/today/screen.tsx"; then
+# 审计 2026-09-30（锚点跟 L67 拆分搬家，法律实质健在）：「写成功→rereadToday
+# throwOnError→读失败保留乐观态与错误条」链路整体落 use-today-queue.ts
+#（rereadToday :147-152、complete.onSuccess 先 await reread 再删键清错 :262-274、
+# todayRefreshFailures :52/:266/:323），重试钮（busy 态+a11y 标签）落
+# today-notices.tsx:169-180。锚点跟搬家，条件数不变。
+if rg -q 'const rereadToday = async' "$APP/features/today/use-today-queue.ts" && \
+   rg -q 'await rereadToday\(\)' "$APP/features/today/use-today-queue.ts" && \
+   rg -q 'todayRefreshFailures' "$APP/features/today/use-today-queue.ts" && \
+   rg -q "accessibilityLabel=\{t\('today\.a11yRetryTodaySync'\)\}" "$APP/features/today/today-notices.tsx"; then
   pass "Today execution writes reread authoritative state before success or retry reset"
 else
   fail "Today execution writes can report success before the current checklist is reread"
@@ -546,10 +603,17 @@ else
   fail "medication writes can close or show success before authoritative history is reread"
 fi
 
+# 审计 L74：计划表单/编辑弹层拆出（care-section → care-plan-form.tsx / care-plan-edit.tsx），
+# await onSaved() 下沉到子组件（子组件等父回调 resolve 才 markClean，失败 catch 只 setError
+# 不关层）；父侧回调形态 = onSaved={async () => { await refresh(); closeForm()/setEditing/
+# 路由 }}——「重读先于关闭/路由」判据改为：两个 onSaved 回调均以 await refresh() 开头
+#（计数≥2）+ 子组件确实 await onSaved()。另注：restorePlan（B2）同走 refresh 后才 toast。
 if rg -q 'async function refresh' "$APP/features/pets/care-section.tsx" && \
    rg -q 'queryKeys\.carePlans\(pet\.id, true, familyId\)' "$APP/features/pets/care-section.tsx" && \
    rg -q 'await refresh\(\)' "$APP/features/pets/care-section.tsx" && \
-   rg -q 'await onSaved\(\)' "$APP/features/pets/care-section.tsx"; then
+   [[ "$(rg -cU 'onSaved=\{async \(\) => \{\s*await refresh\(\)' "$APP/features/pets/care-section.tsx" || true)" -ge 2 ]] && \
+   rg -q 'await onSaved\(\)' "$APP/features/pets/care-plan-form.tsx" && \
+   rg -q 'await onSaved\(\)' "$APP/features/pets/care-plan-edit.tsx"; then
   pass "care-plan writes reread authoritative plans before closing or routing"
 else
   fail "care-plan writes can close or route before authoritative plans are reread"

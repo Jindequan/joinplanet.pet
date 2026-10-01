@@ -47,3 +47,4 @@ planet-lemon-webhook
 
 # Expo runtime
 **/.expo/
+__pycache__/

@@ -605,15 +605,15 @@ fi
 
 # 审计 L74：计划表单/编辑弹层拆出（care-section → care-plan-form.tsx / care-plan-edit.tsx），
 # await onSaved() 下沉到子组件（子组件等父回调 resolve 才 markClean，失败 catch 只 setError
-# 不关层）；父侧回调形态 = onSaved={async () => { await refresh(); closeForm()/setEditing/
-# 路由 }}——「重读先于关闭/路由」判据改为：两个 onSaved 回调均以 await refresh() 开头
-#（计数≥2）+ 子组件确实 await onSaved()。另注：restorePlan（B2）同走 refresh 后才 toast。
+# 不关层）。L133 重锚（2026-10-01）：L102 批给建计划回调加成功 toast（签名改 ({title})、
+# haptic/toast 先行），字面锚 onSaved={async () => { await refresh 失配；法律实质不变=
+# 「每个 onSaved 回调体内 await refresh() 重读先于 closeForm()/setEditing 关闭动作」，
+# 改锚为有界多行序断言（计数≥2），产品代码不动。另注：restorePlan（B2）同走 refresh 后才 toast。
 if rg -q 'async function refresh' "$APP/features/pets/care-section.tsx" && \
    rg -q 'queryKeys\.carePlans\(pet\.id, true, familyId\)' "$APP/features/pets/care-section.tsx" && \
-   rg -q 'await refresh\(\)' "$APP/features/pets/care-section.tsx" && \
-   [[ "$(rg -cU 'onSaved=\{async \(\) => \{\s*await refresh\(\)' "$APP/features/pets/care-section.tsx" || true)" -ge 2 ]] && \
-   rg -q 'await onSaved\(\)' "$APP/features/pets/care-plan-form.tsx" && \
-   rg -q 'await onSaved\(\)' "$APP/features/pets/care-plan-edit.tsx"; then
+   [[ "$(rg -Uo 'onSaved=\{async[\s\S]{0,600}?await refresh\(\)[\s\S]{0,200}?(closeForm\(\)|setEditing\(null\))' "$APP/features/pets/care-section.tsx" | rg -c 'onSaved' || true)" -ge 2 ]] && \
+   rg -q 'await onSaved\(' "$APP/features/pets/care-plan-form.tsx" && \
+   rg -q 'await onSaved\(' "$APP/features/pets/care-plan-edit.tsx"; then
   pass "care-plan writes reread authoritative plans before closing or routing"
 else
   fail "care-plan writes can close or route before authoritative plans are reread"

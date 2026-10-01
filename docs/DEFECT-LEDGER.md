@@ -259,6 +259,27 @@
 | L128 | 🔧 已修+改判（2026-09-30，APP 01e043e） | **1280 宽屏 Today 右缘裁切疑似溢出**：双任务时宽屏双列布局下，右列（已逾期列表）行卡与右上进度环在视口右缘被裁半（浏览器 1280 实截）——疑似内容栅格超出视口或右列无右边距。同轮已修的四处（焦点卡动作带合并/CardArt 沉底限宽/宠物卡单箭头/en 教学句）见 APP ce15e8f | 本体浏览器 1280 实截；下轮视觉批首项，需双列栅格复测 |
 | L129 | 🔧 六笔全偿还（2026-10-01，D1/D2/D3 三路并行+独立审查门 PASS；APP+planet-api 未提交批即本批）| **T1-T3 收口批放行债务**：①skip 收束推送文案端到端断言=`test/integration/care_close_push_copy_test.go` 三测（skip 逐字钉「已由 {actor} 跳过」且断言绝无「完成」+care_plan_updated/deleted 渲染）②4 处空 NotifyUserData 桩删净（全仓 grep 零命中）③`?invite=1` 消费守卫=families/detail-screen.tsx:92-101（查询落定后一次性裁决 owner×有宠）④invitableFamily 回退链=panel.tsx:1065-1077（scope 上下文家庭优先）⑤推送闸第二时刻「收到协作请求」=session-provider.tsx:352-375（care-requests inbox / pet-share 二元组 incoming，outgoing 三元组排除）⑥canMutate 补 deceased=timeline/detail-screen.tsx:174（三处口径对齐）| 独立审查门 2026-10-01 PASS（正确性/契约/i18n/回归四要点全过）；e2e 282/0 + go test 全量绿 |
 | L130 | 🔧 已修（2026-10-01 参与可见性批，APP canInvite 收 owner 口径） | **家庭页 hero 邀请按钮对 caregiver 可见，但后端 invite refresh 走 `withLockedOwner`（families/service.go:662-679）非 owner 必 403**——caregiver 点了必失败。修=detail-screen.tsx:283 `canInvite={isOwner && petRows.length>0}`（与 ?invite=1 深链守卫、TodayInviteGate owner 口径对齐）；e2e 钉 caregiver 无钮/owner 有钮双视角。审查门复核全仓其余邀请入口：无遗漏的「点了必 403」按钮 | 独立审查门 2026-10-01 报告观察 (b)；本批修复并复审 PASS |
+| L131 | 🐛→🔧 P1（2026-10-01 全局审查 R3 报，亲核实锤） | **care.title.passedNext 插值失配**：copy.ts:138,142 供给 `{next}` 五语字典占位 `%{name}` → 请求中心 declined/delegated 有 next_target 时标题渲染 `[missing "%{name}" value]`（主协作流五语乱码；check:i18n 只测字典侧测不出供给侧） | 修=五语 `%{name}`→`%{next}`；补供给侧配对扫描入门禁 |
+| L132 | 🐛→🔧 P1（同上） | **confirmDeceasedConsequence 零参调用**：pets/detail-screen.tsx:419 `t()` 无参，五语值全含 `%{name}` → 离世登记破坏性确认弹层正文乱码（L36 批 d5fe9aa 引入；e2e 只点按钮未断言正文） | 修=补 `{ name: pet.name }`（与 ：418 title 同参） |
+| L133 | 🐛→🔧 P1（同上） | **契约检查器基线红 63/64**：L102 批改 `onSaved` 签名后断言锚未跟搬（法律实质 `await refresh()` 先于 `closeForm()` 亲核健在）——基线红使后续所有批次失去全绿判据（L74「锚点跟搬家」先例） | 修=断言跟形态改锚回 64/64，产品代码不动 |
+| L134 | 🐛→🔧 P1（本体浏览器走查实伤，DOM 取证） | **390 记录页跳过行挤压断字**：标题「已跳过 · 喂晚餐 18:30 · 胖胖」容器仅 179px 折两行、「胖胖」断成竖排单字；根因=长标题+右侧「已跳过 17:24」徽标挤占。连带 V3（跳过行状态说两遍：左动词+右徽标重复，完成行不重复=不对称）与 V7（Pets 段头病句「今天有待办的前」）同批修 | 修=右徽标去状态词只留时刻+标题容器防断字；V7 文案改写 |
+| L135 | 🐛→🔧 P1（本体走查 DOM 实锤） | **Today 进度环视觉无数字**：aria-label「今日进度 0/3」在，但环 textContent 空、环内无一物——「今日数」的家看不见数（伪数据红线变体：图形长得像数据却不出数） | 修=环内/环旁恢复 n/m 数字显示（历史裁决 30+n/m 形态） |
+| L136 | 🐛→🔧 P2（R3 报，亲核实锤） | **Android 版本落后两个发布面**：build.gradle versionName "0.1.0"/versionCode 1 vs app.json+iOS 1.1.0（d2828af 只升了 iOS 侧）；Android 是 preflight 要求 keystore 的真实发布面 | 修=versionName→1.1.0+versionCode 递增规矩入 preflight 一致性校验 |
+| L137 | 🐛→🔧 P2（本体走查） | **焦点卡 CardArt 橙渐变与 coral 逾期色同框打架**：逾期态下 08:00/已逾期红字正下方压橙色渐变块，形状不明义（「为展示而展示」红线变体） | 修=逾期/临近态弱化或隐去 CardArt，让时间区独占 |
+| L138 | 🐛→🔧 P2（本体走查） | **全家庭 scope 下 Today 行卡宠物身份仅头像不显名**：两条「喂晚餐」并列不可分辨（多宠聚合歧义）；单宠 scope 无此问题 | 修=聚合 scope 时行卡副行补宠物名（身份信息非复述） |
+| L139 | 🐛→🔧 P3（R1 报，亲核实锤） | **TodayInviteGate 缺宠门**：四处邀请入口唯 gate 不查 `pet_count>0`（hero/深链/空态出口均查）——无宠家庭回 Today 会对死路弹邀请码（「无宠物邀请是死路」批5 裁决被第四入口破例） | 修=gate 补宠门+立单源 `canInviteFamily` 判定防第五入口分叉 |
+| L140 | 🐛→🔧 P3（R1 报，亲核实锤） | **panel 早退分支吞 notificationFailureCard**：空/加载/错误早退不渲染通知快捷动作失败卡（detailOnly 与正常分支都渲染）——该失败唯一反馈面被静默 | 修=早退分支 JSX 头补一行 |
+| L141 | 🐛→🔧 P3（R1 报） | **邀请守卫吞参零反馈残余窗**：owner+无宠（陈旧请求+宠已移出）点 `?invite=1` 跳家庭页但弹层不开零解释（caregiver 必败场景已被 L130/L129③ 收口，仅剩此窗） | 修=守卫 else 补 toast 或出口复用同款门控 |
+| L142 | 🐛→🔧 P3（R2 报，亲核实锤） | **圈资源读取口径全仓唯一反例**：petshares.List 非成员 403（digest/participation/families 等全系 404 防存在性泄露，且同文件 resolve 注释自证 404 纪律）；连带 transfers Accept/Decline/Cancel 存在性 oracle（Get 404→事务内 403 可探测存在性，与台账遗留 3 同类） | 修=petshares `!member`→ErrNotFound；transfers 非授权压 404 与遗留 3 一次收口 |
+| L143 | 🐛→🔧 P3（R2 报 TOP1，亲核实锤） | **carecoord Create/CreateBatch 幂等 Claim 在权限闸之后**：发起人丢 201 后同键重试若指派已变会 403 读不回绑定资源；transfers.Create 有祖传范式+注释「校验放幂等回放之后」 | 修=Claim 前置，replay 分支直接读回（照抄 transfers 结构） |
+| L144 | 🐛→🔧 P3（R2 报） | **S2N 事件无新鲜度闸**：EventTime 仅入日志，截获的历史 consent-revoked JWT 可重放反复踢登录（前提=截获 TLS；Apple at-least-once 重投使消费表式防重放需谨慎） | 修=按 sub 记已见最大 EventTime，早于者忽略 |
+| L145 | 🐛→🔧 P3（R2 报，登记观察+对账告警） | **注销并发建宠残余窗**：首道守卫后、UPDATE families 前，同用户另一会话可建宠逃逸行锁集→墓碑账号挂 active 宠占配额（需双设备亚秒并发，无越权面） | 修=注销提交后 countBlockingOwnedPets 对账告警（不回滚注销） |
+| L146 | 🐛→🔧 P3（R3 报，亲核实锤） | **e2e 通用 capabilities mock 假形**：发 `push:false` 且字段名错（客户端读 `push_notifications`）——通用 mock 下用例在生产 true 分支上跑 false 分支=假绿温床（:3414 单独覆写掩盖漂移） | 修=通用 mock 改真形全字段 |
+| L147 | 🐛→🔧 P3（R3 报） | **行为契约文档缺登记**：participation 端点与 S2N /auth/apple/notify 双双零命中 APP-BEHAVIOR-CONTRACT（行为已核过与实现一致） | 修=契约文档补 §2/§3 行 |
+| L148 | 🐛→🔧 P3（R3 报） | **幽灵错误码映射**：前端 errors.ts `CARE_REQUEST_ALREADY_ACCEPTED` 后端全仓零命中（实发 CARE_OCCURRENCE_ASSIGNED）——死映射+五语文案 | 修=删映射与键 |
+| L149 | 🐛→🔧 P3（R1 报） | **photo-upload.ts 565 行越 500 纪律**（L103 已知 15 个之外新增；442→565 系 L81 批越线） | 修=拆票据台账模块回线内 |
+| L150 | 🐛→🔧 P3（R2 报） | **weekStartAt 午夜 DST 边界**：午夜切 DST 时区（如 Havana）周窗整体偏 1h；当前 Asia/Shanghai 无 DST 零实伤 | 修=注释登记边界+归一化校验 |
+| L151 | 🐛→🔧 P3（本体走查） | **Records 头部刷新图标挤掉「日历最右」裁决位**：1.1 D 加刷新时未裁位置（8fcbd3a 裁决 📅 最右） | 修=重排 全部宠物/刷新/日历（日历归最右） |
 
 ### 附：本批确认「已被修掉、不再登记」的项（防二次派工）
 

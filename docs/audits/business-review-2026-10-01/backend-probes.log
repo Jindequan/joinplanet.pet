@@ -1,0 +1,13 @@
+=== RUN   TestBusinessReviewDateRetargetChecksActualOccurrence
+    business_review_probe_test.go:44: direct=409/CARE_OCCURRENCE_ASSIGNED retarget=201/ actual_today_status=completed actual_today_actor=77b70ff8-b38e-43c2-9473-c02423034602
+    business_review_probe_test.go:46: date retarget bypassed responsibility guard: HTTP=201 actual state=completed actor=77b70ff8-b38e-43c2-9473-c02423034602
+--- FAIL: TestBusinessReviewDateRetargetChecksActualOccurrence (0.41s)
+=== RUN   TestBusinessReviewPublicShareCompletionContract
+    business_review_probe_test.go:69: move actual time_of_day=18:00 due_at=2026-10-01T18:00:00+08:00
+    business_review_probe_test.go:89: anonymous actual log_status=completed
+    business_review_probe_test.go:94: actual completed=1 anonymous renderer count=0/1
+    business_review_probe_test.go:96: public share completion predicate disagrees with API: displayed=0/1 expected=1/1
+--- FAIL: TestBusinessReviewPublicShareCompletionContract (0.26s)
+FAIL
+FAIL	github.com/joinplanet/planet-api/test/integration	1.721s
+FAIL

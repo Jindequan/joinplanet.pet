@@ -33,7 +33,7 @@
 | L11 | ✔ | §4.3 状态词漂移：canonical 词表（等待回应/已确认负责/正在同步…）与实际文案（等你回应/由你负责/已接手/未能接手…）全站不一致 | care-requests/copy.ts:35-41,91,105-126 + today/cards.tsx:65-79 + timeline/screen.tsx:494-498 |
 | L12 | ✔ | 离线行为断层：complete/skip/undo/Today claim 有队列，而排程四动作/timeline 编辑删除无队列——同屏两套离线行为（有可见报错，不违 §3.2，但违背预期）。本轮先做「需联网」诚实文案，队列化待裁决。〔2026-09-22 更新：care-risk claim 载体 CareRiskBanner 整组件零引用已删除（认领能力由 Today 未指派项的 claim 链路承担，care-risk-banner.tsx 证据随之移除）〕 | schedule-adjustment.tsx:76-83、foundation/writers.ts:65-77 |
 | L13 | ✔ | 错误码缺映射一批：UNDO_WINDOW_EXPIRED、FAMILY_NOT_EMPTY、CARE_ASSIGNMENT_OWNER_REQUIRED、AUTO_EVENT_IMMUTABLE、IDEMPOTENCY_REPLAY_SECRET_UNAVAILABLE（后三个低频） | errors.ts:12-44 逐码比对（本体亲读） |
-| L14 | 🔧 | care_card 冻结快照以「今日照护」呈现 | WO5（2026-09-17 创始人裁决改呈现）：标题→「照护快照」+ 生成日期诚实说明行 + 快照空态文案；typecheck/lint/契约 0 FAIL/e2e 114/114；APP 提交见仓内 log |
+| L14 | 🔧 | care_card 冻结快照以「今日照护」呈现 | WO5（2026-09-17 创始人裁决改呈现）：标题→「照护快照」+ 生成日期诚实说明行 + 快照空态文案；typecheck/lint/契约 0 FAIL/e2e 114/114；APP 提交见仓内 log；2026-10-01 复验发现匿名官网呈现仍称 today/current，1.1 随 L157 补齐公开页日期/冻结说明及状态渲染契约 |
 
 ### P3（本轮顺手修，成本极低）
 
@@ -282,6 +282,18 @@
 | L151 | 🐛→🔧 P3（本体走查） | **Records 头部刷新图标挤掉「日历最右」裁决位**：1.1 D 加刷新时未裁位置（8fcbd3a 裁决 📅 最右） | 修=重排 全部宠物/刷新/日历（日历归最右） |
 | L152 | 🐛→🔧 P1（2026-10-01 深夜全量 e2e 实爆，本体亲核） | **e2e 僵尸层：26 个长期 skip 用例跑起来即炸 22 个——「绿基线」从没覆盖它们**。两类根因（均有真实 DOM/代码实证）：①日期炸弹=断言硬编码/冻结 2026-09-30，过午夜必炸（today-focus-deeplink ×6 的 `Pick a date — viewing 2026-09-30`）；②幻影语义=getByRole('heading') 找 RNW 从未渲染 heading 角色的元素（AppText 无 a11y 角色映射，真实 DOM 实证 InviteSheet 标题=裸 DIV 链；'Add a record'/'Invite members' 等 18 处）。涉及 11 家族：deeplink×3/photo-upload×2/idempotency×2/core-flows F2+E3/activation 闸/b2 L83。干净 HEAD 复现=非三波引入；产品流程本体浏览器实证正常（弹层开/深链落位/建记录） | 修=测试批：22 断言改真实语义（getByLabel/text/testID）+日期取活值+补速断言防再僵尸；**教训=每次绿跑必须同报 skip 名单并审读，skip>0 即登记** |
 | L153 | 🐛→🔧 P1（L152 测试批挖出的真产品缺陷，本体即修） | **composer 幂等保护结构性失效**：`EventComposer.save()` 每次取 `occurredAt = new Date().toISOString()`（composer.tsx:764）→ fingerprint 每次必含新时间戳 → 同内容重试也轮换幂等键 → 「写成功但响应丢失后重试」的服务端同键同载荷重放保护死路（L87 幂等立法对 composer 路径空转；编辑路径 EventForm 用表单字段不受影响） | 修=sessionOccurredAtRef 会话内冻结（挂载后首存定值，重试复用；新开记录=新挂载=新时间）——同内容重试键重放+新意图换键双向 e2e 4/4 绿 |
+
+### 2026-10-01 业务重新验证：L154–L158 已在 1.1 修复
+
+证据与验收条件：[BUSINESS-REVALIDATION-2026-10-01.md](audits/BUSINESS-REVALIDATION-2026-10-01.md)。下表保留修复前断点；新增正式回归与 1.1 修复结果见该报告 §6。原有扫描未覆盖这些断点，不作为修复证据。
+
+| ID | 级别/状态 | 业务断点 | 验收方向 |
+|---|---|---|---|
+| L154 | P1 / 1.1 已修复 | 完成接口先检查 URL 事项的责任，再按 body.date 切换最终事项直接写入；A 通过昨日 ID+今日 date 完成 B 已接受的今日事项，真实 API 201、DB completed | 最终对象确定并锁定后检查全部守卫；非法补记零数据变更；合法补记/并发/重放兼容 |
+| L155 | P1 / 1.1 已修复 | Today 模型未拦 accepted-by-other，B 已接受的事项对 A 仍 canExecute=true 且可成为焦点；后端正常直写对 A 返回 409 | 前后端逐角色能力对齐；不可执行事项不进焦点池；有查看/治理出口 |
+| L156 | P1 / 1.1 已修复 | 前端 due_at 过点即显示逾期，违背 PRODUCT §4.2 次日零点才逾期裁决；排序按日，展示按瞬时，两套口径 | 同日/跨日/家庭时区/夏令时统一业务判定 |
+| L157 | P1 / 1.1 已修复 | care_card 真实匿名响应 log_status=completed；公开页计数/勾选/样式仅识别 done，实际完成 1 项显示 0/1 | 真 API→真公开页状态契约；完成/跳过/未完成可辨；冻结快照语义准确 |
+| L158 | P2 / 1.1 已修复 | 完成/撤销失效图遗漏 inbox/sent 与 family-participation；周参与卡无轮询且 error 时隐去模块 | 写入副作用反推全部读面；统计/请求一致；刷新失败保留内容并给重试 |
 
 ### 附：本批确认「已被修掉、不再登记」的项（防二次派工）
 

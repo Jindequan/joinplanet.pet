@@ -1,0 +1,98 @@
+package integration
+
+import (
+	"context"
+	"net/http"
+	"testing"
+	"time"
+)
+
+// Audit probe: the date selector must not bypass the destination occurrence's
+// accepted responsibility. This uses an isolated database created by NewEnv.
+func TestBusinessReviewDateRetargetChecksActualOccurrence(t *testing.T) {
+	e := NewEnv(t)
+	ownerTok, _, familyID, petID := e.SetupFamily("audit-retarget", "Milo")
+	memberTok, memberID, _ := e.NewUser("audit-retarget-member")
+	joinFamily(t, e, memberTok, ownerTok, familyID)
+	today := time.Now().In(particTZ)
+	planID := particCreatePlan(t, e, ownerTok, familyID, petID, today, 1)
+	var todayID, yesterdayID string
+	if err := e.Pool.QueryRow(context.Background(), `SELECT id::text FROM care_occurrences WHERE care_plan_id=$1 AND due_date=$2 AND deleted_at IS NULL`, planID, particDateStr(today, 0)).Scan(&todayID); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Pool.QueryRow(context.Background(), `SELECT id::text FROM care_occurrences WHERE care_plan_id=$1 AND due_date=$2 AND deleted_at IS NULL`, planID, particDateStr(today, 1)).Scan(&yesterdayID); err != nil {
+		t.Fatal(err)
+	}
+	requested := e.doWithHeader("POST", "/api/v1/care-occurrences/"+todayID+"/requests", ownerTok, map[string]any{"family_id": familyID, "target_user_id": memberID}, "audit-request")
+	if requested.Status != http.StatusCreated {
+		t.Fatalf("request setup: %d %v", requested.Status, requested.Body)
+	}
+	requestID := requested.Body["care_request"].(map[string]any)["id"].(string)
+	accepted := e.doWithHeader("POST", "/api/v1/care-requests/"+requestID+"/accept", memberTok, map[string]any{}, "audit-accept")
+	if accepted.Status != http.StatusOK {
+		t.Fatalf("accept setup: %d %v", accepted.Status, accepted.Body)
+	}
+	direct := e.doWithHeader("POST", "/api/v1/care-tasks/"+todayID+"/complete", ownerTok, map[string]any{"status": "done"}, "audit-direct")
+	if direct.Status != http.StatusConflict || e.ErrorCode(direct) != "CARE_OCCURRENCE_ASSIGNED" {
+		t.Fatalf("direct guard must reject owner: %d %v", direct.Status, direct.Body)
+	}
+	retarget := e.doWithHeader("POST", "/api/v1/care-tasks/"+yesterdayID+"/complete", ownerTok, map[string]any{"status": "done", "date": particDateStr(today, 0)}, "audit-retarget")
+	var status, actor string
+	if err := e.Pool.QueryRow(context.Background(), `SELECT status, COALESCE(completed_by_user_id::text,'') FROM care_occurrences WHERE id=$1`, todayID).Scan(&status, &actor); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("direct=%d/%s retarget=%d/%s actual_today_status=%s actual_today_actor=%s", direct.Status, e.ErrorCode(direct), retarget.Status, e.ErrorCode(retarget), status, actor)
+	if retarget.Status != http.StatusConflict || e.ErrorCode(retarget) != "CARE_OCCURRENCE_ASSIGNED" || status != "pending" || actor != "" {
+		t.Fatalf("date retarget bypassed responsibility guard: HTTP=%d actual state=%s actor=%s", retarget.Status, status, actor)
+	}
+}
+
+// The API snapshot must be understood by the actual anonymous-page predicate:
+// www.joinplanet.pet/app/s/[token]/page.tsx compares log_status to "done".
+func TestBusinessReviewPublicShareCompletionContract(t *testing.T) {
+	e := NewEnv(t)
+	ownerTok, _, familyID, petID := e.SetupFamily("audit-share", "Milo")
+	created := e.DoJSON("POST", "/api/v1/pets/"+petID+"/care-plans", ownerTok, `{"type":"feeding","title":"Feed Milo","rule":{"type":"daily","time":"08:00"}}`)
+	if created.Status != http.StatusCreated {
+		t.Fatalf("plan setup: %d %v", created.Status, created.Body)
+	}
+	task := created.Body["task"].(map[string]any)
+	taskID := task["id"].(string)
+	today := e.Do("GET", "/api/v1/today?family_id="+familyID, ownerTok, nil)
+	move := e.doWithHeader("POST", "/api/v1/care-schedule/actions", ownerTok, map[string]any{
+		"action": "move", "scope": "this", "slot": map[string]any{"care_rule_id": task["care_rule_id"], "date": today.Body["date"]}, "payload": map[string]any{"time_of_day": "18:00"},
+	}, "audit-share-move")
+	if move.Status != http.StatusOK {
+		t.Fatalf("move setup: %d %v", move.Status, move.Body)
+	}
+	movedTask := move.Body["task"].(map[string]any)
+	t.Logf("move actual time_of_day=%v due_at=%v", movedTask["time_of_day"], movedTask["due_at"])
+	if movedTask["time_of_day"] != "18:00" {
+		t.Fatalf("unexpected move time: %v", movedTask)
+	}
+	done := e.doWithHeader("POST", "/api/v1/care-tasks/"+taskID+"/complete", ownerTok, map[string]any{"status": "done"}, "audit-share-complete")
+	if done.Status != http.StatusCreated {
+		t.Fatalf("complete setup: %d %v", done.Status, done.Body)
+	}
+	share := e.Do("POST", "/api/v1/pets/"+petID+"/shares", ownerTok, map[string]any{"kind": "care_card", "ttl_hours": 24})
+	if share.Status != http.StatusCreated {
+		t.Fatalf("share setup: %d %v", share.Status, share.Body)
+	}
+	view := e.Do("GET", "/api/v1/shares/"+share.Body["token"].(string), "", nil)
+	if view.Status != http.StatusOK {
+		t.Fatalf("view: %d %v", view.Status, view.Body)
+	}
+	tasks := view.Body["data"].(map[string]any)["tasks"].([]any)
+	renderedDone := 0
+	for _, item := range tasks {
+		status := item.(map[string]any)["log_status"]
+		t.Logf("anonymous actual log_status=%v", status)
+		if status == "done" {
+			renderedDone++
+		}
+	}
+	t.Logf("actual completed=1 anonymous renderer count=%d/%d", renderedDone, len(tasks))
+	if renderedDone != 1 {
+		t.Fatalf("public share completion predicate disagrees with API: displayed=%d/%d expected=1/1", renderedDone, len(tasks))
+	}
+}

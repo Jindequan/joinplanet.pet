@@ -21,6 +21,8 @@
 ## 2. 动作契约（按域；幂等=Idempotency-Key 语义：同键同 payload 重放返回原响应，异 payload 409）
 
 ### 2.1 执行域（Today）
+
+**1.1 业务修复（2026-10-01，L154–L156）**：带 `date` 的补记先解析并锁定最终 occurrence，再检查其已接受责任及待响应请求；URL 的来源事项不能替代最终事项的守卫。拒绝零事实/请求/事件写入，同键成功重放仍返回原最终事项且不重复通知。通知深链指向最终事项。Today 对 accepted-by-other 隐去执行/认领入口并排除焦点候选，当前接手人仍可执行；当天过计划时间不算逾期，逾期比较家庭时区民事日期（次日零点）。
 | 动作 | 端点 | 数据变更 | 幂等 | 离线 | 成功所见 | 失败/逆向 |
 |---|---|---|---|---|---|---|
 | 完成/跳过 | POST /care-tasks/:id/complete | occurrence→completed/skipped + pet_events(auto,dedupe) + 关联 open request 取消 | 必需 | 队列（pending-today） | 权威回读后清单更新+沉底+toast | **完成放开（2026-09-23 founder 裁决）**：该家庭 caregiver 及以上任一活跃成员可直接完成任意事项，不要求指派给自己或先认领（「老婆点完成」案例）；`completed_by`=实际完成人，`assigned_to`/计划归属不动；viewer/read_only 仍 403 ROLE_FORBIDDEN；他人已接受的移交（accepted 责任）不旁路→409 CARE_OCCURRENCE_ASSIGNED、目标本人待响应→409 CARE_REQUEST_RESPONSE_REQUIRED；认领 claim 保留为可选「认领责任」动作（端点不删）；CARE_OCCURRENCE_ASSIGNMENT_REQUIRED 不再出现在完成路径（仅排程调整闸保留，见排程行）；重放语义在指派移除后仍成立 |
@@ -75,7 +77,8 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 **记录投影（2026-09-18 founder 裁决：记录展示事实，管理类默认不展示）**：`GET /timeline` 与 `GET /pets/:id/timeline` 支持 `scope=facts`（默认，白名单 FactTypes：note/photo/symptom/weight/vet_visit/vaccine/deworm/medication/care_task_completed）与 `scope=all`（含管理类 transfer / care_task_undone）；非法 scope 返回 400。类型过滤在 SQL 内完成（LIMIT 必须作用在可见行上，否则分页短页）。分享摘要 `ListForShare` 与记录页同口径。白名单新增事实类型时，必须同步本表与 `docs/PRODUCT.md` §4.4。
 
 ### 2.4 分享/导出/账户
-- 外部分享：创建=快照物化+token 仅返回一次（幂等重放可取回）；匿名查看 410 SHARE_GONE 不泄露；care_card 为**冻结快照**（UI 须呈现快照日期而非「今日」——遗留项 L14）；撤销同事务写审计。include_photos 快照的照片以**查看时签名 URL** 呈现（`photo_url` / `photo_thumb_url`，1 小时有效，与登录态 timeline DTO 同名字段）；匿名响应绝不携带裸对象键（photo.key/thumb_key），快照物化语义不变（2026-09-22 修复，此前 include_photos 半成品会把私有桶坐标写进匿名页）。
+- 外部分享：创建=快照物化+token 仅返回一次（幂等重放可取回）；匿名查看 410 SHARE_GONE 不泄露；care_card 为**冻结快照**（UI 呈现快照日期及保存说明，不称「今日/current」；1.1 修复 L14/L157）；撤销同事务写审计。include_photos 快照的照片以**查看时签名 URL** 呈现（`photo_url` / `photo_thumb_url`，1 小时有效，与登录态 timeline DTO 同名字段）；匿名响应绝不携带裸对象键（photo.key/thumb_key），快照物化语义不变（2026-09-22 修复，此前 include_photos 半成品会把私有桶坐标写进匿名页）。
+- 交接快照状态：匿名 API `tasks[].log_status=completed` 表示完成，`skipped` 单独展示且不计完成，缺省表示未完成；公开页兼容历史 `done`。撤销不回写已保存快照，新分享反映撤销后的事实。真实 API 输出须通过公开页实际渲染契约验证。
 - 数据导出：`GET /pets/{id}/export` 返回该宠物完整可携带记录；仅宠物当前 owner 可调用（普通家庭成员/查看授权均不足——完整历史是持久披露边界），单读事务内完成，不混用多个数据库快照。（2026-09-22 补登记，体检 P2-6：端点早已存在——planet-api pets/http.go 注册路由、pets/service.go `Export`，本契约此前漏登；前端是否有导出 UI 入口不在本契约断言范围。）
 - 账户：注销前置无 owned pets（409）；账号名下有**带其他活跃成员**的家庭时同样拒绝注销（409 **ACCOUNT_FAMILY_HAS_MEMBERS**，2026-09-22 新增——需先移交 owner 或移除成员；单成员家庭随注销自动清理，不在此列）；会话撤销/登出即失效；推送 token 注册失败有手动重试入口。
 
@@ -95,12 +98,13 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 
 ## 4. 失效图（写动作 → 必须刷新的查询面；改这里=改契约）
 
-- 完成/撤销/claim → today、timeline、digest、care-stats、care-requests、care-responsibility
+- 完成/撤销/claim → today、timeline、digest、care-stats、care-requests（inbox/sent/chain）、care-handoff-batches、care-responsibility、family-participation
 - 请求接受/拒绝 → inbox、sent、chain、today、care-responsibility
 - **请求撤回（单条/整批，2026-09-28）→ inbox、sent、chain、today、care-responsibility、care-handoff-batches**（前端统一走 `invalidateAfterCareRequestChange`：对方动作卡消失必须双向刷新）
 - 停药 → medications、**care-plans**、today、timeline、care-stats（care-risks 读面已随 2026-09-26 L5 清缴删除，仅剩调度推送链路，无客户端失效面）
 - 共享接受 → pet-share-requests、pets 根、families、family-pets 根、today
 - 宠物/家庭生命周期 → familyScopedRoots（families、pets、family-pets、today、timeline、care-requests、handoff…全根）
+- 家庭参与：初次读取失败在原卡解释失败、说明记录未受影响并提供重试；有旧数据的刷新失败保留内容并提示陈旧；空响应保持可见并可重试。完成/撤销/家庭成员变化、家庭手动刷新及远端 care-action 同步均覆盖 `family-participation`。
 - 全局轮询：today 15s、inbox 常驻、sent/chain/batch 8s——invalidate 只造成一次额外 refetch，不构成风暴。
 
 ## 5. 权限矩阵（行=家庭角色；宠物 owner 在非本家家庭按该家庭角色论处）
@@ -123,4 +127,4 @@ Today 投影补充（2026-09-23）：today 各端点的 task 对象新增 `care_
 
 ## 7. 已知接受的边界（改动前先读）
 
-见 [DEFECT-LEDGER.md](DEFECT-LEDGER.md) 第三节豁免与「遗留」。核心：排程动作/timeline 改删/risk-claim 无离线队列（文案已明示需联网）；care_card「今日照护」呈现与冻结快照语义待产品裁决（L14）；petshares Cancel 404/403 口径与 ResolvedAt 死字段（P3 遗留）；幂等键内存性（会话内防线+服务端业务幂等兜底）。
+见 [DEFECT-LEDGER.md](DEFECT-LEDGER.md) 第三节豁免与「遗留」。核心：排程动作/timeline 改删/risk-claim 无离线队列（文案已明示需联网）；care_card 冻结快照日期及状态表达已在 1.1 修复（L14/L157）；petshares Cancel 404/403 口径与 ResolvedAt 死字段（P3 遗留）；幂等键内存性（会话内防线+服务端业务幂等兜底）。

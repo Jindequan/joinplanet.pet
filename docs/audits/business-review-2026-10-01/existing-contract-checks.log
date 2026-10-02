@@ -1,0 +1,64 @@
+PASS — public share links use the web /s/:token route
+PASS — invite deep links seed the join form
+PASS — Today does not embed the full request inbox
+PASS — family list does not fan out Today queries
+PASS — pet workspace keeps the two-tab information architecture
+PASS — timeline replay merges concurrent local events
+PASS — timeline edits reuse a stable idempotency key across retries
+PASS — motion respects the system reduced-motion preference
+PASS — navigation surfaces do not create duplicate polling loops
+PASS — care response actions meet the 44pt touch target (enforced via Button featured tier)
+PASS — secondary actions meet the 44pt mobile touch target
+PASS — family role and assignment reorder actions meet the 44pt mobile touch target
+PASS — scaled pressables expose button semantics by default
+PASS — icon close and scope actions keep a full mobile hit target
+PASS — native launch path is Simulator-only and references existing Xcode targets
+PASS — iOS native target adopts the UIScene lifecycle
+PASS — iOS notification delegate initializes before JS for cold-start responses
+PASS — Simulator launch refreshes stale API binaries before acceptance
+PASS — mobile release configuration has a read-only preflight gate
+PASS — Today keeps secondary tools as persistent chips (founder ruling 2026-09-17)
+PASS — Today cards keep alternate actions behind Arrange
+PASS — More page does not duplicate the Requests workspace
+PASS — incoming request toast keeps reassignment behind request details
+PASS — account route is protected at both navigator and screen boundaries
+PASS — global crash recovery exposes alert semantics and a 44pt retry target
+PASS — notification toggles expose label, hint, and checked state
+PASS — date, time, and quick-record inputs expose bounded values and meaningful labels
+PASS — runtime API and public links normalize trailing slashes
+PASS — inline loading states announce what is being loaded
+PASS — all LoadingState instances include a task-specific label
+PASS — Today sync and completion actions expose busy semantics
+PASS — inline dependency failures expose alert semantics
+PASS — App API and Landing payment routes keep an explicit Caddy split
+PASS — pet sharing and access grants are retry-safe across API and client
+PASS — assignment reorder, care-plan update/delete, and medication stop are retry-safe
+PASS — family role changes and care-assignment governance writes are retry-safe
+PASS — account profile and default scope writes are retry-safe
+PASS — default scope editor preserves retry identity until the server confirms
+PASS — lifecycle confirmations reuse one command key after a lost response
+PASS — family role and pet-family governance writes reuse one command key
+PASS — assignment and medication lifecycle actions preserve retry and failure state
+PASS — account editors reuse one command key until the save is confirmed
+PASS — session revoke keeps its confirmation open after a failed request
+PASS — account display-name input matches the server validation boundary
+PASS — timeline, trends, shares, and destructive feedback explain their facts
+PASS — single care-request composer reuses one command key while the intent is unchanged
+PASS — care-request and batch response actions preserve retry identity
+PASS — timeline deletion keeps its command key while the confirmation remains open
+PASS — skip actions preserve retry identity and keep failure recovery in context
+PASS — Today completion, undo, and claim actions preserve retry identity
+PASS — notification fallback actions reread request state before closing or routing
+PASS — Today execution writes reread authoritative state before success or retry reset
+PASS — Today schedule writes reread authoritative state before showing success
+PASS — pet profile writes reread the authoritative pet record before navigation
+PASS — medication writes reread authoritative history before closing or showing success
+PASS — care-plan writes reread authoritative plans before closing or routing
+PASS — pet lifecycle writes reread authoritative detail or accessible list before closing or routing
+PASS — family governance writes keep confirmation and retry keys until authoritative lists refresh
+PASS — timeline writes reread authoritative events without queueing duplicates after refresh failure
+PASS — direct UI regression covers profile, medication, and lifecycle reread recovery
+PASS — stale-data refresh errors preserve active editors and destructive contexts
+PASS — care-request and batch writes reread authoritative state before success or retry reset
+PASS — handoff and care-risk writes reread authoritative responsibility state before closing or clearing retry keys
+PASS — stale-data refreshes are visible and transfer confirmations keep retry keys until reread

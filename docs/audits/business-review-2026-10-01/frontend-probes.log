@@ -1,0 +1,7 @@
+{"probe":"same-day-overdue-against-PRODUCT-4.2","expected":false,"actual":true,"pass":false}
+{"probe":"accepted-by-B-owner-A-canExecute","expected":false,"actual":true,"pass":false}
+{"probe":"accepted-by-B-owner-A-featured-task","expected":null,"actual":"occurrence","pass":false}
+{"probe":"care-action-invalidates-family-participation/family","expected":true,"actual":false,"pass":false}
+{"probe":"care-action-invalidates-care-requests/inbox","expected":true,"actual":false,"pass":false}
+{"probe":"care-action-invalidates-care-requests/sent","expected":true,"actual":false,"pass":false}
+{"summary":"Current-source business probes","failures":6,"boundary":"No browser/network or device simulation"}

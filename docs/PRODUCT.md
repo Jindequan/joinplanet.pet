@@ -2,6 +2,8 @@
 
 状态：2026-09-14
 
+**2026-10-01 用户版本裁决（原文）**：「1.0 已经发布，推送 iOS 审核了。你现在在 1.1 里进行修复、优化、小部分必要的 feature。」当前施工归 1.1：优先修复已复现的业务正确性问题，优化主闭环交互，新增能力仅限补齐主闭环与失败恢复。1.0 的发布与审核状态按用户陈述记录；本轮不重新发布或改变该审核提交。
+
 本文是 PLANET 当前产品目标、业务对象、核心流程、范围和验收标准的唯一事实源。技术实现、表结构和 API 以 [ARCHITECTURE.md](ARCHITECTURE.md) 为准；**地基形态与延伸层接入**以 [FOUNDATION.md](FOUNDATION.md) 为准；原生 App 重建与视觉约定以 [APP/docs/PLANET_APP_DESIGN_SYSTEM.md](../APP/docs/PLANET_APP_DESIGN_SYSTEM.md) 为准（唯一视觉锚点 = founder Pricing 参考图，2026-09-16 重锚定；`mobile-v3/` 降级为历史参考，不再约束现行配色/形态——2026-09-22 体检 P2-7 统一口径）。
 
 ## 0. Slogan 与分层

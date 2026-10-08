@@ -15,7 +15,7 @@
     （App 是 Apple 登录，无法提供邮箱密码演示账号）。
 """
 import json, re, sys, time
-sys.path.insert(0, "/tmp")
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 from asc import ASC, BASE
 
 ISSUER = "564deed7-6d63-4abf-acc7-e7692850a617"

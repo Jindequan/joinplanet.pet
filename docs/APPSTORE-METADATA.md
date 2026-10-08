@@ -180,7 +180,7 @@ Data is per-family and never shared across accounts. Deleting the account anonym
 |---|---|
 | 截图 | 用 build-83 同代 raw（git `1d73ec0`）重合成去状态栏版 6 张；API 原序删除→替换上传，`assetDeliveryState` 全 COMPLETE（服务器显示顺序 records/today/family/requests/medications/trends 未动） |
 | 版本状态 | 编辑后自动 REJECTED → `PREPARE_FOR_SUBMISSION`；build 83 重新挂载（`GET /appStoreVersions/{id}/build` 子资源验证在位；**版本 GET 的 `relationships.build.data` 回显不可靠，勿据此误判**） |
-| 重提审 | `python3 scripts/asc-resubmit.py`（先 `--check` 盘点）；**前置条件=Resolution Center 已回复 2.1(b)**——无公开 API，需在 ASC 网页手动发 |
+| 重提审 | `python3 scripts/asc-resubmit.py check`（只读盘点）→ 确认 Resolution Center 已回复 2.1(b) 后 `python3 scripts/asc-resubmit.py submit --yes`——**前置条件=Resolution Center 已回复 2.1(b)**——无公开 API，需在 ASC 网页手动发 |
 
 ### 2.1(b) 回复稿（Resolution Center 用，2026-10-08 定稿）
 

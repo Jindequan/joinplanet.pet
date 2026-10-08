@@ -198,7 +198,7 @@ def cmd_shots(asc, a):
                  and s["attributes"]["fileName"] in files]
         if len(stale) != len(shots):
             sys.exit(f"  !! {a.locale} has {len(shots)} shots not created by this run — manual review")
-        if os.environ.get("DRYRUN", "1") != "0":
+        if os.environ.get("DRYRUN", "1") == "0":
             for s in stale:
                 print(f"   delete stale reservation {s['attributes']['fileName']}")
                 asc.req("DELETE", f"/v1/appScreenshots/{s['id']}")
@@ -206,7 +206,7 @@ def cmd_shots(asc, a):
     if shots:
         print("   already complete")
         return
-    if os.environ.get("DRYRUN", "1") != "0":
+    if os.environ.get("DRYRUN", "1") == "0":
         set_id = asc.ensure_set(vloc["id"])
         for f in files:
             print(f"   + {f}")
@@ -237,7 +237,7 @@ def cmd_submit(asc, a):
                                         "appStoreVersion": {"data": {
                                             "type": "appStoreVersions", "id": ver_id}}}}})
         print("attached version", ver_id)
-    if os.environ.get("DRYRUN", "1") != "0":
+    if os.environ.get("DRYRUN", "1") == "0":
         asc.req("PATCH", f"/v1/reviewSubmissions/{sub_id}",
                 {"data": {"type": "reviewSubmissions", "id": sub_id,
                           "attributes": {"submitted": True}}})

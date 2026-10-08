@@ -65,7 +65,7 @@ def check_build_attached():
         if status == 404:
             return None
         print(f"!! 读 build 子资源异常 HTTP {status}"); sys.exit(2)
-    return j["data"]["id"]
+    return (j.get("data") or {}).get("id")
 
 def check_shots():
     locs = get(f"/v1/appStoreVersions/{VER_ID}/appStoreVersionLocalizations", {"limit": "20"})["data"]

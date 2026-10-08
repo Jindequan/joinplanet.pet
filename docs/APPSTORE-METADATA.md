@@ -8,6 +8,9 @@
 ## 一、截图（6 张，iPhone 6.5" = 1284×2778）
 
 产物：`APP/store-screenshots/iphone-6.5/*.png`；管线与设计规格见 `APP/store-screenshots/README.md`。
+**2026-10-08 起（App Review 2.3.10 整改）成品图不含状态栏**——首版手绘的仿 iOS 状态栏被判
+「non-iOS status bar image」，已从管线整体移除；恢复前提是真机/模拟器实拍带 OS 状态栏的原图，
+禁止手绘（详见 README「已知约束与取舍」）。
 
 | # | 屏幕 | Headline | Sub |
 |---|---|---|---|
@@ -163,3 +166,42 @@ Data is per-family and never shared across accounts. Deleting the account anonym
 | 审核联系人 | Devin Jin · +8618217150781 · jindeq@126.com |
 
 **后续注意**：①审核期间**截图被锁**、新 locale 不能加，但**文字元数据可改**；②若要改截图或加语言，需先在 ASC 撤出审核（版本转 `DEVELOPER_REJECTED`）→ 改完重提，队列位置重置；③结果邮件发 Apple ID 邮箱，通常 ≤48h；④v1.1 起 `whatsNew` 才会有值（首发版本该字段不存在）。
+
+## 六·五、2026-10-07 首审反馈与 2026-10-08 整改
+
+**Apple 反馈**（Review date 2026-10-07，审核设备 iPad Air 11″ M3，Submission `38c84ca8-3aa7-4897-a7f6-6cc0a4cc6598`）：
+
+- **Guideline 2.1(b) Information Needed**：要求说明商业模式（四问：付费内容给谁用 / 在哪买 / 已购内容有哪些 / 哪些付费内容绕过 IAP 解锁）。触发源判定=营销 URL 指向的落地页有 Founding Seat（S$29.99 起，Lemon Squeezy 收款）。**事实面：App 全功能免费、无 IAP（ASC IAP 列表为空）、无订阅；Terms §5 明文「membership unlocks nothing inside the app: the free core is the same for everyone」**——回复稿见下。
+- **Guideline 2.3.10 Accurate Metadata**：截图含「non-iOS status bar image」（`make-store-screenshots.py` 手绘的仿 iOS 状态栏）。
+
+**整改（2026-10-08 全部经 ASC API 完成）**：
+
+| 项 | 处置 |
+|---|---|
+| 截图 | 用 build-83 同代 raw（git `1d73ec0`）重合成去状态栏版 6 张；API 原序删除→替换上传，`assetDeliveryState` 全 COMPLETE（服务器显示顺序 records/today/family/requests/medications/trends 未动） |
+| 版本状态 | 编辑后自动 REJECTED → `PREPARE_FOR_SUBMISSION`；build 83 重新挂载（`GET /appStoreVersions/{id}/build` 子资源验证在位；**版本 GET 的 `relationships.build.data` 回显不可靠，勿据此误判**） |
+| 重提审 | `python3 scripts/asc-resubmit.py`（先 `--check` 盘点）；**前置条件=Resolution Center 已回复 2.1(b)**——无公开 API，需在 ASC 网页手动发 |
+
+### 2.1(b) 回复稿（Resolution Center 用，2026-10-08 定稿）
+
+```
+Thank you for the questions. Here are the details of our business model.
+
+PlanET (version 1.0) is a completely free app. There is no in-app purchase, no subscription, and no paid content of any kind. Every feature in the app — the shared care list, today's tasks, medication tracking, records, trends, reminders, and sharing — is fully available to every user at no cost. Nothing in the app is locked, gated, or upgraded by payment.
+
+1. Who are the users that will use the paid content, subscriptions, features, and services in the app?
+No one — there is no paid content, subscription, feature, or service in the app. Every user has full, free access to everything the app offers.
+
+2. Where can users purchase the content, subscriptions, features, and services that can be accessed in the app?
+Nowhere — nothing in the app can be purchased, and no purchases are offered inside the app.
+
+3. What specific types of previously purchased content, subscriptions, features, and services can a user access in the app?
+None. The app does not access, display, or unlock any previously purchased content or services.
+
+4. What paid content, subscriptions, or features are unlocked within the app that do not use In-App Purchase?
+None. There is nothing that unlocks by payment of any kind.
+
+For completeness, regarding our marketing website (joinplanet.pet): it offers an optional, one-time "founding membership" contribution that funds development, processed on the website by a third-party merchant of record. As our Terms state, the membership "is support for the build and a founding-member standing, not the purchase of product features. Today it unlocks nothing inside the app: the free core is the same for everyone." It is not a subscription, it grants no content, feature, service, or functionality within the iOS app, and nothing in the app references, links to, or depends on it.
+
+We have also revised the app's screenshots per Guideline 2.3.10 — the status bar images have been removed, and the screenshots now show the app in use on iPhone. Thank you — please let us know if any additional information would help complete the review.
+```

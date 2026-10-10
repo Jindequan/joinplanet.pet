@@ -205,3 +205,16 @@ For completeness, regarding our marketing website (joinplanet.pet): it offers an
 
 We have also revised the app's screenshots per Guideline 2.3.10 — the status bar images have been removed, and the screenshots now show the app in use on iPhone. Thank you — please let us know if any additional information would help complete the review.
 ```
+
+## 六·六、2026-10-10 真实模拟器实拍批（founder 指令）
+
+2.1(b) 回复已由 founder 发出；重提审被 409（Version is not ready）连环拦，根因清单与处置：
+
+| 根因 | 处置 |
+|---|---|
+| 灵动岛 iPhone 中等显示屏槽为空（ASC 新必填槽，1206×2622/1179×2556） | **真实模拟器实拍 6 张替换**：Xcode 27 beta + iPhone 17 Pro（iOS 27.0）+ 1d73ec0 worktree Release 构建 + 本地后端（planet_shots 库）英文演示种子 + keychain 注入会话 + idb ui 导航。真状态栏+灵动岛，founder 验收口径 |
+| care_plans.family_id 被拒审转态清空（today 查询按 ci.family_id 过滤） | SQL 补回（种子脚本漏项已修：`scripts/seed-demo-en.sql` 同步） |
+| App 销售范围（appAvailabilityV2）资源被清空 | **API 无创建路由（POST 全 404/405）——唯一解=ASC 网页「定价与销售范围」保存一次（待 founder）** |
+| App 审核（侧边栏红点） | 待 founder 网页核对 |
+
+其它：iPhone Duo 槽（`APP_IPHONE_DUO`）已撤空待真拍——本地 Xcode 27.0 beta 无 Duo 设备类型（需 27.1）；该槽 2026-10-05 起可传、2027-04 起强制。6.5″ 槽保持无状态栏合成图（合规：无伪造系统 UI）。真截图资产：`APP/store-screenshots/iphone-6.3-sim/`；种子：`scripts/seed-demo-en.sql`。

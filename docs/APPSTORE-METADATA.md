@@ -218,3 +218,19 @@ We have also revised the app's screenshots per Guideline 2.3.10 — the status b
 | App 审核（侧边栏红点） | 待 founder 网页核对 |
 
 其它：iPhone Duo 槽（`APP_IPHONE_DUO`）已撤空待真拍——本地 Xcode 27.0 beta 无 Duo 设备类型（需 27.1）；该槽 2026-10-05 起可传、2027-04 起强制。6.5″ 槽保持无状态栏合成图（合规：无伪造系统 UI）。真截图资产：`APP/store-screenshots/iphone-6.3-sim/`；种子：`scripts/seed-demo-en.sql`。
+
+## 六·七、2026-10-10 提审成功（WAITING_FOR_REVIEW）
+
+浏览器接管 ASC（founder 授权）全流程收口：
+
+| 项 | 终态 |
+|---|---|
+| 构建 | **1.0.0 (102)**——含横幅截断修复 + v1.1 全部功能（96-101 五连败为 Apple 侧签名通信瞬时故障，102 恢复后成功） |
+| 截图 | 灵动岛槽 = iPhone 17 Pro 模拟器真拍 6 张（真状态栏+灵动岛）；6.5″ 槽 = 无状态栏合成图 6 张；Duo 槽撤空（真拍需 Xcode 27.1，2027-04 强制） |
+| 医疗器械申报 | **No**（非受监管医疗器械）——App Completeness 最后一块拼图 |
+| 销售范围 | 175 地区 + 新地区自动（Set Up Availability 流程建出 appAvailabilityV2） |
+| 类别/被拒项 | Lifestyle+Health&Fitness 已补；被拒 submission 已 Cancel（撤销清壳后重加） |
+| 提审 | 17:52 提交，版本 1.0 → **WAITING_FOR_REVIEW** |
+| 待 founder | 标题素材拖传（产品页 → 标题 → 上传 title-asset-3840x1646.png，可选不阻塞） |
+
+环境备注：Xcode Cloud 触发失灵复现过一次（空提交重触发解决）；模拟器实拍管线、种子 SQL、asc.py 分页坑均已入仓/入 README。

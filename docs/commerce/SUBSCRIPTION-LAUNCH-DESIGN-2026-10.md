@@ -164,13 +164,29 @@ A 的已知取舍(如实):家庭里付费者退出/被移除后,家庭降回 fre
 
 **节奏**:S+G(P0 六项)约 3 周→TestFlight 沙盒轮(含 IAP 全链)→提审;F1-F5 可随 2.0 同车或 2.0.x 跟进。总工程量 4-5 周,如实标注:这是大版本。
 
-## 7. 前置与合规(只有 founder 能办,建议今天就启动)
+### 6.7 新增 P0:启动体验系统性重设计(founder 2026-10-13 现场实怒:「每次打开都是 restoring your session / preparing your workspace」)
 
-1. **ASC 付费应用协议(Paid Applications Agreement)签署+银行+税务信息**——最长前置(审核 1-5 天),不办则无法创建订阅产品;
-2. 创建订阅组「PLANET」与 **6 个 SKU**(三档 × 月/年)+ **勾选 Family Sharing**(Pro/Unlimited)——协议生效后我可以经 API 代建;
-3. 隐私标签更新:新增「购买历史/标识符」数据类型(ASC 问卷,我可代填答案);
-4. /terms 补订阅条款(自动续订、退款走 Apple)、/privacy 补 IAP 说明——文档侧我写;
-5. App 内「管理订阅」必须链到 Apple 订阅管理页(实现侧含在 S1)。
+**根因(代码定位)**:两道全屏 loading 门——① `app/_layout.tsx:68` session status='loading' 挡全树(token 在 SecureStore,恢复是异步,冷启动必经);② `app/index.tsx:24` activation.isLoading 挡进 tabs(activation-summary 纯网络查询,react-query 无持久化→每次冷启动缓存全 miss→必显示)。即:**回访用户每次打开都被 1-3 秒空 loading 拦住**,而行业基线是直接渲染上次内容后台刷新。
+
+**系统性修法(不是删文案的补丁)**:
+1. **查询持久化**:react-query 接 MMKV/SQLite persister——workspace/today/pets 等关键查询落本地,冷启动直接命中渲染;
+2. **session 乐观启动**:有 token 即刻 authenticated 进 UI(渲染缓存),验证异步在后台;收到 401 才登出(幂等语义已有);
+3. **loading 门退役**:整页 loading 只允许出现在首次安装/登录/缓存全空;回访用户=直接上次屏+顶角轻量刷新指示(尊重 stale-while-revalidate 既有体系);
+4. **断网冷启动**:缓存可读(只读态+提示),复用离线队列既有心智。
+**验收**:杀进程重开,首屏 ≤1s 出真实内容(缓存态);断网冷启动可浏览缓存;e2e 钉「回访无全屏 loading」护栏。
+
+### 6.8 G 组的系统性设计纪律(founder 要求:「认真设计、系统性设计,不是打补丁」)
+
+每个 G 项动工前必须先出设计小节并入本档,含四段:①用户旅程(谁、何时、从哪进、到哪出);②交互规格(页面/控件/空态/错误态/权限,走查五维);③领域与数据影响(表/事件/分享 kind/调度器,与既有 Occurrence-Event 主体关系——不建平行主体,PRODUCT §0 层级纪律);④验收(e2e+真实栈+免费/付费归属复核)。设计先交独立审查,过审再派工施工。
+
+## 7. 前置与合规(2026-10-13 核验后大幅缩短)
+
+1. ~~ASC 付费应用协议~~ **已核验在位**(founder 账号历史已签——经直接创建订阅组成功证实,勿再要求 founder 办);
+2. ~~创建订阅组与产品~~ **已建**(2026-10-13 经 API):组「PLANET Pro」id 22472073;六商品 planet_plus/pro/unlimited × _monthly/_yearly(plus 不开家庭共享,pro/unlimited 计划开启——familyShareable 属性挂法待核实正确字段);
+3. **待办**:价格点(等 D2 拍板后挂,price point API)+ 商品本地化文案 + 订阅审核截图/备注;
+4. 隐私标签更新:新增「购买历史/标识符」数据类型(ASC 问卷,我可代填);
+5. /terms 补订阅条款(自动续订、退款走 Apple)、/privacy 补 IAP 说明——文档侧我写;
+6. App 内「管理订阅」必须链到 Apple 订阅管理页(实现侧含在 S1)。
 
 ## 8. 风险与对冲
 

@@ -186,8 +186,8 @@ A 的已知取舍(如实):家庭里付费者退出/被移除后,家庭降回 fre
 ## 7. 前置与合规(2026-10-13 核验后大幅缩短)
 
 1. ~~ASC 付费应用协议~~ **已核验在位**(founder 账号历史已签——经直接创建订阅组成功证实,勿再要求 founder 办);
-2. ~~创建订阅组与产品~~ **已建**(2026-10-13 经 API):组「PLANET Pro」id 22472073;六商品 planet_plus/pro/unlimited × _monthly/_yearly(plus 不开家庭共享,pro/unlimited 计划开启——familyShareable 属性挂法待核实正确字段);
-3. **待办**:价格点(等 D2 拍板后挂,price point API)+ 商品本地化文案 + 订阅审核截图/备注;
+2. ~~创建订阅组与产品~~ **已建并完成定价(2026-10-13 经 API)**:组「PLANET Pro」id 22472073;六商品 planet_plus/pro/unlimited × _monthly/_yearly;每商品 175 地区可用性(availableInNewTerritories=true)+USA 基准价已挂($4.99/$35.99、$9.99/$69.99、$17.99/$139.99,其余地区按 tier 自动对齐);
+3. **ASC 侧仍待办**:商品显示名/描述本地化(subscriptionLocalizations)、首期优惠与年付试用配置(可用 API 或网页)、Family Sharing 标志核实(familyShareable 属性挂法)、订阅审核截图/备注(随 2.0 提审准备);
 4. 隐私标签更新:新增「购买历史/标识符」数据类型(ASC 问卷,我可代填);
 5. /terms 补订阅条款(自动续订、退款走 Apple)、/privacy 补 IAP 说明——文档侧我写;
 6. App 内「管理订阅」必须链到 Apple 订阅管理页(实现侧含在 S1)。

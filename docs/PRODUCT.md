@@ -123,7 +123,7 @@ Care Plan 是某个家庭针对某只宠物的长期照护意图；Care Rule 是
 | F2 | 照护圈与成员 | 支撑 | 建圈、邀请、成员角色 | 现行（Family、邀请、owner/caregiver/viewer 三角色） |
 | F3 | 宠物档案 | 支撑 | 档案与用药清单 | 现行（基本资料、健康档案、用药、家庭关联与生命周期治理） |
 | F4 | 今日照护协作 | **核心** | 每日执行 + 完成人记录 + 协作 | 现行（Today 执行 + Care Request 责任链协作） |
-| F5 | 健康时间线 | **核心** | 事实流记录与沉淀 | 现行（note/photo/symptom/weight/visit/vaccine/deworm/medication 事实流） |
+| F5 | 健康时间线 | **核心** | 事实流记录与沉淀 | 现行（note/photo/symptom/weight/visit/vaccine/deworm/medication 事实流；含 next-due 投影：vaccine/deworm 事件 payload.due → GET /due 到期清单/Today 到期条/每日 alerts 推送，读侧派生零新表，见 APP-BEHAVIOR-CONTRACT §2.3） |
 | F6 | 就诊准备 Summary | **核心** | 从结构化数据拼装健康摘要 | 现行实现 =「健康摘要 digest/summary」（care_card/summary 分享快照与每日摘要）；独立「就诊准备」形态未单列交付 |
 | F7 | 临时分享 | **核心** | 限时只读链接、可撤销 | 现行（care_card/summary 分享、匿名查看、撤销与过期） |
 | F8 | 数据生命周期 | 支撑 | 编辑、撤回、删除、导出 | 现行（软删与恢复；导出 = `GET /pets/{id}/export`，仅宠物当前 owner，见 APP-BEHAVIOR-CONTRACT §2.4） |
@@ -183,7 +183,7 @@ Timeline 是 Pet 的**事实流**，不是设置页，也不是操作日志。�
 
 ### 4.6 受控分享
 
-分享是 Pet 级的临时只读视图：`care_card` 提供当前照护信息和今日行动，不包含病史字段；`summary` 按选定范围生成健康摘要。分享链接必须有过期时间、可撤销；匿名接收方只能读分享快照，不能写入家庭数据。
+分享是 Pet 级的临时只读视图，共四 kind（G2，2026-10-14）：`care_card` 提供当前照护信息和今日行动的**创建时快照**，不包含病史字段；`summary` 按选定范围生成健康摘要（同为创建时快照）；`sitter` 是活视图——家庭时区的今日照护+进行中用药+紧急联系人，每次打开实时组装、不含病史与已停用药；`timeline` 是活视图——事实流（FactTypes 白名单）在选定窗口内限时跟随，新记录自动出现。分享链接必须有过期时间、可撤销；匿名接收方只能读分享视图（care_card/summary 为创建时快照，sitter/timeline 为查看时实时组装的只读视图），不能写入家庭数据。
 
 ### 4.7 页面质量基线
 

@@ -506,10 +506,18 @@ else
   fail "single care-request composer can regenerate a command key after a lost response"
 fi
 
-if rg -q 'responseCommandIds' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'responseCommandIds\.current\.delete' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'responseCommandIds' "$APP/features/care-requests/batch-panel.tsx" && \
-   rg -q 'responseCommandIds\.current\.delete' "$APP/features/care-requests/batch-panel.tsx" && \
+# 批4-工项1 重锚（2026-10-16）：accept/decline 决策命令收敛为
+# core/collaboration/care-decision.ts 单源——幂等键缓存从 panel/batch-panel 各自的
+# responseCommandIds Map 迁入模块 commandIdForIntent（同意图稳定复用，跨面共享），
+# 「服务器确认+调用面重读成功」后各面 forgetCareDecision 才换新键（对应旧
+# responseCommandIds.current.delete 的时机）。法律实质不变=「同一决策意图重试
+# 重放同一键，不会因响应丢失产生第二条命令」；三面锚点改为断言模块单源+各面
+# 确认后 forget，条件数 5→6 只增不减。
+if rg -q 'function commandIdForIntent' "$APP/core/collaboration/care-decision.ts" && \
+   rg -q 'export function forgetCareDecision' "$APP/core/collaboration/care-decision.ts" && \
+   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/panel.tsx" && \
+   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/batch-panel.tsx" && \
+   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/incoming-request-toast.tsx" && \
    ! rg -q 'commandId: createIdempotencyKey\(\)' "$APP/features/care-requests/panel.tsx" "$APP/features/care-requests/batch-panel.tsx" "$APP/features/care-requests/incoming-request-toast.tsx"; then
   pass "care-request and batch response actions preserve retry identity"
 else
@@ -542,22 +550,32 @@ fi
 
 # 审计 2026-09-30（锚点跟 L67 拆分搬家，法律实质健在）：命令键生成/复用落
 # use-today-queue.ts（careCommandIds :55、commandIdForCare :73-80、undo :373、
-# complete :418），键只在 onSuccess 的 rereadToday 成功后才删（:271/:379-382）；
-# claim 落 today-actions.ts:83（同样先 await rereadToday 再删键 :89-90）。
-# complete/undo/claim 三操作锚点逐一跟搬家，条件数不变。
+# complete :418），键只在 onSuccess 的 rereadToday 成功后才删（:271/:379-382）。
+# 批4-工项1 重锚（2026-10-16）：claim 命令链迁入 care-decision.ts
+# （claim:<familyId>:<occurrenceId> 意图键，today-actions 先 await rereadToday
+# 成功后才 forgetCareDecision——删键时机法律实质不变）；complete/undo 键仍在
+# use-today-queue。条件数 4→5 只增不减。
 if rg -q 'careCommandIds' "$APP/features/today/use-today-queue.ts" && \
    rg -q "commandIdForCare\('undo'" "$APP/features/today/use-today-queue.ts" && \
-   rg -q "commandIdForCare\('claim'" "$APP/features/today/today-actions.ts" && \
-   rg -q "commandIdForCare\('complete'" "$APP/features/today/use-today-queue.ts"; then
+   rg -q "commandIdForCare\('complete'" "$APP/features/today/use-today-queue.ts" && \
+   rg -q 'claimCareOccurrence' "$APP/features/today/today-actions.ts" && \
+   rg -q 'claim:\$\{' "$APP/core/collaboration/care-decision.ts"; then
   pass "Today completion, undo, and claim actions preserve retry identity"
 else
   fail "Today completion, undo, or claim can duplicate after a lost response"
 fi
 
+# 批4-工项1 重锚（2026-10-16）：toast 四条决策命令改走 care-decision。旧锚
+# requestRefreshFailures/onSettled 是「mutationFn 抛错→onSuccess throw→onError
+# 双反馈」形态的防护锚——模块化后失败映射在 onSuccess 内按 outcome 同步完成
+# （无 throw，无双反馈），该防护随之消解；法律实质不变=「四条命令均先
+# await rereadRequestInbox 再收卡/成功反馈，幂等键在重读成功后才 forget」。
+# reread/forget 计数均 ≥4，另加 reread→forget 有界序断言，条件数 4→5 只增不减。
 if rg -q 'const rereadRequestInbox = async' "$APP/features/care-requests/incoming-request-toast.tsx" && \
    [[ "$(rg -c 'await rereadRequestInbox\(\)' "$APP/features/care-requests/incoming-request-toast.tsx")" -ge 4 ]] && \
-   rg -q 'requestRefreshFailures' "$APP/features/care-requests/incoming-request-toast.tsx" && \
-   rg -q 'onSettled' "$APP/features/care-requests/incoming-request-toast.tsx"; then
+   [[ "$(rg -c 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/incoming-request-toast.tsx")" -ge 4 ]] && \
+   rg -q -U 'await rereadRequestInbox\(\)\n[\s\S]{0,220}?forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/incoming-request-toast.tsx" && \
+   rg -q 'decideCareRequest' "$APP/features/care-requests/incoming-request-toast.tsx"; then
   pass "notification fallback actions reread request state before closing or routing"
 else
   fail "notification fallback actions can close or route before request state is reread"
@@ -637,9 +655,12 @@ else
 fi
 
 if rg -q 'await query\.refetch\(\{ throwOnError: true \}\)' "$APP/features/timeline/screen.tsx" && \
-   rg -q 'await onSaved\(\)' "$APP/features/timeline/composer.tsx" && \
+   rg -q 'await onSaved\(' "$APP/features/timeline/composer.tsx" && \
    rg -q 'serverWriteSucceeded' "$APP/features/timeline/composer.tsx" && \
    rg -q 'await query\.refetch\(\{ throwOnError: true \}\)' "$APP/features/timeline/screen.tsx"; then
+  # G6 重锚（2026-10-15，L74/L133 同族先例）：onSaved 签名从 () 扩为
+  # ({storageCrossed})（用量跨阈值结果回传宿主），字面锚 () 失配；法律实质
+  # 不变=「composer 等 onSaved（宿主权威回读）resolve 后才收尾，失败不伪装成功」。
   pass "timeline writes reread authoritative events without queueing duplicates after refresh failure"
 else
   fail "timeline writes can finish before reread or queue a duplicate after refresh failure"
@@ -670,9 +691,16 @@ else
   fail "stale-data refresh errors can replace an active editor or destructive context"
 fi
 
+# 批4-工项1 重锚（2026-10-16）：panel/batch-panel 的 respond/claim 决策命令改走
+# care-decision；旧锚 responseRefreshFailures（panel）是「保存后重读失败不得
+# 弹二次失败反馈」的形态锚，模块化后 outcome 映射同步完成、无 throw 路径，
+# 该防护消解——重读成功后才 forgetCareDecision（法律实质不变）。锚点换为
+# panel 侧 forget + await rereadResponseState（respond/claim 均在成功反馈前），
+# 条件数 10→11 只增不减。
 if rg -q 'const rereadRequestState = async' "$APP/features/care-requests/panel.tsx" && \
    rg -q 'await rereadRequestState\(' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'responseRefreshFailures' "$APP/features/care-requests/panel.tsx" && \
+   rg -q 'await rereadResponseState\(' "$APP/features/care-requests/panel.tsx" && \
+   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/panel.tsx" && \
    rg -q 'const rereadBatchResponseState = async' "$APP/features/care-requests/batch-panel.tsx" && \
    rg -q 'const rereadBatchState = async' "$APP/features/care-requests/batch-panel.tsx" && \
    rg -q 'const rereadCreatedBatchState = async' "$APP/features/care-requests/batch-panel.tsx" && \

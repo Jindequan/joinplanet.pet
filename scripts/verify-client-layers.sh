@@ -44,7 +44,7 @@ for dirpath, _, files in os.walk(root):
             if rel_base.startswith(".."):
                 continue
             top = rel_base.split(os.sep)[0]
-            if top in (".", mine, "collaboration"):
+            if top in (".", mine, "collaboration", "scope"):
                 continue
             if os.path.isdir(os.path.join(root, top)) and f"{rel}:{spec}" not in allowed:
                 bad.append(f"{rel}:{spec}")

@@ -1,0 +1,288 @@
+#!/usr/bin/env node
+/**
+ * § 引用锚点 lint(RULINGS.md 待办三落地;仿 APP/scripts/check-i18n-placeholders.cjs)
+ *
+ * 规则(docs/README.md 引用规范:「引用规范一律带文档前缀(契约 §3),禁裸 §3」):
+ *   1. 每处 `§N(.M)*` 引用必须带已知文档前缀;无前缀/未知前缀 = violation(BARE);
+ *      同一行紧跟前一处引用的续引(`§2/§5`、`§4.4, §5`)继承前者文档,不判裸引;
+ *      本文档内的裸 §N(如 CONSTITUTION.md 自身条款号 §1.1、design-2.0 各稿
+ *      自引)按「文内自引」豁免前缀要求(就地无歧义),但锚点仍须存在。
+ *   2. 带前缀引用校验目标文档锚点是否真实存在,分三档:
+ *      - verified:目标文档含该锚点记号(标题或正文中的 `N.M` 边界匹配);
+ *      - MISSING:锚点(及其父级/同级编号空间)都不存在 = 烂锚,violation;
+ *      - UNVERIFIABLE:父级标题存在但子编号无法确认(如父节用无编号列表项),
+ *        单独报告不拦截——子编号可能以列表项形态存在,pragmatic 检查判不了真。
+ *   3. 扫描面:APP/src(.ts/.tsx)、planet-api/internal + planet-api/test(.go)、
+ *      docs(.md)。docs/archive 不扫(封存历史,docs/README.md 禁令:不参与当前
+ *      决策,修其中引用无收益);本脚本自身在 scripts/ 不在扫描面内。
+ *
+ * 前缀 → 文档映射(新增可引用文档时在此登记;design-2.0 短名取自各文件 H1):
+ *   宪法→CONSTITUTION  契约→APP-BEHAVIOR-CONTRACT  PRODUCT  ARCHITECTURE
+ *   FOUNDATION  设计→commerce/SUBSCRIPTION-LAUNCH-DESIGN-2026-10
+ *   BOOT→design-2.0/05  用量透明度→06  疫苗→03  sitter→02  share-image→04  就诊→01
+ *
+ * 运行模式:
+ *   node scripts/check-citations            报告模式(exit 0):存量裸引数百处,
+ *                                           上线即红无意义,先报告清欠;
+ *   node scripts/check-citations --strict   严格模式(exit 1 on BARE/MISSING)。
+ *   清欠完成后翻正:把下方 DEFAULT_STRICT 改为 true 即默认严格(CI 无需改命令)。
+ *   UNVERIFIABLE 永不拦截(单独计数),避免「父节列表无编号」类文档结构卡死严格门。
+ * 用法:CI(../scripts/check-citations,见 .github/workflows/ci.yml app job)
+ *       与 scripts/test-local.sh;无第三方依赖,Node ≥ 20(用 lookbehind)。
+ */
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+
+const ROOT = path.resolve(__dirname, '..');
+const DEFAULT_STRICT = false; // 清欠完成后翻 true(见头部注释)
+
+// ---- 前缀 → 文档(相对 ROOT)。前缀按长度降序匹配,防短名遮长名。----
+const DOC_PREFIXES = [
+  ['用量透明度', 'docs/design-2.0/06-usage-transparency.md'],
+  ['share-image', 'docs/design-2.0/04-share-image.md'],
+  ['ARCHITECTURE', 'docs/ARCHITECTURE.md'],
+  ['FOUNDATION', 'docs/FOUNDATION.md'],
+  ['PRODUCT', 'docs/PRODUCT.md'],
+  ['宪法', 'docs/CONSTITUTION.md'],
+  ['契约', 'docs/APP-BEHAVIOR-CONTRACT.md'],
+  ['设计', 'docs/commerce/SUBSCRIPTION-LAUNCH-DESIGN-2026-10.md'],
+  ['sitter', 'docs/design-2.0/02-sitter-share.md'],
+  ['疫苗', 'docs/design-2.0/03-vaccine-due.md'],
+  ['就诊', 'docs/design-2.0/01-vet-summary.md'],
+  ['BOOT', 'docs/design-2.0/05-boot-experience.md'],
+];
+
+// ---- 扫描面:目录 + 扩展名。docs/archive 排除(封存历史,见头部注释)。----
+const SCAN_AREAS = [
+  { dir: 'APP/src', exts: ['.ts', '.tsx'] },
+  { dir: 'planet-api/internal', exts: ['.go'] },
+  { dir: 'planet-api/test', exts: ['.go'] },
+  { dir: 'docs', exts: ['.md'], skipDirs: ['archive'] },
+];
+
+const CITATION_RE = /§(\d+(?:\.\d+)*)/g;
+/** 前缀lookback窗口宽度(字符);跨句的前缀不算数。 */
+const LOOKBACK = 16;
+/** 句读/收尾符:前缀匹配不得跨过这些(防上一句话里的文档名误配下一处引用)。 */
+const SENTENCE_BREAKS = ['。', '；', ';', '：', ':', '」', '』', '"', '）', ')'];
+/** 同行续引判定:两处引用之间只允许这些分隔符。 */
+const CONTINUATION_GAP = /^[\s,，、/／·—–-和与及到]*$/;
+/** 文档标题行匹配 `## N` / `## §N`(N 后必须是 `.`、空白或行尾)。 */
+function headingRe(anchor) {
+  return new RegExp(`^#{1,6}[ \\t]*§?${anchor.replace(/\./g, '\\.')}(?=[.\\s]|$)`, 'm');
+}
+/** 全文边界匹配 `N.M`(前后不能贴着数字或点,防 1.1 命中 1.10 / 21.1 / 1.1.0)。 */
+function tokenRe(anchor) {
+  return new RegExp(`(?<![\\d.])${anchor.replace(/\./g, '\\.')}(?![\\d.])`);
+}
+
+/** 递归收集文件(跳过 skipDirs 与 node_modules)。 */
+function* walk(dir, exts, skipDirs) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return; // 扫描面缺失(APP/planet-api 子仓未检出等)按空处理
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (skipDirs?.includes(entry.name) || entry.name === 'node_modules') continue;
+      yield* walk(full, exts, skipDirs);
+    } else if (exts.some((e) => entry.name.endsWith(e))) {
+      yield full;
+    }
+  }
+}
+
+const docCache = new Map();
+function loadDoc(relPath) {
+  if (docCache.has(relPath)) return docCache.get(relPath);
+  let text = null;
+  try {
+    text = fs.readFileSync(path.join(ROOT, relPath), 'utf8');
+  } catch {
+    /* 目标文档不存在:校验层会按 MISSING 报 */
+  }
+  docCache.set(relPath, text);
+  return text;
+}
+
+/**
+ * 校验带前缀引用的锚点。
+ *  - 多级锚点(N.M):文中边界匹配 `N.M` → verified;文档存在任何 `N.M` 形态
+ *    编号(编号是本档惯例)而独缺本锚点 → missing(如 设计 §7.6,§7 在而 7.6
+ *    从未存在);文档全无点分编号但父节标题在 → unverifiable(子项可能以
+ *    无编号列表项存在,pragmatic 检查判不了真);否则 missing。
+ *  - 单级锚点(N):父级标题 `## N`/`## §N` 存在,或正文有 `§N` 记号 → verified。
+ * @returns {{status:'verified'|'missing'|'unverifiable', reason:string}}
+ */
+function verifyAnchor(relPath, anchor) {
+  const text = loadDoc(relPath);
+  if (text === null) return { status: 'missing', reason: `目标文档不存在(${relPath})` };
+  const parts = anchor.split('.');
+  if (parts.length > 1) {
+    if (tokenRe(anchor).test(text)) return { status: 'verified', reason: '' };
+    const numberedConvention = /(?:^#{1,6}[ \t]*\d+\.\d+|\d+\.\d+)/m.test(text);
+    if (numberedConvention) {
+      return { status: 'missing', reason: `${relPath} 有 N.M 编号惯例但无 ${anchor}` };
+    }
+    if (headingRe(parts[0]).test(text)) {
+      return { status: 'unverifiable', reason: `${relPath} 全文无点分编号,§${parts[0]} 父节子项无法机械判定` };
+    }
+    return { status: 'missing', reason: `${relPath} 连 §${parts[0]} 父节都不存在` };
+  }
+  if (headingRe(anchor).test(text)) return { status: 'verified', reason: '' };
+  if (new RegExp(`§${anchor}(?![\\d.])`).test(text)) return { status: 'verified', reason: '' };
+  return { status: 'missing', reason: `${relPath} 无 §${anchor} 节` };
+}
+
+/**
+ * 从 § 前的同行文本窗口里解析文档前缀。两级匹配:
+ *  1. 路径形态:紧邻 § 的 `….md` 路径按 basename 对到已知文档
+ *     (如 `docs/commerce/SUBSCRIPTION-LAUNCH-DESIGN-2026-10.md §2`);
+ *  2. 短名形态:距 § 最多 LOOKBACK 字符、不越过上一个同行引用、不跨句读的
+ *     窗口内找已知前缀,取最长者(「BOOT 启动重设计 §3.2」里 BOOT(4)>设计(2)),
+ *     同长取位置最前者(「疫苗设计 §2.3」是「疫苗」设计稿,非「设计」文档)。
+ */
+const DOC_BASENAMES = new Map(DOC_PREFIXES.map(([, doc]) => [path.basename(doc), doc]));
+
+function resolvePrefix(line, citeStart, windowStart) {
+  const before = line.slice(Math.max(windowStart, citeStart - 80), citeStart);
+  // 1) 路径形态(路径可长于 LOOKBACK,单独放宽到 80 字符)
+  let pathCand = null;
+  const pathMatch = before.match(/([A-Za-z0-9_./-]+\.md)[（(\s]*$/);
+  if (pathMatch) {
+    const byBase = DOC_BASENAMES.get(path.basename(pathMatch[1]));
+    if (byBase) pathCand = { prefix: pathMatch[1], doc: byBase, end: pathMatch.index + pathMatch[1].length };
+  }
+  // 2) 短名形态:LOOKBACK 窗口、不跨句读;最长者优先,同长取位置最前者
+  //    (「疫苗设计 §2.3」=「疫苗」设计稿,头名词优先,非距 § 最近者)
+  let window = before.slice(Math.max(0, before.length - LOOKBACK));
+  const offset = before.length - window.length;
+  let cutAt = -1;
+  for (const br of SENTENCE_BREAKS) {
+    cutAt = Math.max(cutAt, window.lastIndexOf(br));
+  }
+  if (cutAt >= 0) window = window.slice(cutAt + 1);
+  let bestShort = null;
+  for (const [prefix, doc] of DOC_PREFIXES) {
+    let pos = window.indexOf(prefix);
+    while (pos >= 0) {
+      // 「PRODUCT.md」里的 PRODUCT 是文件名提及而非前缀(路径形态分支管它)
+      if (window.slice(pos + prefix.length, pos + prefix.length + 3) !== '.md') break;
+      pos = window.indexOf(prefix, pos + 1);
+    }
+    if (pos < 0) continue;
+    const end = offset + cutAt + 1 + pos + prefix.length;
+    if (!bestShort || prefix.length > bestShort.prefix.length
+      || (prefix.length === bestShort.prefix.length && end < bestShort.end)) {
+      bestShort = { prefix, doc, end };
+    }
+  }
+  // 两类候选同现时取距 § 更近者(「PRODUCT.md（宪法 §5.3」里宪法更近,路径是被注对象)
+  if (pathCand && bestShort) return pathCand.end > bestShort.end ? pathCand : bestShort;
+  return pathCand ?? bestShort;
+}
+
+const strict = process.argv.includes('--strict');
+/** relPath → 自身即目标文档(裸 §N 视为文内自引,豁免前缀要求)。 */
+const SELF_DOC = new Map(DOC_PREFIXES.map(([, doc]) => [doc, doc]));
+const violations = []; // {kind:'BARE'|'MISSING', file, line, cite, doc, detail}
+const unverifiable = []; // {kind:'UNVERIFIABLE', file, line, cite, doc, detail}
+let verifiedCount = 0;
+let selfRefCount = 0;
+let scannedFiles = 0;
+
+for (const area of SCAN_AREAS) {
+  const absDir = path.join(ROOT, area.dir);
+  for (const file of walk(absDir, area.exts, area.skipDirs)) {
+    scannedFiles += 1;
+    const rel = path.relative(ROOT, file);
+    const selfDoc = SELF_DOC.get(rel) ?? null; // 本文件即某可引用文档
+    const text = fs.readFileSync(file, 'utf8');
+    const lines = text.split('\n');
+    for (let ln = 0; ln < lines.length; ln += 1) {
+      const line = lines[ln];
+      CITATION_RE.lastIndex = 0;
+      const cites = [...line.matchAll(CITATION_RE)];
+      let prev = null; // 同行上一处引用(续引继承)
+      for (const m of cites) {
+        const cite = m[1];
+        const start = m.index;
+        const windowStart = prev ? prev.end : 0; // 前缀窗口不越过上一个引用
+        let resolved = null;
+        if (prev && prev.doc && CONTINUATION_GAP.test(line.slice(prev.end, start))) {
+          resolved = { prefix: prev.prefix, doc: prev.doc };
+        } else {
+          resolved = resolvePrefix(line, start, windowStart);
+        }
+        if (!resolved && selfDoc) {
+          resolved = { doc: selfDoc, prefix: '(自引)', word: '(自引)' };
+          selfRefCount += 1;
+        }
+        if (!resolved) {
+          violations.push({
+            kind: 'BARE',
+            file: rel,
+            line: ln + 1,
+            cite,
+            doc: null,
+            detail: '裸引或未知前缀(须为:宪法/契约/PRODUCT/ARCHITECTURE/FOUNDATION/设计/BOOT/用量透明度/疫苗/sitter/share-image/就诊 之一)',
+          });
+        } else {
+          let verdict = verifyAnchor(resolved.doc, cite);
+          // 本文件即某可引用文档、且锚点在本档存在而解析到他档缺失 → 大概率是
+          // 邻近文字里的「设计」等字样被当前缀(如 01 稿内「原设计 §1.3」指自身
+          // v1),降级为不可判定,不算烂锚。
+          if (verdict.status === 'missing' && selfDoc && tokenRe(cite).test(text)) {
+            verdict = { status: 'unverifiable', reason: `锚点在本档(${rel})存在,却解析到 ${resolved.doc}——疑似邻近字样误配为前缀` };
+          }
+          if (verdict.status === 'verified') verifiedCount += 1;
+          else if (verdict.status === 'missing') {
+            violations.push({ kind: 'MISSING', file: rel, line: ln + 1, cite, doc: resolved.doc, detail: verdict.reason });
+          } else {
+            unverifiable.push({ kind: 'UNVERIFIABLE', file: rel, line: ln + 1, cite, doc: resolved.doc, detail: verdict.reason });
+          }
+        }
+        prev = { end: start + m[0].length, doc: resolved?.doc ?? null, prefix: resolved?.prefix ?? null };
+      }
+    }
+  }
+}
+
+/* ---- 汇总输出 ---- */
+const bare = violations.filter((v) => v.kind === 'BARE');
+const missing = violations.filter((v) => v.kind === 'MISSING');
+const byFile = new Map();
+for (const v of violations) byFile.set(v.file, (byFile.get(v.file) ?? 0) + 1);
+const topOffenders = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+const printList = (items, label) => {
+  if (items.length === 0) return;
+  console.error(`\n---- ${label}(${items.length}) ----`);
+  for (const v of items.slice(0, 60)) {
+    const target = v.doc ? ` → ${v.doc}` : '';
+    console.error(`[citations] ${v.kind} ${v.file}:${v.line} §${v.cite}${target}  ${v.detail}`);
+  }
+  if (items.length > 60) console.error(`[citations] …另有 ${items.length - 60} 处未列出`);
+};
+
+console.log(`[citations] 扫描 ${scannedFiles} 文件:带前缀且锚点可验证 ${verifiedCount} 处(另文内自引 ${selfRefCount} 处),裸引/未知前缀 ${bare.length} 处,锚点缺失 ${missing.length} 处,锚点不可判定 ${unverifiable.length} 处(单独报告不拦截)`);
+if (topOffenders.length > 0) {
+  console.log(`[citations] Top 违例文件:${topOffenders.map(([f, c]) => `${f}(${c})`).join('、')}`);
+}
+printList(bare, '裸引/未知前缀');
+printList(missing, '锚点缺失');
+printList(unverifiable, '锚点不可判定(UNVERIFIABLE,不拦截)');
+
+if (violations.length > 0) {
+  if (strict) {
+    console.error(`[citations] FAIL(严格模式):${violations.length} 处违例(裸引 ${bare.length} + 锚点缺失 ${missing.length})`);
+    process.exit(1);
+  }
+  console.error(`[citations] 报告模式(存量清欠中,exit 0):${violations.length} 处违例;清零后把脚本头部 DEFAULT_STRICT 翻 true 或改用 --strict 执法`);
+}
+console.log('[citations] PASS(报告模式,详见上方计数)');

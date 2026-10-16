@@ -60,6 +60,7 @@ jobs:
       - run: ../scripts/verify-notification-contract.sh
       - run: ../scripts/verify-client-layers.sh
       - run: ../scripts/verify-extension-layer.sh
+      - run: ../scripts/check-citations
 
   landing:
     runs-on: ubuntu-latest

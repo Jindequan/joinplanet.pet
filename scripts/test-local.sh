@@ -20,5 +20,8 @@ BASE="$API_BASE" "$ROOT_DIR/scripts/api-walkthrough.sh"
 echo "== frontend contracts =="
 (cd "$ROOT_DIR/APP" && npm run typecheck && npm run check:design && npm run check:i18n && npm run test:business && npm run lint && npm run verify:frontend)
 
+echo "== citation lint =="
+node "$ROOT_DIR/scripts/check-citations"
+
 echo "== result =="
 echo "PASS — local regression completed without starting additional services"

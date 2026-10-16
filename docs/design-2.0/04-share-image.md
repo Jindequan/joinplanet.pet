@@ -16,7 +16,7 @@
 |---|---|---|---|
 | D1 | 导出内容 | **跟随当前 scope**:Pet scope→单宠今日卡;Family scope→该家庭今日概览卡;**All scope 入口隐藏** | 固定单宠卡(多宠家庭漏宠,图≠屏面);固定全家庭概览(单宠家庭出现无意义分组);All scope 导出(跨家庭内容误发进某个家庭群=隐私泄露,见 §1.3) |
 | D2 | 技术路径 | **react-native-view-shot 截「离屏挂载的专用分享卡组件」**(新依赖,单列见 §3.4);分享出口 native 走 `expo-sharing` 系统面板(已有依赖),web 走 Blob 下载 | 截可见列表(滚动 Screen 截不全、含按钮/滑动层等交互杂质);纯 Canvas/SVG 拼装(中英日混排+Baloo 2/Fraunces 双字体需自绘排版,跨端量测不一致,重复实现排版引擎) |
-| D3 | 入口位置 | **TodayHero trailing 槽新增分享 icon Chip**(日历 Chip 旁,screen.tsx:344 既有槽位);仅当日视图且 items>0 时出现 | ArrangeSheet 卡片菜单(那是单事项封闭动作清单,「导出今日」语义错位);列表段头动作(导出是全页动作,非段动作) |
+| D3 | 入口位置 | ~~TodayHero trailing 槽新增分享 icon Chip(日历 Chip 旁)~~ **【2026-10-16 founder 推翻】:页头右槽=日历独占(8fcbd3a 法),入口迁至低频工具行(toolsRow,+临时照护旁,带文字 label)**;仅当日视图且 items>0 时出现 | ArrangeSheet 卡片菜单(那是单事项封闭动作清单,「导出今日」语义错位);列表段头动作(导出是全页动作,非段动作) |
 | D4 | 品牌露出 | 分享卡页脚一行:PlanetLogo + PLANET wordmark + tagline(复用 `ui.brandTagline` 五语键)+ 小字 `joinplanet.pet` | 二维码/深链接(v2 再议,本期图上无可点元素);水印铺底(伤害图片主体) |
 | D5 | 隐私规则 | 图=屏面内容的镜像:成员名照 `displayName()` 正典显示;**不上图**:任务 description、note、护理备注、care request 链路状态、逾期时长注脚;无链接/无 ID/无病史聚合 | 成员名遮罩开关(目的地是自家人群,群成员互知姓名,开关=无受众的复杂度) |
 | D6 | 免费 | **免费、不限量、无档位引用**;生成纯客户端零网络 | 任何配额/次数墙(违 SUBSCRIPTION §1 铁律「分享/应急不设卡」) |
@@ -37,7 +37,7 @@
 谁:任一能看见 Today 的成员(owner / caregiver / viewer)
 何时:白天的任意时刻——最典型是「家人在群里问今天宝贝怎么样/谁去喂」的时刻
 从哪进:今天 Tab(非历史回看日期,Pet 或 Family scope,当日事项 ≥1)
-  → 点页头日历钮旁的分享 icon Chip
+  → 点低频工具行的「分享今日」Chip(2026-10-16 迁自页头)
   → 离屏渲染专用分享卡(复用当日内存数据,<1s)
   → 系统分享面板弹出(iOS Share Sheet / Android Sharesheet),预览图已在
   → 选微信/WhatsApp/iMessage 发进家人群
@@ -73,7 +73,7 @@
 
 - 位置:`TodayHero` trailing 槽(screen.tsx:344-353 现为日历 Chip)新增**分享 icon Chip**,排在日历 Chip 左侧(动作靠近内容、视图控件居角)。槽结构已支持多子元素(today-hero.tsx:144-148 flexDirection row/gap 8)。
 - 形态:复用 `Chip` 组件(chip.tsx:49,dense、icon-only),phosphor `Share` 图标 15px ink 色,`accessibilityLabel=today.shareImageA11y`——与日历 Chip(icon-only+a11y 名,screen.tsx:347)同构。
-- 出现条件(三条同时):当日视图(`selectedDate===civilToday`) ∧ scope ∈ {pet, family} ∧ `items.length>0`。不满足即不渲染(非禁用态——页头不摆死按钮)。
+- 出现条件(三条同时):当日视图(`selectedDate===civilToday`) ∧ scope ∈ {pet, family} ∧ `items.length>0`。不满足即不渲染(非禁用态)。
 
 ### 2.2 生成与分享流(时序)
 
@@ -142,7 +142,7 @@ onPress(禁用自身)
 
 | 维度 | 规格 |
 |---|---|
-| 正常态 | 入口 icon Chip 在页头;点按→系统面板带预览图;生成 <1s 无中间态 UI |
+| 正常态 | 入口 Chip 在低频工具行(临时照护旁);点按→系统面板带预览图;生成 <1s 无中间态 UI |
 | 空态 | items=0 / 历史日期 / All scope:入口不渲染(§2.1 三条件);页面空态文案不因此改动 |
 | 错误态 | 生成失败/面板不可用:toast `today.shareImageFailed`,入口恢复可重试;错误信息不吞(errorMessage 正典),不泄露内部路径 |
 | 权限态 | viewer/readOnly Today 同样可导(§1.4);图内容同其可见面,无额外数据 |
@@ -199,7 +199,7 @@ APP 客户端目前零埋点基建(2026-10-14 grep `gtag|analytics` 于 `APP/src
 
 ### 4.1 e2e 断言点(playwright,web;新增 `APP/e2e/today-share-image.spec.ts`)
 
-1. **入口可见性正例**:Pet scope 当日有事项 → 页头出现分享 Chip(`getByRole('button', { name: today.shareImageA11y })`);
+1. **入口可见性正例**:Pet scope 当日有事项 → 低频工具行出现分享 Chip(`getByRole('button', { name: today.shareImageA11y })`);
 2. **入口可见性负例 ×3**:历史日期回看 / 当日空事项 / All scope → 入口不存在(`queryByRole` 为 null);
 3. **导出内容**:点击后 DOM 出现离屏 `today-share-card`(testID),断言:头部 `today.shareCardHeading` 含 scope 名与当日日期;Up next 条数=内存待办数;完成段 ≤10 条;页脚含 tagline 与 `joinplanet.pet`;**负面清单断言**:卡内不含任何任务的 description 文本、不含 care request 状态文案、不含「Overdue」;
 4. **失败态**:mock captureRef reject → toast `today.shareImageFailed` 出现且入口恢复;

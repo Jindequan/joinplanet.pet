@@ -297,7 +297,7 @@ fi
 # 审计 L74 + IA 清缴 2026-09-28：digest-card.tsx 路径已从本断言的文件清单移除
 # （该文件已删，留在清单里会让 rg 每次报 No such file 的陈旧锚点噪音）；
 # 其余三处 alert 语义锚点保持原样。
-if rg -q 'accessibilityRole="alert"[^>]*variant="caption"' "$APP/features/pets/care-section.tsx" "$APP/features/pets/detail-screen.tsx" "$APP/features/care-requests/panel.tsx"; then
+if rg -q 'accessibilityRole="alert"[^>]*variant="caption"' "$APP/features/pets/care-section.tsx" "$APP/features/pets/detail-screen.tsx" "$APP/features/care-requests/panel-composer.tsx"; then
   pass "inline dependency failures expose alert semantics"
 else
   fail "an inline dependency failure can be silent to assistive technology"
@@ -499,8 +499,10 @@ else
   fail "a factual view or destructive action hides important consequences"
 fi
 
-if rg -q 'commandIdForIntent' "$APP/features/care-requests/panel.tsx" && \
-   ! rg -q 'mutation\.mutate\(createIdempotencyKey\(\)\)' "$APP/features/care-requests/panel.tsx"; then
+# 批4-工项4（2026-10-16）：panel/batch-panel 文件级拆分后，composer 的
+# commandIdForIntent 锚点迁 panel-composer.tsx（同包搬移，法律实质不变）。
+if rg -q 'commandIdForIntent' "$APP/features/care-requests/panel-composer.tsx" && \
+   ! rg -q 'mutation\.mutate\(createIdempotencyKey\(\)\)' "$APP/features/care-requests/panel-composer.tsx"; then
   pass "single care-request composer reuses one command key while the intent is unchanged"
 else
   fail "single care-request composer can regenerate a command key after a lost response"
@@ -513,12 +515,15 @@ fi
 # responseCommandIds.current.delete 的时机）。法律实质不变=「同一决策意图重试
 # 重放同一键，不会因响应丢失产生第二条命令」；三面锚点改为断言模块单源+各面
 # 确认后 forget，条件数 5→6 只增不减。
+# 批4-工项4（2026-10-16）：panel/batch-panel 文件级拆分后，forgetCareDecision
+# 锚点分别迁 panel-inbox.tsx / batch-panel-inbox.tsx；负锚扩展覆盖拆分后的
+# 全部组件文件（法律实质不变=组件不得在 mutate 点现造新键）。
 if rg -q 'function commandIdForIntent' "$APP/core/collaboration/care-decision.ts" && \
    rg -q 'export function forgetCareDecision' "$APP/core/collaboration/care-decision.ts" && \
-   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/batch-panel.tsx" && \
+   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/panel-inbox.tsx" && \
+   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/batch-panel-inbox.tsx" && \
    rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/incoming-request-toast.tsx" && \
-   ! rg -q 'commandId: createIdempotencyKey\(\)' "$APP/features/care-requests/panel.tsx" "$APP/features/care-requests/batch-panel.tsx" "$APP/features/care-requests/incoming-request-toast.tsx"; then
+   ! rg -q 'commandId: createIdempotencyKey\(\)' "$APP/features/care-requests/panel-inbox.tsx" "$APP/features/care-requests/panel-composer.tsx" "$APP/features/care-requests/batch-panel-inbox.tsx" "$APP/features/care-requests/batch-panel-delegate-composer.tsx" "$APP/features/care-requests/batch-panel-composer.tsx" "$APP/features/care-requests/incoming-request-toast.tsx"; then
   pass "care-request and batch response actions preserve retry identity"
 else
   fail "care-request or batch response actions can duplicate after a lost response"
@@ -697,17 +702,22 @@ fi
 # 该防护消解——重读成功后才 forgetCareDecision（法律实质不变）。锚点换为
 # panel 侧 forget + await rereadResponseState（respond/claim 均在成功反馈前），
 # 条件数 10→11 只增不减。
-if rg -q 'const rereadRequestState = async' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'await rereadRequestState\(' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'await rereadResponseState\(' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/panel.tsx" && \
-   rg -q 'const rereadBatchResponseState = async' "$APP/features/care-requests/batch-panel.tsx" && \
-   rg -q 'const rereadBatchState = async' "$APP/features/care-requests/batch-panel.tsx" && \
-   rg -q 'const rereadCreatedBatchState = async' "$APP/features/care-requests/batch-panel.tsx" && \
-   rg -q 'await rereadBatchResponseState\(' "$APP/features/care-requests/batch-panel.tsx" && \
-   rg -q 'await rereadBatchState\(' "$APP/features/care-requests/batch-panel.tsx" && \
-   rg -q 'await rereadCreatedBatchState\(' "$APP/features/care-requests/batch-panel.tsx" && \
-   rg -q 'refreshFailures' "$APP/features/care-requests/batch-panel.tsx"; then
+# 批4-工项4（2026-10-16）：panel/batch-panel 文件级拆分后，reread/forget 锚点按
+# 新家重锚——rereadRequestState→panel-composer、rereadResponseState/forget→
+# panel-inbox、rereadBatchResponseState→batch-panel-inbox、rereadBatchState/
+# refreshFailures→batch-panel-delegate-composer、rereadCreatedBatchState→
+# batch-panel-composer（同包搬移，法律实质不变，条件数只增不减）。
+if rg -q 'const rereadRequestState = async' "$APP/features/care-requests/panel-composer.tsx" && \
+   rg -q 'await rereadRequestState\(' "$APP/features/care-requests/panel-composer.tsx" && \
+   rg -q 'await rereadResponseState\(' "$APP/features/care-requests/panel-inbox.tsx" && \
+   rg -q 'forgetCareDecision\(outcome\.commandId\)' "$APP/features/care-requests/panel-inbox.tsx" && \
+   rg -q 'const rereadBatchResponseState = async' "$APP/features/care-requests/batch-panel-inbox.tsx" && \
+   rg -q 'const rereadBatchState = async' "$APP/features/care-requests/batch-panel-delegate-composer.tsx" && \
+   rg -q 'const rereadCreatedBatchState = async' "$APP/features/care-requests/batch-panel-composer.tsx" && \
+   rg -q 'await rereadBatchResponseState\(' "$APP/features/care-requests/batch-panel-inbox.tsx" && \
+   rg -q 'await rereadBatchState\(' "$APP/features/care-requests/batch-panel-delegate-composer.tsx" && \
+   rg -q 'await rereadCreatedBatchState\(' "$APP/features/care-requests/batch-panel-composer.tsx" && \
+   rg -q 'refreshFailures' "$APP/features/care-requests/batch-panel-delegate-composer.tsx" "$APP/features/care-requests/batch-panel-composer.tsx"; then
   pass "care-request and batch writes reread authoritative state before success or retry reset"
 else
   fail "care-request or batch writes can report success before authoritative state is reread"

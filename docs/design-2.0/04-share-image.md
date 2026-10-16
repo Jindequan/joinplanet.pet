@@ -16,7 +16,7 @@
 |---|---|---|---|
 | D1 | 导出内容 | **跟随当前 scope**:Pet scope→单宠今日卡;Family scope→该家庭今日概览卡;**All scope 入口隐藏** | 固定单宠卡(多宠家庭漏宠,图≠屏面);固定全家庭概览(单宠家庭出现无意义分组);All scope 导出(跨家庭内容误发进某个家庭群=隐私泄露,见 §1.3) |
 | D2 | 技术路径 | **react-native-view-shot 截「离屏挂载的专用分享卡组件」**(新依赖,单列见 §3.4);分享出口 native 走 `expo-sharing` 系统面板(已有依赖),web 走 Blob 下载 | 截可见列表(滚动 Screen 截不全、含按钮/滑动层等交互杂质);纯 Canvas/SVG 拼装(中英日混排+Baloo 2/Fraunces 双字体需自绘排版,跨端量测不一致,重复实现排版引擎) |
-| D3 | 入口位置 | ~~TodayHero trailing 槽新增分享 icon Chip(日历 Chip 旁)~~ **【2026-10-16 founder 推翻】:页头右槽=日历独占(8fcbd3a 法),入口迁至低频工具行(toolsRow,+临时照护旁,带文字 label)**;仅当日视图且 items>0 时出现 | ArrangeSheet 卡片菜单(那是单事项封闭动作清单,「导出今日」语义错位);列表段头动作(导出是全页动作,非段动作) |
+| D3 | 入口位置 | ~~TodayHero trailing 槽新增分享 icon Chip(日历 Chip 旁)~~ **【2026-10-16 founder 推翻】:页头右槽=日历独占(R-20260923-3;施工 8fcbd3a),入口迁至低频工具行(toolsRow,+临时照护旁,带文字 label)**;仅当日视图且 items>0 时出现 | ArrangeSheet 卡片菜单(那是单事项封闭动作清单,「导出今日」语义错位);列表段头动作(导出是全页动作,非段动作) |
 | D4 | 品牌露出 | 分享卡页脚一行:PlanetLogo + PLANET wordmark + tagline(复用 `ui.brandTagline` 五语键)+ 小字 `joinplanet.pet` | 二维码/深链接(v2 再议,本期图上无可点元素);水印铺底(伤害图片主体) |
 | D5 | 隐私规则 | 图=屏面内容的镜像:成员名照 `displayName()` 正典显示;**不上图**:任务 description、note、护理备注、care request 链路状态、逾期时长注脚;无链接/无 ID/无病史聚合 | 成员名遮罩开关(目的地是自家人群,群成员互知姓名,开关=无受众的复杂度) |
 | D6 | 免费 | **免费、不限量、无档位引用**;生成纯客户端零网络 | 任何配额/次数墙(违 SUBSCRIPTION §1 铁律「分享/应急不设卡」) |
